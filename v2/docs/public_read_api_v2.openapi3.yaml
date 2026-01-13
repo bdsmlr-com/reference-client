@@ -1,0 +1,1379 @@
+openapi: 3.0.3
+info:
+  title: BDSMLR Public Read API V2
+  description: Read-only Public API (Elasticsearch + SQL hydrated). All routes under
+    /v2/public-read-api-v2 are anonymous-friendly; include a bearer token only when
+    you need authenticated filtering (e.g. deleted posts).
+  version: v2
+paths:
+  /auth/login:
+    post:
+      summary: Authenticate and receive a bearer token.
+      description: Short-lived bearer token for subsequent API calls.
+      operationId: Auth_Login
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2LoginResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - Auth
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2LoginRequest'
+        required: true
+      servers: &id001
+      - url: https://api-staging.bdsmlr.com
+  /v2/public-read-api-v2/get-blocked:
+    post:
+      summary: Blocked entities for a user.
+      operationId: PublicReadApiV2_GetBlocked
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2GetBlockedResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2GetBlockedRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/get-blog:
+    post:
+      operationId: PublicReadApiV2_GetBlog
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2GetBlogResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2GetBlogRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/get-post:
+    post:
+      operationId: PublicReadApiV2_GetPost
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2GetPostResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2GetPostRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/get-tag:
+    post:
+      operationId: PublicReadApiV2_GetTag
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2GetTagResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2GetTagRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/get-user:
+    post:
+      summary: Detail endpoints.
+      operationId: PublicReadApiV2_GetUser
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2GetUserResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2GetUserRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/list-blog-followers:
+    post:
+      operationId: PublicReadApiV2_ListBlogFollowers
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2ListBlogActivityResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2ListBlogActivityRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/list-blog-following:
+    post:
+      operationId: PublicReadApiV2_ListBlogFollowing
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2ListBlogActivityResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2ListBlogActivityRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/list-blog-likes:
+    post:
+      operationId: PublicReadApiV2_ListBlogLikes
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2ListBlogActivityResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2ListBlogActivityRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/list-blog-mentions:
+    post:
+      operationId: PublicReadApiV2_ListBlogMentions
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2ListBlogActivityResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2ListBlogActivityRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/list-blog-posts:
+    post:
+      summary: 'Blog timelines (ES: posts_search).'
+      operationId: PublicReadApiV2_ListBlogPosts
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2ListBlogPostsResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2ListBlogPostsRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/list-blog-reblogged:
+    post:
+      operationId: PublicReadApiV2_ListBlogReblogged
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2ListBlogActivityResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2ListBlogActivityRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/list-blog-reblogs:
+    post:
+      summary: 'Blog-scoped activity (ES: activity index).'
+      operationId: PublicReadApiV2_ListBlogReblogs
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2ListBlogActivityResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2ListBlogActivityRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/list-blog-top-posts:
+    post:
+      operationId: PublicReadApiV2_ListBlogTopPosts
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2ListBlogPostsResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2ListBlogPostsRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/list-post-comments:
+    post:
+      operationId: PublicReadApiV2_ListPostComments
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2ListPostCommentsResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2ListPostCommentsRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/list-post-likes:
+    post:
+      operationId: PublicReadApiV2_ListPostLikes
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2ListPostLikesResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2ListPostLikesRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/list-post-reblogs:
+    post:
+      operationId: PublicReadApiV2_ListPostReblogs
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2ListPostReblogsResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2ListPostReblogsRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/list-user-activity:
+    post:
+      summary: User activity feed (likes, comments, reblogs, posts).
+      operationId: PublicReadApiV2_ListUserActivity
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2ListUserActivityResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2ListUserActivityRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/list-user-blogs:
+    post:
+      summary: Relationships / lists.
+      operationId: PublicReadApiV2_ListUserBlogs
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2ListUserBlogsResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2ListUserBlogsRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/resolve-identifier:
+    post:
+      summary: Resolve blog/post/user identifiers.
+      description: Supply any combination of post_id, blog_id, blog_name, user_id,
+        or user_name to map between them (name lookups are case-insensitive where
+        supported). This endpoint is read-only and does not require a bearer token.
+      operationId: PublicReadApiV2_ResolveIdentifier
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2ResolveIdentifierResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2ResolveIdentifierRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/search-blogs:
+    post:
+      summary: 'Search blogs by name/title/description.
+
+        ES index: blogs. Consider multi_match on name/title/description.'
+      operationId: PublicReadApiV2_SearchBlogs
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2SearchBlogsResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2SearchBlogsRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/search-posts-by-tag:
+    post:
+      summary: 'Search posts by tag name (no full-text post search).
+
+        ES index: post_tags2 -> list post_id; SQL hydrate posts.'
+      operationId: PublicReadApiV2_SearchPostsByTag
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2SearchPostsByTagResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2SearchPostsByTagRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/search-tags:
+    post:
+      summary: 'Search tags by name.
+
+        ES index: post_tags2; use composite aggregation on tag_name_norm for counts.'
+      operationId: PublicReadApiV2_SearchTags
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2SearchTagsResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2SearchTagsRequest'
+        required: true
+      servers: *id001
+  /v2/public-read-api-v2/sign-url:
+    post:
+      summary: Sign a media URL (Bdsmlr CDN only; external links are returned unchanged).
+      operationId: PublicReadApiV2_SignUrl
+      responses:
+        '200':
+          description: A successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/v2SignUrlResponse'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rpcStatus'
+      tags:
+      - PublicReadApiV2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/v2SignUrlRequest'
+        required: true
+      servers: *id001
+components:
+  schemas:
+    bdsmlrv2Tag:
+      type: object
+      properties:
+        id:
+          type: string
+          format: int64
+        name:
+          type: string
+        postsCount:
+          type: string
+          format: int64
+          title: "ES source: index \"post_tags2\".\n Field mapping:\n - id -> post_tags2.tag_id\n\
+            \ - name -> post_tags2.tag_name (or tag_name_norm)\n - posts_count ->\
+            \ terms aggregation on tag_name_norm (not stored)"
+    protobufAny:
+      type: object
+      properties:
+        '@type':
+          type: string
+      additionalProperties: {}
+    rpcStatus:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/protobufAny'
+    v2Activity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: int64
+        type:
+          $ref: '#/components/schemas/v2ActivityType'
+        postId:
+          type: string
+          format: int64
+        blogId:
+          type: string
+          format: int64
+        userId:
+          type: string
+          format: int64
+        comment:
+          type: string
+        createdAtUnix:
+          type: string
+          format: int64
+          description: "Feed logic:\n - Use blog_ids for the user (SQL lookup).\n\
+            \ - Filter ES activity by blog_id IN (user blogs).\n - Sort created_at\
+            \ desc, paginate via search_after."
+          title: "ES source: index \"activity\".\n Field mapping:\n - id -> activity.id\n\
+            \ - type -> activity.activity_type\n - post_id -> activity.post_id\n -\
+            \ blog_id -> activity.blog_id\n - user_id -> activity.user_id\n - comment\
+            \ -> activity.comment\n - created_at_unix -> activity.created_at"
+    v2ActivityType:
+      type: string
+      enum:
+      - ACTIVITY_TYPE_UNSPECIFIED
+      - ACTIVITY_TYPE_LIKE
+      - ACTIVITY_TYPE_COMMENT
+      - ACTIVITY_TYPE_REBLOG
+      - ACTIVITY_TYPE_POST
+      - ACTIVITY_TYPE_MENTION
+      - ACTIVITY_TYPE_FOLLOW
+      default: ACTIVITY_TYPE_UNSPECIFIED
+    v2ApiWarning:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      description: Non-fatal notice for degraded/partial responses.
+    v2Blog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: int64
+        ownerUserId:
+          type: string
+          format: int64
+        name:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        avatarUrl:
+          type: string
+        coverUrl:
+          type: string
+        followersCount:
+          type: string
+          format: int64
+        postsCount:
+          type: string
+          format: int64
+          title: "ES source: index \"blogs\".\n Field mapping:\n - id -> blogs.id\n\
+            \ - owner_user_id -> blogs.user_id\n - name -> blogs.name\n - title ->\
+            \ blogs.title\n - description -> blogs.description\n - avatar_url -> blogs.avatar\
+            \ (prefix with https://cdn02.bdsmlr.com/)\n - cover_url -> blogs.headerbg\
+            \ (prefix with https://cdn02.bdsmlr.com/)\n - followers_count -> blogs.followers\n\
+            \ - posts_count -> blogs.posts"
+    v2BlogSortField:
+      type: string
+      enum:
+      - BLOG_SORT_FIELD_UNSPECIFIED
+      - BLOG_SORT_FIELD_ID
+      - BLOG_SORT_FIELD_FOLLOWERS_COUNT
+      - BLOG_SORT_FIELD_POSTS_COUNT
+      - BLOG_SORT_FIELD_NAME
+      - BLOG_SORT_FIELD_CREATED_AT
+      default: BLOG_SORT_FIELD_UNSPECIFIED
+    v2Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: int64
+        postId:
+          type: string
+          format: int64
+        userId:
+          type: string
+          format: int64
+        blogId:
+          type: string
+          format: int64
+        blogName:
+          type: string
+        body:
+          type: string
+        createdAtUnix:
+          type: string
+          format: int64
+          description: SQL source only (comments table).
+    v2Content:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Common fields for all post types.
+        text:
+          type: string
+          description: Plain text if available.
+        html:
+          type: string
+          description: Rich text / HTML payload.
+        files:
+          type: array
+          items:
+            type: string
+          description: Media assets (images, audio, video).
+        url:
+          type: string
+          description: Link target for link-type posts.
+        description:
+          type: string
+        quoteText:
+          type: string
+          description: Type-specific optional fields.
+        quoteSource:
+          type: string
+        thumbnail:
+          type: string
+          description: Preview image for media posts.
+    v2GetBlockedRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: int64
+    v2GetBlockedResponse:
+      type: object
+      properties:
+        blockedUserIds:
+          type: array
+          items:
+            type: string
+            format: int64
+        blockedBlogIds:
+          type: array
+          items:
+            type: string
+            format: int64
+    v2GetBlogRequest:
+      type: object
+      properties:
+        blogId:
+          type: string
+          format: int64
+    v2GetBlogResponse:
+      type: object
+      properties:
+        blog:
+          $ref: '#/components/schemas/v2Blog'
+    v2GetPostRequest:
+      type: object
+      properties:
+        postId:
+          type: string
+          format: int64
+    v2GetPostResponse:
+      type: object
+      properties:
+        post:
+          $ref: '#/components/schemas/v2Post'
+    v2GetTagRequest:
+      type: object
+      properties:
+        tagId:
+          type: string
+          format: int64
+    v2GetTagResponse:
+      type: object
+      properties:
+        tag:
+          $ref: '#/components/schemas/bdsmlrv2Tag'
+    v2GetUserRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: int64
+    v2GetUserResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/v2User'
+    v2Like:
+      type: object
+      properties:
+        id:
+          type: string
+          format: int64
+        postId:
+          type: string
+          format: int64
+        userId:
+          type: string
+          format: int64
+        blogId:
+          type: string
+          format: int64
+        blogName:
+          type: string
+        createdAtUnix:
+          type: string
+          format: int64
+          description: SQL source (activity table or likes table).
+    v2ListBlogActivityRequest:
+      type: object
+      properties:
+        blogId:
+          type: string
+          format: int64
+        page:
+          $ref: '#/components/schemas/v2Pagination'
+        order:
+          $ref: '#/components/schemas/v2Order'
+    v2ListBlogActivityResponse:
+      type: object
+      properties:
+        activity:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/v2Activity'
+        page:
+          $ref: '#/components/schemas/v2PageInfo'
+    v2ListBlogPostsRequest:
+      type: object
+      properties:
+        blogId:
+          type: string
+          format: int64
+        page:
+          $ref: '#/components/schemas/v2Pagination'
+        sortField:
+          $ref: '#/components/schemas/v2PostSortField'
+        order:
+          $ref: '#/components/schemas/v2Order'
+        postTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/v2PostType'
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/v2PostVariant'
+    v2ListBlogPostsResponse:
+      type: object
+      properties:
+        posts:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/v2Post'
+        page:
+          $ref: '#/components/schemas/v2PageInfo'
+    v2ListPostCommentsRequest:
+      type: object
+      properties:
+        postId:
+          type: string
+          format: int64
+        page:
+          $ref: '#/components/schemas/v2Pagination'
+        order:
+          $ref: '#/components/schemas/v2Order'
+    v2ListPostCommentsResponse:
+      type: object
+      properties:
+        comments:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/v2Comment'
+        page:
+          $ref: '#/components/schemas/v2PageInfo'
+        warnings:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/v2ApiWarning'
+    v2ListPostLikesRequest:
+      type: object
+      properties:
+        postId:
+          type: string
+          format: int64
+        page:
+          $ref: '#/components/schemas/v2Pagination'
+        order:
+          $ref: '#/components/schemas/v2Order'
+    v2ListPostLikesResponse:
+      type: object
+      properties:
+        likes:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/v2Like'
+        page:
+          $ref: '#/components/schemas/v2PageInfo'
+        warnings:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/v2ApiWarning'
+    v2ListPostReblogsRequest:
+      type: object
+      properties:
+        postId:
+          type: string
+          format: int64
+        page:
+          $ref: '#/components/schemas/v2Pagination'
+        order:
+          $ref: '#/components/schemas/v2Order'
+    v2ListPostReblogsResponse:
+      type: object
+      properties:
+        reblogs:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/v2Reblog'
+        page:
+          $ref: '#/components/schemas/v2PageInfo'
+        warnings:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/v2ApiWarning'
+    v2ListUserActivityRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: int64
+        page:
+          $ref: '#/components/schemas/v2Pagination'
+        order:
+          $ref: '#/components/schemas/v2Order'
+    v2ListUserActivityResponse:
+      type: object
+      properties:
+        activity:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/v2Activity'
+        page:
+          $ref: '#/components/schemas/v2PageInfo'
+    v2ListUserBlogsRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: int64
+        page:
+          $ref: '#/components/schemas/v2Pagination'
+        sortField:
+          $ref: '#/components/schemas/v2BlogSortField'
+        order:
+          $ref: '#/components/schemas/v2Order'
+    v2ListUserBlogsResponse:
+      type: object
+      properties:
+        blogs:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/v2Blog'
+        page:
+          $ref: '#/components/schemas/v2PageInfo'
+    v2LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      title: '--- Auth ---'
+    v2LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+        expiresIn:
+          type: integer
+          format: int32
+    v2Order:
+      type: string
+      enum:
+      - ORDER_UNSPECIFIED
+      - ORDER_ASC
+      - ORDER_DESC
+      default: ORDER_UNSPECIFIED
+    v2PageInfo:
+      type: object
+      properties:
+        nextPageToken:
+          type: string
+          description: Opaque cursor for the next page.
+      title: '--- Common ---'
+    v2Pagination:
+      type: object
+      properties:
+        pageSize:
+          type: integer
+          format: int32
+          description: Default 20; cap 100.
+        pageToken:
+          type: string
+          description: Opaque cursor. For search-posts-by-tag this is a base64-encoded
+            JSON of the ES composite after_key.
+    v2Post:
+      type: object
+      properties:
+        id:
+          type: string
+          format: int64
+        blogId:
+          type: string
+          format: int64
+        originPostId:
+          type: string
+          format: int64
+        originBlogId:
+          type: string
+          format: int64
+        blogName:
+          type: string
+        originBlogName:
+          type: string
+        authorUserId:
+          type: string
+          format: int64
+        type:
+          $ref: '#/components/schemas/v2PostType'
+        title:
+          type: string
+        body:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        createdAtUnix:
+          type: string
+          format: int64
+        updatedAtUnix:
+          type: string
+          format: int64
+        deletedAtUnix:
+          type: string
+          format: int64
+        originDeletedAtUnix:
+          type: string
+          format: int64
+        likesCount:
+          type: string
+          format: int64
+        commentsCount:
+          type: string
+          format: int64
+        reblogsCount:
+          type: string
+          format: int64
+        mentionsCount:
+          type: string
+          format: int64
+        notesCount:
+          type: string
+          format: int64
+        content:
+          $ref: '#/components/schemas/v2Content'
+        variant:
+          $ref: '#/components/schemas/v2PostVariant'
+          description: "NOTE: ES indices \"post\" and \"regularpost\" are empty; do\
+            \ not rely on them.\n Fetch post IDs from ES (post_tags2) then hydrate\
+            \ via SQL."
+          title: "SQL source for full post details (posts + regular_posts + content,\
+            \ etc).\n ES source for metrics: index \"post_metrics\".\n Field mapping:\n\
+            \ - likes_count -> post_metrics.like_count\n - comments_count -> post_metrics.comment_count\n\
+            \ - reblogs_count -> post_metrics.reblog_count"
+    v2PostSortField:
+      type: string
+      enum:
+      - POST_SORT_FIELD_UNSPECIFIED
+      - POST_SORT_FIELD_CREATED_AT
+      - POST_SORT_FIELD_LIKES_COUNT
+      - POST_SORT_FIELD_COMMENTS_COUNT
+      - POST_SORT_FIELD_REBLOGS_COUNT
+      - POST_SORT_FIELD_MENTIONS_COUNT
+      - POST_SORT_FIELD_NOTES_COUNT
+      - POST_SORT_FIELD_ID
+      default: POST_SORT_FIELD_UNSPECIFIED
+    v2PostType:
+      type: string
+      enum:
+      - POST_TYPE_UNSPECIFIED
+      - POST_TYPE_TEXT
+      - POST_TYPE_IMAGE
+      - POST_TYPE_VIDEO
+      - POST_TYPE_AUDIO
+      - POST_TYPE_LINK
+      - POST_TYPE_CHAT
+      - POST_TYPE_QUOTE
+      default: POST_TYPE_UNSPECIFIED
+    v2PostVariant:
+      type: string
+      enum:
+      - POST_VARIANT_UNSPECIFIED
+      - POST_VARIANT_ORIGINAL
+      - POST_VARIANT_REBLOG
+      default: POST_VARIANT_UNSPECIFIED
+    v2Reblog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: int64
+        postId:
+          type: string
+          format: int64
+        blogId:
+          type: string
+          format: int64
+        blogName:
+          type: string
+        createdAtUnix:
+          type: string
+          format: int64
+          description: SQL source (reblogged_posts table).
+    v2ResolveIdentifierRequest:
+      type: object
+      properties:
+        postId:
+          type: string
+          format: int64
+          description: Accept any of these; service will map to the others when possible.
+        blogId:
+          type: string
+          format: int64
+        blogName:
+          type: string
+          description: Case-insensitive.
+        userId:
+          type: string
+          format: int64
+        userName:
+          type: string
+          description: Case-insensitive; only field that touches SQL (users table).
+    v2ResolveIdentifierResponse:
+      type: object
+      properties:
+        postId:
+          type: string
+          format: int64
+        blogId:
+          type: string
+          format: int64
+        blogName:
+          type: string
+        userId:
+          type: string
+          format: int64
+        userName:
+          type: string
+    v2SearchBlogsRequest:
+      type: object
+      properties:
+        query:
+          type: string
+        page:
+          $ref: '#/components/schemas/v2Pagination'
+        sortField:
+          $ref: '#/components/schemas/v2BlogSortField'
+        order:
+          $ref: '#/components/schemas/v2Order'
+      title: '--- Requests / responses ---'
+    v2SearchBlogsResponse:
+      type: object
+      properties:
+        blogs:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/v2Blog'
+        page:
+          $ref: '#/components/schemas/v2PageInfo'
+    v2SearchPostsByTagRequest:
+      type: object
+      properties:
+        tagName:
+          type: string
+        page:
+          $ref: '#/components/schemas/v2Pagination'
+        sortField:
+          $ref: '#/components/schemas/v2PostSortField'
+        order:
+          $ref: '#/components/schemas/v2Order'
+        postTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/v2PostType'
+        blockedBlogIds:
+          type: array
+          items:
+            type: string
+            format: int64
+        blockedUserIds:
+          type: array
+          items:
+            type: string
+            format: int64
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/v2PostVariant'
+    v2SearchPostsByTagResponse:
+      type: object
+      properties:
+        posts:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/v2Post'
+        page:
+          $ref: '#/components/schemas/v2PageInfo'
+    v2SearchTagsRequest:
+      type: object
+      properties:
+        query:
+          type: string
+        page:
+          $ref: '#/components/schemas/v2Pagination'
+        sortField:
+          $ref: '#/components/schemas/v2TagSortField'
+        order:
+          $ref: '#/components/schemas/v2Order'
+    v2SearchTagsResponse:
+      type: object
+      properties:
+        tags:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/bdsmlrv2Tag'
+        page:
+          $ref: '#/components/schemas/v2PageInfo'
+    v2SignUrlRequest:
+      type: object
+      properties:
+        url:
+          type: string
+    v2SignUrlResponse:
+      type: object
+      properties:
+        url:
+          type: string
+    v2TagSortField:
+      type: string
+      enum:
+      - TAG_SORT_FIELD_UNSPECIFIED
+      - TAG_SORT_FIELD_POSTS_COUNT
+      - TAG_SORT_FIELD_NAME
+      default: TAG_SORT_FIELD_UNSPECIFIED
+    v2User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: int64
+        username:
+          type: string
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+          description: 'NOTE: Users are not indexed in ES; hydrate from SQL (users
+            table).'
+      title: '--- Core entities ---'
+  securitySchemes:
+    BearerAuth:
+      type: apiKey
+      name: Authorization
+      in: header
+      description: Bearer <token>
+servers: *id001
