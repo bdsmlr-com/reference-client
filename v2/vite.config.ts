@@ -85,7 +85,6 @@ export default defineConfig({
       '/api': {
         target: 'https://api-staging.bdsmlr.com',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
         secure: true,
       },
     },
