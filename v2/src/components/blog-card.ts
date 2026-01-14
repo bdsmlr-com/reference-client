@@ -4,7 +4,7 @@ import { baseStyles } from '../styles/theme.js';
 import type { Blog } from '../types/api.js';
 import { EventNames, type BlogClickDetail } from '../types/events.js';
 import { getCachedAvatarUrl, setCachedAvatarUrl } from '../services/storage.js';
-import { getBlog } from '../services/api.js';
+import { apiClient } from '../services/client.js';
 
 @customElement('blog-card')
 export class BlogCard extends LitElement {
@@ -157,7 +157,7 @@ export class BlogCard extends LitElement {
     this.fetchingAvatar = true;
 
     try {
-      const response = await getBlog({ blog_id: this.blog.id });
+      const response = await apiClient.blogs.get({ blog_id: this.blog.id });
       const avatarUrl = response.blog?.avatarUrl || null;
 
       // Cache the result
