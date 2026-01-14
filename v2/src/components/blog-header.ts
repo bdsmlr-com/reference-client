@@ -198,11 +198,17 @@ export class BlogHeader extends LitElement {
         background: var(--bg-panel-alt);
       }
 
+      /* Secondary row for badges and actions - always flex on desktop */
+      .secondary-row {
+        display: contents;
+      }
+
       /* Mobile responsive: stack vertically */
       @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE)}px) {
         .header-container {
+          flex-direction: column;
           padding: ${SPACING.SM}px;
-          gap: ${SPACING.XS}px;
+          gap: ${SPACING.SM}px;
         }
 
         .blog-selector {
@@ -213,15 +219,38 @@ export class BlogHeader extends LitElement {
         .blog-input {
           min-width: 150px;
           font-size: 14px;
+          width: 100%;
         }
 
-        /* Second row for badges/actions on mobile */
-        .mobile-row {
+        .edit-container {
+          width: 100%;
+        }
+
+        .edit-container .btn {
+          flex: 1;
+          text-align: center;
+        }
+
+        /* Second row for badges/actions on mobile - explicit flex row */
+        .secondary-row {
           display: flex;
           align-items: center;
           justify-content: center;
           gap: ${SPACING.SM}px;
-          width: 100%;
+          flex-wrap: wrap;
+        }
+
+        .context-badge {
+          font-size: 11px;
+          padding: 3px 8px;
+        }
+
+        .return-action {
+          font-size: 12px;
+        }
+
+        .external-link {
+          font-size: 11px;
         }
       }
     `,
@@ -411,43 +440,44 @@ export class BlogHeader extends LitElement {
                 <span class="chevron" aria-hidden="true">&#9662;</span>
               </button>
 
-              <!-- Context badge and actions -->
-              ${isOwnBlog
-                ? html`
-                    <span
-                      class="context-badge own"
-                      aria-label="This is your primary blog"
-                    >
-                      Your blog
-                    </span>
-                  `
-                : html`
-                    <span
-                      class="context-badge other"
-                      aria-label="Viewing another blog"
-                    >
-                      <span aria-hidden="true">&#128065;</span>
-                      Viewing
-                    </span>
-                    <button
-                      class="return-action"
-                      @click=${this.resetToPrimary}
-                      aria-label="Return to your blog: ${this.primaryBlog}"
-                    >
-                      &larr; Back to @${this.primaryBlog}
-                    </button>
-                  `}
-
-              <!-- External link -->
-              <a
-                class="external-link"
-                href=${this.externalBlogUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Visit ${this.blogName}'s blog on BDSMLR (opens in new tab)"
-              >
-                Visit &rarr;
-              </a>
+              <!-- Secondary row: Context badge, actions, and external link -->
+              <div class="secondary-row">
+                ${isOwnBlog
+                  ? html`
+                      <span
+                        class="context-badge own"
+                        aria-label="This is your primary blog"
+                      >
+                        Your blog
+                      </span>
+                    `
+                  : html`
+                      <span
+                        class="context-badge other"
+                        aria-label="Viewing another blog"
+                      >
+                        <span aria-hidden="true">&#128065;</span>
+                        Viewing
+                      </span>
+                      <button
+                        class="return-action"
+                        @click=${this.resetToPrimary}
+                        aria-label="Return to your blog: ${this.primaryBlog}"
+                      >
+                        &larr; Back to @${this.primaryBlog}
+                      </button>
+                    `}
+                <!-- External link -->
+                <a
+                  class="external-link"
+                  href=${this.externalBlogUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Visit ${this.blogName}'s blog on BDSMLR (opens in new tab)"
+                >
+                  Visit &rarr;
+                </a>
+              </div>
             `}
       </div>
     `;
