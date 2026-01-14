@@ -71,7 +71,11 @@ function setCachedBlogTheme(blogName: string, blog: Blog | null): void {
 }
 
 /**
- * Fetch blog metadata for theming
+ * Fetch blog metadata for theming.
+ *
+ * API-007a: The get-blog API requires blog_id, not blog_name.
+ * This function first resolves the blog name to ID using resolve-identifier,
+ * then calls get-blog with the ID.
  */
 export async function fetchBlogForTheming(blogName: string): Promise<Blog | null> {
   if (!blogName) return null;
@@ -82,14 +86,22 @@ export async function fetchBlogForTheming(blogName: string): Promise<Blog | null
     return cached;
   }
 
-  // Fetch from API using apiClient
+  // API-007a: Resolve blog name to ID first, then fetch blog details
   try {
-    const response = await apiClient.blogs.get({ blog_name: blogName });
+    // Step 1: Resolve blog name to blog ID
+    const blogId = await apiClient.identity.resolveNameToId(blogName);
+    if (!blogId) {
+      // Blog name doesn't exist - don't cache null to allow retries (CACHE-010a)
+      return null;
+    }
+
+    // Step 2: Fetch blog details using the resolved ID
+    const response = await apiClient.blogs.get({ blog_id: blogId });
     const blog = response.blog || null;
     setCachedBlogTheme(blogName, blog);
     return blog;
   } catch {
-    setCachedBlogTheme(blogName, null);
+    // Don't cache null on API error to allow retries (CACHE-010a)
     return null;
   }
 }
