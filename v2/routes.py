@@ -1,9 +1,14 @@
 """
 BDSMLR Client Routing Blueprint
 
-Import and register in your API server:
+Import and register in your API server AFTER your API routes:
 
-    from client.v2.routes import client_blueprint
+    # Register API routes first
+    app.register_blueprint(api_blueprint)
+
+    # Then register client routes
+    from client.v2.routes import client_blueprint, init_client_routes
+    init_client_routes('/path/to/client/v2/dist')
     app.register_blueprint(client_blueprint)
 
 Configure via environment:
@@ -22,44 +27,41 @@ STATIC_PAGES = ['search', 'blogs', 'home']
 BLOG_PAGES = ['archive', 'timeline', 'following', 'social']
 RESERVED_SUBDOMAINS = ['www', 'api', 'cdn', 'static', 'admin', 'app']
 
-# Blueprint - dist path set when registered
+# Paths that should NOT be handled by client routes (API endpoints)
+API_PREFIXES = ('v1', 'v2', 'api', 'auth', 'admin', 'health', 'metrics', 'static')
+
+# Blueprint
 client_blueprint = Blueprint('client', __name__)
 
-# Will be set by init_client_routes()
+# Dist paths - set by init_client_routes()
 _dist_dir = None
 _pages_dir = None
 
 
 def init_client_routes(dist_path):
-    """
-    Initialize the blueprint with the path to dist folder.
-    Call this before registering the blueprint:
-
-        from client.v2.routes import client_blueprint, init_client_routes
-        init_client_routes('/path/to/client/v2/dist')
-        app.register_blueprint(client_blueprint)
-    """
+    """Initialize with path to dist folder. Call before registering blueprint."""
     global _dist_dir, _pages_dir
     _dist_dir = dist_path
     _pages_dir = os.path.join(dist_path, 'src', 'pages')
 
 
 def _serve_page(page_name):
-    """Serve an HTML page from dist/src/pages/"""
+    """Serve HTML page from dist/src/pages/"""
     if not _pages_dir:
-        raise RuntimeError("Call init_client_routes(dist_path) before registering blueprint")
+        raise RuntimeError("Call init_client_routes(dist_path) first")
     return send_from_directory(_pages_dir, f'{page_name}.html')
 
 
-def _serve_asset(filename):
-    """Serve static asset from dist/assets/"""
-    if not _dist_dir:
-        raise RuntimeError("Call init_client_routes(dist_path) before registering blueprint")
-    return send_from_directory(os.path.join(_dist_dir, 'assets'), filename)
+def _is_api_path(path):
+    """Check if path should be handled by API, not client."""
+    if not path:
+        return False
+    first_segment = path.lstrip('/').split('/')[0].lower()
+    return first_segment in API_PREFIXES
 
 
 def _get_subdomain():
-    """Extract subdomain from request host."""
+    """Extract blog subdomain from host."""
     host = request.host.split(':')[0].lower()
     parts = host.split('.')
     if len(parts) < 3:
@@ -71,50 +73,62 @@ def _get_subdomain():
 
 
 # =============================================================================
-# Static Assets
+# Static Assets (all modes)
 # =============================================================================
 
 @client_blueprint.route('/assets/<path:filename>')
 def assets(filename):
-    return _serve_asset(filename)
+    return send_from_directory(os.path.join(_dist_dir, 'assets'), filename)
 
 
 # =============================================================================
-# Routes - registered based on ROUTING_MODE
+# Catch-all route that handles all client paths
 # =============================================================================
 
-if ROUTING_MODE == 'subdomain':
+@client_blueprint.route('/', defaults={'path': ''})
+@client_blueprint.route('/<path:path>')
+def catch_all(path):
+    """
+    Catch-all route for client pages.
+    Returns None for API paths (lets them 404 or be handled by API routes).
+    """
+    # Skip API paths entirely
+    if _is_api_path(path):
+        # Return 404 - API routes should be registered first and handle these
+        from flask import abort
+        abort(404)
 
-    @client_blueprint.route('/')
-    def root():
-        if _get_subdomain():
-            return _serve_page('archive')
-        return _serve_page('home')
+    parts = path.strip('/').split('/') if path else []
 
-    @client_blueprint.route('/<page>/')
-    @client_blueprint.route('/<page>')
-    def page(page):
+    if ROUTING_MODE == 'subdomain':
+        # Subdomain mode: blog name is in hostname
+        subdomain = _get_subdomain()
+
+        if not parts:
+            # Root: archive for blog subdomain, home for main domain
+            return _serve_page('archive' if subdomain else 'home')
+
+        page = parts[0]
         if page in BLOG_PAGES or page in STATIC_PAGES:
             return _serve_page(page)
+
         return _serve_page('archive')
 
-else:  # path mode (default)
+    else:
+        # Path mode: /blogname/page/
+        if not parts:
+            return _serve_page('home')
 
-    @client_blueprint.route('/')
-    def root():
-        return _serve_page('home')
+        if len(parts) == 1:
+            segment = parts[0]
+            if segment in STATIC_PAGES:
+                return _serve_page(segment)
+            # Single segment = blog name, show archive
+            return _serve_page('archive')
 
-    @client_blueprint.route('/<segment>/')
-    @client_blueprint.route('/<segment>')
-    def single_segment(segment):
-        if segment in STATIC_PAGES:
-            return _serve_page(segment)
-        # Treat as blog name -> archive
-        return _serve_page('archive')
-
-    @client_blueprint.route('/<blogname>/<page>/')
-    @client_blueprint.route('/<blogname>/<page>')
-    def blog_page(blogname, page):
+        # Two+ segments: /blogname/page/...
+        page = parts[1]
         if page in BLOG_PAGES:
             return _serve_page(page)
+
         return _serve_page('archive')
