@@ -46,6 +46,11 @@ export function isReservedPageRoute(name: string): boolean {
 export function isSubdomainEnabledDomain(): boolean {
   const hostname = window.location.hostname.toLowerCase();
 
+  // Disable subdomain routing on API/staging hosts; use path-based routing instead.
+  if (hostname.startsWith('api-') || hostname.startsWith('api.')) {
+    return false;
+  }
+
   // Check if hostname ends with any of the enabled domains
   return SUBDOMAIN_ENABLED_DOMAINS.some((domain) => {
     // Exact match (e.g., bdsmlr.com)
