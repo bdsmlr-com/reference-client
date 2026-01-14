@@ -260,7 +260,7 @@ let currentToken: string | null = null;
 let refreshPromise: Promise<string> | null = null;
 
 async function login(): Promise<string> {
-  const resp = await fetch(`${API_BASE}/auth/login`, {
+  const resp = await fetch(`${API_BASE}/v2/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -4289,7 +4289,7 @@ export class ApiClient {
    * @throws Error if authentication fails
    */
   async login(): Promise<string> {
-    const resp = await fetch(`${this.config.baseUrl}/auth/login`, {
+    const resp = await fetch(`${this.config.baseUrl}/v2/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
