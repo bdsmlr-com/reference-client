@@ -1,15 +1,24 @@
 import { css } from 'lit';
+import { initStorage } from '../services/storage.js';
 
 const THEME_KEY = 'bdsmlr_theme';
 
 export type Theme = 'dark' | 'light';
+
+export function getSystemTheme(): Theme {
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+    return 'light';
+  }
+  return 'dark';
+}
 
 export function getStoredTheme(): Theme {
   const stored = localStorage.getItem(THEME_KEY);
   if (stored === 'light' || stored === 'dark') {
     return stored;
   }
-  return 'dark';
+  // Fall back to system preference
+  return getSystemTheme();
 }
 
 export function setStoredTheme(theme: Theme): void {
@@ -22,12 +31,68 @@ export function applyTheme(theme: Theme): void {
 }
 
 export function initTheme(): Theme {
+  // Initialize storage (runs migrations if needed)
+  initStorage();
+
   const theme = getStoredTheme();
   applyTheme(theme);
+
+  // Start watching for system theme changes
+  watchSystemTheme();
+
   return theme;
 }
 
+/**
+ * Check if user has explicitly set a theme preference.
+ * Returns true if user has manually selected dark/light, false if using system default.
+ */
+export function hasUserThemePreference(): boolean {
+  const stored = localStorage.getItem(THEME_KEY);
+  return stored === 'light' || stored === 'dark';
+}
+
+/**
+ * Clear user theme preference and revert to system default.
+ */
+export function clearUserThemePreference(): void {
+  localStorage.removeItem(THEME_KEY);
+  applyTheme(getSystemTheme());
+}
+
+/**
+ * Watch for system theme preference changes and update theme in real-time.
+ * Only applies if user hasn't explicitly set a theme preference.
+ */
+export function watchSystemTheme(): void {
+  if (!window.matchMedia) return;
+
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
+
+  const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
+    // Only auto-switch if user hasn't set an explicit preference
+    if (!hasUserThemePreference()) {
+      const newTheme: Theme = e.matches ? 'light' : 'dark';
+      applyTheme(newTheme);
+
+      // Dispatch a custom event so components can react if needed
+      window.dispatchEvent(
+        new CustomEvent('theme-changed', { detail: { theme: newTheme, source: 'system' } })
+      );
+    }
+  };
+
+  // Use addEventListener for modern browsers, addListener for older ones
+  if (mediaQuery.addEventListener) {
+    mediaQuery.addEventListener('change', handleChange);
+  } else if (mediaQuery.addListener) {
+    // Deprecated but needed for older Safari
+    mediaQuery.addListener(handleChange);
+  }
+}
+
 // Global CSS to inject into document head
+// Note: Accent color unified to #0ea5e9 (sky-500) across both themes for consistency (UIC-018)
 export const globalThemeCSS = `
   :root, [data-theme="dark"] {
     --bg-primary: #0f172a;
@@ -37,8 +102,8 @@ export const globalThemeCSS = `
     --border-strong: #334155;
     --text-primary: #e2e8f0;
     --text-muted: #94a3b8;
-    --accent: #38bdf8;
-    --accent-hover: #0ea5e9;
+    --accent: #0ea5e9;
+    --accent-hover: #38bdf8;
     --success: #4ade80;
     --error: #f87171;
     --warning: #fbbf24;

@@ -1,16 +1,33 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { initTheme, injectGlobalStyles, baseStyles } from '../styles/theme.js';
-import { searchPostsByTag, checkImageExists } from '../services/api.js';
-import { getUrlParam, setUrlParams } from '../services/blog-resolver.js';
+import { searchPostsByTagCached, checkImageExists } from '../services/api.js';
+import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
+import { getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';
+import { scrollObserver } from '../services/scroll-observer.js';
+import {
+  generatePaginationCursorKey,
+  getCachedPaginationCursor,
+  setCachedPaginationCursor,
+} from '../services/storage.js';
 import { extractMedia, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
-import type { Post, PostType, PostSortField, Order } from '../types/api.js';
+import type { Post, PostType, PostSortField, Order, PostVariant } from '../types/api.js';
+import { BREAKPOINTS } from '../types/ui-constants.js';
 import '../components/shared-nav.js';
 import '../components/sort-controls.js';
 import '../components/type-pills.js';
+import '../components/variant-pills.js';
 import '../components/post-grid.js';
 import '../components/load-footer.js';
 import '../components/post-lightbox.js';
+import '../components/loading-spinner.js';
+import '../components/skeleton-loader.js';
+import '../components/error-state.js';
+import '../components/offline-banner.js';
+
+// Initialize theme immediately to prevent FOUC (Flash of Unstyled Content)
+injectGlobalStyles();
+initTheme();
 
 const PAGE_SIZE = 12;
 const MAX_BACKEND_FETCHES = 20;
@@ -57,28 +74,29 @@ export class SearchPage extends LitElement {
       .search-box input {
         flex: 1;
         min-width: 200px;
-        padding: 12px 16px;
-        border-radius: 6px;
+        max-width: 300px;
+        padding: 8px 12px;
+        border-radius: 4px;
         border: 1px solid var(--border);
         background: var(--bg-panel);
         color: var(--text-primary);
-        font-size: 16px;
-        min-height: 44px;
+        font-size: 14px;
+        min-height: 32px;
       }
 
       .search-box input:focus {
         outline: 2px solid var(--accent);
-        outline-offset: 2px;
+        outline-offset: 1px;
       }
 
       .search-box button {
-        padding: 12px 24px;
-        border-radius: 6px;
+        padding: 8px 16px;
+        border-radius: 4px;
         background: var(--accent);
         color: white;
-        font-size: 16px;
+        font-size: 14px;
         transition: background 0.2s;
-        min-height: 44px;
+        min-height: 32px;
       }
 
       .search-box button:hover {
@@ -91,7 +109,18 @@ export class SearchPage extends LitElement {
       }
 
       .type-pills-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
         margin-bottom: 20px;
+        padding: 0 16px;
+      }
+
+      .pills-separator {
+        color: var(--text-muted);
+        font-size: 16px;
       }
 
       .status {
@@ -104,7 +133,8 @@ export class SearchPage extends LitElement {
         margin-bottom: 20px;
       }
 
-      @media (max-width: 480px) {
+      /* Mobile: max-width below BREAKPOINTS.MOBILE */
+      @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE - 1)}px) {
         .search-box {
           flex-direction: column;
         }
@@ -123,6 +153,7 @@ export class SearchPage extends LitElement {
   @state() private query = '';
   @state() private sortValue = '1:0';
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
+  @state() private selectedVariants: PostVariant[] = [];
   @state() private posts: ProcessedPost[] = [];
   @state() private loading = false;
   @state() private searching = false;
@@ -131,25 +162,50 @@ export class SearchPage extends LitElement {
   @state() private loadingCurrent = 0;
   @state() private infiniteScroll = false;
   @state() private lightboxPost: ProcessedPost | null = null;
+  @state() private lightboxIndex = -1;
   @state() private lightboxOpen = false;
   @state() private statusMessage = '';
   @state() private hasSearched = false;
+  @state() private errorMessage = '';
+  @state() private retrying = false;
+  /** TOUT-001: Track auto-retry attempts for exponential backoff */
+  @state() private autoRetryAttempt = 0;
+  /** TOUT-001: Whether current error is retryable (timeout, network, server) */
+  @state() private isRetryableError = false;
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
   private seenUrls = new Set<string>();
-  private observer: IntersectionObserver | null = null;
+  private paginationKey = ''; // Cache key for pagination cursor persistence
 
   connectedCallback(): void {
     super.connectedCallback();
     this.loadFromUrl();
-    this.setupIntersectionObserver();
+    // Save pagination state when user navigates away
+    window.addEventListener('beforeunload', this.savePaginationState);
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
-    this.observer?.disconnect();
+    window.removeEventListener('beforeunload', this.savePaginationState);
+    this.savePaginationState(); // Also save when component unmounts
+    const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
+    if (sentinel) {
+      scrollObserver.unobserve(sentinel);
+    }
   }
+
+  private savePaginationState = (): void => {
+    if (this.paginationKey && this.posts.length > 0) {
+      setCachedPaginationCursor(
+        this.paginationKey,
+        this.backendCursor,
+        window.scrollY,
+        this.posts.length,
+        this.exhausted
+      );
+    }
+  };
 
   private loadFromUrl(): void {
     const q = getUrlParam('q');
@@ -167,23 +223,16 @@ export class SearchPage extends LitElement {
     }
   }
 
-  private setupIntersectionObserver(): void {
-    this.observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && this.infiniteScroll && !this.loading && !this.exhausted && this.hasSearched) {
-          this.loadMore();
-        }
-      },
-      { threshold: 0.1 }
-    );
-  }
-
   private observeSentinel(): void {
     requestAnimationFrame(() => {
       const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
-      if (sentinel && this.observer) {
-        this.observer.disconnect();
-        this.observer.observe(sentinel);
+      if (sentinel) {
+        // Use shared observer - callback checks conditions each time
+        scrollObserver.observe(sentinel, () => {
+          if (this.infiniteScroll && !this.loading && !this.exhausted && this.hasSearched) {
+            this.loadMore();
+          }
+        });
       }
     });
   }
@@ -196,12 +245,13 @@ export class SearchPage extends LitElement {
     this.stats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
     this.posts = [];
     this.statusMessage = '';
+    this.errorMessage = '';
   }
 
   private async search(): Promise<void> {
     if (!this.query.trim()) return;
     if (this.selectedTypes.length === 0) {
-      this.statusMessage = 'Please select at least one post type';
+      this.statusMessage = ErrorMessages.VALIDATION.NO_TYPES_SELECTED;
       return;
     }
 
@@ -209,20 +259,76 @@ export class SearchPage extends LitElement {
     this.resetState();
     this.hasSearched = true;
 
-    setUrlParams({
+    // Build URL params, only including non-default values (URL-002)
+    const params: Record<string, string> = {
+      q: this.query,
+      sort: this.sortValue,
+      // Pass empty string for types if default, so it gets removed from URL
+      types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','),
+    };
+    setUrlParams(params);
+
+    // Generate pagination key for cursor caching (CACHE-003)
+    this.paginationKey = generatePaginationCursorKey('search', {
       q: this.query,
       sort: this.sortValue,
       types: this.selectedTypes.join(','),
     });
 
+    // Check for cached pagination state to resume from previous position
+    const cachedState = getCachedPaginationCursor(this.paginationKey);
+    if (cachedState && cachedState.itemCount > 0) {
+      // Restore cursor position - will resume loading from this point
+      this.backendCursor = cachedState.cursor;
+      this.exhausted = cachedState.exhausted;
+      // Schedule scroll restoration after initial load
+      const scrollTarget = cachedState.scrollPosition;
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          window.scrollTo({ top: scrollTarget, behavior: 'auto' });
+        }, 100);
+      });
+    }
+
     try {
       await this.fillPage();
     } catch (e) {
-      this.statusMessage = 'Error: ' + (e as Error).message;
+      // Use context-aware error messages for better user guidance
+      this.errorMessage = getContextualErrorMessage(e, 'search', { query: this.query });
+      // TOUT-001: Check if error is retryable
+      const apiError = isApiError(e) ? e : toApiError(e);
+      this.isRetryableError = apiError.isRetryable;
     }
 
     this.searching = false;
     this.observeSentinel();
+  }
+
+  /**
+   * TOUT-001: Handle retry events from error-state, supporting auto-retry.
+   * @param e CustomEvent with detail.isAutoRetry and detail.attempt
+   */
+  private async handleRetry(e?: CustomEvent): Promise<void> {
+    const isAutoRetry = e?.detail?.isAutoRetry ?? false;
+
+    this.retrying = true;
+    this.errorMessage = '';
+    this.isRetryableError = false;
+
+    try {
+      await this.search();
+      // Success - reset auto-retry counter
+      this.autoRetryAttempt = 0;
+    } catch {
+      // Error already shown by search
+      // If this was an auto-retry and we still have a retryable error,
+      // increment attempt counter for next backoff
+      if (isAutoRetry && this.isRetryableError) {
+        this.autoRetryAttempt++;
+      }
+    }
+
+    this.retrying = false;
   }
 
   private async fillPage(): Promise<void> {
@@ -238,11 +344,12 @@ export class SearchPage extends LitElement {
       while (buffer.length < PAGE_SIZE && !this.exhausted && backendFetches < MAX_BACKEND_FETCHES) {
         backendFetches++;
 
-        const resp = await searchPostsByTag({
+        const resp = await searchPostsByTagCached({
           tag_name: this.query,
           sort_field: sortOpt.field as PostSortField,
           order: sortOpt.order as Order,
           post_types: this.selectedTypes,
+          variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
           page: {
             page_size: 100,
             page_token: this.backendCursor || undefined,
@@ -359,13 +466,30 @@ export class SearchPage extends LitElement {
     }
   }
 
+  private handleVariantChange(e: CustomEvent): void {
+    this.selectedVariants = e.detail.variants || [];
+    if (this.hasSearched) {
+      this.search();
+    }
+  }
+
   private handlePostClick(e: CustomEvent): void {
-    this.lightboxPost = e.detail.post;
+    const post = e.detail.post as ProcessedPost;
+    this.lightboxPost = post;
+    this.lightboxIndex = this.posts.findIndex((p) => p.id === post.id);
     this.lightboxOpen = true;
   }
 
   private handleLightboxClose(): void {
     this.lightboxOpen = false;
+  }
+
+  private handleLightboxNavigate(e: CustomEvent): void {
+    const index = e.detail.index as number;
+    if (index >= 0 && index < this.posts.length) {
+      this.lightboxPost = this.posts[index];
+      this.lightboxIndex = index;
+    }
   }
 
   private handleInfiniteToggle(e: CustomEvent): void {
@@ -383,6 +507,7 @@ export class SearchPage extends LitElement {
 
   render() {
     return html`
+      <offline-banner></offline-banner>
       <shared-nav currentPage="search"></shared-nav>
 
       <div class="content">
@@ -408,9 +533,31 @@ export class SearchPage extends LitElement {
             .selectedTypes=${this.selectedTypes}
             @types-change=${this.handleTypesChange}
           ></type-pills>
+          <span class="pills-separator">|</span>
+          <variant-pills
+            .loading=${this.loading}
+            @variant-change=${this.handleVariantChange}
+          ></variant-pills>
         </div>
 
-        ${this.statusMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
+        ${this.searching && this.posts.length === 0
+          ? html`<div class="grid-container"><skeleton-loader variant="post-card" count="8" trackTime></skeleton-loader></div>`
+          : ''}
+
+        ${this.errorMessage
+          ? html`
+              <error-state
+                title="Error"
+                message=${this.errorMessage}
+                ?retrying=${this.retrying}
+                ?autoRetry=${this.isRetryableError}
+                .autoRetryAttempt=${this.autoRetryAttempt}
+                @retry=${this.handleRetry}
+              ></error-state>
+            `
+          : ''}
+
+        ${this.statusMessage && !this.searching && !this.errorMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
 
         ${this.posts.length > 0
           ? html`
@@ -420,6 +567,7 @@ export class SearchPage extends LitElement {
 
               <load-footer
                 mode="search"
+                pageName="search"
                 .stats=${this.stats}
                 .loading=${this.loading}
                 .exhausted=${this.exhausted}
@@ -438,15 +586,15 @@ export class SearchPage extends LitElement {
       <post-lightbox
         ?open=${this.lightboxOpen}
         .post=${this.lightboxPost}
+        .posts=${this.posts}
+        .currentIndex=${this.lightboxIndex}
         @close=${this.handleLightboxClose}
+        @navigate=${this.handleLightboxNavigate}
       ></post-lightbox>
     `;
   }
 }
 
-// Initialize
-injectGlobalStyles();
-initTheme();
-
+// Initialize app (theme already initialized at top of module)
 const app = document.createElement('search-page');
 document.body.appendChild(app);

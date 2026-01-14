@@ -8,14 +8,18 @@ export interface PageInfo {
   nextPageToken?: string;
 }
 
-// Enums
+// Enums - API expects integer values, not strings!
 export type PostType = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-export type PostVariant = 'ORIGINAL' | 'REBLOG';
-export type Order = 0 | 1; // 0 = ASC, 1 = DESC
+// PostVariant: 0=UNSPECIFIED, 1=ORIGINAL, 2=REBLOG
+export type PostVariant = 1 | 2;
+// Order: 0 = UNSPECIFIED, 1 = ASC, 2 = DESC
+export type Order = 0 | 1 | 2;
 
-// Sort fields
-export type PostSortField = 1 | 2 | 3 | 4 | 5 | 6; // CREATED_AT, LIKES_COUNT, COMMENTS_COUNT, REBLOGS_COUNT, MENTIONS_COUNT, NOTES_COUNT
-export type BlogSortField = 'BLOG_SORT_FIELD_NAME' | 'ID' | 'FOLLOWERS_COUNT' | 'POSTS_COUNT' | 'CREATED_AT';
+// Sort fields - API expects integer values!
+// PostSortField: 0=UNSPECIFIED, 1=CREATED_AT, 2=LIKES_COUNT, 3=COMMENTS_COUNT, 4=REBLOGS_COUNT, 5=MENTIONS_COUNT, 6=NOTES_COUNT, 7=ID
+export type PostSortField = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+// BlogSortField: 0=UNSPECIFIED, 1=ID, 2=FOLLOWERS_COUNT, 3=POSTS_COUNT, 4=NAME, 5=CREATED_AT
+export type BlogSortField = 1 | 2 | 3 | 4 | 5;
 
 // Content types
 export interface PostContent {
@@ -61,6 +65,11 @@ export interface Blog {
   postsCount?: number;
   avatarUrl?: string;
   coverUrl?: string;
+  // Theme customization
+  accentColor?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  headerImageUrl?: string;
 }
 
 export interface User {
@@ -170,6 +179,47 @@ export interface LoginRequest {
   password: string;
 }
 
+// New API types for blogs search and server-side merge
+export interface SearchBlogsRequest {
+  query: string;
+  page?: Pagination;
+  sort_field?: BlogSortField;
+  order?: Order;
+}
+
+export type FollowGraphDirection = 0 | 1 | 2 | 'followers' | 'following' | 'both';
+
+export interface BlogFollowGraphRequest {
+  blog_id: number;
+  direction?: FollowGraphDirection;
+  page_size?: number;
+  page_token?: string;
+}
+
+export interface ListBlogsRecentActivityRequest {
+  blog_ids: number[];
+  post_types?: PostType[];
+  variants?: PostVariant[];
+  global_merge?: boolean;
+  page?: Pagination;
+  sort_field?: PostSortField;
+  order?: Order;
+  page_size?: number;
+  /** Number of posts to retrieve per blog. Use 0 for merged feed (globalMerge=true). */
+  limit_per_blog?: number;
+}
+
+export interface GetBlogRequest {
+  blog_id?: number;
+  blog_name?: string;
+}
+
+export interface FollowEdge {
+  blogId: number;
+  blogName?: string;
+  userId?: number;
+}
+
 // Response types
 export interface SearchPostsByTagResponse {
   posts?: Post[];
@@ -225,5 +275,34 @@ export interface LoginResponse {
   access_token?: string;
   token_type?: string;
   expires_in?: number;
+  error?: string;
+}
+
+// New response types
+export interface SearchBlogsResponse {
+  blogs?: Blog[];
+  page?: PageInfo;
+  error?: string;
+}
+
+export interface BlogFollowGraphResponse {
+  blogId?: number;
+  blogName?: string;
+  followers?: FollowEdge[];
+  following?: FollowEdge[];
+  followersCount?: number;
+  followingCount?: number;
+  nextPageToken?: string;
+  error?: string;
+}
+
+export interface ListBlogsRecentActivityResponse {
+  posts?: Post[];
+  page?: PageInfo;
+  error?: string;
+}
+
+export interface GetBlogResponse {
+  blog?: Blog;
   error?: string;
 }

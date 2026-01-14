@@ -1,16 +1,36 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { initTheme, injectGlobalStyles, baseStyles } from '../styles/theme.js';
-import { listBlogPosts, resolveIdentifier, checkImageExists } from '../services/api.js';
-import { getBlogName, getUrlParam, setUrlParams } from '../services/blog-resolver.js';
+import { listBlogPosts, checkImageExists } from '../services/api.js';
+import { resolveIdentifierCached } from '../services/api.js';
+import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
+import { getBlogName, getUrlParam, setUrlParams, isBlogInPath, isDefaultTypes } from '../services/blog-resolver.js';
+import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
+import { scrollObserver } from '../services/scroll-observer.js';
+import {
+  generatePaginationCursorKey,
+  getCachedPaginationCursor,
+  setCachedPaginationCursor,
+} from '../services/storage.js';
+import type { Blog } from '../types/api.js';
 import { extractMedia, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
-import type { Post, PostType, PostSortField, Order } from '../types/api.js';
+import type { Post, PostType, PostSortField, Order, PostVariant } from '../types/api.js';
 import '../components/shared-nav.js';
 import '../components/sort-controls.js';
 import '../components/type-pills.js';
+import '../components/variant-pills.js';
 import '../components/post-grid.js';
 import '../components/load-footer.js';
 import '../components/post-lightbox.js';
+import '../components/loading-spinner.js';
+import '../components/skeleton-loader.js';
+import '../components/error-state.js';
+import '../components/offline-banner.js';
+import '../components/blog-context.js';
+
+// Initialize theme immediately to prevent FOUC (Flash of Unstyled Content)
+injectGlobalStyles();
+initTheme();
 
 const PAGE_SIZE = 12;
 const MAX_BACKEND_FETCHES = 20;
@@ -57,7 +77,18 @@ export class ArchivePage extends LitElement {
       }
 
       .type-pills-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
         margin-bottom: 20px;
+        padding: 0 16px;
+      }
+
+      .pills-separator {
+        color: var(--text-muted);
+        font-size: 16px;
       }
 
       .status {
@@ -82,6 +113,7 @@ export class ArchivePage extends LitElement {
   @state() private blogId: number | null = null;
   @state() private sortValue = '1:0';
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
+  @state() private selectedVariants: PostVariant[] = [];
   @state() private posts: ProcessedPost[] = [];
   @state() private loading = false;
   @state() private exhausted = false;
@@ -90,24 +122,51 @@ export class ArchivePage extends LitElement {
   @state() private infiniteScroll = false;
   @state() private lightboxPost: ProcessedPost | null = null;
   @state() private lightboxOpen = false;
+  @state() private lightboxIndex = -1;
   @state() private statusMessage = '';
   @state() private errorMessage = '';
+  @state() private retrying = false;
+  @state() private initialLoading = false;
+  @state() private blogData: Blog | null = null;
+  /** TOUT-001: Track auto-retry attempts for exponential backoff */
+  @state() private autoRetryAttempt = 0;
+  /** TOUT-001: Whether current error is retryable (timeout, network, server) */
+  @state() private isRetryableError = false;
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
   private seenUrls = new Set<string>();
-  private observer: IntersectionObserver | null = null;
+  private paginationKey = ''; // Cache key for pagination cursor persistence
 
   connectedCallback(): void {
     super.connectedCallback();
     this.loadFromUrl();
-    this.setupIntersectionObserver();
+    // Save pagination state when user navigates away
+    window.addEventListener('beforeunload', this.savePaginationState);
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
-    this.observer?.disconnect();
+    window.removeEventListener('beforeunload', this.savePaginationState);
+    this.savePaginationState(); // Also save when component unmounts
+    const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
+    if (sentinel) {
+      scrollObserver.unobserve(sentinel);
+    }
+    clearBlogTheme();
   }
+
+  private savePaginationState = (): void => {
+    if (this.paginationKey && this.posts.length > 0) {
+      setCachedPaginationCursor(
+        this.paginationKey,
+        this.backendCursor,
+        window.scrollY,
+        this.posts.length,
+        this.exhausted
+      );
+    }
+  };
 
   private async loadFromUrl(): Promise<void> {
     // Get blog name from URL parameter
@@ -122,47 +181,76 @@ export class ArchivePage extends LitElement {
     }
 
     if (!this.blogName) {
-      this.errorMessage = 'No blog specified. Use ?blog=blogname in the URL.';
+      this.errorMessage = ErrorMessages.VALIDATION.NO_BLOG_SPECIFIED;
       return;
     }
 
-    // Resolve blog name to ID
+    // Resolve blog name to ID using cached resolver
+    this.initialLoading = true;
+    this.errorMessage = '';
     try {
-      this.statusMessage = 'Resolving blog...';
-      const resolved = await resolveIdentifier({ blog_name: this.blogName });
+      // Initialize blog theming (fetches blog metadata and applies custom colors)
+      this.blogData = await initBlogTheme(this.blogName);
 
-      if (!resolved.blogId) {
-        this.errorMessage = `Blog "${this.blogName}" not found`;
-        this.statusMessage = '';
+      const blogId = await resolveIdentifierCached(this.blogName);
+
+      if (!blogId) {
+        this.errorMessage = ErrorMessages.BLOG.notFound(this.blogName);
+        this.isRetryableError = false;
+        this.initialLoading = false;
         return;
       }
 
-      this.blogId = resolved.blogId;
-      this.statusMessage = '';
+      this.blogId = blogId;
       await this.loadPosts();
     } catch (e) {
-      this.errorMessage = 'Error resolving blog: ' + (e as Error).message;
-      this.statusMessage = '';
+      // Use context-aware error messages for better user guidance
+      this.errorMessage = getContextualErrorMessage(e, 'resolve_blog', { blogName: this.blogName });
+      // TOUT-001: Check if error is retryable
+      const apiError = isApiError(e) ? e : toApiError(e);
+      this.isRetryableError = apiError.isRetryable;
+    } finally {
+      this.initialLoading = false;
     }
   }
 
-  private setupIntersectionObserver(): void {
-    this.observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && this.infiniteScroll && !this.loading && !this.exhausted && this.blogId) {
-          this.loadMore();
-        }
-      },
-      { threshold: 0.1 }
-    );
+  /**
+   * TOUT-001: Handle retry events from error-state, supporting auto-retry.
+   * @param e CustomEvent with detail.isAutoRetry and detail.attempt
+   */
+  private async handleRetry(e?: CustomEvent): Promise<void> {
+    const isAutoRetry = e?.detail?.isAutoRetry ?? false;
+
+    this.retrying = true;
+    this.errorMessage = '';
+    this.isRetryableError = false;
+
+    try {
+      await this.loadFromUrl();
+      // Success - reset auto-retry counter
+      this.autoRetryAttempt = 0;
+    } catch {
+      // Error already shown by loadFromUrl
+      // If this was an auto-retry and we still have a retryable error,
+      // increment attempt counter for next backoff
+      if (isAutoRetry && this.isRetryableError) {
+        this.autoRetryAttempt++;
+      }
+    }
+
+    this.retrying = false;
   }
 
   private observeSentinel(): void {
     requestAnimationFrame(() => {
       const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
-      if (sentinel && this.observer) {
-        this.observer.disconnect();
-        this.observer.observe(sentinel);
+      if (sentinel) {
+        // Use shared observer - callback checks conditions each time
+        scrollObserver.observe(sentinel, () => {
+          if (this.infiniteScroll && !this.loading && !this.exhausted && this.blogId) {
+            this.loadMore();
+          }
+        });
       }
     });
   }
@@ -180,22 +268,54 @@ export class ArchivePage extends LitElement {
   private async loadPosts(): Promise<void> {
     if (!this.blogId) return;
     if (this.selectedTypes.length === 0) {
-      this.statusMessage = 'Please select at least one post type';
+      this.statusMessage = ErrorMessages.VALIDATION.NO_TYPES_SELECTED;
       return;
     }
 
     this.resetState();
 
-    setUrlParams({
+    // Build URL params, only including non-default values (URL-002)
+    const params: Record<string, string> = {
+      sort: this.sortValue,
+      // Pass empty string for types if default, so it gets removed from URL
+      types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','),
+    };
+    // Only set blog param if not already in URL path (URL-001)
+    if (!isBlogInPath()) {
+      params.blog = this.blogName;
+    }
+    setUrlParams(params);
+
+    // Generate pagination key for cursor caching (CACHE-003)
+    this.paginationKey = generatePaginationCursorKey('archive', {
       blog: this.blogName,
       sort: this.sortValue,
       types: this.selectedTypes.join(','),
     });
 
+    // Check for cached pagination state to resume from previous position
+    const cachedState = getCachedPaginationCursor(this.paginationKey);
+    if (cachedState && cachedState.itemCount > 0) {
+      // Restore cursor position - will resume loading from this point
+      this.backendCursor = cachedState.cursor;
+      this.exhausted = cachedState.exhausted;
+      // Schedule scroll restoration after initial load
+      const scrollTarget = cachedState.scrollPosition;
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          window.scrollTo({ top: scrollTarget, behavior: 'auto' });
+        }, 100);
+      });
+    }
+
     try {
       await this.fillPage();
     } catch (e) {
-      this.errorMessage = 'Error: ' + (e as Error).message;
+      // Use context-aware error messages for better user guidance
+      this.errorMessage = getContextualErrorMessage(e, 'load_posts', { blogName: this.blogName });
+      // TOUT-001: Check if error is retryable
+      const apiError = isApiError(e) ? e : toApiError(e);
+      this.isRetryableError = apiError.isRetryable;
     }
 
     this.observeSentinel();
@@ -221,6 +341,7 @@ export class ArchivePage extends LitElement {
           sort_field: sortOpt.field as PostSortField,
           order: sortOpt.order as Order,
           post_types: this.selectedTypes,
+          variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
           page: {
             page_size: 100,
             page_token: this.backendCursor || undefined,
@@ -335,13 +456,30 @@ export class ArchivePage extends LitElement {
     }
   }
 
+  private handleVariantChange(e: CustomEvent): void {
+    this.selectedVariants = e.detail.variants || [];
+    if (this.blogId) {
+      this.loadPosts();
+    }
+  }
+
   private handlePostClick(e: CustomEvent): void {
-    this.lightboxPost = e.detail.post;
+    const post = e.detail.post as ProcessedPost;
+    this.lightboxPost = post;
+    this.lightboxIndex = this.posts.findIndex((p) => p.id === post.id);
     this.lightboxOpen = true;
   }
 
   private handleLightboxClose(): void {
     this.lightboxOpen = false;
+  }
+
+  private handleLightboxNavigate(e: CustomEvent): void {
+    const index = e.detail.index as number;
+    if (index >= 0 && index < this.posts.length) {
+      this.lightboxPost = this.posts[index];
+      this.lightboxIndex = index;
+    }
   }
 
   private handleInfiniteToggle(e: CustomEvent): void {
@@ -353,6 +491,7 @@ export class ArchivePage extends LitElement {
 
   render() {
     return html`
+      <offline-banner></offline-banner>
       <shared-nav currentPage="archive"></shared-nav>
 
       <div class="content">
@@ -360,12 +499,16 @@ export class ArchivePage extends LitElement {
           ? html`
               <div class="blog-header">
                 <h1 class="blog-name">@${this.blogName}</h1>
+                ${this.blogData?.title ? html`<p class="blog-meta">${this.blogData.title}</p>` : ''}
                 ${this.blogId ? html`<p class="blog-meta">Archive</p>` : ''}
               </div>
+              <blog-context page="archive" .viewedBlog=${this.blogName}></blog-context>
             `
           : ''}
 
-        ${this.errorMessage ? html`<div class="error">${this.errorMessage}</div>` : ''}
+        ${this.initialLoading && !this.blogId
+          ? html`<loading-spinner message="Loading..." trackTime></loading-spinner>`
+          : ''}
 
         ${this.blogId
           ? html`
@@ -378,11 +521,33 @@ export class ArchivePage extends LitElement {
                   .selectedTypes=${this.selectedTypes}
                   @types-change=${this.handleTypesChange}
                 ></type-pills>
+                <span class="pills-separator">|</span>
+                <variant-pills
+                  .loading=${this.loading}
+                  @variant-change=${this.handleVariantChange}
+                ></variant-pills>
               </div>
             `
           : ''}
 
+        ${this.errorMessage
+          ? html`
+              <error-state
+                title="Error"
+                message=${this.errorMessage}
+                ?retrying=${this.retrying}
+                ?autoRetry=${this.isRetryableError}
+                .autoRetryAttempt=${this.autoRetryAttempt}
+                @retry=${this.handleRetry}
+              ></error-state>
+            `
+          : ''}
+
         ${this.statusMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
+
+        ${this.loading && this.posts.length === 0 && !this.errorMessage && this.blogId
+          ? html`<div class="grid-container"><skeleton-loader variant="post-card" count="8" trackTime></skeleton-loader></div>`
+          : ''}
 
         ${this.posts.length > 0
           ? html`
@@ -392,6 +557,7 @@ export class ArchivePage extends LitElement {
 
               <load-footer
                 mode="archive"
+                pageName="archive"
                 .stats=${this.stats}
                 .loading=${this.loading}
                 .exhausted=${this.exhausted}
@@ -410,15 +576,15 @@ export class ArchivePage extends LitElement {
       <post-lightbox
         ?open=${this.lightboxOpen}
         .post=${this.lightboxPost}
+        .posts=${this.posts}
+        .currentIndex=${this.lightboxIndex}
         @close=${this.handleLightboxClose}
+        @navigate=${this.handleLightboxNavigate}
       ></post-lightbox>
     `;
   }
 }
 
-// Initialize
-injectGlobalStyles();
-initTheme();
-
+// Initialize app (theme already initialized at top of module)
 const app = document.createElement('archive-page');
 document.body.appendChild(app);
