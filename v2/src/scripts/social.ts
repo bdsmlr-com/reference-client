@@ -1,8 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { initTheme, injectGlobalStyles, baseStyles } from '../styles/theme.js';
-import { blogFollowGraphCached } from '../services/api.js';
-import { resolveIdentifierCached } from '../services/api.js';
+import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
 import { getBlogName, getUrlParam, setUrlParams, isBlogInPath } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
@@ -20,7 +19,7 @@ import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
 import '../components/error-state.js';
 import '../components/offline-banner.js';
-import '../components/blog-context.js';
+import '../components/blog-header.js';
 
 // Initialize theme immediately to prevent FOUC (Flash of Unstyled Content)
 injectGlobalStyles();
@@ -43,22 +42,6 @@ export class SocialPage extends LitElement {
 
       .content {
         padding: 20px 0;
-      }
-
-      .blog-header {
-        text-align: center;
-        padding: 0 16px 20px;
-      }
-
-      .blog-name {
-        font-size: 24px;
-        color: var(--text-primary);
-        margin: 0 0 8px;
-      }
-
-      .blog-meta {
-        font-size: 14px;
-        color: var(--text-muted);
       }
 
       .tabs {
@@ -195,7 +178,7 @@ export class SocialPage extends LitElement {
       // Initialize blog theming (fetches blog metadata and applies custom colors)
       this.blogData = await initBlogTheme(this.blogName);
 
-      const blogId = await resolveIdentifierCached(this.blogName);
+      const blogId = await apiClient.identity.resolveNameToId(this.blogName);
 
       if (!blogId) {
         this.errorMessage = ErrorMessages.BLOG.notFound(this.blogName);
@@ -302,7 +285,7 @@ export class SocialPage extends LitElement {
       const direction = this.activeTab === 'followers' ? 'followers' : 'following';
       const cursor = this.activeTab === 'followers' ? this.followersCursor : this.followingCursor;
 
-      const resp = await blogFollowGraphCached({
+      const resp = await apiClient.followGraph.getCached({
         blog_id: this.blogId,
         direction: direction === 'followers' ? 0 : 1,
         page_size: PAGE_SIZE,
@@ -427,12 +410,11 @@ export class SocialPage extends LitElement {
       <div class="content">
         ${this.blogName
           ? html`
-              <div class="blog-header">
-                <h1 class="blog-name">@${this.blogName}</h1>
-                ${this.blogData?.title ? html`<p class="blog-meta">${this.blogData.title}</p>` : ''}
-                ${this.blogId ? html`<p class="blog-meta">Social Connections</p>` : ''}
-              </div>
-              <blog-context page="social" .viewedBlog=${this.blogName}></blog-context>
+              <blog-header
+                page="social"
+                .blogName=${this.blogName}
+                .blogTitle=${this.blogData?.title || ''}
+              ></blog-header>
             `
           : ''}
 
