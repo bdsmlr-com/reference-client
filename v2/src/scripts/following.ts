@@ -1,13 +1,7 @@
 import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { initTheme, injectGlobalStyles, baseStyles } from '../styles/theme.js';
-import {
-  blogFollowGraphCached,
-  listBlogsRecentActivityCached,
-  checkImageExists,
-  invalidateFollowGraphCache,
-} from '../services/api.js';
-import { resolveIdentifierCached } from '../services/api.js';
+import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
 import { getBlogName, setUrlParams, isBlogInPath } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
@@ -261,7 +255,7 @@ export class FollowingPage extends LitElement {
       this.blogData = await initBlogTheme(name);
 
       // Resolve blog name to ID using cached version
-      const blogId = await resolveIdentifierCached(name);
+      const blogId = await apiClient.identity.resolveNameToId(name);
 
       if (!blogId) {
         this.statusMessage = `Blog "@${name}" not found`;
@@ -281,7 +275,7 @@ export class FollowingPage extends LitElement {
       const shouldSkipCache = this.skipCacheOnNextResolve;
       this.skipCacheOnNextResolve = false; // Reset for next time
 
-      const followGraph = await blogFollowGraphCached({
+      const followGraph = await apiClient.followGraph.getCached({
         blog_id: blogId,
         direction: 1,
         page_size: 1000, // Get up to 1000 followed blogs
@@ -309,7 +303,7 @@ export class FollowingPage extends LitElement {
           // FOL-008: API returned count but no usable blogIds - likely cached transient error
           // Invalidate the cache so retry can fetch fresh data
           console.warn(`FOL-008: Data mismatch for @${name} - invalidating follow graph cache`);
-          invalidateFollowGraphCache(blogId);
+          apiClient.followGraph.invalidateCache(blogId);
           this.errorMessage = ErrorMessages.DATA.followDataMismatch(name, 'following', this.followingCount);
           this.isRetryableError = true; // Enable auto-retry
           this.skipCacheOnNextResolve = true;
@@ -409,7 +403,7 @@ export class FollowingPage extends LitElement {
       // Use server-side merge with globalMerge=true
       // FOL-009: Per API spec, pass sort_field: 0 (UNSPECIFIED) and limit_per_blog: 0 for merged FYP behavior
       // FOL-010: Use order: 2 for DESC (0=UNSPECIFIED, 1=ASC, 2=DESC)
-      const resp = await listBlogsRecentActivityCached({
+      const resp = await apiClient.recentActivity.listCached({
         blog_ids: this.followingBlogIds,
         post_types: this.selectedTypes,
         variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
@@ -452,7 +446,7 @@ export class FollowingPage extends LitElement {
 
         // Validate media existence for images
         if (media.type === 'image' && media.url) {
-          const exists = await checkImageExists(media.url);
+          const exists = await apiClient.media.checkImageExists(media.url);
           if (!exists) continue;
         }
 

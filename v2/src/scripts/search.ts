@@ -1,7 +1,7 @@
 import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { initTheme, injectGlobalStyles, baseStyles } from '../styles/theme.js';
-import { searchPostsByTagCached, checkImageExists } from '../services/api.js';
+import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
 import { getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';
 import { scrollObserver } from '../services/scroll-observer.js';
@@ -344,7 +344,7 @@ export class SearchPage extends LitElement {
       while (buffer.length < PAGE_SIZE && !this.exhausted && backendFetches < MAX_BACKEND_FETCHES) {
         backendFetches++;
 
-        const resp = await searchPostsByTagCached({
+        const resp = await apiClient.posts.searchCached({
           tag_name: this.query,
           sort_field: sortOpt.field as PostSortField,
           order: sortOpt.order as Order,
@@ -399,7 +399,7 @@ export class SearchPage extends LitElement {
               return { post, exists: true };
             }
             if (media.url) {
-              const exists = await checkImageExists(media.url);
+              const exists = await apiClient.media.checkImageExists(media.url);
               return { post, exists };
             }
             return { post, exists: true };
