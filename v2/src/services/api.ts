@@ -727,7 +727,7 @@ async function apiRequestWithSWR<T>(
  * Ideal for pages where showing slightly stale data is acceptable
  * and responsiveness is prioritized over freshness.
  */
-export async function listBlogPostsSWR(
+async function listBlogPostsSWR(
   req: ListBlogPostsRequest,
   options?: {
     freshTTL?: number;
@@ -747,7 +747,7 @@ export async function listBlogPostsSWR(
  *
  * Returns cached data immediately, revalidates in background if stale.
  */
-export async function searchPostsByTagSWR(
+async function searchPostsByTagSWR(
   req: SearchPostsByTagRequest,
   options?: {
     freshTTL?: number;
@@ -767,7 +767,7 @@ export async function searchPostsByTagSWR(
  *
  * Returns cached data immediately, revalidates in background if stale.
  */
-export async function searchBlogsSWR(
+async function searchBlogsSWR(
   req: SearchBlogsRequest,
   options?: {
     freshTTL?: number;
@@ -787,7 +787,7 @@ export async function searchBlogsSWR(
  *
  * Returns cached data immediately, revalidates in background if stale.
  */
-export async function blogFollowGraphSWR(
+async function blogFollowGraphSWR(
   req: BlogFollowGraphRequest,
   options?: {
     freshTTL?: number;
@@ -811,7 +811,7 @@ export async function blogFollowGraphSWR(
  *
  * Returns cached data immediately, revalidates in background if stale.
  */
-export async function listBlogsRecentActivitySWR(
+async function listBlogsRecentActivitySWR(
   req: ListBlogsRecentActivityRequest,
   options?: {
     freshTTL?: number;
@@ -831,7 +831,7 @@ export async function listBlogsRecentActivitySWR(
  *
  * Returns cached data immediately, revalidates in background if stale.
  */
-export async function getBlogSWR(
+async function getBlogSWR(
   req: GetBlogRequest,
   options?: {
     freshTTL?: number;
@@ -853,7 +853,7 @@ export {
   getSWRCacheStats,
 } from './storage.js';
 
-export async function searchPostsByTag(
+async function searchPostsByTag(
   req: SearchPostsByTagRequest
 ): Promise<SearchPostsByTagResponse> {
   return apiRequest<SearchPostsByTagResponse>(
@@ -873,7 +873,7 @@ export async function searchPostsByTag(
  * @param options.skipCache - If true, bypass cache and fetch fresh data
  * @returns Response with search results and cache metadata
  */
-export async function searchPostsByTagCached(
+async function searchPostsByTagCached(
   req: SearchPostsByTagRequest,
   options: { skipCache?: boolean } = {}
 ): Promise<SearchPostsByTagResponse & { fromCache: boolean }> {
@@ -904,7 +904,7 @@ export async function searchPostsByTagCached(
   return { ...response, fromCache: false };
 }
 
-export async function listBlogPosts(
+async function listBlogPosts(
   req: ListBlogPostsRequest
 ): Promise<ListBlogPostsResponse> {
   return apiRequest<ListBlogPostsResponse>(
@@ -925,7 +925,7 @@ export async function listBlogPosts(
  * @param options.ttl - Cache TTL in milliseconds (default 5 minutes)
  * @returns Response with posts, page info, and cache metadata
  */
-export async function listBlogPostsCached(
+async function listBlogPostsCached(
   req: ListBlogPostsRequest,
   options: { skipCache?: boolean; ttl?: number } = {}
 ): Promise<ListBlogPostsResponse & { fromCache: boolean }> {
@@ -977,7 +977,7 @@ export {
   getPostCacheStats,
 } from './post-cache.js';
 
-export async function listBlogFollowers(
+async function listBlogFollowers(
   req: ListBlogActivityRequest
 ): Promise<ListBlogActivityResponse> {
   return apiRequest<ListBlogActivityResponse>(
@@ -986,7 +986,7 @@ export async function listBlogFollowers(
   );
 }
 
-export async function listBlogFollowing(
+async function listBlogFollowing(
   req: ListBlogActivityRequest
 ): Promise<ListBlogActivityResponse> {
   return apiRequest<ListBlogActivityResponse>(
@@ -995,7 +995,7 @@ export async function listBlogFollowing(
   );
 }
 
-export async function resolveIdentifier(
+async function resolveIdentifier(
   req: ResolveIdentifierRequest
 ): Promise<ResolveIdentifierResponse> {
   return apiRequest<ResolveIdentifierResponse>(
@@ -1004,7 +1004,7 @@ export async function resolveIdentifier(
   );
 }
 
-export async function listPostLikes(
+async function listPostLikes(
   postId: number
 ): Promise<ListPostLikesResponse> {
   return apiRequest<ListPostLikesResponse>(
@@ -1013,7 +1013,7 @@ export async function listPostLikes(
   );
 }
 
-export async function listPostComments(
+async function listPostComments(
   postId: number
 ): Promise<ListPostCommentsResponse> {
   return apiRequest<ListPostCommentsResponse>(
@@ -1022,7 +1022,7 @@ export async function listPostComments(
   );
 }
 
-export async function listPostReblogs(
+async function listPostReblogs(
   postId: number
 ): Promise<ListPostReblogsResponse> {
   return apiRequest<ListPostReblogsResponse>(
@@ -1031,7 +1031,7 @@ export async function listPostReblogs(
   );
 }
 
-export async function signUrl(url: string): Promise<string> {
+async function signUrl(url: string): Promise<string> {
   const data = await apiRequest<{ url?: string }>(
     '/v2/public-read-api-v2/sign-url',
     { url }
@@ -1039,7 +1039,7 @@ export async function signUrl(url: string): Promise<string> {
   return data.url || url;
 }
 
-export async function checkImageExists(url: string): Promise<boolean> {
+async function checkImageExists(url: string): Promise<boolean> {
   try {
     const resp = await fetch(url, { method: 'HEAD', mode: 'cors' });
     return resp.ok;
@@ -1051,7 +1051,7 @@ export async function checkImageExists(url: string): Promise<boolean> {
 
 // New API functions for blogs search and server-side merge
 
-export async function searchBlogs(
+async function searchBlogs(
   req: SearchBlogsRequest
 ): Promise<SearchBlogsResponse> {
   return apiRequest<SearchBlogsResponse>(
@@ -1071,7 +1071,7 @@ export async function searchBlogs(
  * @param options.skipCache - If true, bypass cache and fetch fresh data
  * @returns Response with search results and cache metadata
  */
-export async function searchBlogsCached(
+async function searchBlogsCached(
   req: SearchBlogsRequest,
   options: { skipCache?: boolean } = {}
 ): Promise<SearchBlogsResponse & { fromCache: boolean }> {
@@ -1137,7 +1137,7 @@ function getFollowDirectionLabel(direction?: FollowGraphDirection): 'followers' 
   return 'followers';
 }
 
-export async function blogFollowGraph(
+async function blogFollowGraph(
   req: BlogFollowGraphRequest
 ): Promise<BlogFollowGraphResponse> {
   const normalizedDirection = normalizeFollowDirection(req.direction);
@@ -1161,7 +1161,7 @@ export async function blogFollowGraph(
  * @param options.skipCache - If true, bypass cache and fetch fresh data
  * @returns Response with follow data and cache metadata
  */
-export async function blogFollowGraphCached(
+async function blogFollowGraphCached(
   req: BlogFollowGraphRequest,
   options: { skipCache?: boolean } = {}
 ): Promise<BlogFollowGraphResponse & { fromCache: boolean }> {
@@ -1230,7 +1230,7 @@ export {
   getFollowGraphCacheStats,
 } from './storage.js';
 
-export async function listBlogsRecentActivity(
+async function listBlogsRecentActivity(
   req: ListBlogsRecentActivityRequest
 ): Promise<ListBlogsRecentActivityResponse> {
   return apiRequest<ListBlogsRecentActivityResponse>(
@@ -1251,7 +1251,7 @@ export async function listBlogsRecentActivity(
  * @param options.skipCache - If true, bypass cache and fetch fresh data
  * @returns Response with posts and cache metadata
  */
-export async function listBlogsRecentActivityCached(
+async function listBlogsRecentActivityCached(
   req: ListBlogsRecentActivityRequest,
   options: { skipCache?: boolean } = {}
 ): Promise<ListBlogsRecentActivityResponse & { fromCache: boolean }> {
@@ -1316,7 +1316,7 @@ export {
   getHttpCacheStats,
 } from './storage.js';
 
-export async function getBlog(
+async function getBlog(
   req: GetBlogRequest
 ): Promise<GetBlogResponse> {
   return apiRequest<GetBlogResponse>(
@@ -1326,7 +1326,7 @@ export async function getBlog(
 }
 
 // Cached version of resolveIdentifier
-export async function resolveIdentifierCached(
+async function resolveIdentifierCached(
   blogName: string
 ): Promise<number | null> {
   // Check cache first
@@ -1352,7 +1352,7 @@ export async function resolveIdentifierCached(
 }
 
 // Resolve blogId to blogName (cached)
-export async function resolveBlogIdToName(
+async function resolveBlogIdToName(
   blogId: number
 ): Promise<string | null> {
   // Check cache first
@@ -1390,7 +1390,7 @@ export async function resolveBlogIdToName(
 const BATCH_RESOLVE_CONCURRENCY = 20;
 
 // Batch resolve blogIds to blogNames (for efficiency)
-export async function resolveBlogIdsToNames(
+async function resolveBlogIdsToNames(
   blogIds: number[]
 ): Promise<Map<number, string | null>> {
   const results = new Map<number, string | null>();
@@ -1430,7 +1430,7 @@ export async function resolveBlogIdsToNames(
  * List blog posts with stale data fallback.
  * If the API fails and cached data exists, returns stale data instead of throwing.
  */
-export async function listBlogPostsWithFallback(
+async function listBlogPostsWithFallback(
   req: ListBlogPostsRequest
 ): Promise<StaleDataResult<ListBlogPostsResponse>> {
   return apiRequestWithStaleFallback<ListBlogPostsResponse>(
@@ -1443,7 +1443,7 @@ export async function listBlogPostsWithFallback(
  * Search posts by tag with stale data fallback.
  * If the API fails and cached data exists, returns stale data instead of throwing.
  */
-export async function searchPostsByTagWithFallback(
+async function searchPostsByTagWithFallback(
   req: SearchPostsByTagRequest
 ): Promise<StaleDataResult<SearchPostsByTagResponse>> {
   return apiRequestWithStaleFallback<SearchPostsByTagResponse>(
@@ -1456,7 +1456,7 @@ export async function searchPostsByTagWithFallback(
  * Search blogs with stale data fallback.
  * If the API fails and cached data exists, returns stale data instead of throwing.
  */
-export async function searchBlogsWithFallback(
+async function searchBlogsWithFallback(
   req: SearchBlogsRequest
 ): Promise<StaleDataResult<SearchBlogsResponse>> {
   return apiRequestWithStaleFallback<SearchBlogsResponse>(
@@ -1469,7 +1469,7 @@ export async function searchBlogsWithFallback(
  * Get blog follow graph with stale data fallback.
  * If the API fails and cached data exists, returns stale data instead of throwing.
  */
-export async function blogFollowGraphWithFallback(
+async function blogFollowGraphWithFallback(
   req: BlogFollowGraphRequest
 ): Promise<StaleDataResult<BlogFollowGraphResponse>> {
   const payload: BlogFollowGraphRequest = {
@@ -1486,7 +1486,7 @@ export async function blogFollowGraphWithFallback(
  * List blogs recent activity with stale data fallback.
  * If the API fails and cached data exists, returns stale data instead of throwing.
  */
-export async function listBlogsRecentActivityWithFallback(
+async function listBlogsRecentActivityWithFallback(
   req: ListBlogsRecentActivityRequest
 ): Promise<StaleDataResult<ListBlogsRecentActivityResponse>> {
   return apiRequestWithStaleFallback<ListBlogsRecentActivityResponse>(
@@ -1499,7 +1499,7 @@ export async function listBlogsRecentActivityWithFallback(
  * Get blog details with stale data fallback.
  * If the API fails and cached data exists, returns stale data instead of throwing.
  */
-export async function getBlogWithFallback(
+async function getBlogWithFallback(
   req: GetBlogRequest
 ): Promise<StaleDataResult<GetBlogResponse>> {
   return apiRequestWithStaleFallback<GetBlogResponse>(
@@ -1795,7 +1795,7 @@ const PARTIAL_RECOVERY_ENDPOINTS: Record<string, string> = {
  * @param streamTimeoutMs - Timeout for reading response body (default: 15s beyond initial timeout)
  * @returns Response data with partial recovery metadata
  */
-export async function apiRequestWithPartialRecovery<T>(
+async function apiRequestWithPartialRecovery<T>(
   endpoint: string,
   body: unknown,
   streamTimeoutMs?: number
@@ -1934,7 +1934,7 @@ export async function apiRequestWithPartialRecovery<T>(
  * List blog posts with partial response recovery.
  * If the response times out mid-stream, returns any complete posts received.
  */
-export async function listBlogPostsWithPartialRecovery(
+async function listBlogPostsWithPartialRecovery(
   req: ListBlogPostsRequest
 ): Promise<PartialResponseResult<ListBlogPostsResponse>> {
   return apiRequestWithPartialRecovery<ListBlogPostsResponse>(
@@ -1947,7 +1947,7 @@ export async function listBlogPostsWithPartialRecovery(
  * Search posts by tag with partial response recovery.
  * If the response times out mid-stream, returns any complete posts received.
  */
-export async function searchPostsByTagWithPartialRecovery(
+async function searchPostsByTagWithPartialRecovery(
   req: SearchPostsByTagRequest
 ): Promise<PartialResponseResult<SearchPostsByTagResponse>> {
   return apiRequestWithPartialRecovery<SearchPostsByTagResponse>(
@@ -1960,7 +1960,7 @@ export async function searchPostsByTagWithPartialRecovery(
  * Get blog follow graph with partial response recovery.
  * If the response times out mid-stream, returns any complete follower/following entries.
  */
-export async function blogFollowGraphWithPartialRecovery(
+async function blogFollowGraphWithPartialRecovery(
   req: BlogFollowGraphRequest
 ): Promise<PartialResponseResult<BlogFollowGraphResponse>> {
   const payload: BlogFollowGraphRequest = {
@@ -1977,7 +1977,7 @@ export async function blogFollowGraphWithPartialRecovery(
  * List blogs recent activity with partial response recovery.
  * If the response times out mid-stream, returns any complete posts received.
  */
-export async function listBlogsRecentActivityWithPartialRecovery(
+async function listBlogsRecentActivityWithPartialRecovery(
   req: ListBlogsRecentActivityRequest
 ): Promise<PartialResponseResult<ListBlogsRecentActivityResponse>> {
   return apiRequestWithPartialRecovery<ListBlogsRecentActivityResponse>(
@@ -1990,7 +1990,7 @@ export async function listBlogsRecentActivityWithPartialRecovery(
  * Search blogs with partial response recovery.
  * If the response times out mid-stream, returns any complete blog entries received.
  */
-export async function searchBlogsWithPartialRecovery(
+async function searchBlogsWithPartialRecovery(
   req: SearchBlogsRequest
 ): Promise<PartialResponseResult<SearchBlogsResponse>> {
   return apiRequestWithPartialRecovery<SearchBlogsResponse>(
@@ -2205,19 +2205,132 @@ function partialToUnifiedResult<T>(result: PartialResponseResult<T>): UnifiedCac
 
 /**
  * Posts API namespace.
- * Provides methods for listing and searching posts.
+ *
+ * Provides methods for listing posts from a single blog and searching posts by tag.
+ * Each method has multiple variants for different caching strategies:
+ *
+ * - **Basic** (`list`, `search`): No caching, always fetches fresh data
+ * - **Cached** (`listCached`, `searchCached`): TTL-based caching (5 min default)
+ * - **SWR** (`listSWR`, `searchSWR`): Stale-while-revalidate for instant UI updates
+ * - **WithFallback** (`listWithFallback`, `searchWithFallback`): Falls back to stale data on errors
+ * - **WithPartialRecovery** (`listWithPartialRecovery`, `searchWithPartialRecovery`): Extracts complete items from truncated responses
+ * - **WithOptions** (`listWithOptions`, `searchWithOptions`): Unified interface for all strategies
+ *
+ * @example
+ * ```typescript
+ * // Basic usage - list posts from a blog
+ * const posts = await client.posts.list({ blog_id: 123 });
+ *
+ * // With caching - reduces API calls
+ * const cached = await client.posts.listCached({ blog_id: 123 });
+ * console.log('From cache:', cached.fromCache);
+ *
+ * // SWR - instant UI, background refresh
+ * const swr = await client.posts.listSWR({ blog_id: 123 });
+ * if (swr.revalidating) console.log('Refreshing in background...');
+ *
+ * // Search posts by tag
+ * const results = await client.posts.search({ tag: 'photography', limit: 20 });
+ * ```
+ *
+ * @see {@link ListBlogPostsRequest} for list parameters
+ * @see {@link SearchPostsByTagRequest} for search parameters
  */
 export class PostsApi {
   /**
    * List posts from a specific blog.
+   *
+   * Fetches posts directly from the API without caching. Use this when you need
+   * guaranteed fresh data or are implementing your own caching strategy.
+   *
+   * @param req - Request parameters
+   * @param req.blog_id - The numeric ID of the blog (required)
+   * @param req.page_token - Pagination cursor from previous response
+   * @param req.limit - Maximum posts to return (default: 20, max: 100)
+   * @param req.sort_field - Field to sort by (1=CREATED_AT, 2=LIKES_COUNT, etc.)
+   * @param req.order - Sort order (1=ASC, 2=DESC)
+   * @param req.types - Filter by post types (2=IMAGE, 3=VIDEO, etc.)
+   * @param req.variants - Filter by variant (1=ORIGINAL, 2=REBLOG)
+   *
+   * @returns Response containing posts array and pagination info
+   * @returns posts - Array of Post objects
+   * @returns nextPageToken - Cursor for fetching next page (undefined if no more)
+   * @returns totalCount - Total number of posts matching the query
+   *
+   * @throws {ApiError} With code TIMEOUT if request exceeds 15 seconds
+   * @throws {ApiError} With code NETWORK if network request fails
+   * @throws {ApiError} With code SERVER_ERROR if API returns 5xx status
+   * @throws {ApiError} With code AUTH_REQUIRED if token is invalid/expired
+   *
+   * @example
+   * ```typescript
+   * // Basic usage
+   * const response = await client.posts.list({ blog_id: 12345 });
+   * console.log(`Found ${response.posts.length} posts`);
+   *
+   * // With pagination
+   * let pageToken: string | undefined;
+   * do {
+   *   const page = await client.posts.list({
+   *     blog_id: 12345,
+   *     page_token: pageToken,
+   *     limit: 50
+   *   });
+   *   processPosts(page.posts);
+   *   pageToken = page.nextPageToken;
+   * } while (pageToken);
+   *
+   * // Filtered by type and sorted
+   * const images = await client.posts.list({
+   *   blog_id: 12345,
+   *   types: [2],           // Images only
+   *   sort_field: 2,        // By likes
+   *   order: 2              // Descending (most liked first)
+   * });
+   * ```
    */
   async list(req: ListBlogPostsRequest): Promise<ListBlogPostsResponse> {
     return listBlogPosts(req);
   }
 
   /**
-   * List posts with caching.
-   * Returns cached posts if available and not expired.
+   * List posts with TTL-based caching.
+   *
+   * Returns cached posts if available and not expired (default: 5 minutes).
+   * Reduces API calls for frequently accessed blogs.
+   *
+   * @param req - Request parameters (see {@link list} for details)
+   * @param options - Caching options
+   * @param options.skipCache - Force fresh fetch even if cache is valid
+   * @param options.ttl - Custom cache TTL in milliseconds (default: 300000)
+   *
+   * @returns Response with additional `fromCache` indicator
+   *
+   * @throws {ApiError} Same as {@link list}
+   *
+   * @example
+   * ```typescript
+   * // Normal usage - uses cache if available
+   * const result = await client.posts.listCached({ blog_id: 123 });
+   * if (result.fromCache) {
+   *   console.log('Data from cache');
+   * }
+   *
+   * // Force fresh data
+   * const fresh = await client.posts.listCached(
+   *   { blog_id: 123 },
+   *   { skipCache: true }
+   * );
+   *
+   * // Custom TTL (30 seconds)
+   * const shortLived = await client.posts.listCached(
+   *   { blog_id: 123 },
+   *   { ttl: 30000 }
+   * );
+   * ```
+   *
+   * @see {@link list} for non-cached version
+   * @see {@link listSWR} for stale-while-revalidate pattern
    */
   async listCached(
     req: ListBlogPostsRequest,
@@ -2227,8 +2340,48 @@ export class PostsApi {
   }
 
   /**
-   * List posts with stale-while-revalidate caching.
-   * Returns cached data immediately, revalidates in background if stale.
+   * List posts with stale-while-revalidate caching strategy.
+   *
+   * Returns cached data immediately (even if stale) for instant UI updates,
+   * while triggering a background revalidation to refresh the cache.
+   * Ideal for user-facing pages where perceived performance matters.
+   *
+   * @param req - Request parameters (see {@link list} for details)
+   * @param options - SWR timing options
+   * @param options.freshTTL - How long data is considered fresh (default: 30000ms)
+   * @param options.staleTTL - How long stale data can be served (default: 300000ms)
+   * @param options.maxAge - Maximum age before data is evicted (default: 3600000ms)
+   *
+   * @returns SWR result with cache state indicators
+   * @returns data - The response data
+   * @returns fromCache - Whether data came from cache
+   * @returns isFresh - Whether cached data is within freshTTL
+   * @returns isStale - Whether cached data is beyond freshTTL
+   * @returns revalidating - Whether background refresh is in progress
+   *
+   * @throws {ApiError} Only if no cached data exists AND API request fails
+   *
+   * @example
+   * ```typescript
+   * const result = await client.posts.listSWR({ blog_id: 123 });
+   *
+   * // Show data immediately
+   * displayPosts(result.data.posts);
+   *
+   * // Optionally indicate staleness to user
+   * if (result.isStale) {
+   *   showRefreshingIndicator();
+   * }
+   *
+   * // Custom TTLs for frequently-changing content
+   * const volatile = await client.posts.listSWR(
+   *   { blog_id: 123 },
+   *   { freshTTL: 10000, staleTTL: 60000 }  // 10s fresh, 1m stale
+   * );
+   * ```
+   *
+   * @see {@link listCached} for simpler TTL-based caching
+   * @see {@link listWithFallback} for error resilience
    */
   async listSWR(
     req: ListBlogPostsRequest,
@@ -2238,8 +2391,39 @@ export class PostsApi {
   }
 
   /**
-   * List posts with stale data fallback.
-   * If API fails and cached data exists, returns stale data.
+   * List posts with stale data fallback on errors.
+   *
+   * Attempts to fetch fresh data, but returns cached stale data instead
+   * of throwing errors for transient failures (network, timeout, server errors).
+   * Essential for offline-tolerant and network-resilient applications.
+   *
+   * @param req - Request parameters (see {@link list} for details)
+   *
+   * @returns Result with staleness indicator
+   * @returns data - The response data (fresh or stale)
+   * @returns isStale - Whether returned data is from stale cache
+   * @returns cachedAt - Timestamp when stale data was cached (if isStale)
+   *
+   * @throws {ApiError} Only if API fails AND no stale cache exists
+   *
+   * @example
+   * ```typescript
+   * try {
+   *   const result = await client.posts.listWithFallback({ blog_id: 123 });
+   *
+   *   if (result.isStale) {
+   *     showWarning(`Showing cached data from ${formatDate(result.cachedAt)}`);
+   *   }
+   *
+   *   displayPosts(result.data.posts);
+   * } catch (e) {
+   *   // Only thrown if no cached data available
+   *   showOfflineMessage();
+   * }
+   * ```
+   *
+   * @see {@link listSWR} for proactive background refresh
+   * @see {@link listWithPartialRecovery} for partial data recovery
    */
   async listWithFallback(
     req: ListBlogPostsRequest
@@ -2249,7 +2433,36 @@ export class PostsApi {
 
   /**
    * List posts with partial response recovery.
-   * If response times out mid-stream, returns any complete posts received.
+   *
+   * If a response times out mid-stream (during body transfer), attempts to
+   * extract and return any complete posts that were received. Useful for
+   * slow connections where partial data is better than no data.
+   *
+   * @param req - Request parameters (see {@link list} for details)
+   *
+   * @returns Result with partial recovery metadata
+   * @returns data - Response containing complete posts received
+   * @returns isPartial - Whether response was incomplete
+   * @returns bytesReceived - Number of bytes received before timeout (if partial)
+   * @returns partialReason - Cause of partial response ('timeout' | 'network' | 'stream_error')
+   *
+   * @throws {ApiError} If request fails before any data is received
+   *
+   * @example
+   * ```typescript
+   * const result = await client.posts.listWithPartialRecovery({ blog_id: 123 });
+   *
+   * if (result.isPartial) {
+   *   console.warn(`Partial response: ${result.bytesReceived} bytes`);
+   *   console.warn(`Reason: ${result.partialReason}`);
+   *   showPartialDataWarning();
+   * }
+   *
+   * // Display whatever posts we got
+   * displayPosts(result.data.posts);
+   * ```
+   *
+   * @see {@link listWithFallback} for cached fallback
    */
   async listWithPartialRecovery(
     req: ListBlogPostsRequest
@@ -2259,13 +2472,78 @@ export class PostsApi {
 
   /**
    * Search posts by tag.
+   *
+   * Searches across all posts on the platform for the specified tag(s).
+   * Supports boolean syntax for complex queries.
+   *
+   * @param req - Search parameters
+   * @param req.tag - Tag to search for (required). Supports boolean syntax:
+   *   - Space for AND: "bdsm bondage" matches posts with both tags
+   *   - Dash prefix for NOT: "bdsm -vanilla" excludes vanilla tag
+   *   - Quotes for exact phrase: "\"hot tub\"" matches exact phrase
+   *   - Parentheses for grouping: "(bdsm bondage) -vanilla"
+   * @param req.page_token - Pagination cursor from previous response
+   * @param req.limit - Maximum posts to return (default: 20, max: 100)
+   * @param req.sort_field - Field to sort by (1=CREATED_AT, 2=LIKES_COUNT, etc.)
+   * @param req.order - Sort order (1=ASC, 2=DESC)
+   * @param req.types - Filter by post types
+   * @param req.variants - Filter by variant (original/reblog)
+   *
+   * @returns Response containing matching posts and pagination info
+   *
+   * @throws {ApiError} With code TIMEOUT if request exceeds 30 seconds
+   * @throws {ApiError} With code NETWORK if network request fails
+   * @throws {ApiError} With code SERVER_ERROR if API returns 5xx status
+   *
+   * @example
+   * ```typescript
+   * // Simple tag search
+   * const results = await client.posts.search({ tag: 'photography' });
+   *
+   * // Boolean search - posts with bdsm AND NOT vanilla
+   * const filtered = await client.posts.search({ tag: 'bdsm -vanilla' });
+   *
+   * // Complex boolean with sort
+   * const popular = await client.posts.search({
+   *   tag: '(photography art) -selfie',
+   *   sort_field: 2,  // LIKES_COUNT
+   *   order: 2,       // DESC
+   *   limit: 50
+   * });
+   * ```
    */
   async search(req: SearchPostsByTagRequest): Promise<SearchPostsByTagResponse> {
     return searchPostsByTag(req);
   }
 
   /**
-   * Search posts by tag with caching.
+   * Search posts by tag with TTL-based caching.
+   *
+   * Caches search results for 5 minutes to reduce API load for repeated queries.
+   * Cache key is generated from all request parameters for exact matches only.
+   *
+   * @param req - Search parameters (see {@link search} for details)
+   * @param options - Caching options
+   * @param options.skipCache - Force fresh search even if cache is valid
+   *
+   * @returns Response with `fromCache` indicator
+   *
+   * @throws {ApiError} Same as {@link search}
+   *
+   * @example
+   * ```typescript
+   * // Cached search
+   * const result = await client.posts.searchCached({ tag: 'art' });
+   * console.log('Cached:', result.fromCache);
+   *
+   * // Force fresh search
+   * const fresh = await client.posts.searchCached(
+   *   { tag: 'art' },
+   *   { skipCache: true }
+   * );
+   * ```
+   *
+   * @see {@link search} for non-cached version
    */
   async searchCached(
     req: SearchPostsByTagRequest,
@@ -2276,6 +2554,18 @@ export class PostsApi {
 
   /**
    * Search posts by tag with stale-while-revalidate caching.
+   *
+   * Returns cached results immediately for instant UI, while refreshing
+   * in the background if data is stale.
+   *
+   * @param req - Search parameters (see {@link search} for details)
+   * @param options - SWR timing options (see {@link listSWR} for details)
+   *
+   * @returns SWR result with cache state indicators
+   *
+   * @throws {ApiError} Only if no cached data AND API request fails
+   *
+   * @see {@link listSWR} for detailed SWR documentation
    */
   async searchSWR(
     req: SearchPostsByTagRequest,
@@ -2285,7 +2575,13 @@ export class PostsApi {
   }
 
   /**
-   * Search posts by tag with stale data fallback.
+   * Search posts by tag with stale data fallback on errors.
+   *
+   * @param req - Search parameters (see {@link search} for details)
+   * @returns Result with staleness indicator
+   * @throws {ApiError} Only if API fails AND no stale cache exists
+   *
+   * @see {@link listWithFallback} for detailed fallback documentation
    */
   async searchWithFallback(
     req: SearchPostsByTagRequest
@@ -2295,6 +2591,12 @@ export class PostsApi {
 
   /**
    * Search posts by tag with partial response recovery.
+   *
+   * @param req - Search parameters (see {@link search} for details)
+   * @returns Result with partial recovery metadata
+   * @throws {ApiError} If request fails before any data is received
+   *
+   * @see {@link listWithPartialRecovery} for detailed recovery documentation
    */
   async searchWithPartialRecovery(
     req: SearchPostsByTagRequest
@@ -2426,18 +2728,85 @@ export class PostsApi {
 
 /**
  * Blogs API namespace.
- * Provides methods for searching and retrieving blog information.
+ *
+ * Provides methods for searching blogs, retrieving blog details, and resolving
+ * blog identifiers (name ↔ ID). Includes legacy follower/following endpoints.
+ *
+ * @example
+ * ```typescript
+ * // Search for blogs
+ * const results = await client.blogs.search({ query: 'photography' });
+ *
+ * // Get blog details
+ * const blog = await client.blogs.get({ blog_id: 123 });
+ *
+ * // Resolve blog name to ID
+ * const blogId = await client.blogs.resolveId('myblog');
+ *
+ * // Batch resolve IDs to names (efficient for lists)
+ * const names = await client.blogs.resolveNames([123, 456, 789]);
+ * ```
+ *
+ * @see {@link SearchBlogsRequest} for search parameters
+ * @see {@link GetBlogRequest} for get parameters
  */
 export class BlogsApi {
   /**
    * Search for blogs by name, title, or description.
+   *
+   * Performs a text search across blog metadata. Results are ranked by relevance.
+   *
+   * @param req - Search parameters
+   * @param req.query - Search query string (required). Searches blog name, title, and description.
+   * @param req.page_token - Pagination cursor from previous response
+   * @param req.limit - Maximum blogs to return (default: 20, max: 100)
+   *
+   * @returns Response containing matching blogs and pagination info
+   * @returns blogs - Array of Blog objects with metadata
+   * @returns nextPageToken - Cursor for next page (undefined if no more results)
+   *
+   * @throws {ApiError} With code TIMEOUT if request exceeds 30 seconds
+   * @throws {ApiError} With code NETWORK if network request fails
+   * @throws {ApiError} With code SERVER_ERROR if API returns 5xx status
+   *
+   * @example
+   * ```typescript
+   * // Simple search
+   * const results = await client.blogs.search({ query: 'nature photography' });
+   * console.log(`Found ${results.blogs.length} blogs`);
+   *
+   * // Paginated search
+   * let pageToken: string | undefined;
+   * const allBlogs: Blog[] = [];
+   * do {
+   *   const page = await client.blogs.search({
+   *     query: 'art',
+   *     page_token: pageToken,
+   *     limit: 50
+   *   });
+   *   allBlogs.push(...page.blogs);
+   *   pageToken = page.nextPageToken;
+   * } while (pageToken && allBlogs.length < 200);
+   * ```
    */
   async search(req: SearchBlogsRequest): Promise<SearchBlogsResponse> {
     return searchBlogs(req);
   }
 
   /**
-   * Search blogs with caching.
+   * Search blogs with TTL-based caching.
+   *
+   * Caches search results for 5 minutes. Useful for repeated searches.
+   *
+   * @param req - Search parameters (see {@link search} for details)
+   * @param options - Caching options
+   * @param options.skipCache - Force fresh search even if cache is valid
+   *
+   * @returns Response with `fromCache` indicator
+   *
+   * @throws {ApiError} Same as {@link search}
+   *
+   * @see {@link search} for non-cached version
    */
   async searchCached(
     req: SearchBlogsRequest,
@@ -2448,6 +2817,20 @@ export class BlogsApi {
 
   /**
    * Search blogs with stale-while-revalidate caching.
+   *
+   * Returns cached results immediately, refreshes in background if stale.
+   *
+   * @param req - Search parameters (see {@link search} for details)
+   * @param options - SWR timing options
+   * @param options.freshTTL - How long data is considered fresh (default: 30000ms)
+   * @param options.staleTTL - How long stale data can be served (default: 300000ms)
+   * @param options.maxAge - Maximum age before data is evicted (default: 3600000ms)
+   *
+   * @returns SWR result with cache state indicators
+   *
+   * @throws {ApiError} Only if no cached data AND API request fails
+   *
+   * @see {@link PostsApi.listSWR} for detailed SWR documentation
    */
   async searchSWR(
     req: SearchBlogsRequest,
@@ -2457,7 +2840,15 @@ export class BlogsApi {
   }
 
   /**
-   * Search blogs with stale data fallback.
+   * Search blogs with stale data fallback on errors.
+   *
+   * Returns cached stale data instead of throwing on transient errors.
+   *
+   * @param req - Search parameters (see {@link search} for details)
+   * @returns Result with staleness indicator
+   * @throws {ApiError} Only if API fails AND no stale cache exists
+   *
+   * @see {@link PostsApi.listWithFallback} for detailed fallback documentation
    */
   async searchWithFallback(
     req: SearchBlogsRequest
@@ -2467,6 +2858,14 @@ export class BlogsApi {
 
   /**
    * Search blogs with partial response recovery.
+   *
+   * Extracts complete blog entries from truncated responses on timeout.
+   *
+   * @param req - Search parameters (see {@link search} for details)
+   * @returns Result with partial recovery metadata
+   * @throws {ApiError} If request fails before any data is received
+   *
+   * @see {@link PostsApi.listWithPartialRecovery} for detailed recovery documentation
    */
   async searchWithPartialRecovery(
     req: SearchBlogsRequest
@@ -2476,6 +2875,30 @@ export class BlogsApi {
 
   /**
    * Get detailed information about a blog.
+   *
+   * Retrieves full blog metadata including name, title, description,
+   * avatar, post count, follower count, and settings.
+   *
+   * @param req - Request parameters
+   * @param req.blog_id - Numeric ID of the blog to retrieve (required)
+   *
+   * @returns Full blog details
+   * @returns blog - Blog object with all metadata fields
+   *
+   * @throws {ApiError} With code NOT_FOUND if blog doesn't exist
+   * @throws {ApiError} With code TIMEOUT if request exceeds 5 seconds
+   * @throws {ApiError} With code NETWORK if network request fails
+   *
+   * @example
+   * ```typescript
+   * const response = await client.blogs.get({ blog_id: 12345 });
+   * const blog = response.blog;
+   *
+   * console.log(`Blog: ${blog.name}`);
+   * console.log(`Title: ${blog.title}`);
+   * console.log(`Posts: ${blog.postsCount}`);
+   * console.log(`Followers: ${blog.followersCount}`);
+   * ```
    */
   async get(req: GetBlogRequest): Promise<GetBlogResponse> {
     return getBlog(req);
@@ -2483,6 +2906,16 @@ export class BlogsApi {
 
   /**
    * Get blog details with stale-while-revalidate caching.
+   *
+   * Returns cached blog data immediately, refreshes in background if stale.
+   * Ideal for blog profile pages where instant display matters.
+   *
+   * @param req - Request parameters (see {@link get} for details)
+   * @param options - SWR timing options (see {@link searchSWR} for details)
+   *
+   * @returns SWR result with cache state indicators
+   *
+   * @throws {ApiError} Only if no cached data AND API request fails
    */
   async getSWR(
     req: GetBlogRequest,
@@ -2492,7 +2925,13 @@ export class BlogsApi {
   }
 
   /**
-   * Get blog details with stale data fallback.
+   * Get blog details with stale data fallback on errors.
+   *
+   * Returns cached stale blog data instead of throwing on transient errors.
+   *
+   * @param req - Request parameters (see {@link get} for details)
+   * @returns Result with staleness indicator
+   * @throws {ApiError} Only if API fails AND no stale cache exists
    */
   async getWithFallback(
     req: GetBlogRequest
@@ -2501,14 +2940,55 @@ export class BlogsApi {
   }
 
   /**
-   * Resolve a blog name to a blog ID (cached).
+   * Resolve a blog name to its numeric ID.
+   *
+   * Uses cached mapping for efficiency. Cache persists across sessions.
+   * Essential for routing from blog URLs to API calls.
+   *
+   * @param blogName - The blog's URL-safe name (e.g., "myblog")
+   *
+   * @returns The numeric blog ID, or null if blog doesn't exist
+   *
+   * @throws {ApiError} With code TIMEOUT if resolution request times out
+   *
+   * @example
+   * ```typescript
+   * // Resolve a blog name from URL
+   * const blogId = await client.blogs.resolveId('photography-blog');
+   * if (blogId) {
+   *   const posts = await client.posts.list({ blog_id: blogId });
+   * }
+   * ```
+   *
+   * @see {@link resolveName} for reverse lookup (ID → name)
+   * @see {@link resolveNames} for batch resolution
    */
   async resolveId(blogName: string): Promise<number | null> {
     return resolveIdentifierCached(blogName);
   }
 
   /**
-   * Resolve a blog ID to a blog name (cached).
+   * Resolve a blog ID to its name.
+   *
+   * Uses cached mapping for efficiency. Useful for displaying blog names
+   * when you only have IDs (e.g., from follower lists).
+   *
+   * @param blogId - The numeric blog ID
+   *
+   * @returns The blog's URL-safe name, or null if blog doesn't exist
+   *
+   * @throws {ApiError} With code TIMEOUT if resolution request times out
+   *
+   * @example
+   * ```typescript
+   * const name = await client.blogs.resolveName(12345);
+   * if (name) {
+   *   console.log(`Blog URL: https://bdsmlr.com/${name}`);
+   * }
+   * ```
+   *
+   * @see {@link resolveId} for reverse lookup (name → ID)
+   * @see {@link resolveNames} for batch resolution (more efficient for lists)
    */
   async resolveName(blogId: number): Promise<string | null> {
     return resolveBlogIdToName(blogId);
@@ -2516,20 +2996,63 @@ export class BlogsApi {
 
   /**
    * Batch resolve multiple blog IDs to names.
+   *
+   * More efficient than multiple {@link resolveName} calls for lists.
+   * Uses parallel API requests with caching.
+   *
+   * @param blogIds - Array of numeric blog IDs to resolve
+   *
+   * @returns Map of blog ID to name (null if blog doesn't exist)
+   *
+   * @example
+   * ```typescript
+   * // Resolve names for a follower list
+   * const followerIds = followers.map(f => f.blogId);
+   * const names = await client.blogs.resolveNames(followerIds);
+   *
+   * followers.forEach(f => {
+   *   const name = names.get(f.blogId);
+   *   console.log(`Follower: ${name ?? 'unknown'}`);
+   * });
+   * ```
    */
   async resolveNames(blogIds: number[]): Promise<Map<number, string | null>> {
     return resolveBlogIdsToNames(blogIds);
   }
 
   /**
-   * List followers of a blog (legacy endpoint).
+   * List followers of a blog.
+   *
+   * **Note:** This is a legacy endpoint. For full follower/following data,
+   * use {@link FollowGraphApi.get} with `direction: 0` (followers).
+   *
+   * @param req - Request parameters
+   * @param req.blog_id - ID of the blog whose followers to list
+   * @param req.page_token - Pagination cursor
+   * @param req.limit - Maximum results to return
+   *
+   * @returns Paginated list of follower blog IDs
+   *
+   * @deprecated Use {@link FollowGraphApi.get} for richer follower data
    */
   async listFollowers(req: ListBlogActivityRequest): Promise<ListBlogActivityResponse> {
     return listBlogFollowers(req);
   }
 
   /**
-   * List blogs a blog is following (legacy endpoint).
+   * List blogs a blog is following.
+   *
+   * **Note:** This is a legacy endpoint. For full follower/following data,
+   * use {@link FollowGraphApi.get} with `direction: 1` (following).
+   *
+   * @param req - Request parameters
+   * @param req.blog_id - ID of the blog whose following list to retrieve
+   * @param req.page_token - Pagination cursor
+   * @param req.limit - Maximum results to return
+   *
+   * @returns Paginated list of followed blog IDs
+   *
+   * @deprecated Use {@link FollowGraphApi.get} for richer following data
    */
   async listFollowing(req: ListBlogActivityRequest): Promise<ListBlogActivityResponse> {
     return listBlogFollowing(req);
@@ -2626,18 +3149,126 @@ export class BlogsApi {
 
 /**
  * Follow Graph API namespace.
- * Provides methods for retrieving follower/following relationships.
+ *
+ * Provides methods for retrieving follower/following relationships for blogs.
+ * This is the recommended API for follower data (replaces legacy BlogsApi.listFollowers/listFollowing).
+ *
+ * The follow graph can retrieve:
+ * - **Followers** (direction: 0): Blogs that follow the specified blog
+ * - **Following** (direction: 1): Blogs that the specified blog follows
+ * - **Both** (direction: 2): Bidirectional relationship data
+ *
+ * Data is cached with a 2-hour TTL by default since follow relationships
+ * change infrequently. Use {@link invalidateCache} after follow/unfollow actions.
+ *
+ * @example
+ * ```typescript
+ * // Get all followers of a blog
+ * const followers = await client.followGraph.get({
+ *   blog_id: 123,
+ *   direction: 0  // FOLLOWERS
+ * });
+ *
+ * // Get blogs that a user follows
+ * const following = await client.followGraph.getCached({
+ *   blog_id: 123,
+ *   direction: 1  // FOLLOWING
+ * });
+ *
+ * // Invalidate after follow action
+ * await performFollow(targetBlogId);
+ * client.followGraph.invalidateCache(myBlogId);
+ * ```
+ *
+ * @see {@link BlogFollowGraphRequest} for request parameters
+ * @see {@link FollowGraphDirection} for direction enum values
  */
 export class FollowGraphApi {
   /**
-   * Get follow graph (followers, following, or both).
+   * Get follow graph data for a blog.
+   *
+   * Retrieves follower and/or following relationships. Results include
+   * full blog metadata for related blogs, not just IDs.
+   *
+   * @param req - Request parameters
+   * @param req.blog_id - Numeric ID of the blog (required)
+   * @param req.direction - Relationship direction to retrieve:
+   *   - 0 (FOLLOWERS): Blogs that follow this blog
+   *   - 1 (FOLLOWING): Blogs this blog follows
+   *   - 2 (BOTH): Both directions (larger response)
+   * @param req.page_token - Pagination cursor from previous response
+   * @param req.limit - Maximum results to return (default: 50, max: 200)
+   *
+   * @returns Follow graph data
+   * @returns followers - Array of blogs following this blog (if direction is 0 or 2)
+   * @returns following - Array of blogs this blog follows (if direction is 1 or 2)
+   * @returns nextPageToken - Cursor for next page
+   * @returns totalFollowers - Total follower count
+   * @returns totalFollowing - Total following count
+   *
+   * @throws {ApiError} With code TIMEOUT if request exceeds 30 seconds
+   * @throws {ApiError} With code NOT_FOUND if blog doesn't exist
+   * @throws {ApiError} With code NETWORK if network request fails
+   *
+   * @example
+   * ```typescript
+   * // Get followers with pagination
+   * let pageToken: string | undefined;
+   * const allFollowers: Blog[] = [];
+   *
+   * do {
+   *   const response = await client.followGraph.get({
+   *     blog_id: 12345,
+   *     direction: 0,  // FOLLOWERS
+   *     page_token: pageToken,
+   *     limit: 100
+   *   });
+   *
+   *   if (response.followers) {
+   *     allFollowers.push(...response.followers);
+   *   }
+   *   pageToken = response.nextPageToken;
+   * } while (pageToken);
+   *
+   * console.log(`Total followers: ${allFollowers.length}`);
+   * ```
    */
   async get(req: BlogFollowGraphRequest): Promise<BlogFollowGraphResponse> {
     return blogFollowGraph(req);
   }
 
   /**
-   * Get follow graph with caching (2-hour TTL).
+   * Get follow graph with TTL-based caching.
+   *
+   * Caches results for 2 hours since follow relationships change infrequently.
+   * Significantly reduces API load for follower pages.
+   *
+   * @param req - Request parameters (see {@link get} for details)
+   * @param options - Caching options
+   * @param options.skipCache - Force fresh fetch even if cache is valid
+   *
+   * @returns Response with `fromCache` indicator
+   *
+   * @throws {ApiError} Same as {@link get}
+   *
+   * @example
+   * ```typescript
+   * // Normal usage - leverages 2-hour cache
+   * const result = await client.followGraph.getCached({
+   *   blog_id: 123,
+   *   direction: 0
+   * });
+   *
+   * // After user action, force refresh
+   * await performUnfollow(targetBlogId);
+   * const fresh = await client.followGraph.getCached(
+   *   { blog_id: 123, direction: 1 },
+   *   { skipCache: true }
+   * );
+   * ```
+   *
+   * @see {@link get} for non-cached version
+   * @see {@link invalidateCache} for cache invalidation
    */
   async getCached(
     req: BlogFollowGraphRequest,
@@ -2648,6 +3279,21 @@ export class FollowGraphApi {
 
   /**
    * Get follow graph with stale-while-revalidate caching.
+   *
+   * Returns cached data immediately, refreshes in background if stale.
+   * Ideal for follower counts/lists on profile pages.
+   *
+   * @param req - Request parameters (see {@link get} for details)
+   * @param options - SWR timing options
+   * @param options.freshTTL - How long data is considered fresh (default: 60000ms)
+   * @param options.staleTTL - How long stale data can be served (default: 7200000ms)
+   * @param options.maxAge - Maximum age before eviction (default: 86400000ms)
+   *
+   * @returns SWR result with cache state indicators
+   *
+   * @throws {ApiError} Only if no cached data AND API request fails
+   *
+   * @see {@link PostsApi.listSWR} for detailed SWR documentation
    */
   async getSWR(
     req: BlogFollowGraphRequest,
@@ -2657,7 +3303,16 @@ export class FollowGraphApi {
   }
 
   /**
-   * Get follow graph with stale data fallback.
+   * Get follow graph with stale data fallback on errors.
+   *
+   * Returns cached stale data instead of throwing on transient errors.
+   * Essential for displaying follower counts even when API is unavailable.
+   *
+   * @param req - Request parameters (see {@link get} for details)
+   * @returns Result with staleness indicator
+   * @throws {ApiError} Only if API fails AND no stale cache exists
+   *
+   * @see {@link PostsApi.listWithFallback} for detailed fallback documentation
    */
   async getWithFallback(
     req: BlogFollowGraphRequest
@@ -2667,6 +3322,15 @@ export class FollowGraphApi {
 
   /**
    * Get follow graph with partial response recovery.
+   *
+   * Extracts complete follower/following entries from truncated responses.
+   * Useful for large follow graphs on slow connections.
+   *
+   * @param req - Request parameters (see {@link get} for details)
+   * @returns Result with partial recovery metadata
+   * @throws {ApiError} If request fails before any data is received
+   *
+   * @see {@link PostsApi.listWithPartialRecovery} for detailed recovery documentation
    */
   async getWithPartialRecovery(
     req: BlogFollowGraphRequest
@@ -2675,8 +3339,22 @@ export class FollowGraphApi {
   }
 
   /**
-   * Invalidate cached follow graph for a blog.
-   * If no blogId provided, clears entire cache.
+   * Invalidate cached follow graph for a specific blog.
+   *
+   * Call this after follow/unfollow actions to ensure fresh data on next request.
+   * If no blogId provided, clears the entire follow graph cache.
+   *
+   * @param blogId - Blog ID to invalidate cache for, or undefined to clear all
+   *
+   * @example
+   * ```typescript
+   * // After following a blog
+   * await performFollow(targetBlogId);
+   * client.followGraph.invalidateCache(myBlogId);  // Refresh "following" list
+   *
+   * // After bulk unfollow, clear everything
+   * client.followGraph.invalidateCache();
+   * ```
    */
   invalidateCache(blogId?: number): void {
     invalidateFollowGraphCache(blogId);
@@ -2684,6 +3362,16 @@ export class FollowGraphApi {
 
   /**
    * Clear all follow graph cache entries.
+   *
+   * Removes all cached follow graph data. Use sparingly as it forces
+   * fresh API calls for all subsequent requests.
+   *
+   * @example
+   * ```typescript
+   * // On logout, clear cached social data
+   * client.followGraph.clearCache();
+   * client.recentActivity.clearCache();
+   * ```
    */
   clearCache(): void {
     clearFollowGraphCache();
@@ -2691,6 +3379,22 @@ export class FollowGraphApi {
 
   /**
    * Get follow graph cache statistics.
+   *
+   * Returns information about cache size, hit rates, and entry ages.
+   * Useful for debugging and monitoring cache efficiency.
+   *
+   * @returns Cache statistics object
+   * @returns size - Number of entries in cache
+   * @returns hits - Total cache hits since start
+   * @returns misses - Total cache misses since start
+   * @returns hitRate - Hit rate percentage (0-100)
+   *
+   * @example
+   * ```typescript
+   * const stats = client.followGraph.getCacheStats();
+   * console.log(`Cache entries: ${stats.size}`);
+   * console.log(`Hit rate: ${stats.hitRate.toFixed(1)}%`);
+   * ```
    */
   getCacheStats(): ReturnType<typeof getFollowGraphCacheStats> {
     return getFollowGraphCacheStats();
@@ -2749,11 +3453,75 @@ export class FollowGraphApi {
 
 /**
  * Recent Activity API namespace.
- * Provides methods for retrieving merged feeds from multiple blogs.
+ *
+ * Provides methods for retrieving merged activity feeds from multiple blogs.
+ * This is the primary API for building dashboard/timeline views that show
+ * posts from blogs the user follows.
+ *
+ * The server performs the merge operation, sorting posts by timestamp across
+ * multiple blogs. This is more efficient than client-side merging for large
+ * follow lists.
+ *
+ * **Important:** This endpoint has a 45-second timeout due to server-side
+ * merge complexity. Use caching strategies for better UX.
+ *
+ * @example
+ * ```typescript
+ * // Get recent activity from followed blogs
+ * const feed = await client.recentActivity.list({
+ *   blog_ids: followedBlogIds,
+ *   limit: 50
+ * });
+ *
+ * // With SWR for instant dashboard display
+ * const dashboard = await client.recentActivity.listSWR({
+ *   blog_ids: followedBlogIds
+ * });
+ * displayPosts(dashboard.data.posts);
+ * if (dashboard.revalidating) showRefreshIndicator();
+ * ```
+ *
+ * @see {@link ListBlogsRecentActivityRequest} for request parameters
  */
 export class RecentActivityApi {
   /**
    * List recent activity from multiple blogs.
+   *
+   * Server-side merge of posts from specified blogs, sorted by timestamp.
+   * Ideal for building "Following" feeds and dashboards.
+   *
+   * @param req - Request parameters
+   * @param req.blog_ids - Array of blog IDs to fetch activity from (required)
+   * @param req.page_token - Pagination cursor from previous response
+   * @param req.limit - Maximum posts to return (default: 20, max: 100)
+   * @param req.types - Filter by post types (2=IMAGE, 3=VIDEO, etc.)
+   *
+   * @returns Merged activity feed
+   * @returns posts - Array of posts sorted by timestamp (newest first)
+   * @returns nextPageToken - Cursor for next page
+   *
+   * @throws {ApiError} With code TIMEOUT if request exceeds 45 seconds
+   * @throws {ApiError} With code NETWORK if network request fails
+   * @throws {ApiError} With code SERVER_ERROR if API returns 5xx status
+   *
+   * @example
+   * ```typescript
+   * // Build a "Following" feed
+   * const followingResponse = await client.followGraph.get({
+   *   blog_id: myBlogId,
+   *   direction: 1  // FOLLOWING
+   * });
+   * const followedIds = followingResponse.following?.map(b => b.id) ?? [];
+   *
+   * const feed = await client.recentActivity.list({
+   *   blog_ids: followedIds,
+   *   limit: 50
+   * });
+   *
+   * feed.posts.forEach(post => {
+   *   displayPost(post);
+   * });
+   * ```
    */
   async list(
     req: ListBlogsRecentActivityRequest
@@ -2762,7 +3530,20 @@ export class RecentActivityApi {
   }
 
   /**
-   * List recent activity with caching (5-minute TTL).
+   * List recent activity with TTL-based caching.
+   *
+   * Caches merged feeds for 5 minutes. Reduces server load for
+   * repeated dashboard/feed views.
+   *
+   * @param req - Request parameters (see {@link list} for details)
+   * @param options - Caching options
+   * @param options.skipCache - Force fresh fetch even if cache is valid
+   *
+   * @returns Response with `fromCache` indicator
+   *
+   * @throws {ApiError} Same as {@link list}
+   *
+   * @see {@link list} for non-cached version
    */
   async listCached(
     req: ListBlogsRecentActivityRequest,
@@ -2773,6 +3554,21 @@ export class RecentActivityApi {
 
   /**
    * List recent activity with stale-while-revalidate caching.
+   *
+   * Returns cached feed immediately, refreshes in background if stale.
+   * **Recommended for dashboard pages** where instant display matters.
+   *
+   * @param req - Request parameters (see {@link list} for details)
+   * @param options - SWR timing options
+   * @param options.freshTTL - How long data is considered fresh (default: 60000ms)
+   * @param options.staleTTL - How long stale data can be served (default: 300000ms)
+   * @param options.maxAge - Maximum age before eviction (default: 3600000ms)
+   *
+   * @returns SWR result with cache state indicators
+   *
+   * @throws {ApiError} Only if no cached data AND API request fails
+   *
+   * @see {@link PostsApi.listSWR} for detailed SWR documentation
    */
   async listSWR(
     req: ListBlogsRecentActivityRequest,
@@ -2782,7 +3578,16 @@ export class RecentActivityApi {
   }
 
   /**
-   * List recent activity with stale data fallback.
+   * List recent activity with stale data fallback on errors.
+   *
+   * Returns cached stale feed instead of throwing on transient errors.
+   * Essential for maintaining feed display during API issues.
+   *
+   * @param req - Request parameters (see {@link list} for details)
+   * @returns Result with staleness indicator
+   * @throws {ApiError} Only if API fails AND no stale cache exists
+   *
+   * @see {@link PostsApi.listWithFallback} for detailed fallback documentation
    */
   async listWithFallback(
     req: ListBlogsRecentActivityRequest
@@ -2792,6 +3597,15 @@ export class RecentActivityApi {
 
   /**
    * List recent activity with partial response recovery.
+   *
+   * Extracts complete posts from truncated responses on timeout.
+   * Particularly useful for this endpoint due to its 45-second timeout.
+   *
+   * @param req - Request parameters (see {@link list} for details)
+   * @returns Result with partial recovery metadata
+   * @throws {ApiError} If request fails before any data is received
+   *
+   * @see {@link PostsApi.listWithPartialRecovery} for detailed recovery documentation
    */
   async listWithPartialRecovery(
     req: ListBlogsRecentActivityRequest
@@ -2801,7 +3615,25 @@ export class RecentActivityApi {
 
   /**
    * Invalidate cached recent activity for specific blogs.
-   * If no blogIds provided, clears entire cache.
+   *
+   * Call this when content changes for blogs in the feed
+   * (e.g., user created a new post). If no blogIds provided,
+   * clears the entire recent activity cache.
+   *
+   * @param blogIds - Array of blog IDs to invalidate, or undefined to clear all
+   *
+   * @example
+   * ```typescript
+   * // After user creates a post
+   * await createPost(myBlogId, postData);
+   * client.recentActivity.invalidateCache([myBlogId]);
+   *
+   * // Force refresh of dashboard
+   * const fresh = await client.recentActivity.listCached(
+   *   { blog_ids: followedIds },
+   *   { skipCache: true }
+   * );
+   * ```
    */
   invalidateCache(blogIds?: number[]): void {
     invalidateRecentActivityCache(blogIds);
@@ -2809,6 +3641,15 @@ export class RecentActivityApi {
 
   /**
    * Clear all recent activity cache entries.
+   *
+   * Removes all cached feed data. Use sparingly.
+   *
+   * @example
+   * ```typescript
+   * // On logout, clear all cached data
+   * client.recentActivity.clearCache();
+   * client.followGraph.clearCache();
+   * ```
    */
   clearCache(): void {
     clearRecentActivityCache();
@@ -2816,6 +3657,8 @@ export class RecentActivityApi {
 
   /**
    * Get recent activity cache statistics.
+   *
+   * @returns Cache statistics object (see {@link FollowGraphApi.getCacheStats})
    */
   getCacheStats(): ReturnType<typeof getRecentActivityCacheStats> {
     return getRecentActivityCacheStats();
@@ -2874,11 +3717,50 @@ export class RecentActivityApi {
 
 /**
  * Post Engagement API namespace.
- * Provides methods for retrieving likes, comments, and reblogs on posts.
+ *
+ * Provides methods for retrieving engagement data (likes, comments, reblogs)
+ * for individual posts. Use these for post detail views and engagement analytics.
+ *
+ * @example
+ * ```typescript
+ * // Get engagement data for a post detail view
+ * const [likes, comments, reblogs] = await Promise.all([
+ *   client.engagement.getLikes(postId),
+ *   client.engagement.getComments(postId),
+ *   client.engagement.getReblogs(postId)
+ * ]);
+ *
+ * displayEngagement({
+ *   likeCount: likes.likes.length,
+ *   commentCount: comments.comments.length,
+ *   reblogCount: reblogs.reblogs.length
+ * });
+ * ```
  */
 export class EngagementApi {
   /**
-   * Get likes on a post.
+   * Get users who liked a post.
+   *
+   * Returns a list of blogs that have liked the specified post.
+   * Useful for "liked by" displays and engagement analytics.
+   *
+   * @param postId - Numeric ID of the post
+   *
+   * @returns List of likes with blog info
+   * @returns likes - Array of like objects containing blog info
+   *
+   * @throws {ApiError} With code NOT_FOUND if post doesn't exist
+   * @throws {ApiError} With code TIMEOUT if request exceeds 15 seconds
+   *
+   * @example
+   * ```typescript
+   * const result = await client.engagement.getLikes(12345);
+   * console.log(`${result.likes.length} people liked this post`);
+   *
+   * result.likes.forEach(like => {
+   *   console.log(`Liked by: ${like.blog.name}`);
+   * });
+   * ```
    */
   async getLikes(postId: number): Promise<ListPostLikesResponse> {
     return listPostLikes(postId);
@@ -2886,6 +3768,24 @@ export class EngagementApi {
 
   /**
    * Get comments on a post.
+   *
+   * Returns a list of comments on the specified post with commenter info.
+   *
+   * @param postId - Numeric ID of the post
+   *
+   * @returns List of comments with blog info and content
+   * @returns comments - Array of comment objects
+   *
+   * @throws {ApiError} With code NOT_FOUND if post doesn't exist
+   * @throws {ApiError} With code TIMEOUT if request exceeds 15 seconds
+   *
+   * @example
+   * ```typescript
+   * const result = await client.engagement.getComments(12345);
+   * result.comments.forEach(comment => {
+   *   console.log(`${comment.blog.name}: ${comment.content}`);
+   * });
+   * ```
    */
   async getComments(postId: number): Promise<ListPostCommentsResponse> {
     return listPostComments(postId);
@@ -2893,6 +3793,27 @@ export class EngagementApi {
 
   /**
    * Get reblogs of a post.
+   *
+   * Returns a list of blogs that have reblogged the specified post.
+   * Useful for tracking content spread and "reblogged by" displays.
+   *
+   * @param postId - Numeric ID of the post
+   *
+   * @returns List of reblogs with blog info
+   * @returns reblogs - Array of reblog objects containing blog info
+   *
+   * @throws {ApiError} With code NOT_FOUND if post doesn't exist
+   * @throws {ApiError} With code TIMEOUT if request exceeds 15 seconds
+   *
+   * @example
+   * ```typescript
+   * const result = await client.engagement.getReblogs(12345);
+   * console.log(`Reblogged ${result.reblogs.length} times`);
+   *
+   * result.reblogs.forEach(reblog => {
+   *   console.log(`Reblogged by: ${reblog.blog.name}`);
+   * });
+   * ```
    */
   async getReblogs(postId: number): Promise<ListPostReblogsResponse> {
     return listPostReblogs(postId);
@@ -2901,11 +3822,49 @@ export class EngagementApi {
 
 /**
  * Media API namespace.
- * Provides methods for URL signing and media validation.
+ *
+ * Provides methods for working with media URLs. Handles URL signing for
+ * authenticated access to protected media, and validation of image URLs.
+ *
+ * @example
+ * ```typescript
+ * // Sign a media URL for authenticated access
+ * const signedUrl = await client.media.signUrl(post.imageUrl);
+ * img.src = signedUrl;
+ *
+ * // Validate image before display
+ * const exists = await client.media.checkImageExists(avatarUrl);
+ * if (!exists) {
+ *   avatarUrl = '/default-avatar.png';
+ * }
+ * ```
  */
 export class MediaApi {
   /**
    * Sign a URL for authenticated access.
+   *
+   * Generates a signed URL with temporary credentials for accessing
+   * protected media content. The signed URL has a limited validity period.
+   *
+   * @param url - The original media URL to sign
+   *
+   * @returns The signed URL with authentication parameters
+   *
+   * @throws {ApiError} With code AUTH_REQUIRED if not authenticated
+   * @throws {ApiError} With code TIMEOUT if request exceeds 5 seconds
+   *
+   * @example
+   * ```typescript
+   * // Sign URLs for post images
+   * const signedImages = await Promise.all(
+   *   post.images.map(img => client.media.signUrl(img.url))
+   * );
+   *
+   * // Use signed URLs in image elements
+   * signedImages.forEach((url, i) => {
+   *   imageElements[i].src = url;
+   * });
+   * ```
    */
   async signUrl(url: string): Promise<string> {
     return signUrl(url);
@@ -2913,6 +3872,27 @@ export class MediaApi {
 
   /**
    * Check if an image exists at a URL.
+   *
+   * Performs a HEAD request to verify the image exists and is accessible.
+   * Useful for validating URLs before displaying or for fallback logic.
+   *
+   * @param url - The image URL to check
+   *
+   * @returns true if image exists and is accessible, false otherwise
+   *
+   * @example
+   * ```typescript
+   * // Validate avatar before display
+   * const avatarExists = await client.media.checkImageExists(blog.avatarUrl);
+   * const displayUrl = avatarExists ? blog.avatarUrl : '/default-avatar.png';
+   *
+   * // Validate multiple images in parallel
+   * const images = ['url1', 'url2', 'url3'];
+   * const validResults = await Promise.all(
+   *   images.map(url => client.media.checkImageExists(url))
+   * );
+   * const validImages = images.filter((_, i) => validResults[i]);
+   * ```
    */
   async checkImageExists(url: string): Promise<boolean> {
     return checkImageExists(url);
@@ -2921,25 +3901,98 @@ export class MediaApi {
 
 /**
  * Identity Resolution API namespace.
- * Provides methods for resolving blog names and IDs.
+ *
+ * Provides methods for resolving blog identifiers between names and numeric IDs.
+ * Essential for URL routing (name → ID) and display (ID → name).
+ *
+ * All resolution methods use caching for efficiency. Cache entries persist
+ * across sessions in localStorage.
+ *
+ * **Note:** {@link BlogsApi} provides convenience wrappers for the most
+ * common resolution operations. This namespace exposes the full API.
+ *
+ * @example
+ * ```typescript
+ * // Resolve blog name from URL to ID for API calls
+ * const blogId = await client.identity.resolveNameToId('my-blog');
+ *
+ * // Resolve IDs to names for display
+ * const blogName = await client.identity.resolveIdToName(12345);
+ *
+ * // Batch resolve for efficiency
+ * const names = await client.identity.batchResolveIds([1, 2, 3, 4, 5]);
+ * ```
+ *
+ * @see {@link BlogsApi.resolveId} for the convenience wrapper
+ * @see {@link BlogsApi.resolveName} for the convenience wrapper
  */
 export class IdentityApi {
   /**
    * Resolve a blog identifier (name or ID).
+   *
+   * Low-level resolution method that accepts either a blog name or ID
+   * and returns full resolution data. For simpler use cases, prefer
+   * {@link resolveNameToId} or {@link resolveIdToName}.
+   *
+   * @param req - Resolution request
+   * @param req.identifier - Blog name (string) or ID (number)
+   *
+   * @returns Full resolution response with both name and ID
+   *
+   * @throws {ApiError} With code NOT_FOUND if blog doesn't exist
+   * @throws {ApiError} With code TIMEOUT if request exceeds 5 seconds
    */
   async resolve(req: ResolveIdentifierRequest): Promise<ResolveIdentifierResponse> {
     return resolveIdentifier(req);
   }
 
   /**
-   * Resolve a blog name to ID (cached).
+   * Resolve a blog name to its numeric ID.
+   *
+   * Uses cached mapping for efficiency. Primary method for URL routing.
+   *
+   * @param blogName - The blog's URL-safe name (e.g., "my-blog")
+   *
+   * @returns The numeric blog ID, or null if blog doesn't exist
+   *
+   * @throws {ApiError} With code TIMEOUT if resolution request times out
+   *
+   * @example
+   * ```typescript
+   * // Route URL to API call
+   * const blogId = await client.identity.resolveNameToId(urlParams.blogName);
+   * if (blogId) {
+   *   const posts = await client.posts.list({ blog_id: blogId });
+   * } else {
+   *   showNotFound();
+   * }
+   * ```
+   *
+   * @see {@link BlogsApi.resolveId} for the identical convenience method
    */
   async resolveNameToId(blogName: string): Promise<number | null> {
     return resolveIdentifierCached(blogName);
   }
 
   /**
-   * Resolve a blog ID to name (cached).
+   * Resolve a blog ID to its name.
+   *
+   * Uses cached mapping for efficiency. Useful for generating URLs
+   * or display names from numeric IDs.
+   *
+   * @param blogId - The numeric blog ID
+   *
+   * @returns The blog's URL-safe name, or null if blog doesn't exist
+   *
+   * @throws {ApiError} With code TIMEOUT if resolution request times out
+   *
+   * @example
+   * ```typescript
+   * const name = await client.identity.resolveIdToName(12345);
+   * const profileUrl = name ? `/blog/${name}` : '/not-found';
+   * ```
+   *
+   * @see {@link BlogsApi.resolveName} for the identical convenience method
    */
   async resolveIdToName(blogId: number): Promise<string | null> {
     return resolveBlogIdToName(blogId);
@@ -2947,6 +4000,27 @@ export class IdentityApi {
 
   /**
    * Batch resolve multiple blog IDs to names.
+   *
+   * More efficient than multiple individual calls. Uses parallel
+   * requests with caching.
+   *
+   * @param blogIds - Array of numeric blog IDs to resolve
+   *
+   * @returns Map of blog ID to name (null for non-existent blogs)
+   *
+   * @example
+   * ```typescript
+   * // Resolve names for a list of followers
+   * const followerIds = [123, 456, 789];
+   * const names = await client.identity.batchResolveIds(followerIds);
+   *
+   * followerIds.forEach(id => {
+   *   const name = names.get(id) ?? 'unknown';
+   *   console.log(`Blog ${id}: ${name}`);
+   * });
+   * ```
+   *
+   * @see {@link BlogsApi.resolveNames} for the identical convenience method
    */
   async batchResolveIds(blogIds: number[]): Promise<Map<number, string | null>> {
     return resolveBlogIdsToNames(blogIds);
@@ -2955,20 +4029,60 @@ export class IdentityApi {
 
 /**
  * Configuration options for ApiClient.
+ *
+ * @example
+ * ```typescript
+ * const config: ApiClientConfig = {
+ *   baseUrl: 'https://api.bdsmlr.com',
+ *   credentials: {
+ *     email: process.env.API_EMAIL!,
+ *     password: process.env.API_PASSWORD!
+ *   },
+ *   defaultTimeout: 20000,      // 20 seconds
+ *   autoRefresh: true,          // Proactive token refresh
+ *   refreshThresholdMinutes: 10 // Refresh 10 min before expiry
+ * };
+ * ```
  */
 export interface ApiClientConfig {
-  /** Base URL for API requests (e.g., 'https://api.bdsmlr.com') */
+  /**
+   * Base URL for API requests.
+   * Should include protocol and host, no trailing slash.
+   * @example 'https://api.bdsmlr.com'
+   */
   baseUrl: string;
-  /** Authentication credentials */
+
+  /**
+   * Authentication credentials for API access.
+   * Used for login and token refresh.
+   */
   credentials: {
+    /** Email address for authentication */
     email: string;
+    /** Password for authentication */
     password: string;
   };
-  /** Default request timeout in milliseconds (default: 15000) */
+
+  /**
+   * Default request timeout in milliseconds.
+   * Individual endpoints may override this with their own timeouts.
+   * @default 15000 (15 seconds)
+   */
   defaultTimeout?: number;
-  /** Whether to enable automatic token refresh before expiry (default: true) */
+
+  /**
+   * Whether to enable automatic token refresh before expiry.
+   * When enabled, the client proactively refreshes tokens before they expire,
+   * preventing authentication errors during requests.
+   * @default true
+   */
   autoRefresh?: boolean;
-  /** Minutes before expiry to trigger proactive refresh (default: 5) */
+
+  /**
+   * Minutes before expiry to trigger proactive token refresh.
+   * Only applies when autoRefresh is true.
+   * @default 5
+   */
   refreshThresholdMinutes?: number;
 }
 
@@ -2987,31 +4101,80 @@ interface TokenState {
 /**
  * Centralized API client for BDSMLR API (TECH-010).
  *
- * This class provides:
- * - Automatic authentication and token management
- * - Proactive token refresh before expiry
- * - Deduplication of concurrent refresh requests
- * - Centralized error handling and retry logic
+ * The ApiClient is the main entry point for all API operations. It provides:
  *
- * @example
+ * **Authentication Management:**
+ * - Automatic login on first API call
+ * - Proactive token refresh before expiry (prevents auth errors mid-request)
+ * - Deduplication of concurrent refresh requests (prevents race conditions)
+ * - Session persistence via localStorage (survives page reloads)
+ *
+ * **Namespaced API Access:**
+ * - {@link posts} - List and search posts
+ * - {@link blogs} - Search blogs, get details, resolve names/IDs
+ * - {@link followGraph} - Follower/following relationships
+ * - {@link recentActivity} - Merged activity feeds
+ * - {@link engagement} - Likes, comments, reblogs
+ * - {@link media} - URL signing, image validation
+ * - {@link identity} - Blog name/ID resolution
+ *
+ * **Caching Strategies:**
+ * Each API namespace provides multiple caching strategies:
+ * - Basic (no cache) - Always fresh data
+ * - Cached - TTL-based caching
+ * - SWR - Stale-while-revalidate for instant UI
+ * - WithFallback - Stale data on errors
+ * - WithPartialRecovery - Extract data from truncated responses
+ * - WithOptions - Unified interface for all strategies
+ *
+ * @example Basic Usage
  * ```typescript
+ * // Create client (typically once at app init)
  * const client = new ApiClient({
  *   baseUrl: 'https://api.bdsmlr.com',
- *   credentials: { email: 'user@example.com', password: 'secret' },
+ *   credentials: {
+ *     email: import.meta.env.VITE_AUTH_EMAIL,
+ *     password: import.meta.env.VITE_AUTH_PASSWORD
+ *   }
  * });
- *
- * // Get a valid token (auto-refreshes if needed)
- * const token = await client.getToken();
  *
  * // Use namespaced methods for API calls
  * const posts = await client.posts.list({ blog_id: 123 });
- * const blogs = await client.blogs.searchCached({ query: 'art' });
- * const followers = await client.followGraph.getCached({ blog_id: 123, direction: 0 });
- *
- * // Use different caching strategies as needed
- * const swrPosts = await client.posts.listSWR({ blog_id: 123 }); // Stale-while-revalidate
- * const fallbackPosts = await client.posts.listWithFallback({ blog_id: 123 }); // Stale fallback
+ * const blogs = await client.blogs.search({ query: 'art' });
  * ```
+ *
+ * @example Caching Strategies
+ * ```typescript
+ * // Standard caching - reduces API calls
+ * const cached = await client.posts.listCached({ blog_id: 123 });
+ *
+ * // SWR - instant display, background refresh
+ * const swr = await client.posts.listSWR({ blog_id: 123 });
+ * if (swr.revalidating) showRefreshIndicator();
+ *
+ * // Fallback - resilient to network issues
+ * const fallback = await client.posts.listWithFallback({ blog_id: 123 });
+ * if (fallback.isStale) showStaleDataWarning();
+ *
+ * // Unified interface - one method, all strategies
+ * const unified = await client.posts.listWithOptions(req, {
+ *   cache: 'swr',
+ *   partialRecovery: true
+ * });
+ * ```
+ *
+ * @example Authentication
+ * ```typescript
+ * // Token is managed automatically, but you can also:
+ * const token = await client.getToken();  // Get current token
+ * const isAuth = client.isAuthenticated();  // Check auth status
+ * client.clearAuth();  // Force re-authentication
+ * ```
+ *
+ * @see {@link ApiClientConfig} for configuration options
+ * @see {@link PostsApi} for posts operations
+ * @see {@link BlogsApi} for blogs operations
+ * @see {@link FollowGraphApi} for follower/following operations
  */
 export class ApiClient {
   private readonly config: Required<ApiClientConfig>;
