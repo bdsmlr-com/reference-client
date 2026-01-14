@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { SORT_OPTIONS } from '../types/post.js';
+import { EventNames, type SortChangeDetail } from '../types/events.js';
 
 @customElement('sort-controls')
 export class SortControls extends LitElement {
@@ -35,7 +36,7 @@ export class SortControls extends LitElement {
   private handleChange(e: Event): void {
     const select = e.target as HTMLSelectElement;
     this.dispatchEvent(
-      new CustomEvent('sort-change', {
+      new CustomEvent<SortChangeDetail>(EventNames.SORT_CHANGE, {
         detail: { value: select.value },
       })
     );
@@ -43,7 +44,11 @@ export class SortControls extends LitElement {
 
   render() {
     return html`
-      <select .value=${this.value} @change=${this.handleChange}>
+      <select
+        .value=${this.value}
+        @change=${this.handleChange}
+        aria-label="Sort posts by"
+      >
         ${SORT_OPTIONS.map(
           (opt) => html`
             <option value=${opt.value} ?selected=${opt.value === this.value}>

@@ -1,7 +1,9 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import type { ProcessedPost } from '../types/post.js';
+import { EventNames, type PostSelectDetail, type PostSelectEvent } from '../types/events.js';
+import { BREAKPOINTS, SPACING, CONTAINER_SPACING } from '../types/ui-constants.js';
 import './post-feed-item.js';
 
 @customElement('post-feed')
@@ -16,7 +18,8 @@ export class PostFeed extends LitElement {
       .feed {
         max-width: 600px;
         margin: 0 auto;
-        padding: 0 16px;
+        /* UIC-021: Use standardized container spacing */
+        padding: 0 ${unsafeCSS(CONTAINER_SPACING.HORIZONTAL)}px;
       }
 
       .sentinel {
@@ -25,13 +28,16 @@ export class PostFeed extends LitElement {
 
       .empty {
         text-align: center;
-        padding: 40px;
+        /* UIC-021: Use standardized spacing scale */
+        padding: ${unsafeCSS(SPACING.XXL)}px;
         color: var(--text-muted);
       }
 
-      @media (max-width: 480px) {
+      /* Mobile: max-width below BREAKPOINTS.MOBILE */
+      @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE - 1)}px) {
         .feed {
-          padding: 0 8px;
+          /* UIC-021: Use standardized mobile container spacing */
+          padding: 0 ${unsafeCSS(CONTAINER_SPACING.HORIZONTAL_MOBILE)}px;
         }
       }
     `,
@@ -39,24 +45,26 @@ export class PostFeed extends LitElement {
 
   @property({ type: Array }) posts: ProcessedPost[] = [];
 
-  private handleItemClick(e: CustomEvent): void {
-    this.dispatchEvent(new CustomEvent('post-click', { detail: e.detail }));
+  private handlePostSelect(e: PostSelectEvent): void {
+    this.dispatchEvent(
+      new CustomEvent<PostSelectDetail>(EventNames.POST_CLICK, { detail: e.detail })
+    );
   }
 
   render() {
     if (this.posts.length === 0) {
-      return html`<div class="feed"><div class="empty">No posts to display</div></div>`;
+      return html`<section class="feed" role="status"><div class="empty">No posts to display</div></section>`;
     }
 
     return html`
-      <div class="feed">
+      <section class="feed" role="feed" aria-label="Post feed" aria-busy="false">
         ${this.posts.map(
           (post) => html`
-            <post-feed-item .post=${post} @item-click=${this.handleItemClick}></post-feed-item>
+            <post-feed-item .post=${post} @post-select=${this.handlePostSelect}></post-feed-item>
           `
         )}
-      </div>
-      <div class="sentinel" id="scroll-sentinel"></div>
+      </section>
+      <div class="sentinel" id="scroll-sentinel" aria-hidden="true"></div>
     `;
   }
 }

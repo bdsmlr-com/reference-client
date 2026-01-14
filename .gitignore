@@ -4,3 +4,5 @@ dist/
 .DS_Store
 .claude/
 *.log
+*.un~
+v2/docs/

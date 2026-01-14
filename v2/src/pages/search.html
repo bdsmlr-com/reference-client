@@ -4,8 +4,35 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Search - BDSMLR</title>
+  <!-- Inline theme initialization to prevent FOUC (Flash of Unstyled Content) -->
+  <script>
+    (function() {
+      var theme = localStorage.getItem('bdsmlr_theme');
+      if (!theme || (theme !== 'dark' && theme !== 'light')) {
+        theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      }
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <style>
+    /* Critical CSS to prevent FOUC - matches theme.ts variables */
+    :root, [data-theme="dark"] {
+      --bg-primary: #0f172a;
+      --text-primary: #e2e8f0;
+    }
+    [data-theme="light"] {
+      --bg-primary: #f8fafc;
+      --text-primary: #0f172a;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
+  </style>
 </head>
 <body>
-  <script type="module" src="../scripts/search.ts"></script>
+  <script type="module" src="/src/scripts/search.ts"></script>
 </body>
 </html>

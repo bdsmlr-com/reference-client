@@ -1,7 +1,9 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import type { ProcessedPost } from '../types/post.js';
+import { EventNames, type PostSelectDetail, type PostSelectEvent } from '../types/events.js';
+import { BREAKPOINTS, SPACING, CONTAINER_SPACING } from '../types/ui-constants.js';
 import './post-card.js';
 
 @customElement('post-grid')
@@ -16,21 +18,23 @@ export class PostGrid extends LitElement {
       .grid {
         display: grid;
         grid-template-columns: 1fr;
-        gap: 12px;
+        /* UIC-021: Use standardized spacing scale */
+        gap: ${unsafeCSS(SPACING.MD)}px;
         max-width: 1200px;
         margin: 0 auto;
-        padding: 0 16px;
+        /* UIC-021: Use standardized container spacing */
+        padding: 0 ${unsafeCSS(CONTAINER_SPACING.HORIZONTAL)}px;
       }
 
-      /* Tablet: 2 columns */
-      @media (min-width: 480px) {
+      /* Tablet: 2 columns (BREAKPOINTS.MOBILE = 480px) */
+      @media (min-width: ${unsafeCSS(BREAKPOINTS.MOBILE)}px) {
         .grid {
           grid-template-columns: repeat(2, 1fr);
         }
       }
 
-      /* Desktop: 4 columns */
-      @media (min-width: 768px) {
+      /* Desktop: 4 columns (BREAKPOINTS.TABLET = 768px) */
+      @media (min-width: ${unsafeCSS(BREAKPOINTS.TABLET)}px) {
         .grid {
           grid-template-columns: repeat(4, 1fr);
         }
@@ -42,7 +46,8 @@ export class PostGrid extends LitElement {
 
       .empty {
         text-align: center;
-        padding: 40px;
+        /* UIC-021: Use standardized spacing scale */
+        padding: ${unsafeCSS(SPACING.XXL)}px;
         color: var(--text-muted);
         grid-column: 1 / -1;
       }
@@ -51,24 +56,26 @@ export class PostGrid extends LitElement {
 
   @property({ type: Array }) posts: ProcessedPost[] = [];
 
-  private handleCardClick(e: CustomEvent): void {
-    this.dispatchEvent(new CustomEvent('post-click', { detail: e.detail }));
+  private handlePostSelect(e: PostSelectEvent): void {
+    this.dispatchEvent(
+      new CustomEvent<PostSelectDetail>(EventNames.POST_CLICK, { detail: e.detail })
+    );
   }
 
   render() {
     if (this.posts.length === 0) {
-      return html`<div class="grid"><div class="empty">No posts to display</div></div>`;
+      return html`<section class="grid" role="status"><div class="empty">No posts to display</div></section>`;
     }
 
     return html`
-      <div class="grid">
+      <section class="grid" role="feed" aria-label="Post grid" aria-busy="false">
         ${this.posts.map(
           (post) => html`
-            <post-card .post=${post} @card-click=${this.handleCardClick}></post-card>
+            <post-card .post=${post} @post-select=${this.handlePostSelect}></post-card>
           `
         )}
-      </div>
-      <div class="sentinel" id="scroll-sentinel"></div>
+      </section>
+      <div class="sentinel" id="scroll-sentinel" aria-hidden="true"></div>
     `;
   }
 }
