@@ -4,7 +4,7 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { baseStyles } from '../styles/theme.js';
 import type { ProcessedPost } from '../types/post.js';
 import type { Like, Comment, Reblog } from '../types/api.js';
-import { listPostLikes, listPostComments, listPostReblogs, signUrl } from '../services/api.js';
+import { apiClient } from '../services/client.js';
 import { formatDate, getTooltipDate } from '../services/date-formatter.js';
 import { EventNames, type LightboxNavigateDetail } from '../types/events.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
@@ -671,7 +671,7 @@ export class PostLightbox extends LitElement {
     this.loadingLikes = true;
     this.activeDetail = 'likes';
     try {
-      const data = await listPostLikes(this.post.id);
+      const data = await apiClient.engagement.getLikes(this.post.id);
       this.likes = data.likes || [];
     } catch {
       this.likes = [];
@@ -684,7 +684,7 @@ export class PostLightbox extends LitElement {
     this.loadingComments = true;
     this.activeDetail = 'comments';
     try {
-      const data = await listPostComments(this.post.id);
+      const data = await apiClient.engagement.getComments(this.post.id);
       this.comments = data.comments || [];
     } catch {
       this.comments = [];
@@ -697,7 +697,7 @@ export class PostLightbox extends LitElement {
     this.loadingReblogs = true;
     this.activeDetail = 'reblogs';
     try {
-      const data = await listPostReblogs(this.post.id);
+      const data = await apiClient.engagement.getReblogs(this.post.id);
       this.reblogs = data.reblogs || [];
     } catch {
       this.reblogs = [];
@@ -734,7 +734,7 @@ export class PostLightbox extends LitElement {
     for (const img of imgs) {
       if (img.src.includes('bdsmlr.com') && !img.src.includes('?t=')) {
         try {
-          img.src = await signUrl(img.src);
+          img.src = await apiClient.media.signUrl(img.src);
         } catch {
           // Ignore signing errors
         }

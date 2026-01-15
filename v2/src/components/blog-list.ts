@@ -2,7 +2,7 @@ import { LitElement, html, css, nothing, unsafeCSS } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import type { FollowEdge } from '../types/api.js';
-import { resolveBlogIdsToNames, getBlog } from '../services/api.js';
+import { apiClient } from '../services/client.js';
 import { getCachedAvatarUrl, setCachedAvatarUrl } from '../services/storage.js';
 import { buildBlogPageUrl } from '../services/blog-resolver.js';
 import { BREAKPOINTS, SPACING, CONTAINER_SPACING } from '../types/ui-constants.js';
@@ -267,7 +267,7 @@ export class BlogList extends LitElement {
       const batch = idsToFetch.slice(i, i + BATCH_SIZE);
       const promises = batch.map(async (blogId) => {
         try {
-          const response = await getBlog({ blog_id: blogId });
+          const response = await apiClient.blogs.get({ blog_id: blogId });
           const avatarUrl = response.blog?.avatarUrl || null;
 
           // Cache the result
@@ -350,7 +350,7 @@ export class BlogList extends LitElement {
     this.requestUpdate();
 
     try {
-      const names = await resolveBlogIdsToNames(idsToResolve);
+      const names = await apiClient.identity.batchResolveIds(idsToResolve);
 
       // Update resolved names
       const newResolved = new Map(this.resolvedNames);
