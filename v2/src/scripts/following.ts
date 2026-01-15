@@ -177,6 +177,7 @@ export class FollowingPage extends LitElement {
   @state() private blogData: Blog | null = null;
   /** FOL-008: Track if we should skip cache on next resolve (after showing empty/error state) */
   private skipCacheOnNextResolve = false;
+  private emptyFollowingAttempts = 0;
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
@@ -253,6 +254,10 @@ export class FollowingPage extends LitElement {
       return;
     }
 
+    if (this.resolvedBlogName && this.resolvedBlogName !== name) {
+      this.emptyFollowingAttempts = 0;
+    }
+
     this.resolving = true;
     this.statusMessage = `Resolving @${name}...`;
 
@@ -298,18 +303,23 @@ export class FollowingPage extends LitElement {
       if (this.followingBlogIds.length === 0) {
         // Only show "not following" if there are truly no entries
         if (following.length === 0 && this.followingCount === 0) {
-          this.statusMessage = ErrorMessages.STATUS.notFollowingAnyone(name);
-          // FOL-008: If this came from cache, skip cache on next Load click
-          // (could be stale cached empty response from a transient failure)
-          if (followGraph.fromCache) {
+          if (this.emptyFollowingAttempts === 0) {
+            this.statusMessage = '';
+            this.errorMessage = ErrorMessages.DATA.followDataEmptyRetryable(name, 'following');
+            this.isRetryableError = true;
             this.skipCacheOnNextResolve = true;
-            console.log(`FOL-008: "Not following" result from cache - will skip cache on next Load`);
+            this.emptyFollowingAttempts++;
+            this.resolving = false;
+            return;
           }
+
+          this.statusMessage = ErrorMessages.STATUS.notFollowingAnyone(name);
         } else {
           // FOL-008: API returned count but no usable blogIds - likely cached transient error
           // Invalidate the cache so retry can fetch fresh data
           console.warn(`FOL-008: Data mismatch for @${name} - invalidating follow graph cache`);
           invalidateFollowGraphCache(blogId);
+          this.statusMessage = '';
           this.errorMessage = ErrorMessages.DATA.followDataMismatch(name, 'following', this.followingCount);
           this.isRetryableError = true; // Enable auto-retry
           this.skipCacheOnNextResolve = true;
@@ -320,6 +330,7 @@ export class FollowingPage extends LitElement {
 
       this.statusMessage = '';
       this.resolving = false;
+      this.emptyFollowingAttempts = 0;
 
       // Load posts
       await this.loadPosts();

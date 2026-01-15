@@ -129,6 +129,8 @@ export class SocialPage extends LitElement {
   /** TOUT-001: Whether current error is retryable (timeout, network, server) */
   @state() private isRetryableError = false;
   @state() private blogData: Blog | null = null;
+  /** SOC-019: Bypass cached follow graph on next fetch after mismatch */
+  private skipCacheOnNextFetch = false;
 
   /** STOR-006: Cache keys for pagination cursor persistence (one per tab) */
   private followersPaginationKey = '';
@@ -302,12 +304,15 @@ export class SocialPage extends LitElement {
       const direction = this.activeTab === 'followers' ? 'followers' : 'following';
       const cursor = this.activeTab === 'followers' ? this.followersCursor : this.followingCursor;
 
+      const shouldSkipCache = this.skipCacheOnNextFetch;
+      this.skipCacheOnNextFetch = false;
+
       const resp = await blogFollowGraphCached({
         blog_id: this.blogId,
-        direction: direction === 'followers' ? 0 : 1,
+        direction: direction === 'followers' ? 2 : 1,
         page_size: PAGE_SIZE,
         page_token: cursor || undefined,
-      });
+      }, { skipCache: shouldSkipCache });
 
       // SOC-018: Handle both snake_case and camelCase field names from API response
       // The API may return followers_count/following_count (snake_case) but TypeScript
@@ -336,6 +341,18 @@ export class SocialPage extends LitElement {
           this.followersCount = this.followers.length;
         }
 
+        if (!cursor && this.followersCount > 0 && items.length === 0) {
+          this.errorMessage = ErrorMessages.DATA.followDataMismatch(
+            this.blogName,
+            'followers',
+            this.followersCount
+          );
+          this.isRetryableError = true;
+          this.skipCacheOnNextFetch = true;
+          apiClient.followGraph.invalidateCache(this.blogId);
+          return;
+        }
+
         if (!this.followersCursor || items.length === 0) {
           this.followersExhausted = true;
         }
@@ -347,6 +364,18 @@ export class SocialPage extends LitElement {
         // Only fall back to loaded length if API didn't provide a count
         if (this.followingCount === 0 && this.following.length > 0) {
           this.followingCount = this.following.length;
+        }
+
+        if (!cursor && this.followingCount > 0 && items.length === 0) {
+          this.errorMessage = ErrorMessages.DATA.followDataMismatch(
+            this.blogName,
+            'following',
+            this.followingCount
+          );
+          this.isRetryableError = true;
+          this.skipCacheOnNextFetch = true;
+          apiClient.followGraph.invalidateCache(this.blogId);
+          return;
         }
 
         if (!this.followingCursor || items.length === 0) {
@@ -468,7 +497,7 @@ export class SocialPage extends LitElement {
             `
           : ''}
 
-        ${this.statusMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
+        ${this.statusMessage && !this.errorMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
 
         ${this.currentList.length > 0
           ? html`
