@@ -76,7 +76,7 @@ import type {
   GetBlogResponse,
 } from '../types/api.js';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 const AUTH_EMAIL = import.meta.env.VITE_AUTH_EMAIL || '';
 const AUTH_PASSWORD = import.meta.env.VITE_AUTH_PASSWORD || '';
 
@@ -258,9 +258,35 @@ function calculateRateLimitDelay(attempt: number, retryAfterMs: number | null): 
 
 let currentToken: string | null = null;
 let refreshPromise: Promise<string> | null = null;
+let loginFieldMismatchWarned = false;
+
+function warnLoginFieldMismatch(data: LoginResponse): void {
+  if (loginFieldMismatchWarned) {
+    return;
+  }
+
+  const camelAccessToken = (data as { accessToken?: string }).accessToken;
+  const camelExpiresIn = (data as { expiresIn?: number }).expiresIn;
+  const hasSnakeAccessToken =
+    typeof data.access_token === 'string' && data.access_token.length > 0;
+  const hasSnakeExpiresIn = typeof data.expires_in === 'number';
+  const hasCamelAccessToken =
+    typeof camelAccessToken === 'string' && camelAccessToken.length > 0;
+  const hasCamelExpiresIn = typeof camelExpiresIn === 'number';
+
+  if (
+    (hasCamelAccessToken && !hasSnakeAccessToken) ||
+    (hasCamelExpiresIn && !hasSnakeExpiresIn)
+  ) {
+    loginFieldMismatchWarned = true;
+    console.warn(
+      'Login response uses camelCase fields (accessToken/expiresIn); expected snake_case (access_token/expires_in).'
+    );
+  }
+}
 
 async function login(): Promise<string> {
-  const resp = await fetch(`${API_BASE}/auth/login`, {
+  const resp = await fetch(`${API_BASE}/v2/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -271,13 +297,24 @@ async function login(): Promise<string> {
 
   const data: LoginResponse = await resp.json();
 
-  if (data.error || !data.access_token) {
-    throw new Error(data.error || 'Login failed');
+  warnLoginFieldMismatch(data);
+
+  const accessToken = data.access_token ?? (data as { accessToken?: string }).accessToken;
+
+  if (data.error) {
+    throw new Error(data.error);
   }
 
-  setToken(data.access_token, data.expires_in || 3600);
-  currentToken = data.access_token;
-  return data.access_token;
+  if (!accessToken) {
+    throw new Error(
+      'Auth parsing failed: login response missing access_token/accessToken. API calls are blocked until this is fixed.'
+    );
+  }
+
+  const expiresIn = data.expires_in ?? (data as { expiresIn?: number }).expiresIn ?? 3600;
+  setToken(accessToken, expiresIn);
+  currentToken = accessToken;
+  return accessToken;
 }
 
 /**
@@ -1112,10 +1149,11 @@ export async function searchBlogsCached(
 }
 
 // Map friendly direction strings to API enum values expected by backend (0,1,2)
+// 0 = both/unspecified, 1 = following, 2 = followers
 const FOLLOW_DIRECTION_MAP: Record<'followers' | 'following' | 'both', 0 | 1 | 2> = {
-  followers: 0,
+  followers: 2,
   following: 1,
-  both: 2,
+  both: 0,
 };
 
 function normalizeFollowDirection(direction?: FollowGraphDirection): 0 | 1 | 2 {
@@ -1126,7 +1164,7 @@ function normalizeFollowDirection(direction?: FollowGraphDirection): 0 | 1 | 2 {
     if (mapped !== undefined) return mapped;
   }
   // Default to followers to avoid undefined payloads
-  return 0;
+  return 2;
 }
 
 function getFollowDirectionLabel(direction?: FollowGraphDirection): 'followers' | 'following' {
@@ -1326,23 +1364,32 @@ export async function getBlog(
 }
 
 // Cached version of resolveIdentifier
+const negativeBlogIdBypass = new Set<string>();
 export async function resolveIdentifierCached(
   blogName: string
 ): Promise<number | null> {
   // Check cache first
   const cached = getCachedBlogId(blogName);
   if (cached !== undefined) {
-    return cached;
+    if (cached !== null) {
+      return cached;
+    }
+    const cacheKey = blogName.toLowerCase();
+    if (negativeBlogIdBypass.has(cacheKey)) {
+      return cached;
+    }
+    negativeBlogIdBypass.add(cacheKey);
   }
 
   // Cache miss - call API
   try {
     const result = await resolveIdentifier({ blog_name: blogName });
-    const blogId = result.blogId || null;
+    const blogId = result.blogId ?? (result as { blog_id?: number }).blog_id ?? null;
+    const resolvedName = result.blogName ?? (result as { blog_name?: string }).blog_name ?? null;
     setCachedBlogId(blogName, blogId);
     // Also cache the reverse mapping
-    if (blogId && result.blogName) {
-      setCachedBlogName(blogId, result.blogName);
+    if (blogId && resolvedName) {
+      setCachedBlogName(blogId, resolvedName);
     }
     return blogId;
   } catch {
@@ -1364,13 +1411,14 @@ export async function resolveBlogIdToName(
   // Cache miss - call API
   try {
     const result = await resolveIdentifier({ blog_id: blogId });
-    const blogName = result.blogName || null;
-    setCachedBlogName(blogId, blogName);
+    const resolvedName = result.blogName ?? (result as { blog_name?: string }).blog_name ?? null;
+    const resolvedId = result.blogId ?? (result as { blog_id?: number }).blog_id ?? blogId;
+    setCachedBlogName(blogId, resolvedName);
     // Also cache the forward mapping
-    if (blogName && result.blogId) {
-      setCachedBlogId(blogName, result.blogId);
+    if (resolvedName && resolvedId) {
+      setCachedBlogId(resolvedName, resolvedId);
     }
-    return blogName;
+    return resolvedName;
   } catch {
     setCachedBlogName(blogId, null);
     return null;
@@ -2522,7 +2570,19 @@ export class BlogsApi {
   }
 
   /**
-   * List followers of a blog (legacy endpoint).
+   * List followers of a blog.
+   *
+   * **Note:** This is a legacy endpoint. For full follower/following data,
+   * use {@link FollowGraphApi.get} with `direction: 2` (followers).
+   *
+   * @param req - Request parameters
+   * @param req.blog_id - ID of the blog whose followers to list
+   * @param req.page_token - Pagination cursor
+   * @param req.limit - Maximum results to return
+   *
+   * @returns Paginated list of follower blog IDs
+   *
+   * @deprecated Use {@link FollowGraphApi.get} for richer follower data
    */
   async listFollowers(req: ListBlogActivityRequest): Promise<ListBlogActivityResponse> {
     return listBlogFollowers(req);
@@ -2626,18 +2686,126 @@ export class BlogsApi {
 
 /**
  * Follow Graph API namespace.
- * Provides methods for retrieving follower/following relationships.
+ *
+ * Provides methods for retrieving follower/following relationships for blogs.
+ * This is the recommended API for follower data (replaces legacy BlogsApi.listFollowers/listFollowing).
+ *
+ * The follow graph can retrieve:
+ * - **Followers** (direction: 2): Blogs that follow the specified blog
+ * - **Following** (direction: 1): Blogs that the specified blog follows
+ * - **Both** (direction: 0): Bidirectional relationship data
+ *
+ * Data is cached with a 2-hour TTL by default since follow relationships
+ * change infrequently. Use {@link invalidateCache} after follow/unfollow actions.
+ *
+ * @example
+ * ```typescript
+ * // Get all followers of a blog
+ * const followers = await client.followGraph.get({
+ *   blog_id: 123,
+ *   direction: 2  // FOLLOWERS
+ * });
+ *
+ * // Get blogs that a user follows
+ * const following = await client.followGraph.getCached({
+ *   blog_id: 123,
+ *   direction: 1  // FOLLOWING
+ * });
+ *
+ * // Invalidate after follow action
+ * await performFollow(targetBlogId);
+ * client.followGraph.invalidateCache(myBlogId);
+ * ```
+ *
+ * @see {@link BlogFollowGraphRequest} for request parameters
+ * @see {@link FollowGraphDirection} for direction enum values
  */
 export class FollowGraphApi {
   /**
-   * Get follow graph (followers, following, or both).
+   * Get follow graph data for a blog.
+   *
+   * Retrieves follower and/or following relationships. Results include
+   * full blog metadata for related blogs, not just IDs.
+   *
+   * @param req - Request parameters
+   * @param req.blog_id - Numeric ID of the blog (required)
+   * @param req.direction - Relationship direction to retrieve:
+   *   - 0 (BOTH): Both directions (larger response)
+   *   - 1 (FOLLOWING): Blogs this blog follows
+   *   - 2 (FOLLOWERS): Blogs that follow this blog
+   * @param req.page_token - Pagination cursor from previous response
+   * @param req.limit - Maximum results to return (default: 50, max: 200)
+   *
+   * @returns Follow graph data
+   * @returns followers - Array of blogs following this blog (if direction is 2 or 0)
+   * @returns following - Array of blogs this blog follows (if direction is 1 or 0)
+   * @returns nextPageToken - Cursor for next page
+   * @returns totalFollowers - Total follower count
+   * @returns totalFollowing - Total following count
+   *
+   * @throws {ApiError} With code TIMEOUT if request exceeds 30 seconds
+   * @throws {ApiError} With code NOT_FOUND if blog doesn't exist
+   * @throws {ApiError} With code NETWORK if network request fails
+   *
+   * @example
+   * ```typescript
+   * // Get followers with pagination
+   * let pageToken: string | undefined;
+   * const allFollowers: Blog[] = [];
+   *
+   * do {
+   *   const response = await client.followGraph.get({
+   *     blog_id: 12345,
+   *     direction: 2,  // FOLLOWERS
+   *     page_token: pageToken,
+   *     limit: 100
+   *   });
+   *
+   *   if (response.followers) {
+   *     allFollowers.push(...response.followers);
+   *   }
+   *   pageToken = response.nextPageToken;
+   * } while (pageToken);
+   *
+   * console.log(`Total followers: ${allFollowers.length}`);
+   * ```
    */
   async get(req: BlogFollowGraphRequest): Promise<BlogFollowGraphResponse> {
     return blogFollowGraph(req);
   }
 
   /**
-   * Get follow graph with caching (2-hour TTL).
+   * Get follow graph with TTL-based caching.
+   *
+   * Caches results for 2 hours since follow relationships change infrequently.
+   * Significantly reduces API load for follower pages.
+   *
+   * @param req - Request parameters (see {@link get} for details)
+   * @param options - Caching options
+   * @param options.skipCache - Force fresh fetch even if cache is valid
+   *
+   * @returns Response with `fromCache` indicator
+   *
+   * @throws {ApiError} Same as {@link get}
+   *
+   * @example
+   * ```typescript
+   * // Normal usage - leverages 2-hour cache
+   * const result = await client.followGraph.getCached({
+   *   blog_id: 123,
+   *   direction: 2
+   * });
+   *
+   * // After user action, force refresh
+   * await performUnfollow(targetBlogId);
+   * const fresh = await client.followGraph.getCached(
+   *   { blog_id: 123, direction: 1 },
+   *   { skipCache: true }
+   * );
+   * ```
+   *
+   * @see {@link get} for non-cached version
+   * @see {@link invalidateCache} for cache invalidation
    */
   async getCached(
     req: BlogFollowGraphRequest,
@@ -3140,22 +3308,32 @@ export class ApiClient {
 
     const data: LoginResponse = await resp.json();
 
-    if (data.error || !data.access_token) {
-      throw new Error(data.error || 'Login failed');
+    warnLoginFieldMismatch(data);
+
+    const accessToken = data.access_token ?? (data as { accessToken?: string }).accessToken;
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    if (!accessToken) {
+      throw new Error(
+        'Auth parsing failed: login response missing access_token/accessToken. API calls are blocked until this is fixed.'
+      );
     }
 
     // Calculate expiry timestamp
-    const expiresIn = data.expires_in || 3600;
+    const expiresIn = data.expires_in ?? (data as { expiresIn?: number }).expiresIn ?? 3600;
     const expiresAt = Date.now() + expiresIn * 1000;
 
     // Update instance state
-    this.tokenState.token = data.access_token;
+    this.tokenState.token = accessToken;
     this.tokenState.expiresAt = expiresAt;
 
     // Persist to storage (for session continuity)
-    setToken(data.access_token, expiresIn);
+    setToken(accessToken, expiresIn);
 
-    return data.access_token;
+    return accessToken;
   }
 
   /**
