@@ -1082,7 +1082,13 @@ function getRecentActivityCache(): RecentActivityCache {
 }
 
 function setRecentActivityCache(cache: RecentActivityCache): void {
-  localStorage.setItem(KEYS.RECENT_ACTIVITY_CACHE, JSON.stringify(cache));
+  try {
+    localStorage.setItem(KEYS.RECENT_ACTIVITY_CACHE, JSON.stringify(cache));
+  } catch (e) {
+    // Storage quota exceeded - clear cache and avoid throwing
+    console.warn('Recent activity cache storage quota exceeded, clearing cache');
+    clearRecentActivityCache();
+  }
 }
 
 /**
