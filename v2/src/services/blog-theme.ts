@@ -17,7 +17,7 @@
  */
 
 import chroma from 'chroma-js';
-import { getBlog } from './api.js';
+import { apiClient } from './client.js';
 import type { Blog } from '../types/api.js';
 
 const BLOG_THEME_CACHE_KEY = 'bdsmlr_blog_theme_cache';
@@ -82,9 +82,9 @@ export async function fetchBlogForTheming(blogName: string): Promise<Blog | null
     return cached;
   }
 
-  // Fetch from API
+  // Fetch from API using apiClient
   try {
-    const response = await getBlog({ blog_name: blogName });
+    const response = await apiClient.blogs.get({ blog_name: blogName });
     const blog = response.blog || null;
     setCachedBlogTheme(blogName, blog);
     return blog;

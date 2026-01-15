@@ -1,7 +1,7 @@
 import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { initTheme, injectGlobalStyles, baseStyles } from '../styles/theme.js';
-import { searchBlogsCached, listBlogsRecentActivityCached, getBlog } from '../services/api.js';
+import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, isApiError, toApiError } from '../services/api-error.js';
 import { getUrlParam, setUrlParams, buildBlogPageUrl } from '../services/blog-resolver.js';
 import {
@@ -364,7 +364,7 @@ export class BlogsPage extends LitElement {
       }
 
       const buildRequest = (query: string, pageToken?: string | null) =>
-        searchBlogsCached({
+        apiClient.blogs.searchCached({
           query,
           sort_field: sortOpt.field,
           order: sortOpt.order,
@@ -420,7 +420,7 @@ export class BlogsPage extends LitElement {
   private async loadRecentlyActiveBlogs(): Promise<void> {
     try {
       // Call list-blogs-recent-activity with empty blog_ids to get globally active blogs
-      const resp = await listBlogsRecentActivityCached({
+      const resp = await apiClient.recentActivity.listCached({
         blog_ids: [],
         global_merge: true,
         page: {
@@ -451,7 +451,7 @@ export class BlogsPage extends LitElement {
       const newBlogs: Blog[] = [];
       for (const blogId of newBlogIds.slice(0, PAGE_SIZE)) {
         try {
-          const blogResp = await getBlog({ blog_id: blogId });
+          const blogResp = await apiClient.blogs.get({ blog_id: blogId });
           if (blogResp.blog) {
             newBlogs.push(blogResp.blog);
           }

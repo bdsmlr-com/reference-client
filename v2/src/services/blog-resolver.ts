@@ -47,6 +47,11 @@ export function isReservedPageRoute(name: string): boolean {
 export function isSubdomainEnabledDomain(): boolean {
   const hostname = window.location.hostname.toLowerCase();
 
+  // Disable subdomain routing on API/staging hosts; use path-based routing instead.
+  if (hostname.startsWith('api-') || hostname.startsWith('api.')) {
+    return false;
+  }
+
   // Check if hostname ends with any of the enabled domains
   return SUBDOMAIN_ENABLED_DOMAINS.some((domain) => {
     // Exact match (e.g., bdsmlr.com)
@@ -80,8 +85,15 @@ export function isSubdomainMode(): boolean {
  *   www.bdsmlr.com -> '' (reserved subdomain)
  *   bdsmlr.com -> '' (no subdomain)
  *   localhost:5173 -> '' (not a subdomain-enabled domain)
+ *   api-staging.bdsmlr.com -> '' (subdomain routing disabled for api-* hosts)
  */
 export function getBlogNameFromSubdomain(): string {
+  // First check if subdomain routing is enabled for this domain
+  // This handles special hosts like api-staging where we want path-based routing
+  if (!isSubdomainEnabledDomain()) {
+    return '';
+  }
+
   const hostname = window.location.hostname.toLowerCase();
 
   // Find which enabled domain we're on

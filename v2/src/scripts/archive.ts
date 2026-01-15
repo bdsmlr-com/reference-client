@@ -1,8 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { initTheme, injectGlobalStyles, baseStyles } from '../styles/theme.js';
-import { listBlogPosts, checkImageExists } from '../services/api.js';
-import { resolveIdentifierCached } from '../services/api.js';
+import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
 import { getBlogName, getUrlParam, setUrlParams, isBlogInPath, isDefaultTypes } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
@@ -26,7 +25,7 @@ import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
 import '../components/error-state.js';
 import '../components/offline-banner.js';
-import '../components/blog-context.js';
+import '../components/blog-header.js';
 
 // Initialize theme immediately to prevent FOUC (Flash of Unstyled Content)
 injectGlobalStyles();
@@ -48,22 +47,6 @@ export class ArchivePage extends LitElement {
 
       .content {
         padding: 20px 0;
-      }
-
-      .blog-header {
-        text-align: center;
-        padding: 0 16px 20px;
-      }
-
-      .blog-name {
-        font-size: 24px;
-        color: var(--text-primary);
-        margin: 0 0 8px;
-      }
-
-      .blog-meta {
-        font-size: 14px;
-        color: var(--text-muted);
       }
 
       .controls {
@@ -192,7 +175,7 @@ export class ArchivePage extends LitElement {
       // Initialize blog theming (fetches blog metadata and applies custom colors)
       this.blogData = await initBlogTheme(this.blogName);
 
-      const blogId = await resolveIdentifierCached(this.blogName);
+      const blogId = await apiClient.identity.resolveNameToId(this.blogName);
 
       if (!blogId) {
         this.errorMessage = ErrorMessages.BLOG.notFound(this.blogName);
@@ -336,7 +319,7 @@ export class ArchivePage extends LitElement {
       while (buffer.length < PAGE_SIZE && !this.exhausted && backendFetches < MAX_BACKEND_FETCHES) {
         backendFetches++;
 
-        const resp = await listBlogPosts({
+        const resp = await apiClient.posts.list({
           blog_id: this.blogId,
           sort_field: sortOpt.field as PostSortField,
           order: sortOpt.order as Order,
@@ -391,7 +374,7 @@ export class ArchivePage extends LitElement {
               return { post, exists: true };
             }
             if (media.url) {
-              const exists = await checkImageExists(media.url);
+              const exists = await apiClient.media.checkImageExists(media.url);
               return { post, exists };
             }
             return { post, exists: true };
@@ -497,12 +480,11 @@ export class ArchivePage extends LitElement {
       <div class="content">
         ${this.blogName
           ? html`
-              <div class="blog-header">
-                <h1 class="blog-name">@${this.blogName}</h1>
-                ${this.blogData?.title ? html`<p class="blog-meta">${this.blogData.title}</p>` : ''}
-                ${this.blogId ? html`<p class="blog-meta">Archive</p>` : ''}
-              </div>
-              <blog-context page="archive" .viewedBlog=${this.blogName}></blog-context>
+              <blog-header
+                page="archive"
+                .blogName=${this.blogName}
+                .blogTitle=${this.blogData?.title || ''}
+              ></blog-header>
             `
           : ''}
 
