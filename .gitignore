@@ -6,3 +6,5 @@ dist/
 *.log
 *.un~
 v2/docs/
+__pycache__/
+v2/__pycache__/
