@@ -5,7 +5,7 @@ import { resolve } from 'path';
 const BLOG_PAGES = ['archive', 'timeline', 'following', 'social'];
 
 // Non-blog pages: /:page/
-const STATIC_PAGES = ['search', 'blogs', 'home'];
+const STATIC_PAGES = ['search', 'blogs', 'home', 'clear-cache'];
 
 /**
  * Custom plugin to handle path-based routing in development.
@@ -71,6 +71,7 @@ export default defineConfig({
         home: resolve(__dirname, 'src/pages/home.html'),
         search: resolve(__dirname, 'src/pages/search.html'),
         blogs: resolve(__dirname, 'src/pages/blogs.html'),
+        'clear-cache': resolve(__dirname, 'src/pages/clear-cache.html'),
         archive: resolve(__dirname, 'src/pages/archive.html'),
         timeline: resolve(__dirname, 'src/pages/timeline.html'),
         following: resolve(__dirname, 'src/pages/following.html'),
