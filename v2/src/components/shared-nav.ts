@@ -10,6 +10,7 @@ import {
 import { BREAKPOINTS } from '../types/ui-constants.js';
 
 type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social';
+const BUILD_TAG = 'cache-alert-1';
 
 @customElement('shared-nav')
 export class SharedNav extends LitElement {
@@ -74,7 +75,8 @@ export class SharedNav extends LitElement {
         color: white;
       }
 
-      .theme-toggle {
+      .theme-toggle,
+      .cache-clear {
         padding: 6px 10px;
         border-radius: 4px;
         background: var(--bg-panel-alt);
@@ -91,6 +93,18 @@ export class SharedNav extends LitElement {
       .theme-toggle:hover {
         background: var(--border-strong);
       }
+
+      .cache-clear {
+        font-size: 13px;
+        min-width: 44px;
+        text-decoration: none;
+      }
+
+      .build-tag {
+        font-size: 10px;
+        color: var(--text-muted);
+      }
+
 
       /* Indicator shown when viewing a different blog than primary */
       .viewing-indicator {
@@ -174,6 +188,10 @@ export class SharedNav extends LitElement {
     return isDevMode() ? 'home.html' : '/';
   }
 
+  private getClearCacheUrl(): string {
+    return isDevMode() ? 'clear-cache.html' : '/clear-cache';
+  }
+
   /**
    * Check if currently viewing a different blog than the primary one.
    */
@@ -247,6 +265,13 @@ export class SharedNav extends LitElement {
               </span>
             `
           : ''}
+        <a
+          class="cache-clear"
+          href=${this.getClearCacheUrl()}
+          title="Clear cached data and return"
+          aria-label="Clear cached data and return"
+        >Clear cache</a>
+        <span class="build-tag" aria-label="Build tag">${BUILD_TAG}</span>
         <button
           class="theme-toggle"
           @click=${this.toggleTheme}

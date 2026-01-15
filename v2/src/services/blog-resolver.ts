@@ -30,6 +30,7 @@ const RESERVED_PAGE_ROUTES = [
   'blogs',
   'activity',
   'following', // Note: also in BLOG_PAGES, but as top-level route it's reserved
+  'clear-cache',
 ];
 
 /**
