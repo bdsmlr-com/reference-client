@@ -331,6 +331,14 @@ export const ErrorMessages = {
     followDataMismatch: (blogName: string, entityType: 'followers' | 'following', count: number): string =>
       `Could not load ${entityType} data for @${blogName}. The API reported ${count} ${entityType} but returned no data. This may be a temporary issue - try again.`,
 
+    /**
+     * When API returns an empty list and zero count, but the result is likely transient.
+     * @param blogName - The blog name being queried
+     * @param entityType - 'followers' or 'following'
+     */
+    followDataEmptyRetryable: (blogName: string, entityType: 'followers' | 'following'): string =>
+      `Could not load ${entityType} for @${blogName}. This may be a temporary issue - try again.`,
+
     BLOG_ID_NOT_RESOLVED: 'Unable to identify the blog. It may have been deleted or the name may be incorrect.',
   },
 
