@@ -68,8 +68,7 @@ export class PostCard extends LitElement {
       .card img {
         width: 100%;
         height: auto;
-        aspect-ratio: 1 / 1;
-        object-fit: cover;
+        display: block;
         background: var(--bg-panel-alt);
       }
 
@@ -245,9 +244,9 @@ export class PostCard extends LitElement {
     if (normalized.includes('ocdn012.bdsmlr.com')) {
       normalized = normalized.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
     }
-    // Use smaller preview for grid view if it's a standard upload
+    // Use larger proportional preview for grid view if it's a standard upload
     if (normalized.includes('/uploads/') && !normalized.includes('/preview/')) {
-      return normalized.replace('/uploads/', '/uploads/preview/100x/');
+      return normalized.replace('/uploads/', '/uploads/preview/400x/');
     }
     return normalized;
   }
