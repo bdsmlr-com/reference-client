@@ -843,12 +843,16 @@ export class PostLightbox extends LitElement {
   private async toggleGutter(): Promise<void> {
     if (!this.gutterOpen && !this.relatedPosts && !this.loadingRelated) {
       await this.fetchRelatedPosts();
-      if (this.relatedPosts && this.relatedPosts.length === 0) {
-        this.showToast('No related content found');
-        return;
-      }
     }
-    this.gutterOpen = !this.gutterOpen;
+    
+    if (this.relatedPosts && this.relatedPosts.length === 0) {
+      this.showToast('No related content found');
+      return;
+    }
+
+    if (this.relatedPosts) {
+      this.gutterOpen = !this.gutterOpen;
+    }
   }
 
   private showToast(message: string): void {
