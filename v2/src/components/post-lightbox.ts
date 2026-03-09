@@ -148,25 +148,24 @@ export class PostLightbox extends LitElement {
         display: block;
       }
 
-      .toast {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: var(--bg-panel);
-        color: var(--text-primary);
+      .gutter-toast {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: var(--accent);
+        color: white;
         padding: 8px 16px;
-        border-radius: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-        z-index: 2000;
+        text-align: center;
         font-size: 13px;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s;
+        font-weight: 600;
+        z-index: 100;
+        transform: translateY(-100%);
+        transition: transform 0.3s ease;
       }
 
-      .toast.visible {
-        opacity: 1;
+      .gutter-toast.visible {
+        transform: translateY(0);
       }
 
       .lightbox-media img, .lightbox-media video {
@@ -1370,6 +1369,10 @@ export class PostLightbox extends LitElement {
         @touchend=${this.handleTouchEnd}
       >
         <div class="lightbox-panel" @click=${(e: Event) => e.stopPropagation()}>
+          <div class="gutter-toast ${this.toastMessage ? 'visible' : ''}">
+            ${this.toastMessage}
+          </div>
+          
           <div class="lightbox-main">
             <div class="media-wrapper">
               ${this.renderMedia()}
@@ -1439,10 +1442,6 @@ export class PostLightbox extends LitElement {
             </div>
           </aside>
         </div>
-      </div>
-
-      <div class="toast ${this.toastMessage ? 'visible' : ''}">
-        ${this.toastMessage}
       </div>
     `;
   }
