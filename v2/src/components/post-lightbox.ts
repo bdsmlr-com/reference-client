@@ -44,27 +44,129 @@ export class PostLightbox extends LitElement {
       }
 
       .lightbox-panel {
-        max-width: 90vw;
-        width: 800px;
+        max-width: 95vw;
+        width: 1200px;
         max-height: 90vh;
         display: flex;
-        flex-direction: column;
-        align-items: center;
+        flex-direction: row;
+        align-items: stretch;
         position: relative;
         overflow: hidden;
         background: var(--bg-panel);
         border-radius: 8px;
+        transition: width 0.3s ease;
+      }
+
+      .lightbox-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-width: 0;
+      }
+
+      .media-wrapper {
+        position: relative;
+        width: 100%;
+        flex: 1;
+        display: flex;
+        background: black;
+        overflow: hidden;
       }
 
       .lightbox-media {
         width: 100%;
-        flex: 1;
+        height: 100%;
         display: flex;
         justify-content: center;
         align-items: center;
-        background: black;
+      }
+
+      .related-toggle {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 10;
+        font-size: 18px;
+        transition: background 0.2s;
+      }
+
+      .related-toggle:hover {
+        background: var(--accent);
+      }
+
+      .related-gutter {
+        width: 0;
+        background: var(--bg-panel-alt);
+        border-left: 0 solid var(--border);
+        display: flex;
+        flex-direction: column;
+        transition: width 0.3s ease, border-width 0.3s;
         overflow: hidden;
-        min-height: 0;
+      }
+
+      .related-gutter.open {
+        width: 200px;
+        border-left-width: 1px;
+      }
+
+      .gutter-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .gutter-item {
+        width: 100%;
+        border-radius: 4px;
+        overflow: hidden;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        transition: border-color 0.2s;
+      }
+
+      .gutter-item:hover {
+        border-color: var(--accent);
+      }
+
+      .gutter-item img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .toast {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--bg-panel);
+        color: var(--text-primary);
+        padding: 8px 16px;
+        border-radius: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        z-index: 2000;
+        font-size: 13px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+      }
+
+      .toast.visible {
+        opacity: 1;
       }
 
       .lightbox-media img, .lightbox-media video {
@@ -447,6 +549,8 @@ export class PostLightbox extends LitElement {
   @state() private navigationStack: ProcessedPost[] = [];
   @state() private relatedPosts: RecResult[] | null = null;
   @state() private loadingRelated = false;
+  @state() private gutterOpen = false;
+  @state() private toastMessage = '';
 
   // Touch/swipe tracking
   private touchStartX = 0;
@@ -734,6 +838,24 @@ export class PostLightbox extends LitElement {
         })
       );
     }
+  }
+
+  private async toggleGutter(): Promise<void> {
+    if (!this.gutterOpen && !this.relatedPosts && !this.loadingRelated) {
+      await this.fetchRelatedPosts();
+      if (this.relatedPosts && this.relatedPosts.length === 0) {
+        this.showToast('No related content found');
+        return;
+      }
+    }
+    this.gutterOpen = !this.gutterOpen;
+  }
+
+  private showToast(message: string): void {
+    this.toastMessage = message;
+    setTimeout(() => {
+      this.toastMessage = '';
+    }, 3000);
   }
 
   private async fetchRelatedPosts(): Promise<void> {
@@ -1232,82 +1354,79 @@ export class PostLightbox extends LitElement {
         @touchend=${this.handleTouchEnd}
       >
         <div class="lightbox-panel" @click=${(e: Event) => e.stopPropagation()}>
-          ${this.renderMedia()}
-          
-          <div class="lightbox-info">
-            <div class="lightbox-links">${this.renderLinks()}</div>
-            <div class="meta">${this.renderMeta()}</div>
-            <div
-              class="lightbox-tags-container ${this.tagsExpanded ? 'expanded' : ''}"
-              @click=${this.toggleTags}
-            >
-              <div class="tags">
-                ${(this.post.tags || []).map((t) => html`<span class="tag">${t}</span>`)}
-              </div>
-            </div>
-            <div class="lightbox-stats">
-              <button
-                class="stat-btn ${this.loadingLikes ? 'loading' : ''}"
-                @click=${this.fetchLikes}
-                aria-label="Show ${this.post.likesCount || 0} likes"
-                aria-busy=${this.loadingLikes}
-              >
-                ❤️ ${this.post.likesCount || 0}${this.loadingLikes ? '...' : ''}
-              </button>
-              <button
-                class="stat-btn ${this.loadingReblogs ? 'loading' : ''}"
-                @click=${this.fetchReblogs}
-                aria-label="Show ${this.post.reblogsCount || 0} reblogs"
-                aria-busy=${this.loadingReblogs}
-              >
-                ♻️ ${this.post.reblogsCount || 0}${this.loadingReblogs ? '...' : ''}
-              </button>
-              <button
-                class="stat-btn ${this.loadingComments ? 'loading' : ''}"
-                @click=${this.fetchComments}
-                aria-label="Show ${this.post.commentsCount || 0} comments"
-                aria-busy=${this.loadingComments}
-              >
-                💬 ${this.post.commentsCount || 0}${this.loadingComments ? '...' : ''}
+          <div class="lightbox-main">
+            <div class="media-wrapper">
+              ${this.renderMedia()}
+              <button class="related-toggle" @click=${this.toggleGutter} title="Related content">
+                ${this.loadingRelated ? html`...` : html`✨`}
               </button>
             </div>
-            <div class="lightbox-details">${this.renderDetails()}</div>
-
-            <!-- Related Posts Section -->
-            <div class="related-section">
-              <div class="related-title">
-                <span>Related Content</span>
-                ${!this.relatedPosts
-                  ? html`<button class="btn-small" @click=${this.fetchRelatedPosts} ?disabled=${this.loadingRelated}>
-                      ${this.loadingRelated ? 'Loading...' : 'Show More Like This'}
-                    </button>`
-                  : ''}
+            
+            <div class="lightbox-info">
+              <div class="lightbox-links">${this.renderLinks()}</div>
+              <div class="meta">${this.renderMeta()}</div>
+              <div
+                class="lightbox-tags-container ${this.tagsExpanded ? 'expanded' : ''}"
+                @click=${this.toggleTags}
+              >
+                <div class="tags">
+                  ${(this.post.tags || []).map((t) => html`<span class="tag">${t}</span>`)}
+                </div>
               </div>
-              
-              ${this.relatedPosts
-                ? html`
-                    <div class="related-grid">
-                      ${this.relatedPosts.map(
-                        (rec: any) => {
-                          const hydrated = rec._hydratedPost;
-                          const thumbUrl = this.getProxyUrl(hydrated?._media?.url);
-                          return html`
-                            <div class="related-item" @click=${() => this.navigateToRelated(rec)} title="Post by @${rec.post_owner}">
-                              ${thumbUrl 
-                                ? html`<img src=${thumbUrl} alt="Related post" @error=${(e: any) => e.target.src = 'https://bdsmlr.com/static/img/no-image.png'} />`
-                                : html`<div class="type-placeholder">🖼️</div>`
-                              }
-                            </div>
-                          `;
-                        }
-                      )}
-                      ${this.relatedPosts.length === 0 ? html`<div class="text-muted">No similar posts found.</div>` : ''}
-                    </div>
-                  `
-                : ''}
+              <div class="lightbox-stats">
+                <button
+                  class="stat-btn ${this.loadingLikes ? 'loading' : ''}"
+                  @click=${this.fetchLikes}
+                  aria-label="Show ${this.post.likesCount || 0} likes"
+                  aria-busy=${this.loadingLikes}
+                >
+                  ❤️ ${this.post.likesCount || 0}${this.loadingLikes ? '...' : ''}
+                </button>
+                <button
+                  class="stat-btn ${this.loadingReblogs ? 'loading' : ''}"
+                  @click=${this.fetchReblogs}
+                  aria-label="Show ${this.post.reblogsCount || 0} reblogs"
+                  aria-busy=${this.loadingReblogs}
+                >
+                  ♻️ ${this.post.reblogsCount || 0}${this.loadingReblogs ? '...' : ''}
+                </button>
+                <button
+                  class="stat-btn ${this.loadingComments ? 'loading' : ''}"
+                  @click=${this.fetchComments}
+                  aria-label="Show ${this.post.commentsCount || 0} comments"
+                  aria-busy=${this.loadingComments}
+                >
+                  💬 ${this.post.commentsCount || 0}${this.loadingComments ? '...' : ''}
+                </button>
+              </div>
+              <div class="lightbox-details">${this.renderDetails()}</div>
             </div>
           </div>
+
+          <aside class="related-gutter ${this.gutterOpen ? 'open' : ''}">
+            <div class="gutter-content">
+              <div style="font-weight: 600; margin-bottom: 8px;">More like this</div>
+              ${this.relatedPosts?.map(
+                (rec: any) => {
+                  const hydrated = rec._hydratedPost;
+                  const thumbUrl = this.getProxyUrl(hydrated?._media?.url);
+                  return html`
+                    <div class="gutter-item" @click=${() => this.navigateToRelated(rec)} title="Post by @${rec.post_owner}">
+                      ${thumbUrl 
+                        ? html`<img src=${thumbUrl} alt="Related" />`
+                        : html`<div class="type-placeholder">🖼️</div>`
+                      }
+                    </div>
+                  `;
+                }
+              )}
+            </div>
+          </aside>
         </div>
+      </div>
+
+      <div class="toast ${this.toastMessage ? 'visible' : ''}">
+        ${this.toastMessage}
       </div>
     `;
   }
