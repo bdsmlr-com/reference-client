@@ -46,11 +46,31 @@ export class PostLightbox extends LitElement {
       .lightbox-panel {
         max-width: 90vw;
         width: 800px;
-        max-height: 95vh;
+        max-height: 90vh;
         display: flex;
         flex-direction: column;
         align-items: center;
         position: relative;
+        overflow: hidden;
+        background: var(--bg-panel);
+        border-radius: 8px;
+      }
+
+      .lightbox-media {
+        width: 100%;
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: black;
+        overflow: hidden;
+        min-height: 0;
+      }
+
+      .lightbox-media img, .lightbox-media video {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
       }
 
       .back-stack-btn {
@@ -77,10 +97,11 @@ export class PostLightbox extends LitElement {
       .lightbox-info {
         background: var(--bg-panel);
         padding: 16px;
-        border-radius: 8px 8px 0 0;
         width: 100%;
         max-width: 800px;
         box-sizing: border-box;
+        overflow-y: auto;
+        max-height: 40vh;
       }
 
       /* Related posts styles */
@@ -110,8 +131,9 @@ export class PostLightbox extends LitElement {
       }
 
       .related-item {
-        flex: 0 0 100px;
-        height: 100px;
+        flex: 0 0 auto;
+        width: 150px;
+        height: auto;
         border-radius: 4px;
         overflow: hidden;
         cursor: pointer;
@@ -121,8 +143,8 @@ export class PostLightbox extends LitElement {
 
       .related-item img {
         width: 100%;
-        height: 100%;
-        object-fit: cover;
+        height: auto;
+        display: block;
       }
 
       .related-item:hover {
@@ -1210,6 +1232,8 @@ export class PostLightbox extends LitElement {
         @touchend=${this.handleTouchEnd}
       >
         <div class="lightbox-panel" @click=${(e: Event) => e.stopPropagation()}>
+          ${this.renderMedia()}
+          
           <div class="lightbox-info">
             <div class="lightbox-links">${this.renderLinks()}</div>
             <div class="meta">${this.renderMeta()}</div>
@@ -1283,7 +1307,6 @@ export class PostLightbox extends LitElement {
                 : ''}
             </div>
           </div>
-          ${this.renderMedia()}
         </div>
       </div>
     `;
