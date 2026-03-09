@@ -857,8 +857,15 @@ export class PostLightbox extends LitElement {
   }
 
   private async toggleGutter(): Promise<void> {
-    if (!this.gutterOpen && !this.relatedPosts && !this.loadingRelated) {
-      await this.fetchRelatedPosts();
+    // If closing, just close
+    if (this.gutterOpen) {
+      this.gutterOpen = false;
+      return;
+    }
+
+    // If opening, fetch if needed
+    if (!this.relatedPosts && !this.loadingRelated) {
+      await this.fetchRelatedPosts(true);
     }
     
     if (this.relatedPosts && this.relatedPosts.length === 0) {
@@ -866,9 +873,7 @@ export class PostLightbox extends LitElement {
       return;
     }
 
-    if (this.relatedPosts) {
-      this.gutterOpen = !this.gutterOpen;
-    }
+    this.gutterOpen = true;
   }
 
   private showToast(message: string): void {
@@ -992,6 +997,9 @@ export class PostLightbox extends LitElement {
     this.activeDetail = null;
     this.navigationStack = [];
     this.relatedPosts = null;
+    this.gutterOpen = false;
+    this.gutterExhausted = false;
+    this.gutterOffset = 0;
     this.resetZoom();
     this.dispatchEvent(new CustomEvent(EventNames.CLOSE));
   }
@@ -1130,7 +1138,14 @@ export class PostLightbox extends LitElement {
       this.comments = null;
       this.reblogs = null;
       this.activeDetail = null;
+      this.relatedPosts = null;
+      this.gutterOffset = 0;
+      this.gutterExhausted = false;
       this.resetZoom();
+
+      if (this.gutterOpen) {
+        this.fetchRelatedPosts(true);
+      }
 
       if (this.post._media.type === 'text') {
         requestAnimationFrame(() => {
