@@ -116,7 +116,7 @@ export class PostLightbox extends LitElement {
       }
 
       .related-gutter.open {
-        width: 200px;
+        width: 130px;
         border-left-width: 1px;
       }
 
@@ -126,34 +126,31 @@ export class PostLightbox extends LitElement {
         padding: 12px;
         display: flex;
         flex-direction: column;
+        align-items: center;
         gap: 12px;
       }
 
       .gutter-item {
-        width: 100%;
-        min-height: 100px;
+        width: 100px;
+        height: auto;
         border-radius: 4px;
         overflow: hidden;
         cursor: pointer;
         border: 1px solid var(--border);
         transition: border-color 0.2s;
         background: var(--bg-panel-alt);
-      }
-
-      .gutter-item:hover {
-        border-color: var(--accent);
+        position: relative;
       }
 
       .gutter-item img {
         width: 100%;
         height: auto;
         display: block;
-        min-height: 100px;
       }
 
       .gutter-skeleton {
-        width: 100%;
-        height: 150px;
+        width: 100px;
+        height: 100px;
         background: linear-gradient(90deg, var(--bg-panel-alt) 25%, var(--border) 50%, var(--bg-panel-alt) 75%);
         background-size: 200% 100%;
         animation: gutter-pulse 1.5s infinite linear;
@@ -567,6 +564,8 @@ export class PostLightbox extends LitElement {
   @state() private relatedPosts: RecResult[] | null = null;
   @state() private loadingRelated = false;
   @state() private gutterOpen = false;
+  @state() private gutterExhausted = false;
+  @state() private gutterOffset = 0;
   @state() private toastMessage = '';
 
   // Touch/swipe tracking
@@ -879,37 +878,63 @@ export class PostLightbox extends LitElement {
     }, 3000);
   }
 
-  private async fetchRelatedPosts(): Promise<void> {
-    if (!this.post || this.loadingRelated) return;
+  private async fetchRelatedPosts(isInitial = true): Promise<void> {
+    if (!this.post || this.loadingRelated || (!isInitial && this.gutterExhausted)) return;
+    
+    if (isInitial) {
+      this.gutterOffset = 0;
+      this.gutterExhausted = false;
+      this.relatedPosts = null;
+    }
+
     this.loadingRelated = true;
     try {
-      // Fetch up to 100 similar post IDs (500 was causing 422 errors)
-      const recs = await recService.getSimilarPosts(this.post.id, 100);
+      // Fetch batch of 20
+      const limit = 20;
+      const recs = await recService.getSimilarPosts(this.post.id, limit, this.gutterOffset);
       
+      if (recs.length < limit) {
+        this.gutterExhausted = true;
+      }
+
       const postIds = recs.map(r => r.post_id).filter((id): id is number => !!id);
       if (postIds.length > 0) {
         const { extractMedia } = await import('../types/post.js');
         const postMap = new Map();
         
-        // Batch hydrate in chunks of 100 to avoid URL length issues
-        for (let i = 0; i < postIds.length; i += 100) {
-          const chunk = postIds.slice(i, i + 100);
-          const resp = await apiClient.posts.batchGet({ post_ids: chunk });
-          (resp.posts || []).forEach(p => postMap.set(p.id, { ...p, _media: extractMedia(p) }));
-        }
+        // Hydrate this batch
+        const resp = await apiClient.posts.batchGet({ post_ids: postIds });
+        (resp.posts || []).forEach(p => postMap.set(p.id, { ...p, _media: extractMedia(p) }));
         
-        this.relatedPosts = recs.map(r => ({
+        const hydratedRecs = recs.map(r => ({
           ...r,
           _hydratedPost: r.post_id ? postMap.get(r.post_id) : undefined
         })) as any;
+
+        if (isInitial) {
+          this.relatedPosts = hydratedRecs;
+        } else {
+          this.relatedPosts = [...(this.relatedPosts || []), ...hydratedRecs];
+        }
+        
+        this.gutterOffset += recs.length;
       } else {
-        this.relatedPosts = [];
+        if (isInitial) this.relatedPosts = [];
+        this.gutterExhausted = true;
       }
     } catch (e) {
       console.error('Failed to fetch related posts', e);
-      this.relatedPosts = [];
+      if (isInitial) this.relatedPosts = [];
     } finally {
       this.loadingRelated = false;
+    }
+  }
+
+  private handleGutterScroll(e: Event): void {
+    const el = e.target as HTMLElement;
+    const threshold = 100;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < threshold) {
+      this.fetchRelatedPosts(false);
     }
   }
 
@@ -1057,9 +1082,9 @@ export class PostLightbox extends LitElement {
   private getProxyUrl(url: string | undefined): string {
     if (!url) return '';
     const normalized = this.normalizeUrl(url);
-    // Use proportional 150x scaling for gutter thumbnails
+    // Use proportional 100px wide scaling for gutter thumbnails
     if (normalized.includes('/uploads/') && !normalized.includes('/preview/')) {
-      return normalized.replace('/uploads/', '/uploads/preview/150x/');
+      return normalized.replace('/uploads/', '/uploads/preview/100,fit/');
     }
     return normalized;
   }
@@ -1441,17 +1466,9 @@ export class PostLightbox extends LitElement {
           </div>
 
           <aside class="related-gutter ${this.gutterOpen ? 'open' : ''}">
-            <div class="gutter-content">
+            <div class="gutter-content" @scroll=${this.handleGutterScroll}>
               <div style="font-weight: 600; margin-bottom: 8px;">More like this</div>
               
-              ${this.loadingRelated 
-                ? html`
-                    <div class="gutter-skeleton"></div>
-                    <div class="gutter-skeleton"></div>
-                    <div class="gutter-skeleton"></div>
-                  `
-                : ''}
-
               ${this.relatedPosts?.map(
                 (rec: any) => {
                   const hydrated = rec._hydratedPost;
@@ -1466,6 +1483,14 @@ export class PostLightbox extends LitElement {
                   `;
                 }
               )}
+
+              ${this.loadingRelated 
+                ? html`
+                    <div class="gutter-skeleton"></div>
+                    <div class="gutter-skeleton"></div>
+                    <div class="gutter-skeleton"></div>
+                  `
+                : ''}
             </div>
           </aside>
         </div>

@@ -53,8 +53,8 @@ export const recService = {
     }));
   },
 
-  async getSimilarPosts(postId: number, limit = 10): Promise<RecResult[]> {
-    const res = await fetch(`${API_BASE}/similar-posts/${postId}?limit=${limit}&exclude_self=true`);
+  async getSimilarPosts(postId: number, limit = 10, offset = 0): Promise<RecResult[]> {
+    const res = await fetch(`${API_BASE}/similar-posts/${postId}?limit=${limit}&offset=${offset}&exclude_self=true`);
     const data: RecResponse = await res.json();
     const items = data.similar_posts || data.recommendations || [];
     return items.map(item => ({
@@ -63,8 +63,8 @@ export const recService = {
     }));
   },
 
-  async getRecommendedPostsForUser(userId: string, limit = 10): Promise<RecResult[]> {
-    const res = await fetch(`${API_BASE}/recommendations/posts/${encodeURIComponent(userId)}?limit=${limit}`);
+  async getRecommendedPostsForUser(userId: string, limit = 10, offset = 0): Promise<RecResult[]> {
+    const res = await fetch(`${API_BASE}/recommendations/posts/${encodeURIComponent(userId)}?limit=${limit}&offset=${offset}`);
     const data: RecResponse = await res.json();
     const items = data.recommendations || [];
     return items.map(item => ({
