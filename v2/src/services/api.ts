@@ -289,7 +289,7 @@ function warnLoginFieldMismatch(data: LoginResponse): void {
 }
 
 async function login(): Promise<string> {
-  const resp = await fetch(`${API_BASE}/v2/auth/login`, {
+  const resp = await fetch(`${API_BASE}/v2/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -365,12 +365,31 @@ async function apiRequest<T>(
   retryOnAuth = true,
   retryAttempt = 0
 ): Promise<T> {
+  // Normalize endpoint path for new layered architecture
+  let normalizedEndpoint = endpoint;
+  if (normalizedEndpoint.includes('/v2/public-read-api-v2/')) {
+    normalizedEndpoint = normalizedEndpoint.replace('/v2/public-read-api-v2/', '/v2/');
+  }
+  if (normalizedEndpoint.includes('/v2/auth/')) {
+    normalizedEndpoint = normalizedEndpoint.replace('/v2/auth/', '/v2/');
+  }
+  
+  // Ensure it starts with /v2/
+  if (!normalizedEndpoint.startsWith('/v2/')) {
+    const clean = normalizedEndpoint.startsWith('/') ? normalizedEndpoint.slice(1) : normalizedEndpoint;
+    if (!clean.startsWith('v2/')) {
+      normalizedEndpoint = '/v2/' + clean;
+    } else {
+      normalizedEndpoint = '/' + clean;
+    }
+  }
+
   // Normalize follow graph direction payloads to numeric enum (0/1/2) to satisfy backend validation
   if (
     typeof body === 'object' &&
     body !== null &&
     'direction' in (body as Record<string, unknown>) &&
-    (endpoint.includes('blog-follow-graph') || endpoint.includes('list-blog-follows'))
+    (normalizedEndpoint.includes('blog-follow-graph') || normalizedEndpoint.includes('list-blog-follows'))
   ) {
     const normalizedDirection = normalizeFollowDirection(
       (body as { direction?: FollowGraphDirection }).direction
@@ -388,7 +407,7 @@ async function apiRequest<T>(
     throw new ApiError(
       ApiErrorCode.OFFLINE,
       'You appear to be offline. Please check your connection.',
-      { endpoint }
+      { endpoint: normalizedEndpoint }
     );
   }
 
@@ -396,7 +415,7 @@ async function apiRequest<T>(
   const requestStartedAt = now();
 
   const controller = new AbortController();
-  const endpointTimeout = getEndpointTimeout(endpoint);
+  const endpointTimeout = getEndpointTimeout(normalizedEndpoint);
   const timeout = setTimeout(() => controller.abort(), endpointTimeout);
 
   let statusCode: number | undefined;
@@ -404,7 +423,7 @@ async function apiRequest<T>(
 
   // HTTP conditional request support (CACHE-005)
   // Check if we have cached response with ETag/Last-Modified headers
-  const httpCacheKey = generateHttpCacheKey(endpoint, body);
+  const httpCacheKey = generateHttpCacheKey(normalizedEndpoint, body);
   const httpCached = getHttpCachedResponse<T>(httpCacheKey);
 
   // Build request headers, including conditional headers if we have cached data
@@ -424,7 +443,7 @@ async function apiRequest<T>(
   }
 
   try {
-    const resp = await fetch(`${API_BASE}${endpoint}`, {
+    const resp = await fetch(`${API_BASE}${normalizedEndpoint}`, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
@@ -432,7 +451,7 @@ async function apiRequest<T>(
     });
 
     const durationMs = now() - requestStartedAt;
-    recordEndpointTiming(endpoint, durationMs);
+    recordEndpointTiming(normalizedEndpoint, durationMs);
     recordedTiming = true;
     clearTimeout(timeout);
     statusCode = resp.status;
