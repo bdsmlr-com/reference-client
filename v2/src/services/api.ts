@@ -75,6 +75,8 @@ import type {
   ListBlogsRecentActivityResponse,
   GetPostRequest,
   GetPostResponse,
+  BatchGetPostsRequest,
+  BatchGetPostsResponse,
   GetBlogRequest,
   GetBlogResponse,
 } from '../types/api.js';
@@ -1106,6 +1108,15 @@ export async function getPostDetail(
   const req: GetPostRequest = { post_id: postId };
   return apiRequest<GetPostResponse>(
     '/v2/public-read-api-v2/get-post-detail',
+    req
+  );
+}
+
+export async function batchGetPosts(
+  req: BatchGetPostsRequest
+): Promise<BatchGetPostsResponse> {
+  return apiRequest<BatchGetPostsResponse>(
+    '/v2/batch-get-posts',
     req
   );
 }
@@ -2307,6 +2318,13 @@ export class PostsApi {
    */
   async get(postId: number): Promise<GetPostResponse> {
     return getPostDetail(postId);
+  }
+
+  /**
+   * Batch get posts by IDs.
+   */
+  async batchGet(req: BatchGetPostsRequest): Promise<BatchGetPostsResponse> {
+    return batchGetPosts(req);
   }
 
   /**

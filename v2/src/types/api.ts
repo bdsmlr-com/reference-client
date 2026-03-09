@@ -315,3 +315,12 @@ export interface GetPostResponse {
   post?: Post;
   error?: string;
 }
+
+export interface BatchGetPostsRequest {
+  post_ids: number[];
+}
+
+export interface BatchGetPostsResponse {
+  posts?: Post[];
+  error?: string;
+}

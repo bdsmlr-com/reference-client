@@ -718,8 +718,25 @@ export class PostLightbox extends LitElement {
     if (!this.post || this.loadingRelated) return;
     this.loadingRelated = true;
     try {
-      this.relatedPosts = await recService.getSimilarPosts(this.post.id, 10);
-    } catch {
+      const recs = await recService.getSimilarPosts(this.post.id, 10);
+      
+      // Hydrate with full post metadata (thumbnails)
+      const postIds = recs.map(r => r.post_id).filter((id): id is number => !!id);
+      if (postIds.length > 0) {
+        const { extractMedia } = await import('../types/post.js');
+        const resp = await apiClient.posts.batchGet({ post_ids: postIds });
+        const postMap = new Map((resp.posts || []).map(p => [p.id, { ...p, _media: extractMedia(p) }]));
+        
+        // Attach hydrated data to recs
+        this.relatedPosts = recs.map(r => ({
+          ...r,
+          _hydratedPost: r.post_id ? postMap.get(r.post_id) : undefined
+        })) as any; // Cast for now
+      } else {
+        this.relatedPosts = [];
+      }
+    } catch (e) {
+      console.error('Failed to fetch related posts', e);
       this.relatedPosts = [];
     } finally {
       this.loadingRelated = false;
@@ -1229,13 +1246,18 @@ export class PostLightbox extends LitElement {
                 ? html`
                     <div class="related-grid">
                       ${this.relatedPosts.map(
-                        (rec) => html`
-                          <div class="related-item" @click=${() => this.navigateToRelated(rec)} title="Post by @${rec.post_owner}">
-                            <img src=${`/uploads/preview/100x/photos/placeholder.jpg`} 
-                                 @error=${(e: any) => e.target.src = 'https://bdsmlr.com/static/img/no-image.png'}
-                                 alt="Related post" />
-                          </div>
-                        `
+                        (rec: any) => {
+                          const hydrated = rec._hydratedPost;
+                          const thumbUrl = this.getProxyUrl(hydrated?._media?.url);
+                          return html`
+                            <div class="related-item" @click=${() => this.navigateToRelated(rec)} title="Post by @${rec.post_owner}">
+                              ${thumbUrl 
+                                ? html`<img src=${thumbUrl} alt="Related post" @error=${(e: any) => e.target.src = 'https://bdsmlr.com/static/img/no-image.png'} />`
+                                : html`<div class="type-placeholder">🖼️</div>`
+                              }
+                            </div>
+                          `;
+                        }
                       )}
                       ${this.relatedPosts.length === 0 ? html`<div class="text-muted">No similar posts found.</div>` : ''}
                     </div>
