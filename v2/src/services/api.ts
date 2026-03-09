@@ -1074,6 +1074,15 @@ export async function listPostReblogs(
   );
 }
 
+export async function getPostDetail(
+  postId: number
+): Promise<GetPostResponse> {
+  return apiRequest<GetPostResponse>(
+    '/v2/public-read-api-v2/get-post-detail',
+    { post_id: postId }
+  );
+}
+
 export async function signUrl(url: string): Promise<string> {
   const data = await apiRequest<{ url?: string }>(
     '/v2/public-read-api-v2/sign-url',
@@ -2262,6 +2271,13 @@ function partialToUnifiedResult<T>(result: PartialResponseResult<T>): UnifiedCac
  * Provides methods for listing and searching posts.
  */
 export class PostsApi {
+  /**
+   * Get a single post by ID.
+   */
+  async get(postId: number): Promise<GetPostResponse> {
+    return getPostDetail(postId);
+  }
+
   /**
    * List posts from a specific blog.
    */

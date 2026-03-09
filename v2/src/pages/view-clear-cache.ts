@@ -72,8 +72,6 @@ export class ViewClearCache extends LitElement {
     `,
   ];
 
-  @state() private cleared = false;
-
   connectedCallback() {
     super.connectedCallback();
     this.performClear();
@@ -95,7 +93,6 @@ export class ViewClearCache extends LitElement {
     clearHttpCache();
     clearPostCache();
     clearBlogTheme();
-    this.cleared = true;
   }
 
   private handleBack() {
