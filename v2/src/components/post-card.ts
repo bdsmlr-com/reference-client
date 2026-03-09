@@ -67,14 +67,15 @@ export class PostCard extends LitElement {
 
       .card img {
         width: 100%;
-        height: 200px;
+        height: auto;
+        aspect-ratio: 1 / 1;
         object-fit: cover;
         background: var(--bg-panel-alt);
       }
 
       .type-placeholder {
         width: 100%;
-        height: 200px;
+        aspect-ratio: 1 / 1;
         background: var(--bg-panel-alt);
         display: flex;
         align-items: center;
@@ -97,13 +98,14 @@ export class PostCard extends LitElement {
       .video-thumb {
         position: relative;
         width: 100%;
-        height: 200px;
+        aspect-ratio: 1 / 1;
         background: var(--bg-panel-alt);
       }
 
       .video-thumb img {
         width: 100%;
-        height: 200px;
+        height: auto;
+        aspect-ratio: 1 / 1;
         object-fit: cover;
       }
 
@@ -124,7 +126,8 @@ export class PostCard extends LitElement {
 
       .link-thumb img {
         width: 100%;
-        height: 200px;
+        height: auto;
+        aspect-ratio: 1 / 1;
         object-fit: cover;
       }
 
@@ -237,11 +240,16 @@ export class PostCard extends LitElement {
    */
   private getProxyUrl(url: string | undefined): string {
     if (!url) return '';
-    // Use smaller preview for grid view if it's a standard upload
-    if (url.includes('/uploads/') && !url.includes('/preview/')) {
-      return url.replace('/uploads/', '/uploads/preview/100x/');
+    let normalized = url;
+    // Fix broken TLS on ocdn012
+    if (normalized.includes('ocdn012.bdsmlr.com')) {
+      normalized = normalized.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
     }
-    return url;
+    // Use smaller preview for grid view if it's a standard upload
+    if (normalized.includes('/uploads/') && !normalized.includes('/preview/')) {
+      return normalized.replace('/uploads/', '/uploads/preview/100x/');
+    }
+    return normalized;
   }
 
   render() {

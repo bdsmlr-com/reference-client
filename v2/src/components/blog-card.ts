@@ -203,17 +203,23 @@ export class BlogCard extends LitElement {
   }
 
   /**
-   * Normalize avatar URL to add CDN prefix if needed.
+   * Normalize avatar URL to add CDN prefix if needed and fix broken TLS on ocdn012.
    */
   private normalizeAvatarUrl(avatarUrl: string | null | undefined): string | null {
     if (!avatarUrl) return null;
 
-    // If already a full URL, return as-is
-    if (avatarUrl.startsWith('http')) return avatarUrl;
+    let normalized = avatarUrl;
+    // Fix broken TLS on ocdn012
+    if (normalized.includes('ocdn012.bdsmlr.com')) {
+      normalized = normalized.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
+    }
+
+    // If already a full URL, return
+    if (normalized.startsWith('http')) return normalized;
 
     // Add CDN prefix for relative paths
-    const path = avatarUrl.startsWith('/') ? avatarUrl.slice(1) : avatarUrl;
-    return `https://cdn02.bdsmlr.com/${path}`;
+    const path = normalized.startsWith('/') ? normalized.slice(1) : normalized;
+    return `https://cdn012.bdsmlr.com/${path}`;
   }
 
   render() {
