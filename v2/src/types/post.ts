@@ -85,11 +85,11 @@ export interface SortOption {
 }
 
 export const SORT_OPTIONS: SortOption[] = [
-  { value: '1:0', label: 'Newest', field: 1, order: 0 },
-  { value: '6:0', label: 'Most popular', field: 6, order: 0 },
-  { value: '4:0', label: 'Most reblogged', field: 4, order: 0 },
-  { value: '2:0', label: 'Most liked', field: 2, order: 0 },
-  { value: '3:0', label: 'Most commented', field: 3, order: 0 },
+  { value: '1:0', label: 'Newest', field: 1, order: 2 },
+  { value: '6:0', label: 'Most popular', field: 6, order: 2 },
+  { value: '4:0', label: 'Most reblogged', field: 4, order: 2 },
+  { value: '2:0', label: 'Most liked', field: 2, order: 2 },
+  { value: '3:0', label: 'Most commented', field: 3, order: 2 },
   { value: '1:1', label: 'Oldest', field: 1, order: 1 },
   { value: '6:1', label: 'Least popular', field: 6, order: 1 },
   { value: '4:1', label: 'Least reblogged', field: 4, order: 1 },
