@@ -1,15 +1,9 @@
-import { LitElement, html, css, unsafeCSS } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
-import { initTheme, injectGlobalStyles, baseStyles } from '../styles/theme.js';
-import {
-  blogFollowGraphCached,
-  listBlogsRecentActivityCached,
-  checkImageExists,
-  invalidateFollowGraphCache,
-} from '../services/api.js';
-import { resolveIdentifierCached } from '../services/api.js';
+import { LitElement, html, css, unsafeCSS, PropertyValues } from 'lit';
+import { customElement, state, property } from 'lit/decorators.js';
+import { baseStyles } from '../styles/theme.js';
+import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
-import { getBlogName, setUrlParams, isBlogInPath } from '../services/blog-resolver.js';
+import { setUrlParams, isBlogInPath } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
@@ -20,25 +14,18 @@ import {
 import { extractMedia, type ProcessedPost } from '../types/post.js';
 import type { PostType, PostVariant, Blog } from '../types/api.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
-import '../components/shared-nav.js';
 import '../components/type-pills.js';
 import '../components/variant-pills.js';
 import '../components/post-feed.js';
 import '../components/load-footer.js';
-import '../components/post-lightbox.js';
 import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
 import '../components/error-state.js';
-import '../components/offline-banner.js';
-
-// Initialize theme immediately to prevent FOUC (Flash of Unstyled Content)
-injectGlobalStyles();
-initTheme();
 
 const PAGE_SIZE = 20;
 
-@customElement('following-page')
-export class FollowingPage extends LitElement {
+@customElement('view-feed')
+export class ViewFeed extends LitElement {
   static styles = [
     baseStyles,
     css`
@@ -143,7 +130,6 @@ export class FollowingPage extends LitElement {
         margin-bottom: 20px;
       }
 
-      /* Mobile: max-width below BREAKPOINTS.MOBILE */
       @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE - 1)}px) {
         .input-row {
           flex-direction: column;
@@ -151,6 +137,8 @@ export class FollowingPage extends LitElement {
       }
     `,
   ];
+
+  @property({ type: String }) blog = '';
 
   @state() private blogNameInput = '';
   @state() private resolvedBlogName = '';
@@ -164,37 +152,38 @@ export class FollowingPage extends LitElement {
   @state() private exhausted = false;
   @state() private loadingCurrent = 0;
   @state() private infiniteScroll = false;
-  @state() private lightboxPost: ProcessedPost | null = null;
-  @state() private lightboxOpen = false;
-  @state() private lightboxIndex = -1;
   @state() private statusMessage = '';
   @state() private errorMessage = '';
   @state() private retrying = false;
-  /** TOUT-001: Track auto-retry attempts for exponential backoff */
   @state() private autoRetryAttempt = 0;
-  /** TOUT-001: Whether current error is retryable (timeout, network, server) */
   @state() private isRetryableError = false;
   @state() private blogData: Blog | null = null;
-  /** FOL-008: Track if we should skip cache on next resolve (after showing empty/error state) */
   private skipCacheOnNextResolve = false;
   private emptyFollowingAttempts = 0;
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
   private seenUrls = new Set<string>();
-  private paginationKey = ''; // Cache key for pagination cursor persistence
+  private paginationKey = '';
+
+  protected updated(changedProperties: PropertyValues): void {
+    if (changedProperties.has('blog')) {
+      if (this.blog) {
+        this.blogNameInput = this.blog;
+        this.resolveBlog();
+      }
+    }
+  }
 
   connectedCallback(): void {
     super.connectedCallback();
-    this.loadFromUrl();
-    // Save pagination state when user navigates away
     window.addEventListener('beforeunload', this.savePaginationState);
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     window.removeEventListener('beforeunload', this.savePaginationState);
-    this.savePaginationState(); // Also save when component unmounts
+    this.savePaginationState();
     const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
     if (sentinel) {
       scrollObserver.unobserve(sentinel);
@@ -214,21 +203,10 @@ export class FollowingPage extends LitElement {
     }
   };
 
-  private loadFromUrl(): void {
-    // Use getBlogName() which checks subdomain > path > query param > localStorage
-    // This properly handles path-based URLs like /nonnudecuties/following/ (FOL-005)
-    const blog = getBlogName();
-    if (blog) {
-      this.blogNameInput = blog;
-      this.resolveBlog();
-    }
-  }
-
   private observeSentinel(): void {
     requestAnimationFrame(() => {
       const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
       if (sentinel) {
-        // Use shared observer - callback checks conditions each time
         scrollObserver.observe(sentinel, () => {
           if (this.infiniteScroll && !this.loading && !this.exhausted && this.followingBlogIds.length > 0) {
             this.loadMore();
@@ -262,11 +240,8 @@ export class FollowingPage extends LitElement {
     this.statusMessage = `Resolving @${name}...`;
 
     try {
-      // Initialize blog theming (fetches blog metadata and applies custom colors)
       this.blogData = await initBlogTheme(name);
-
-      // Resolve blog name to ID using cached version
-      const blogId = await resolveIdentifierCached(name);
+      const blogId = await apiClient.identity.resolveNameToId(name);
 
       if (!blogId) {
         this.statusMessage = `Blog "@${name}" not found`;
@@ -276,32 +251,26 @@ export class FollowingPage extends LitElement {
 
       this.resolvedBlogName = name;
 
-      // Only set blog param if not already in URL path (URL-001)
       if (!isBlogInPath()) {
         setUrlParams({ blog: name });
       }
 
-      // Get following list (cached for 30 minutes)
-      // FOL-008: Skip cache if we previously showed an empty/error state (user clicked Load again)
       const shouldSkipCache = this.skipCacheOnNextResolve;
-      this.skipCacheOnNextResolve = false; // Reset for next time
+      this.skipCacheOnNextResolve = false;
 
-      const followGraph = await blogFollowGraphCached({
+      const followGraph = await apiClient.followGraph.getCached({
         blog_id: blogId,
         direction: 1,
-        page_size: 1000, // Get up to 1000 followed blogs
+        page_size: 1000,
       }, { skipCache: shouldSkipCache });
 
       const following = followGraph.following || [];
-      // Handle both camelCase (blogId) and snake_case (blog_id) from API
       this.followingBlogIds = following
         .map((f) => (f as { blogId?: number; blog_id?: number }).blogId ?? (f as { blogId?: number; blog_id?: number }).blog_id)
         .filter((id): id is number => id !== undefined && id !== null);
-      // Use API-reported count
       this.followingCount = followGraph.followingCount || this.followingBlogIds.length;
 
       if (this.followingBlogIds.length === 0) {
-        // Only show "not following" if there are truly no entries
         if (following.length === 0 && this.followingCount === 0) {
           if (this.emptyFollowingAttempts === 0) {
             this.statusMessage = '';
@@ -314,14 +283,19 @@ export class FollowingPage extends LitElement {
           }
 
           this.statusMessage = ErrorMessages.STATUS.notFollowingAnyone(name);
+          if (followGraph.fromCache) {
+            this.skipCacheOnNextResolve = true;
+          }
+
+          this.statusMessage = ErrorMessages.STATUS.notFollowingAnyone(name);
         } else {
           // FOL-008: API returned count but no usable blogIds - likely cached transient error
           // Invalidate the cache so retry can fetch fresh data
           console.warn(`FOL-008: Data mismatch for @${name} - invalidating follow graph cache`);
-          invalidateFollowGraphCache(blogId);
+          apiClient.followGraph.invalidateCache(blogId);
           this.statusMessage = '';
           this.errorMessage = ErrorMessages.DATA.followDataMismatch(name, 'following', this.followingCount);
-          this.isRetryableError = true; // Enable auto-retry
+          this.isRetryableError = true;
           this.skipCacheOnNextResolve = true;
         }
         this.resolving = false;
@@ -332,15 +306,11 @@ export class FollowingPage extends LitElement {
       this.resolving = false;
       this.emptyFollowingAttempts = 0;
 
-      // Load posts
       await this.loadPosts();
     } catch (e) {
-      // Use context-aware error messages for better user guidance
       this.errorMessage = getContextualErrorMessage(e, 'load_following', { blogName: this.blogNameInput });
-      // TOUT-001: Check if error is retryable
       const apiError = isApiError(e) ? e : toApiError(e);
       this.isRetryableError = apiError.isRetryable;
-      // FOL-008: Skip cache on next retry after any error
       this.skipCacheOnNextResolve = true;
       this.statusMessage = '';
       this.resolving = false;
@@ -356,7 +326,7 @@ export class FollowingPage extends LitElement {
 
     try {
       await this.resolveBlog();
-      this.autoRetryAttempt = 0; // reset on success
+      this.autoRetryAttempt = 0;
     } catch {
       if (isAutoRetry && this.isRetryableError) {
         this.autoRetryAttempt++;
@@ -374,20 +344,16 @@ export class FollowingPage extends LitElement {
 
     this.resetState();
 
-    // Generate pagination key for cursor caching (STOR-006)
     this.paginationKey = generatePaginationCursorKey('following', {
       blog: this.resolvedBlogName,
       types: this.selectedTypes.join(','),
       variants: this.selectedVariants.join(','),
     });
 
-    // Check for cached pagination state to resume from previous position
     const cachedState = getCachedPaginationCursor(this.paginationKey);
     if (cachedState && cachedState.itemCount > 0) {
-      // Restore cursor position - will resume loading from this point
       this.backendCursor = cachedState.cursor;
       this.exhausted = cachedState.exhausted;
-      // Schedule scroll restoration after initial load
       const scrollTarget = cachedState.scrollPosition;
       requestAnimationFrame(() => {
         setTimeout(() => {
@@ -399,9 +365,7 @@ export class FollowingPage extends LitElement {
     try {
       await this.fillPage();
     } catch (e) {
-      // Use context-aware error messages for better user guidance
       this.errorMessage = getContextualErrorMessage(e, 'load_posts', { blogName: this.blogNameInput });
-      // TOUT-001: Check if error is retryable
       const apiError = isApiError(e) ? e : toApiError(e);
       this.isRetryableError = apiError.isRetryable;
     }
@@ -420,18 +384,18 @@ export class FollowingPage extends LitElement {
       // Use server-side merge with globalMerge=true
       // FOL-009: Per API spec, pass sort_field: 0 (UNSPECIFIED) and limit_per_blog: 0 for merged FYP behavior
       // FOL-010: Use order: 2 for DESC (0=UNSPECIFIED, 1=ASC, 2=DESC)
-      const resp = await listBlogsRecentActivityCached({
+      const resp = await apiClient.recentActivity.listCached({
         blog_ids: this.followingBlogIds,
         post_types: this.selectedTypes,
         variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
         global_merge: true,
         page: {
-          page_size: PAGE_SIZE * 2, // Fetch more to account for filtering
+          page_size: PAGE_SIZE * 2,
           page_token: this.backendCursor || undefined,
         },
-        sort_field: 0, // UNSPECIFIED - required for correct merged feed behavior
-        order: 2, // DESC - newest first (0=UNSPECIFIED, 1=ASC, 2=DESC)
-        limit_per_blog: 0, // Use 0 for merged feed (globalMerge=true)
+        sort_field: 0,
+        order: 2,
+        limit_per_blog: 0,
       });
 
       const posts = resp.posts || [];
@@ -441,7 +405,6 @@ export class FollowingPage extends LitElement {
         this.exhausted = true;
       }
 
-      // Process posts
       for (const post of posts) {
         if (this.seenIds.has(post.id)) {
           continue;
@@ -461,13 +424,11 @@ export class FollowingPage extends LitElement {
 
         this.seenIds.add(post.id);
 
-        // Validate media existence for images
         if (media.type === 'image' && media.url) {
-          const exists = await checkImageExists(media.url);
+          const exists = await apiClient.media.checkImageExists(media.url);
           if (!exists) continue;
         }
 
-        // Skip deleted posts
         if (post.deletedAtUnix) continue;
 
         const processedPost: ProcessedPost = {
@@ -512,21 +473,11 @@ export class FollowingPage extends LitElement {
 
   private handlePostClick(e: CustomEvent): void {
     const post = e.detail.post as ProcessedPost;
-    this.lightboxPost = post;
-    this.lightboxIndex = this.posts.findIndex((p) => p.id === post.id);
-    this.lightboxOpen = true;
-  }
-
-  private handleLightboxClose(): void {
-    this.lightboxOpen = false;
-  }
-
-  private handleLightboxNavigate(e: CustomEvent): void {
-    const index = e.detail.index as number;
-    if (index >= 0 && index < this.posts.length) {
-      this.lightboxPost = this.posts[index];
-      this.lightboxIndex = index;
-    }
+    this.dispatchEvent(new CustomEvent('post-click', {
+      detail: { post, posts: this.posts, index: this.posts.findIndex(p => p.id === post.id) },
+      bubbles: true,
+      composed: true
+    }));
   }
 
   private handleInfiniteToggle(e: CustomEvent): void {
@@ -544,9 +495,6 @@ export class FollowingPage extends LitElement {
 
   render() {
     return html`
-      <offline-banner></offline-banner>
-      <shared-nav currentPage="following"></shared-nav>
-
       <div class="content">
         <div class="blog-input-section">
           <h2>View posts from blogs followed by:</h2>
@@ -635,19 +583,6 @@ export class FollowingPage extends LitElement {
 
         <div id="scroll-sentinel" style="height:1px;"></div>
       </div>
-
-      <post-lightbox
-        ?open=${this.lightboxOpen}
-        .post=${this.lightboxPost}
-        .posts=${this.posts}
-        .currentIndex=${this.lightboxIndex}
-        @close=${this.handleLightboxClose}
-        @navigate=${this.handleLightboxNavigate}
-      ></post-lightbox>
     `;
   }
 }
-
-// Initialize app (theme already initialized at top of module)
-const app = document.createElement('following-page');
-document.body.appendChild(app);

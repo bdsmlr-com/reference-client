@@ -1,41 +1,32 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { initTheme, injectGlobalStyles, baseStyles } from '../styles/theme.js';
+import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
-import { getBlogName, getUrlParam, setUrlParams, isBlogInPath, isDefaultTypes } from '../services/blog-resolver.js';
-import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
+import { getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
   generatePaginationCursorKey,
   getCachedPaginationCursor,
   setCachedPaginationCursor,
 } from '../services/storage.js';
-import type { Blog } from '../types/api.js';
 import { extractMedia, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { Post, PostType, PostSortField, Order, PostVariant } from '../types/api.js';
-import '../components/shared-nav.js';
+import { BREAKPOINTS } from '../types/ui-constants.js';
 import '../components/sort-controls.js';
 import '../components/type-pills.js';
 import '../components/variant-pills.js';
 import '../components/post-grid.js';
 import '../components/load-footer.js';
-import '../components/post-lightbox.js';
 import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
 import '../components/error-state.js';
-import '../components/offline-banner.js';
-import '../components/blog-header.js';
-
-// Initialize theme immediately to prevent FOUC (Flash of Unstyled Content)
-injectGlobalStyles();
-initTheme();
 
 const PAGE_SIZE = 12;
 const MAX_BACKEND_FETCHES = 20;
 
-@customElement('archive-page')
-export class ArchivePage extends LitElement {
+@customElement('view-search')
+export class ViewSearch extends LitElement {
   static styles = [
     baseStyles,
     css`
@@ -49,7 +40,21 @@ export class ArchivePage extends LitElement {
         padding: 20px 0;
       }
 
-      .controls {
+      .help {
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 12px;
+        margin-bottom: 20px;
+        padding: 0 16px;
+      }
+
+      .help code {
+        background: var(--bg-panel-alt);
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+
+      .search-box {
         max-width: 600px;
         margin: 0 auto 20px;
         padding: 0 16px;
@@ -57,6 +62,43 @@ export class ArchivePage extends LitElement {
         gap: 10px;
         flex-wrap: wrap;
         justify-content: center;
+      }
+
+      .search-box input {
+        flex: 1;
+        min-width: 200px;
+        max-width: 300px;
+        padding: 8px 12px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        background: var(--bg-panel);
+        color: var(--text-primary);
+        font-size: 14px;
+        min-height: 32px;
+      }
+
+      .search-box input:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+
+      .search-box button {
+        padding: 8px 16px;
+        border-radius: 4px;
+        background: var(--accent);
+        color: white;
+        font-size: 14px;
+        transition: background 0.2s;
+        min-height: 32px;
+      }
+
+      .search-box button:hover {
+        background: var(--accent-hover);
+      }
+
+      .search-box button:disabled {
+        background: var(--text-muted);
+        cursor: wait;
       }
 
       .type-pills-container {
@@ -80,63 +122,63 @@ export class ArchivePage extends LitElement {
         padding: 40px 16px;
       }
 
-      .error {
-        text-align: center;
-        color: var(--error);
-        padding: 40px 16px;
-      }
-
       .grid-container {
         margin-bottom: 20px;
+      }
+
+      @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE - 1)}px) {
+        .search-box {
+          flex-direction: column;
+        }
+
+        .search-box input {
+          width: 100%;
+        }
+
+        .search-box button {
+          width: 100%;
+        }
       }
     `,
   ];
 
-  @state() private blogName = '';
-  @state() private blogId: number | null = null;
+  @state() private query = '';
   @state() private sortValue = '1:0';
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
   @state() private selectedVariants: PostVariant[] = [];
   @state() private posts: ProcessedPost[] = [];
   @state() private loading = false;
+  @state() private searching = false;
   @state() private exhausted = false;
   @state() private stats: ViewStats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
   @state() private loadingCurrent = 0;
   @state() private infiniteScroll = false;
-  @state() private lightboxPost: ProcessedPost | null = null;
-  @state() private lightboxOpen = false;
-  @state() private lightboxIndex = -1;
   @state() private statusMessage = '';
+  @state() private hasSearched = false;
   @state() private errorMessage = '';
   @state() private retrying = false;
-  @state() private initialLoading = false;
-  @state() private blogData: Blog | null = null;
-  /** TOUT-001: Track auto-retry attempts for exponential backoff */
   @state() private autoRetryAttempt = 0;
-  /** TOUT-001: Whether current error is retryable (timeout, network, server) */
   @state() private isRetryableError = false;
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
   private seenUrls = new Set<string>();
-  private paginationKey = ''; // Cache key for pagination cursor persistence
+  private paginationKey = '';
 
   connectedCallback(): void {
     super.connectedCallback();
     this.loadFromUrl();
-    // Save pagination state when user navigates away
     window.addEventListener('beforeunload', this.savePaginationState);
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     window.removeEventListener('beforeunload', this.savePaginationState);
-    this.savePaginationState(); // Also save when component unmounts
+    this.savePaginationState();
     const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
     if (sentinel) {
       scrollObserver.unobserve(sentinel);
     }
-    clearBlogTheme();
   }
 
   private savePaginationState = (): void => {
@@ -151,86 +193,28 @@ export class ArchivePage extends LitElement {
     }
   };
 
-  private async loadFromUrl(): Promise<void> {
-    // Get blog name from URL parameter
-    this.blogName = getBlogName();
-
+  private loadFromUrl(): void {
+    const q = getUrlParam('q');
     const sort = getUrlParam('sort');
     const types = getUrlParam('types');
 
+    if (q) this.query = q;
     if (sort) this.sortValue = sort;
     if (types) {
       this.selectedTypes = types.split(',').map((t) => parseInt(t, 10) as PostType);
     }
 
-    if (!this.blogName) {
-      this.errorMessage = ErrorMessages.VALIDATION.NO_BLOG_SPECIFIED;
-      return;
+    if (this.query) {
+      this.search();
     }
-
-    // Resolve blog name to ID using cached resolver
-    this.initialLoading = true;
-    this.errorMessage = '';
-    try {
-      // Initialize blog theming (fetches blog metadata and applies custom colors)
-      this.blogData = await initBlogTheme(this.blogName);
-
-      const blogId = await apiClient.identity.resolveNameToId(this.blogName);
-
-      if (!blogId) {
-        this.errorMessage = ErrorMessages.BLOG.notFound(this.blogName);
-        this.isRetryableError = false;
-        this.initialLoading = false;
-        return;
-      }
-
-      this.blogId = blogId;
-      await this.loadPosts();
-    } catch (e) {
-      // Use context-aware error messages for better user guidance
-      this.errorMessage = getContextualErrorMessage(e, 'resolve_blog', { blogName: this.blogName });
-      // TOUT-001: Check if error is retryable
-      const apiError = isApiError(e) ? e : toApiError(e);
-      this.isRetryableError = apiError.isRetryable;
-    } finally {
-      this.initialLoading = false;
-    }
-  }
-
-  /**
-   * TOUT-001: Handle retry events from error-state, supporting auto-retry.
-   * @param e CustomEvent with detail.isAutoRetry and detail.attempt
-   */
-  private async handleRetry(e?: CustomEvent): Promise<void> {
-    const isAutoRetry = e?.detail?.isAutoRetry ?? false;
-
-    this.retrying = true;
-    this.errorMessage = '';
-    this.isRetryableError = false;
-
-    try {
-      await this.loadFromUrl();
-      // Success - reset auto-retry counter
-      this.autoRetryAttempt = 0;
-    } catch {
-      // Error already shown by loadFromUrl
-      // If this was an auto-retry and we still have a retryable error,
-      // increment attempt counter for next backoff
-      if (isAutoRetry && this.isRetryableError) {
-        this.autoRetryAttempt++;
-      }
-    }
-
-    this.retrying = false;
   }
 
   private observeSentinel(): void {
     requestAnimationFrame(() => {
       const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
       if (sentinel) {
-        // Use shared observer - callback checks conditions each time
         scrollObserver.observe(sentinel, () => {
-          if (this.infiniteScroll && !this.loading && !this.exhausted && this.blogId) {
+          if (this.infiniteScroll && !this.loading && !this.exhausted && this.hasSearched) {
             this.loadMore();
           }
         });
@@ -246,43 +230,37 @@ export class ArchivePage extends LitElement {
     this.stats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
     this.posts = [];
     this.statusMessage = '';
+    this.errorMessage = '';
   }
 
-  private async loadPosts(): Promise<void> {
-    if (!this.blogId) return;
+  private async search(): Promise<void> {
+    if (!this.query.trim()) return;
     if (this.selectedTypes.length === 0) {
       this.statusMessage = ErrorMessages.VALIDATION.NO_TYPES_SELECTED;
       return;
     }
 
+    this.searching = true;
     this.resetState();
+    this.hasSearched = true;
 
-    // Build URL params, only including non-default values (URL-002)
     const params: Record<string, string> = {
+      q: this.query,
       sort: this.sortValue,
-      // Pass empty string for types if default, so it gets removed from URL
       types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','),
     };
-    // Only set blog param if not already in URL path (URL-001)
-    if (!isBlogInPath()) {
-      params.blog = this.blogName;
-    }
     setUrlParams(params);
 
-    // Generate pagination key for cursor caching (CACHE-003)
-    this.paginationKey = generatePaginationCursorKey('archive', {
-      blog: this.blogName,
+    this.paginationKey = generatePaginationCursorKey('search', {
+      q: this.query,
       sort: this.sortValue,
       types: this.selectedTypes.join(','),
     });
 
-    // Check for cached pagination state to resume from previous position
     const cachedState = getCachedPaginationCursor(this.paginationKey);
     if (cachedState && cachedState.itemCount > 0) {
-      // Restore cursor position - will resume loading from this point
       this.backendCursor = cachedState.cursor;
       this.exhausted = cachedState.exhausted;
-      // Schedule scroll restoration after initial load
       const scrollTarget = cachedState.scrollPosition;
       requestAnimationFrame(() => {
         setTimeout(() => {
@@ -294,19 +272,34 @@ export class ArchivePage extends LitElement {
     try {
       await this.fillPage();
     } catch (e) {
-      // Use context-aware error messages for better user guidance
-      this.errorMessage = getContextualErrorMessage(e, 'load_posts', { blogName: this.blogName });
-      // TOUT-001: Check if error is retryable
+      this.errorMessage = getContextualErrorMessage(e, 'search', { query: this.query });
       const apiError = isApiError(e) ? e : toApiError(e);
       this.isRetryableError = apiError.isRetryable;
     }
 
+    this.searching = false;
     this.observeSentinel();
   }
 
-  private async fillPage(): Promise<void> {
-    if (!this.blogId) return;
+  private async handleRetry(e?: CustomEvent): Promise<void> {
+    const isAutoRetry = e?.detail?.isAutoRetry ?? false;
+    this.retrying = true;
+    this.errorMessage = '';
+    this.isRetryableError = false;
 
+    try {
+      await this.search();
+      this.autoRetryAttempt = 0;
+    } catch {
+      if (isAutoRetry && this.isRetryableError) {
+        this.autoRetryAttempt++;
+      }
+    }
+
+    this.retrying = false;
+  }
+
+  private async fillPage(): Promise<void> {
     const buffer: ProcessedPost[] = [];
     let backendFetches = 0;
 
@@ -319,8 +312,8 @@ export class ArchivePage extends LitElement {
       while (buffer.length < PAGE_SIZE && !this.exhausted && backendFetches < MAX_BACKEND_FETCHES) {
         backendFetches++;
 
-        const resp = await apiClient.posts.list({
-          blog_id: this.blogId,
+        const resp = await apiClient.posts.searchCached({
+          tag_name: this.query,
           sort_field: sortOpt.field as PostSortField,
           order: sortOpt.order as Order,
           post_types: this.selectedTypes,
@@ -388,8 +381,10 @@ export class ArchivePage extends LitElement {
           }
 
           const isDeleted = !!post.deletedAtUnix;
+          const isReblog = post.originPostId && post.originPostId !== post.id;
+          const isRedacted = isDeleted || (!post.blogName && isReblog);
 
-          if (isDeleted) {
+          if (isDeleted || isRedacted) {
             this.stats = { ...this.stats, deleted: this.stats.deleted + 1 };
             continue;
           }
@@ -413,7 +408,7 @@ export class ArchivePage extends LitElement {
       if (buffer.length > 0) {
         this.posts = [...this.posts, ...buffer];
       } else if (this.stats.found === 0 && this.exhausted) {
-        this.statusMessage = 'No posts found';
+        this.statusMessage = 'No results found';
       }
     } finally {
       this.loading = false;
@@ -427,42 +422,32 @@ export class ArchivePage extends LitElement {
 
   private handleSortChange(e: CustomEvent): void {
     this.sortValue = e.detail.value;
-    if (this.blogId) {
-      this.loadPosts();
+    if (this.hasSearched) {
+      this.search();
     }
   }
 
   private handleTypesChange(e: CustomEvent): void {
     this.selectedTypes = e.detail.types;
-    if (this.blogId) {
-      this.loadPosts();
+    if (this.hasSearched) {
+      this.search();
     }
   }
 
   private handleVariantChange(e: CustomEvent): void {
     this.selectedVariants = e.detail.variants || [];
-    if (this.blogId) {
-      this.loadPosts();
+    if (this.hasSearched) {
+      this.search();
     }
   }
 
   private handlePostClick(e: CustomEvent): void {
     const post = e.detail.post as ProcessedPost;
-    this.lightboxPost = post;
-    this.lightboxIndex = this.posts.findIndex((p) => p.id === post.id);
-    this.lightboxOpen = true;
-  }
-
-  private handleLightboxClose(): void {
-    this.lightboxOpen = false;
-  }
-
-  private handleLightboxNavigate(e: CustomEvent): void {
-    const index = e.detail.index as number;
-    if (index >= 0 && index < this.posts.length) {
-      this.lightboxPost = this.posts[index];
-      this.lightboxIndex = index;
-    }
+    this.dispatchEvent(new CustomEvent('post-click', {
+      detail: { post, posts: this.posts, index: this.posts.findIndex(p => p.id === post.id) },
+      bubbles: true,
+      composed: true
+    }));
   }
 
   private handleInfiniteToggle(e: CustomEvent): void {
@@ -472,44 +457,46 @@ export class ArchivePage extends LitElement {
     }
   }
 
+  private handleKeyPress(e: KeyboardEvent): void {
+    if (e.key === 'Enter') {
+      this.search();
+    }
+  }
+
   render() {
     return html`
-      <offline-banner></offline-banner>
-      <shared-nav currentPage="archive"></shared-nav>
-
       <div class="content">
-        ${this.blogName
-          ? html`
-              <blog-header
-                page="archive"
-                .blogName=${this.blogName}
-                .blogTitle=${this.blogData?.title || ''}
-              ></blog-header>
-            `
-          : ''}
+        <p class="help">
+          Boolean: <code>tag1 tag2</code> = AND, <code>"exact phrase"</code> = literal,
+          <code>-tag</code> = NOT, <code>(a b) c</code> = groups
+        </p>
 
-        ${this.initialLoading && !this.blogId
-          ? html`<loading-spinner message="Loading..." trackTime></loading-spinner>`
-          : ''}
+        <div class="search-box">
+          <input
+            type="text"
+            placeholder="Enter tags..."
+            .value=${this.query}
+            @input=${(e: Event) => (this.query = (e.target as HTMLInputElement).value)}
+            @keypress=${this.handleKeyPress}
+          />
+          <sort-controls .value=${this.sortValue} @sort-change=${this.handleSortChange}></sort-controls>
+          <button ?disabled=${this.searching} @click=${() => this.search()}>Search</button>
+        </div>
 
-        ${this.blogId
-          ? html`
-              <div class="controls">
-                <sort-controls .value=${this.sortValue} @sort-change=${this.handleSortChange}></sort-controls>
-              </div>
+        <div class="type-pills-container">
+          <type-pills
+            .selectedTypes=${this.selectedTypes}
+            @types-change=${this.handleTypesChange}
+          ></type-pills>
+          <span class="pills-separator">|</span>
+          <variant-pills
+            .loading=${this.loading}
+            @variant-change=${this.handleVariantChange}
+          ></variant-pills>
+        </div>
 
-              <div class="type-pills-container">
-                <type-pills
-                  .selectedTypes=${this.selectedTypes}
-                  @types-change=${this.handleTypesChange}
-                ></type-pills>
-                <span class="pills-separator">|</span>
-                <variant-pills
-                  .loading=${this.loading}
-                  @variant-change=${this.handleVariantChange}
-                ></variant-pills>
-              </div>
-            `
+        ${this.searching && this.posts.length === 0
+          ? html`<div class="grid-container"><skeleton-loader variant="post-card" count="8" trackTime></skeleton-loader></div>`
           : ''}
 
         ${this.errorMessage
@@ -525,11 +512,7 @@ export class ArchivePage extends LitElement {
             `
           : ''}
 
-        ${this.statusMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
-
-        ${this.loading && this.posts.length === 0 && !this.errorMessage && this.blogId
-          ? html`<div class="grid-container"><skeleton-loader variant="post-card" count="8" trackTime></skeleton-loader></div>`
-          : ''}
+        ${this.statusMessage && !this.searching && !this.errorMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
 
         ${this.posts.length > 0
           ? html`
@@ -538,8 +521,8 @@ export class ArchivePage extends LitElement {
               </div>
 
               <load-footer
-                mode="archive"
-                pageName="archive"
+                mode="search"
+                pageName="search"
                 .stats=${this.stats}
                 .loading=${this.loading}
                 .exhausted=${this.exhausted}
@@ -554,19 +537,6 @@ export class ArchivePage extends LitElement {
 
         <div id="scroll-sentinel" style="height:1px;"></div>
       </div>
-
-      <post-lightbox
-        ?open=${this.lightboxOpen}
-        .post=${this.lightboxPost}
-        .posts=${this.posts}
-        .currentIndex=${this.lightboxIndex}
-        @close=${this.handleLightboxClose}
-        @navigate=${this.handleLightboxNavigate}
-      ></post-lightbox>
     `;
   }
 }
-
-// Initialize app (theme already initialized at top of module)
-const app = document.createElement('archive-page');
-document.body.appendChild(app);

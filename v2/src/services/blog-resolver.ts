@@ -20,18 +20,33 @@ const SUBDOMAIN_ENABLED_DOMAINS = ['bdsmlr.com', 'bdsmlr.localhost'];
 const RESERVED_SUBDOMAINS = ['www', 'api', 'cdn', 'static', 'admin', 'app'];
 
 // Pages that support path-based blog routing
-const BLOG_PAGES = ['archive', 'timeline', 'following', 'social', 'masquerade'];
+const BLOG_PAGES = ['archive', 'posts', 'feed', 'social', 'masquerade', 'timeline', 'following'];
 
 // Reserved page routes that are NOT blog names
-// These are top-level routes that should not be interpreted as blog names in path-based routing
 const RESERVED_PAGE_ROUTES = [
   'home',
   'search',
   'blogs',
   'activity',
-  'following', // Note: also in BLOG_PAGES, but as top-level route it's reserved
+  'feed',
+  'posts',
+  'following',
+  'timeline',
   'clear-cache',
 ];
+
+/**
+ * Check if the current user is in admin mode.
+ * Set via ?admin=true query param or localStorage 'bdsmlr_admin' flag.
+ */
+export function isAdminMode(): boolean {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('admin') === 'true') {
+    localStorage.setItem('bdsmlr_admin', 'true');
+    return true;
+  }
+  return localStorage.getItem('bdsmlr_admin') === 'true';
+}
 
 /**
  * Check if a string is a reserved page route (not a valid blog name).
@@ -347,20 +362,19 @@ export function setUrlParams(params: Record<string, string>): void {
 }
 
 /**
- * Check if we're in development mode (using .html files).
+ * Check if we're in development mode.
+ * In the new SPA, we always use path-based routing.
  */
 export function isDevMode(): boolean {
-  const pathname = window.location.pathname;
-  return pathname.includes('/src/pages/') || pathname.endsWith('.html');
+  return false;
 }
 
 /**
  * Build URL for a page, using the appropriate routing strategy:
- * - Dev mode: .html files with query params
- * - Subdomain mode: /:page/ paths within same subdomain, full URLs for other blogs
- * - Path mode: /:blogname/:page/ paths
+ * - Subdomain mode: blogname.bdsmlr.com
+ * - Path mode: /:blogname/:page
  *
- * @param page - The page name (e.g., 'timeline', 'archive')
+ * @param page - The page name (e.g., 'posts', 'archive')
  * @param blogName - Optional blog name for blog-specific pages
  * @param queryParams - Additional query parameters
  */
@@ -369,53 +383,34 @@ export function buildPageUrl(
   blogName?: string,
   queryParams?: Record<string, string>
 ): string {
-  const isDev = isDevMode();
-
   let url: string;
 
-  if (isDev) {
-    // Dev mode: use .html files with query params
-    url = `${page}.html`;
-    if (blogName && BLOG_PAGES.includes(page)) {
-      const params = new URLSearchParams({ blog: blogName, ...queryParams });
-      url += `?${params.toString()}`;
-    } else if (queryParams && Object.keys(queryParams).length > 0) {
-      const params = new URLSearchParams(queryParams);
-      url += `?${params.toString()}`;
-    }
-  } else if (isSubdomainMode()) {
+  if (isSubdomainMode()) {
     // Subdomain mode: blogname.bdsmlr.com
     const currentBlog = getBlogNameFromSubdomain();
 
     if (blogName && BLOG_PAGES.includes(page) && blogName !== currentBlog) {
       // Different blog: need full subdomain URL
-      url = buildSubdomainUrl(blogName, page);
+      url = buildSubdomainUrl(blogName, page, queryParams);
+      return url; // buildSubdomainUrl already handles query params
     } else {
       // Same blog or non-blog page: relative path
-      // Always include page name for URL consistency (URL-003 fix)
-      url = `/${page}/`;
-    }
-
-    // Append query params if any
-    if (queryParams && Object.keys(queryParams).length > 0) {
-      const params = new URLSearchParams(queryParams);
-      url += `?${params.toString()}`;
+      url = `/${page}`;
     }
   } else {
-    // Production path-based routing: /:blogname/:page/
+    // Production path-based routing: /:blogname/:page
     if (blogName && BLOG_PAGES.includes(page)) {
-      // /:blogname/:page/ format - always include page name for URL consistency (URL-003 fix)
-      url = `/${blogName}/${page}/`;
+      url = `/${blogName}/${page}`;
     } else {
-      // Non-blog pages: /:page/
-      url = `/${page}/`;
+      // Non-blog pages: /:page
+      url = `/${page}`;
     }
+  }
 
-    // Append query params if any
-    if (queryParams && Object.keys(queryParams).length > 0) {
-      const params = new URLSearchParams(queryParams);
-      url += `?${params.toString()}`;
-    }
+  // Append query params if any
+  if (queryParams && Object.keys(queryParams).length > 0) {
+    const params = new URLSearchParams(queryParams);
+    url += `?${params.toString()}`;
   }
 
   return url;

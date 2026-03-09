@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@lit-labs/router": "^0.1.4",
     "chroma-js": "^3.2.0",
     "date-fns": "^4.1.0",
     "lit": "^3.1.0"

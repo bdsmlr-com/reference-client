@@ -1,10 +1,9 @@
-import { LitElement, html, css } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
-import { initTheme, injectGlobalStyles, baseStyles } from '../styles/theme.js';
-import { blogFollowGraphCached } from '../services/api.js';
-import { resolveIdentifierCached } from '../services/api.js';
+import { LitElement, html, css, PropertyValues } from 'lit';
+import { customElement, state, property } from 'lit/decorators.js';
+import { baseStyles } from '../styles/theme.js';
+import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
-import { getBlogName, getUrlParam, setUrlParams, isBlogInPath } from '../services/blog-resolver.js';
+import { getUrlParam, setUrlParams, isBlogInPath } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
@@ -13,25 +12,18 @@ import {
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import type { FollowEdge, Blog } from '../types/api.js';
-import '../components/shared-nav.js';
 import '../components/blog-list.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
 import '../components/error-state.js';
-import '../components/offline-banner.js';
-import '../components/blog-context.js';
-
-// Initialize theme immediately to prevent FOUC (Flash of Unstyled Content)
-injectGlobalStyles();
-initTheme();
+import '../components/blog-header.js';
 
 const PAGE_SIZE = 100;
-
 type Tab = 'followers' | 'following';
 
-@customElement('social-page')
-export class SocialPage extends LitElement {
+@customElement('view-social')
+export class ViewSocial extends LitElement {
   static styles = [
     baseStyles,
     css`
@@ -108,7 +100,8 @@ export class SocialPage extends LitElement {
     `,
   ];
 
-  @state() private blogName = '';
+  @property({ type: String }) blog = '';
+
   @state() private blogId: number | null = null;
   @state() private activeTab: Tab = 'followers';
   @state() private followers: FollowEdge[] = [];
@@ -124,29 +117,30 @@ export class SocialPage extends LitElement {
   @state() private statusMessage = '';
   @state() private errorMessage = '';
   @state() private retrying = false;
-  /** TOUT-001: Track auto-retry attempts for exponential backoff */
   @state() private autoRetryAttempt = 0;
-  /** TOUT-001: Whether current error is retryable (timeout, network, server) */
   @state() private isRetryableError = false;
   @state() private blogData: Blog | null = null;
   /** SOC-019: Bypass cached follow graph on next fetch after mismatch */
   private skipCacheOnNextFetch = false;
 
-  /** STOR-006: Cache keys for pagination cursor persistence (one per tab) */
   private followersPaginationKey = '';
   private followingPaginationKey = '';
 
+  protected updated(changedProperties: PropertyValues): void {
+    if (changedProperties.has('blog')) {
+      this.loadFromUrl();
+    }
+  }
+
   connectedCallback(): void {
     super.connectedCallback();
-    this.loadFromUrl();
-    // Save pagination state when user navigates away
     window.addEventListener('beforeunload', this.savePaginationState);
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     window.removeEventListener('beforeunload', this.savePaginationState);
-    this.savePaginationState(); // Also save when component unmounts
+    this.savePaginationState();
     const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
     if (sentinel) {
       scrollObserver.unobserve(sentinel);
@@ -154,9 +148,7 @@ export class SocialPage extends LitElement {
     clearBlogTheme();
   }
 
-  /** STOR-006: Save pagination state for both tabs */
   private savePaginationState = (): void => {
-    // Save followers tab state if we have data
     if (this.followersPaginationKey && this.followers.length > 0) {
       setCachedPaginationCursor(
         this.followersPaginationKey,
@@ -166,7 +158,6 @@ export class SocialPage extends LitElement {
         this.followersExhausted
       );
     }
-    // Save following tab state if we have data
     if (this.followingPaginationKey && this.following.length > 0) {
       setCachedPaginationCursor(
         this.followingPaginationKey,
@@ -179,28 +170,23 @@ export class SocialPage extends LitElement {
   };
 
   private async loadFromUrl(): Promise<void> {
-    this.blogName = getBlogName();
     const tab = getUrlParam('tab') as Tab;
     if (tab === 'followers' || tab === 'following') {
       this.activeTab = tab;
     }
 
-    if (!this.blogName) {
+    if (!this.blog) {
       this.errorMessage = ErrorMessages.VALIDATION.NO_BLOG_SPECIFIED;
       return;
     }
 
-    // Resolve blog name to ID using cached resolver
     try {
       this.statusMessage = 'Resolving blog...';
-
-      // Initialize blog theming (fetches blog metadata and applies custom colors)
-      this.blogData = await initBlogTheme(this.blogName);
-
-      const blogId = await resolveIdentifierCached(this.blogName);
+      this.blogData = await initBlogTheme(this.blog);
+      const blogId = await apiClient.identity.resolveNameToId(this.blog);
 
       if (!blogId) {
-        this.errorMessage = ErrorMessages.BLOG.notFound(this.blogName);
+        this.errorMessage = ErrorMessages.BLOG.notFound(this.blog);
         this.statusMessage = '';
         return;
       }
@@ -209,9 +195,7 @@ export class SocialPage extends LitElement {
       this.statusMessage = '';
       await this.loadData();
     } catch (e) {
-      // Use context-aware error messages for better user guidance
-      this.errorMessage = getContextualErrorMessage(e, 'resolve_blog', { blogName: this.blogName });
-      // TOUT-001: Check if error is retryable
+      this.errorMessage = getContextualErrorMessage(e, 'resolve_blog', { blogName: this.blog });
       const apiError = isApiError(e) ? e : toApiError(e);
       this.isRetryableError = apiError.isRetryable;
       this.statusMessage = '';
@@ -222,7 +206,6 @@ export class SocialPage extends LitElement {
     requestAnimationFrame(() => {
       const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
       if (sentinel) {
-        // Use shared observer - callback checks conditions each time
         scrollObserver.observe(sentinel, () => {
           if (this.infiniteScroll && !this.loading && !this.isExhausted && this.blogId) {
             this.loadMore();
@@ -243,28 +226,24 @@ export class SocialPage extends LitElement {
   private async loadData(): Promise<void> {
     if (!this.blogId) return;
 
-    // Only set blog param if not already in URL path (URL-001)
     const params: Record<string, string> = { tab: this.activeTab };
     if (!isBlogInPath()) {
-      params.blog = this.blogName;
+      params.blog = this.blog;
     }
     setUrlParams(params);
 
-    // STOR-006: Generate pagination keys for cursor caching (one per tab)
     this.followersPaginationKey = generatePaginationCursorKey('social-followers', {
-      blog: this.blogName,
+      blog: this.blog,
     });
     this.followingPaginationKey = generatePaginationCursorKey('social-following', {
-      blog: this.blogName,
+      blog: this.blog,
     });
 
-    // STOR-006: Check for cached pagination state to resume from previous position
     const activeKey = this.activeTab === 'followers'
       ? this.followersPaginationKey
       : this.followingPaginationKey;
     const cachedState = getCachedPaginationCursor(activeKey);
     if (cachedState && cachedState.itemCount > 0) {
-      // Restore cursor position for the active tab
       if (this.activeTab === 'followers') {
         this.followersCursor = cachedState.cursor;
         this.followersExhausted = cachedState.exhausted;
@@ -272,7 +251,6 @@ export class SocialPage extends LitElement {
         this.followingCursor = cachedState.cursor;
         this.followingExhausted = cachedState.exhausted;
       }
-      // Schedule scroll restoration after initial load
       const scrollTarget = cachedState.scrollPosition;
       requestAnimationFrame(() => {
         setTimeout(() => {
@@ -284,10 +262,8 @@ export class SocialPage extends LitElement {
     try {
       await this.fetchPage();
     } catch (e) {
-      // Use context-aware error messages for better user guidance
       const operation = this.activeTab === 'followers' ? 'load_followers' : 'load_following';
-      this.errorMessage = getContextualErrorMessage(e, operation, { blogName: this.blogName });
-      // TOUT-001: Check if error is retryable
+      this.errorMessage = getContextualErrorMessage(e, operation, { blogName: this.blog });
       const apiError = isApiError(e) ? e : toApiError(e);
       this.isRetryableError = apiError.isRetryable;
     }
@@ -307,23 +283,18 @@ export class SocialPage extends LitElement {
       const shouldSkipCache = this.skipCacheOnNextFetch;
       this.skipCacheOnNextFetch = false;
 
-      const resp = await blogFollowGraphCached({
+      const resp = await apiClient.followGraph.getCached({
         blog_id: this.blogId,
         direction: direction === 'followers' ? 2 : 1,
         page_size: PAGE_SIZE,
         page_token: cursor || undefined,
       }, { skipCache: shouldSkipCache });
 
-      // SOC-018: Handle both snake_case and camelCase field names from API response
-      // The API may return followers_count/following_count (snake_case) but TypeScript
-      // interface expects followersCount/followingCount (camelCase)
       const rawResp = resp as unknown as Record<string, unknown>;
       const followersCountFromApi = (resp.followersCount ?? rawResp['followers_count'] ?? 0) as number;
       const followingCountFromApi = (resp.followingCount ?? rawResp['following_count'] ?? 0) as number;
       const nextPageTokenFromApi = (resp.nextPageToken ?? rawResp['next_page_token'] ?? null) as string | null;
 
-      // Always capture both counts from the API response if available
-      // The API returns both followersCount and followingCount regardless of which direction was requested
       if (followersCountFromApi > 0) {
         this.followersCount = followersCountFromApi;
       }
@@ -336,14 +307,13 @@ export class SocialPage extends LitElement {
         this.followers = [...this.followers, ...items];
         this.followersCursor = nextPageTokenFromApi;
 
-        // Only fall back to loaded length if API didn't provide a count
         if (this.followersCount === 0 && this.followers.length > 0) {
           this.followersCount = this.followers.length;
         }
 
         if (!cursor && this.followersCount > 0 && items.length === 0) {
           this.errorMessage = ErrorMessages.DATA.followDataMismatch(
-            this.blogName,
+            this.blog,
             'followers',
             this.followersCount
           );
@@ -361,14 +331,13 @@ export class SocialPage extends LitElement {
         this.following = [...this.following, ...items];
         this.followingCursor = nextPageTokenFromApi;
 
-        // Only fall back to loaded length if API didn't provide a count
         if (this.followingCount === 0 && this.following.length > 0) {
           this.followingCount = this.following.length;
         }
 
         if (!cursor && this.followingCount > 0 && items.length === 0) {
           this.errorMessage = ErrorMessages.DATA.followDataMismatch(
-            this.blogName,
+            this.blog,
             'following',
             this.followingCount
           );
@@ -383,10 +352,8 @@ export class SocialPage extends LitElement {
         }
       }
     } catch (e) {
-      // Use context-aware error messages for better user guidance
       const operation = this.activeTab === 'followers' ? 'load_followers' : 'load_following';
-      this.errorMessage = getContextualErrorMessage(e, operation, { blogName: this.blogName });
-      // TOUT-001: Check if error is retryable
+      this.errorMessage = getContextualErrorMessage(e, operation, { blogName: this.blog });
       const apiError = isApiError(e) ? e : toApiError(e);
       this.isRetryableError = apiError.isRetryable;
     } finally {
@@ -404,14 +371,12 @@ export class SocialPage extends LitElement {
 
     this.activeTab = tab;
 
-    // Only set blog param if not already in URL path (URL-001)
     const params: Record<string, string> = { tab: this.activeTab };
     if (!isBlogInPath()) {
-      params.blog = this.blogName;
+      params.blog = this.blog;
     }
     setUrlParams(params);
 
-    // Load if empty
     if (this.currentList.length === 0) {
       await this.fetchPage();
     }
@@ -438,7 +403,7 @@ export class SocialPage extends LitElement {
       } else {
         await this.fetchPage();
       }
-      this.autoRetryAttempt = 0; // reset on success
+      this.autoRetryAttempt = 0;
     } catch {
       if (isAutoRetry && this.isRetryableError) {
         this.autoRetryAttempt++;
@@ -450,18 +415,14 @@ export class SocialPage extends LitElement {
 
   render() {
     return html`
-      <offline-banner></offline-banner>
-      <shared-nav currentPage="social"></shared-nav>
-
       <div class="content">
-        ${this.blogName
+        ${this.blog
           ? html`
-              <div class="blog-header">
-                <h1 class="blog-name">@${this.blogName}</h1>
-                ${this.blogData?.title ? html`<p class="blog-meta">${this.blogData.title}</p>` : ''}
-                ${this.blogId ? html`<p class="blog-meta">Social Connections</p>` : ''}
-              </div>
-              <blog-context page="social" .viewedBlog=${this.blogName}></blog-context>
+              <blog-header
+                page="social"
+                .blogName=${this.blog}
+                .blogTitle=${this.blogData?.title || ''}
+              ></blog-header>
             `
           : ''}
 
@@ -529,7 +490,3 @@ export class SocialPage extends LitElement {
     `;
   }
 }
-
-// Initialize app (theme already initialized at top of module)
-const app = document.createElement('social-page');
-document.body.appendChild(app);

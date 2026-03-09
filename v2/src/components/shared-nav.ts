@@ -173,10 +173,10 @@ export class SharedNav extends LitElement {
    * This ensures nav links always take you to YOUR blog's pages, not the blog you
    * happen to be viewing.
    */
-  private getPageUrl(page: PageName): string {
+  private getPageUrl(page: string): string {
     // Use PRIMARY blog (from localStorage) for blog-specific pages
     const primaryBlog = getPrimaryBlogName();
-    const blogPages = ['archive', 'timeline', 'following', 'social'];
+    const blogPages = ['archive', 'posts', 'feed', 'social'];
 
     if (blogPages.includes(page) && primaryBlog) {
       return buildPageUrl(page, primaryBlog);
@@ -220,10 +220,10 @@ export class SharedNav extends LitElement {
   }
 
   render() {
-    const pages: { name: PageName; label: string; description: string }[] = [
-      { name: 'following', label: 'My Feed', description: "Posts from blogs you follow - your dashboard feed" },
-      { name: 'timeline', label: 'Blog Posts', description: "A blog's posts in chronological order" },
-      { name: 'archive', label: 'Browse', description: "Browse and sort all posts from a blog" },
+    const pages = [
+      { name: 'feed', label: 'Feed', description: "Posts from blogs you follow - your dashboard feed" },
+      { name: 'posts', label: 'Posts', description: "A blog's posts in chronological order" },
+      { name: 'archive', label: 'Archive', description: "Browse and sort all posts from a blog" },
       { name: 'social', label: 'Connections', description: "View who follows a blog and who they follow" },
       { name: 'blogs', label: 'Discover', description: 'Discover blogs by name or description' },
       { name: 'search', label: 'Search', description: 'Search posts by tags with boolean syntax' },
@@ -231,6 +231,9 @@ export class SharedNav extends LitElement {
 
     const viewedBlog = getViewedBlogName();
     const showViewingIndicator = this.isViewingDifferentBlog();
+
+    // Map old internal page names to new ones for active highlighting
+    const activePage = this.currentPage === 'following' ? 'feed' : (this.currentPage === 'timeline' ? 'posts' : this.currentPage);
 
     return html`
       <header class="nav-container">
@@ -240,9 +243,9 @@ export class SharedNav extends LitElement {
             (page) => html`
               <a
                 href=${this.getPageUrl(page.name)}
-                class="nav-link ${this.currentPage === page.name ? 'active' : ''}"
+                class="nav-link ${activePage === page.name ? 'active' : ''}"
                 title=${page.description}
-                aria-current=${this.currentPage === page.name ? 'page' : 'false'}
+                aria-current=${activePage === page.name ? 'page' : 'false'}
               >
                 ${page.label}
               </a>

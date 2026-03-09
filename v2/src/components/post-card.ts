@@ -231,9 +231,25 @@ export class PostCard extends LitElement {
     }
   }
 
+  /**
+   * Rewrite CDN URLs to use imageproxy for thumbnails.
+   * e.g., /uploads/photos/foo.jpg -> /uploads/preview/100x/photos/foo.jpg
+   */
+  private getProxyUrl(url: string | undefined): string {
+    if (!url) return '';
+    // Use smaller preview for grid view if it's a standard upload
+    if (url.includes('/uploads/') && !url.includes('/preview/')) {
+      return url.replace('/uploads/', '/uploads/preview/100x/');
+    }
+    return url;
+  }
+
   render() {
     const post = this.post;
     const media = post._media;
+    if (!media) return nothing;
+
+    const mediaUrl = this.getProxyUrl(media.url);
 
     const isReblog = post.originPostId && post.originPostId !== post.id;
     const isDeleted = !!post.deletedAtUnix;
@@ -272,13 +288,13 @@ export class PostCard extends LitElement {
     const statsText = statsArr.join(' ');
 
     let mediaHtml;
-    if (media.type === 'image' && media.url) {
-      mediaHtml = html`<img src=${media.url} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />`;
+    if (media.type === 'image' && mediaUrl) {
+      mediaHtml = html`<img src=${mediaUrl} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />`;
     } else if (media.type === 'video') {
-      if (media.url) {
+      if (mediaUrl) {
         mediaHtml = html`
           <div class="video-thumb">
-            <img src=${media.url} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
+            <img src=${mediaUrl} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
             <span class="video-icon">▶</span>
           </div>
         `;
@@ -290,10 +306,10 @@ export class PostCard extends LitElement {
       mediaHtml = html`<div class="type-placeholder">🔊 Audio<br /><small>${preview}</small></div>`;
     } else if (media.type === 'link') {
       const title = media.title || 'Link';
-      if (media.url) {
+      if (mediaUrl) {
         mediaHtml = html`
           <div class="link-thumb">
-            <img src=${media.url} alt="Link" loading="lazy" @error=${this.handleImageError} />
+            <img src=${mediaUrl} alt="Link" loading="lazy" @error=${this.handleImageError} />
             <span class="link-icon">🔗</span>
           </div>
         `;

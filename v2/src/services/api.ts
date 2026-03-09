@@ -40,6 +40,7 @@ import {
   setHttpCachedResponse,
   refreshHttpCacheTimestamp,
 } from './storage.js';
+import { isAdminMode } from './blog-resolver.js';
 import {
   getCachedPosts,
   setCachedPosts,
@@ -373,6 +374,11 @@ async function apiRequest<T>(
       (body as { direction?: FollowGraphDirection }).direction
     );
     (body as { direction?: number }).direction = normalizedDirection;
+  }
+
+  // Inject admin flag if in admin mode
+  if (isAdminMode() && typeof body === 'object' && body !== null) {
+    (body as Record<string, unknown>).admin = true;
   }
 
   // Check offline state before making request

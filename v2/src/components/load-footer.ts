@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { getInfiniteScrollPreference, setInfiniteScrollPreference } from '../services/storage.js';
+import { isAdminMode } from '../services/blog-resolver.js';
 import type { ViewStats } from '../types/post.js';
 import { EventNames, type InfiniteToggleDetail } from '../types/events.js';
 import { SPACING, CONTAINER_SPACING } from '../types/ui-constants.js';
@@ -179,6 +180,14 @@ export class LoadFooter extends LitElement {
   }
 
   private renderStats() {
+    if (!isAdminMode() && (this.mode === 'search' || this.mode === 'archive')) {
+      return html`
+        <div class="footer-stats" role="status" aria-live="polite">
+          <span class="count">Loaded: <b>${this.stats.found}</b> posts</span>
+        </div>
+      `;
+    }
+
     if (this.mode === 'search') {
       return html`
         <div class="footer-stats" role="status" aria-live="polite" aria-label="Search results statistics">

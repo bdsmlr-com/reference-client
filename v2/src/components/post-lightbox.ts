@@ -10,6 +10,8 @@ import { EventNames, type LightboxNavigateDetail } from '../types/events.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 // Z-index values follow scale from types/ui-constants.ts: STICKY=50, DROPDOWN=100, MODAL=1000, MODAL_CONTROLS=1001
 
+import { recService, type RecResult } from '../services/recommendation-api.js';
+
 @customElement('post-lightbox')
 export class PostLightbox extends LitElement {
   static styles = [
@@ -48,6 +50,28 @@ export class PostLightbox extends LitElement {
         display: flex;
         flex-direction: column;
         align-items: center;
+        position: relative;
+      }
+
+      .back-stack-btn {
+        position: absolute;
+        top: -40px;
+        left: 0;
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        z-index: 1002;
+      }
+
+      .back-stack-btn:hover {
+        background: var(--accent-hover);
       }
 
       .lightbox-info {
@@ -57,6 +81,52 @@ export class PostLightbox extends LitElement {
         width: 100%;
         max-width: 800px;
         box-sizing: border-box;
+      }
+
+      /* Related posts styles */
+      .related-section {
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        width: 100%;
+      }
+
+      .related-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .related-grid {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 8px;
+        scrollbar-width: thin;
+      }
+
+      .related-item {
+        flex: 0 0 100px;
+        height: 100px;
+        border-radius: 4px;
+        overflow: hidden;
+        cursor: pointer;
+        background: var(--bg-panel-alt);
+        border: 1px solid var(--border);
+      }
+
+      .related-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .related-item:hover {
+        border-color: var(--accent);
       }
 
       .lightbox-links {
@@ -351,6 +421,11 @@ export class PostLightbox extends LitElement {
   @state() private reblogs: Reblog[] | null = null;
   @state() private activeDetail: 'likes' | 'comments' | 'reblogs' | null = null;
 
+  // Deep Dive Stack
+  @state() private navigationStack: ProcessedPost[] = [];
+  @state() private relatedPosts: RecResult[] | null = null;
+  @state() private loadingRelated = false;
+
   // Touch/swipe tracking
   private touchStartX = 0;
   private touchStartY = 0;
@@ -639,6 +714,51 @@ export class PostLightbox extends LitElement {
     }
   }
 
+  private async fetchRelatedPosts(): Promise<void> {
+    if (!this.post || this.loadingRelated) return;
+    this.loadingRelated = true;
+    try {
+      this.relatedPosts = await recService.getSimilarPosts(this.post.id, 10);
+    } catch {
+      this.relatedPosts = [];
+    } finally {
+      this.loadingRelated = false;
+    }
+  }
+
+  private async navigateToRelated(rec: RecResult): Promise<void> {
+    if (!this.post || !rec.post_id) return;
+    
+    // Push current to stack
+    this.navigationStack = [...this.navigationStack, this.post];
+    
+    // Fetch full post data for the new post
+    try {
+      const resp = await apiClient.posts.get(rec.post_id);
+      if (resp.post) {
+        // Need to wrap in ProcessedPost (simplified for modal)
+        const newPost: ProcessedPost = {
+          ...resp.post,
+          _media: (await import('../types/post.js')).extractMedia(resp.post)
+        };
+        this.post = newPost;
+        // In this mode, we disable linear next/prev from the original grid
+        this.currentIndex = -1; 
+      }
+    } catch (e) {
+      console.error('Failed to navigate to related post', e);
+    }
+  }
+
+  private popStack(): void {
+    if (this.navigationStack.length === 0) return;
+    const prev = this.navigationStack[this.navigationStack.length - 1];
+    this.navigationStack = this.navigationStack.slice(0, -1);
+    this.post = prev;
+    // If returning to a post from the original list, we could try to restore index, 
+    // but simplified for now is to keep it -1 unless we store indices too.
+  }
+
   private decodeHtml(htmlStr: string): string {
     const txt = document.createElement('textarea');
     txt.innerHTML = htmlStr;
@@ -658,6 +778,8 @@ export class PostLightbox extends LitElement {
     this.comments = null;
     this.reblogs = null;
     this.activeDetail = null;
+    this.navigationStack = [];
+    this.relatedPosts = null;
     this.resetZoom();
     this.dispatchEvent(new CustomEvent(EventNames.CLOSE));
   }
@@ -1007,7 +1129,16 @@ export class PostLightbox extends LitElement {
 
     return html`
       <button class="close-btn" @click=${this.close} aria-label="Close lightbox">×</button>
-      ${this.canNavigate
+      
+      ${this.navigationStack.length > 0
+        ? html`
+            <button class="back-stack-btn" @click=${this.popStack}>
+              ← Back to previous post
+            </button>
+          `
+        : nothing}
+
+      ${this.currentIndex >= 0 && this.canNavigate
         ? html`
             <button
               class="nav-btn prev"
@@ -1062,7 +1193,7 @@ export class PostLightbox extends LitElement {
                 aria-label="Show ${this.post.likesCount || 0} likes"
                 aria-busy=${this.loadingLikes}
               >
-                ❤️ ${this.post.likesCount || 0}
+                ❤️ ${this.post.likesCount || 0}${this.loadingLikes ? '...' : ''}
               </button>
               <button
                 class="stat-btn ${this.loadingReblogs ? 'loading' : ''}"
@@ -1070,7 +1201,7 @@ export class PostLightbox extends LitElement {
                 aria-label="Show ${this.post.reblogsCount || 0} reblogs"
                 aria-busy=${this.loadingReblogs}
               >
-                ♻️ ${this.post.reblogsCount || 0}
+                ♻️ ${this.post.reblogsCount || 0}${this.loadingReblogs ? '...' : ''}
               </button>
               <button
                 class="stat-btn ${this.loadingComments ? 'loading' : ''}"
@@ -1078,10 +1209,39 @@ export class PostLightbox extends LitElement {
                 aria-label="Show ${this.post.commentsCount || 0} comments"
                 aria-busy=${this.loadingComments}
               >
-                💬 ${this.post.commentsCount || 0}
+                💬 ${this.post.commentsCount || 0}${this.loadingComments ? '...' : ''}
               </button>
             </div>
             <div class="lightbox-details">${this.renderDetails()}</div>
+
+            <!-- Related Posts Section -->
+            <div class="related-section">
+              <div class="related-title">
+                <span>Related Content</span>
+                ${!this.relatedPosts
+                  ? html`<button class="btn-small" @click=${this.fetchRelatedPosts} ?disabled=${this.loadingRelated}>
+                      ${this.loadingRelated ? 'Loading...' : 'Show More Like This'}
+                    </button>`
+                  : ''}
+              </div>
+              
+              ${this.relatedPosts
+                ? html`
+                    <div class="related-grid">
+                      ${this.relatedPosts.map(
+                        (rec) => html`
+                          <div class="related-item" @click=${() => this.navigateToRelated(rec)} title="Post by @${rec.post_owner}">
+                            <img src=${`/uploads/preview/100x/photos/placeholder.jpg`} 
+                                 @error=${(e: any) => e.target.src = 'https://bdsmlr.com/static/img/no-image.png'}
+                                 alt="Related post" />
+                          </div>
+                        `
+                      )}
+                      ${this.relatedPosts.length === 0 ? html`<div class="text-muted">No similar posts found.</div>` : ''}
+                    </div>
+                  `
+                : ''}
+            </div>
           </div>
           ${this.renderMedia()}
         </div>

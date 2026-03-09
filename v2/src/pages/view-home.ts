@@ -1,14 +1,10 @@
 import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { initTheme, injectGlobalStyles, baseStyles } from '../styles/theme.js';
+import { baseStyles } from '../styles/theme.js';
 import { setStoredBlogName, getStoredBlogName, buildPageUrl, buildBlogPageUrl, isReservedPageRoute } from '../services/blog-resolver.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import '../components/shared-nav.js';
 import '../components/offline-banner.js';
-
-// Initialize theme immediately to prevent FOUC (Flash of Unstyled Content)
-injectGlobalStyles();
-initTheme();
 
 interface PageCard {
   name: string;
@@ -57,8 +53,8 @@ const MAIN_CARDS: PageCard[] = [
 ];
 
 
-@customElement('home-page')
-export class HomePage extends LitElement {
+@customElement('view-home')
+export class ViewHome extends LitElement {
   static styles = [
     baseStyles,
     css`
@@ -281,26 +277,24 @@ export class HomePage extends LitElement {
   connectedCallback(): void {
     super.connectedCallback();
     // Priority: URL param (override) > localStorage > default
-    // URL param is used as override for navigation links that pass ?blog=
     const params = new URLSearchParams(window.location.search);
     const urlBlog = params.get('blog');
 
     if (urlBlog && !isReservedPageRoute(urlBlog)) {
-      // URL param provided with valid blog name - use it and persist to localStorage
       this.blogName = urlBlog;
       setStoredBlogName(urlBlog);
     } else {
-      // No URL param or reserved route - load from localStorage, default to 'nonnudecuties' if not set
-      // Also filter out reserved routes from localStorage (in case of stale bad data)
       const storedBlog = getStoredBlogName();
       this.blogName = (storedBlog && !isReservedPageRoute(storedBlog)) ? storedBlog : 'nonnudecuties';
     }
   }
 
   private getCardHref(card: PageCard): string {
-    // For pages that need blog param, use path-based routing
-    const blogPages = ['archive.html', 'timeline.html', 'following.html', 'social.html'];
-    const pageName = card.href.replace('.html', '');
+    const blogPages = ['archive.html', 'timeline.html', 'following.html', 'social.html', 'posts.html', 'feed.html'];
+    let pageName = card.href.replace('.html', '');
+    if (pageName === 'timeline') pageName = 'posts';
+    if (pageName === 'following') pageName = 'feed';
+
     if (this.blogName && blogPages.includes(card.href)) {
       return buildBlogPageUrl(this.blogName, pageName);
     }
@@ -309,29 +303,29 @@ export class HomePage extends LitElement {
 
   private handleKeyPress(e: KeyboardEvent): void {
     if (e.key === 'Enter' && this.blogName.trim()) {
-      this.navigateToTimeline();
+      this.handleLogin();
     }
   }
 
-  private handleExplore(): void {
+  private handleLogin(): void {
     if (this.blogName.trim()) {
-      this.navigateToTimeline();
+      const blogName = this.blogName.trim();
+      setStoredBlogName(blogName);
+      // Use router navigation in SPA. For now, window.location is fine if buildBlogPageUrl returns correct SPA path.
+      window.location.href = buildBlogPageUrl(blogName, 'feed');
     }
-  }
-
-  private navigateToTimeline(): void {
-    const blogName = this.blogName.trim();
-    // Save to localStorage before navigating
-    setStoredBlogName(blogName);
-    window.location.href = buildBlogPageUrl(blogName, 'timeline');
   }
 
   private renderCard(card: PageCard) {
+    let name = card.name;
+    if (name === 'Timeline') name = 'Posts';
+    if (name === 'For You') name = 'Feed';
+
     return html`
       <div class="page-card">
         <div class="card-header">
           <span class="card-title">
-            <a href=${this.getCardHref(card)}>${card.name}</a>
+            <a href=${this.getCardHref(card)}>${name}</a>
           </span>
         </div>
         <p class="card-description">${card.description}</p>
@@ -347,9 +341,6 @@ export class HomePage extends LitElement {
 
   render() {
     return html`
-      <offline-banner></offline-banner>
-      <shared-nav currentPage="home"></shared-nav>
-
       <div class="content">
         <div class="hero">
           <h1>BDSMLR Reference Client</h1>
@@ -360,19 +351,19 @@ export class HomePage extends LitElement {
         </div>
 
         <div class="blog-cta">
-          <label>Enter a blog name to explore</label>
+          <label>Enter your blog name to Login</label>
           <div class="cta-input-row">
             <input
               type="text"
-              placeholder="e.g., canadiandominant"
+              placeholder="e.g., LittleWays"
               .value=${this.blogName}
               @input=${(e: Event) => (this.blogName = (e.target as HTMLInputElement).value)}
               @keypress=${this.handleKeyPress}
             />
-            <button @click=${this.handleExplore}>Explore</button>
+            <button @click=${this.handleLogin}>Login</button>
           </div>
           <p class="cta-help">
-            The blog name will be passed to Archive, Timeline, For You, and Social pages.
+            This will set your primary blog and take you to your Feed.
           </p>
         </div>
 
@@ -386,7 +377,3 @@ export class HomePage extends LitElement {
     `;
   }
 }
-
-// Initialize app (theme already initialized at top of module)
-const app = document.createElement('home-page');
-document.body.appendChild(app);
