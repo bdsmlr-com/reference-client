@@ -1079,9 +1079,10 @@ export async function listPostReblogs(
 export async function getPostDetail(
   postId: number
 ): Promise<GetPostResponse> {
+  const req: GetPostRequest = { post_id: postId };
   return apiRequest<GetPostResponse>(
     '/v2/public-read-api-v2/get-post-detail',
-    { post_id: postId }
+    req
   );
 }
 
