@@ -214,6 +214,10 @@ export interface GetBlogRequest {
   blog_name?: string;
 }
 
+export interface GetPostRequest {
+  post_id: number;
+}
+
 export interface FollowEdge {
   blogId: number;
   blogName?: string;
@@ -304,5 +308,10 @@ export interface ListBlogsRecentActivityResponse {
 
 export interface GetBlogResponse {
   blog?: Blog;
+  error?: string;
+}
+
+export interface GetPostResponse {
+  post?: Post;
   error?: string;
 }
