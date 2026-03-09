@@ -131,11 +131,13 @@ export class PostLightbox extends LitElement {
 
       .gutter-item {
         width: 100%;
+        min-height: 100px;
         border-radius: 4px;
         overflow: hidden;
         cursor: pointer;
         border: 1px solid var(--border);
         transition: border-color 0.2s;
+        background: var(--bg-panel-alt);
       }
 
       .gutter-item:hover {
@@ -146,6 +148,22 @@ export class PostLightbox extends LitElement {
         width: 100%;
         height: auto;
         display: block;
+        min-height: 100px;
+      }
+
+      .gutter-skeleton {
+        width: 100%;
+        height: 150px;
+        background: linear-gradient(90deg, var(--bg-panel-alt) 25%, var(--border) 50%, var(--bg-panel-alt) 75%);
+        background-size: 200% 100%;
+        animation: gutter-pulse 1.5s infinite linear;
+        border-radius: 4px;
+        margin-bottom: 12px;
+      }
+
+      @keyframes gutter-pulse {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
       }
 
       .gutter-toast {
@@ -1425,6 +1443,15 @@ export class PostLightbox extends LitElement {
           <aside class="related-gutter ${this.gutterOpen ? 'open' : ''}">
             <div class="gutter-content">
               <div style="font-weight: 600; margin-bottom: 8px;">More like this</div>
+              
+              ${this.loadingRelated 
+                ? html`
+                    <div class="gutter-skeleton"></div>
+                    <div class="gutter-skeleton"></div>
+                    <div class="gutter-skeleton"></div>
+                  `
+                : ''}
+
               ${this.relatedPosts?.map(
                 (rec: any) => {
                   const hydrated = rec._hydratedPost;
@@ -1432,7 +1459,7 @@ export class PostLightbox extends LitElement {
                   return html`
                     <div class="gutter-item" @click=${() => this.navigateToRelated(rec)} title="Post by @${rec.post_owner}">
                       ${thumbUrl 
-                        ? html`<img src=${thumbUrl} alt="Related" />`
+                        ? html`<img src=${thumbUrl} alt="Related" @error=${(e: any) => e.target.src = 'https://bdsmlr.com/static/img/no-image.png'} />`
                         : html`<div class="type-placeholder">🖼️</div>`
                       }
                     </div>
