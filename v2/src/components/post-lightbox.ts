@@ -868,6 +868,24 @@ export class PostLightbox extends LitElement {
     }
   }
 
+  /**
+   * Rewrite CDN URLs to use imageproxy for thumbnails.
+   * e.g., /uploads/photos/foo.jpg -> /uploads/preview/100x/photos/foo.jpg
+   */
+  private getProxyUrl(url: string | undefined): string {
+    if (!url) return '';
+    let normalized = url;
+    // Fix broken TLS on ocdn012
+    if (normalized.includes('ocdn012.bdsmlr.com')) {
+      normalized = normalized.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
+    }
+    // Use smaller preview for grid view if it's a standard upload
+    if (normalized.includes('/uploads/') && !normalized.includes('/preview/')) {
+      return normalized.replace('/uploads/', '/uploads/preview/100x/');
+    }
+    return normalized;
+  }
+
   private async signUnsignedImages(container: HTMLElement): Promise<void> {
     const imgs = container.querySelectorAll('img');
     for (const img of imgs) {
