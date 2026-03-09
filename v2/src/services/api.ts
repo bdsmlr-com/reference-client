@@ -384,17 +384,22 @@ async function apiRequest<T>(
     }
   }
 
-  // Normalize follow graph direction payloads to numeric enum (0/1/2) to satisfy backend validation
+  // Normalize follow graph direction payloads to satisfy backend validation
   if (
     typeof body === 'object' &&
     body !== null &&
-    'direction' in (body as Record<string, unknown>) &&
-    (normalizedEndpoint.includes('blog-follow-graph') || normalizedEndpoint.includes('list-blog-follows'))
+    'direction' in (body as Record<string, unknown>)
   ) {
-    const normalizedDirection = normalizeFollowDirection(
-      (body as { direction?: FollowGraphDirection }).direction
-    );
-    (body as { direction?: number }).direction = normalizedDirection;
+    const b = body as { direction?: any };
+    if (normalizedEndpoint.includes('blog-follow-graph')) {
+      // ListBlogFollowGraphRequest expects string: "followers", "following", or "both"
+      if (b.direction === 1 || b.direction === 'following') b.direction = 'following';
+      else if (b.direction === 2 || b.direction === 'followers') b.direction = 'followers';
+      else b.direction = 'both';
+    } else if (normalizedEndpoint.includes('list-blog-follows')) {
+      // ListBlogFollowsRequest expects numeric enum
+      b.direction = normalizeFollowDirection(b.direction);
+    }
   }
 
   // Inject admin flag if in admin mode
