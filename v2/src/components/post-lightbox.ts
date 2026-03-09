@@ -865,8 +865,8 @@ export class PostLightbox extends LitElement {
     if (!this.post || this.loadingRelated) return;
     this.loadingRelated = true;
     try {
-      // Fetch up to 500 similar post IDs
-      const recs = await recService.getSimilarPosts(this.post.id, 500);
+      // Fetch up to 100 similar post IDs (500 was causing 422 errors)
+      const recs = await recService.getSimilarPosts(this.post.id, 100);
       
       const postIds = recs.map(r => r.post_id).filter((id): id is number => !!id);
       if (postIds.length > 0) {
