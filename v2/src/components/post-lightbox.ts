@@ -866,20 +866,25 @@ export class PostLightbox extends LitElement {
     if (!this.post || this.loadingRelated) return;
     this.loadingRelated = true;
     try {
-      const recs = await recService.getSimilarPosts(this.post.id, 10);
+      // Fetch up to 500 similar post IDs
+      const recs = await recService.getSimilarPosts(this.post.id, 500);
       
-      // Hydrate with full post metadata (thumbnails)
       const postIds = recs.map(r => r.post_id).filter((id): id is number => !!id);
       if (postIds.length > 0) {
         const { extractMedia } = await import('../types/post.js');
-        const resp = await apiClient.posts.batchGet({ post_ids: postIds });
-        const postMap = new Map((resp.posts || []).map(p => [p.id, { ...p, _media: extractMedia(p) }]));
+        const postMap = new Map();
         
-        // Attach hydrated data to recs
+        // Batch hydrate in chunks of 100 to avoid URL length issues
+        for (let i = 0; i < postIds.length; i += 100) {
+          const chunk = postIds.slice(i, i + 100);
+          const resp = await apiClient.posts.batchGet({ post_ids: chunk });
+          (resp.posts || []).forEach(p => postMap.set(p.id, { ...p, _media: extractMedia(p) }));
+        }
+        
         this.relatedPosts = recs.map(r => ({
           ...r,
           _hydratedPost: r.post_id ? postMap.get(r.post_id) : undefined
-        })) as any; // Cast for now
+        })) as any;
       } else {
         this.relatedPosts = [];
       }
@@ -1035,9 +1040,9 @@ export class PostLightbox extends LitElement {
   private getProxyUrl(url: string | undefined): string {
     if (!url) return '';
     const normalized = this.normalizeUrl(url);
-    // Use 'fit' variant to scale to fit 150px area without cropping
+    // Use proportional 150x scaling for gutter thumbnails
     if (normalized.includes('/uploads/') && !normalized.includes('/preview/')) {
-      return normalized.replace('/uploads/', '/uploads/preview/150,fit/');
+      return normalized.replace('/uploads/', '/uploads/preview/150x/');
     }
     return normalized;
   }

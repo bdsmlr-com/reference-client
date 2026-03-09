@@ -16,27 +16,30 @@ export class PostGrid extends LitElement {
       }
 
       .grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        /* UIC-021: Use standardized spacing scale */
-        gap: ${unsafeCSS(SPACING.MD)}px;
+        column-count: 1;
+        column-gap: ${unsafeCSS(SPACING.MD)}px;
         max-width: 1200px;
         margin: 0 auto;
-        /* UIC-021: Use standardized container spacing */
         padding: 0 ${unsafeCSS(CONTAINER_SPACING.HORIZONTAL)}px;
       }
 
-      /* Tablet: 2 columns (BREAKPOINTS.MOBILE = 480px) */
+      .grid-item {
+        break-inside: avoid;
+        margin-bottom: ${unsafeCSS(SPACING.MD)}px;
+        display: block;
+      }
+
+      /* Tablet: 2 columns */
       @media (min-width: ${unsafeCSS(BREAKPOINTS.MOBILE)}px) {
         .grid {
-          grid-template-columns: repeat(2, 1fr);
+          column-count: 2;
         }
       }
 
-      /* Desktop: 4 columns (BREAKPOINTS.TABLET = 768px) */
+      /* Desktop: 3 columns */
       @media (min-width: ${unsafeCSS(BREAKPOINTS.TABLET)}px) {
         .grid {
-          grid-template-columns: repeat(4, 1fr);
+          column-count: 3;
         }
       }
 
@@ -71,7 +74,9 @@ export class PostGrid extends LitElement {
       <section class="grid" role="feed" aria-label="Post grid" aria-busy="false">
         ${this.posts.map(
           (post) => html`
-            <post-card .post=${post} @post-select=${this.handlePostSelect}></post-card>
+            <div class="grid-item">
+              <post-card .post=${post} @post-select=${this.handlePostSelect}></post-card>
+            </div>
           `
         )}
       </section>
