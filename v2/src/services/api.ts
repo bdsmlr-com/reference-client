@@ -1220,12 +1220,16 @@ function getFollowDirectionLabel(direction?: FollowGraphDirection): 'followers' 
 export async function blogFollowGraph(
   req: BlogFollowGraphRequest
 ): Promise<BlogFollowGraphResponse> {
-  const normalizedDirection = normalizeFollowDirection(req.direction);
+  const dir = normalizeFollowDirection(req.direction);
+  let dirStr = 'both';
+  if (dir === 1) dirStr = 'following';
+  else if (dir === 2) dirStr = 'followers';
+
   return apiRequest<BlogFollowGraphResponse>(
     '/v2/public-read-api-v2/blog-follow-graph',
     {
       ...req,
-      direction: normalizedDirection,
+      direction: dirStr,
     }
   );
 }
