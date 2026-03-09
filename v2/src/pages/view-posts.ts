@@ -309,25 +309,7 @@ export class ViewPosts extends LitElement {
           candidates.push(post);
         }
 
-        const validationResults = await Promise.all(
-          candidates.map(async (post) => {
-            const media = extractMedia(post);
-            if (media.type === 'video' || media.type === 'audio') {
-              return { post, exists: true };
-            }
-            if (media.url) {
-              const exists = await apiClient.media.checkImageExists(media.url);
-              return { post, exists };
-            }
-            return { post, exists: true };
-          })
-        );
-
-        for (const { post, exists } of validationResults) {
-          if (!exists) {
-            continue;
-          }
-
+        for (const post of candidates) {
           const isDeleted = !!post.deletedAtUnix;
 
           if (isDeleted) {

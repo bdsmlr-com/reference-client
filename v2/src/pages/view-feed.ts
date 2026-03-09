@@ -424,11 +424,6 @@ export class ViewFeed extends LitElement {
 
         this.seenIds.add(post.id);
 
-        if (media.type === 'image' && media.url) {
-          const exists = await apiClient.media.checkImageExists(media.url);
-          if (!exists) continue;
-        }
-
         if (post.deletedAtUnix) continue;
 
         const processedPost: ProcessedPost = {
