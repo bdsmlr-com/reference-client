@@ -244,9 +244,9 @@ export class PostCard extends LitElement {
     if (normalized.includes('ocdn012.bdsmlr.com')) {
       normalized = normalized.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
     }
-    // Use larger proportional preview for grid view if it's a standard upload
+    // Use 'fit' variant to scale to fit 400px area without cropping
     if (normalized.includes('/uploads/') && !normalized.includes('/preview/')) {
-      return normalized.replace('/uploads/', '/uploads/preview/400x/');
+      return normalized.replace('/uploads/', '/uploads/preview/400,fit/');
     }
     return normalized;
   }

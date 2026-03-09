@@ -879,9 +879,9 @@ export class PostLightbox extends LitElement {
     if (normalized.includes('ocdn012.bdsmlr.com')) {
       normalized = normalized.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
     }
-    // Use smaller preview for grid view if it's a standard upload
+    // Use 'fit' variant to scale to fit 150px area without cropping
     if (normalized.includes('/uploads/') && !normalized.includes('/preview/')) {
-      return normalized.replace('/uploads/', '/uploads/preview/100x/');
+      return normalized.replace('/uploads/', '/uploads/preview/150,fit/');
     }
     return normalized;
   }
