@@ -143,7 +143,7 @@ export class ViewSearch extends LitElement {
   ];
 
   @state() private query = '';
-  @state() private sortValue = '1:0';
+  @state() private sortValue = 'newest';
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
   @state() private selectedVariants: PostVariant[] = [];
   @state() private posts: ProcessedPost[] = [];
