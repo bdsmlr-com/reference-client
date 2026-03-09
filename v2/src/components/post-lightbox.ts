@@ -1017,16 +1017,24 @@ export class PostLightbox extends LitElement {
   }
 
   /**
-   * Rewrite CDN URLs to use imageproxy for thumbnails.
-   * e.g., /uploads/photos/foo.jpg -> /uploads/preview/100x/photos/foo.jpg
+   * Normalize any CDN URL to fix broken TLS on ocdn012.
    */
-  private getProxyUrl(url: string | undefined): string {
+  private normalizeUrl(url: string | undefined): string {
     if (!url) return '';
     let normalized = url;
-    // Fix broken TLS on ocdn012
     if (normalized.includes('ocdn012.bdsmlr.com')) {
       normalized = normalized.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
     }
+    return normalized;
+  }
+
+  /**
+   * Rewrite CDN URLs to use imageproxy for thumbnails.
+   * e.g., /uploads/photos/foo.jpg -> /uploads/preview/150,fit/photos/foo.jpg
+   */
+  private getProxyUrl(url: string | undefined): string {
+    if (!url) return '';
+    const normalized = this.normalizeUrl(url);
     // Use 'fit' variant to scale to fit 150px area without cropping
     if (normalized.includes('/uploads/') && !normalized.includes('/preview/')) {
       return normalized.replace('/uploads/', '/uploads/preview/150,fit/');
@@ -1151,14 +1159,12 @@ export class PostLightbox extends LitElement {
     const media = this.post._media;
 
     if (media.type === 'video' && media.videoUrl) {
-      const videoUrl = media.videoUrl;
-      const fallbackUrl = videoUrl.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
+      const videoUrl = this.normalizeUrl(media.videoUrl);
       return html`
         <div class="lightbox-media">
-          <video controls autoplay muted @error=${() => {
-            const video = this.shadowRoot?.querySelector('video');
-            if (video && video.src.includes('ocdn012')) {
-              video.src = fallbackUrl;
+          <video controls autoplay muted @error=${(e: any) => {
+            if (e.target.src.includes('ocdn012')) {
+              e.target.src = e.target.src.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
             }
           }}>
             <source src=${videoUrl} type="video/mp4" />
@@ -1168,11 +1174,12 @@ export class PostLightbox extends LitElement {
     }
 
     if (media.type === 'image' && media.url) {
+      const imageUrl = this.normalizeUrl(media.url);
       const zoomStyle = `transform: scale(${this.zoomScale}) translate(${this.zoomTranslateX / this.zoomScale}px, ${this.zoomTranslateY / this.zoomScale}px)`;
       return html`
         <div class="lightbox-media">
           <img
-            src=${media.url}
+            src=${imageUrl}
             class=${this.zoomScale > 1 ? 'zoomed' : ''}
             style=${zoomStyle}
             @error=${this.handleImageError}
@@ -1201,7 +1208,7 @@ export class PostLightbox extends LitElement {
         ? html`<a href=${media.linkUrl} target="_blank" style="font-size:16px;display:block;margin-bottom:12px;">${media.title || media.linkUrl} ↗</a>`
         : nothing;
       const imgHtml = media.url
-        ? html`<img src=${media.url} style="max-width:100%;margin-bottom:12px;border-radius:4px;" @error=${this.handleImageError} />`
+        ? html`<img src=${this.normalizeUrl(media.url)} style="max-width:100%;margin-bottom:12px;border-radius:4px;" @error=${this.handleImageError} />`
         : nothing;
       return html`
         <div class="lightbox-text">
