@@ -73,6 +73,8 @@ import type {
   BlogFollowGraphResponse,
   ListBlogsRecentActivityRequest,
   ListBlogsRecentActivityResponse,
+  GetPostRequest,
+  GetPostResponse,
   GetBlogRequest,
   GetBlogResponse,
 } from '../types/api.js';
