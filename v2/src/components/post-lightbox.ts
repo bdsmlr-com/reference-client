@@ -151,12 +151,17 @@ export class PostLightbox extends LitElement {
       .gutter-item {
         width: 100px;
         height: auto;
+        min-height: 100px;
         border-radius: 4px;
         cursor: pointer;
         border: 1px solid var(--border);
         transition: border-color 0.2s;
         background: var(--bg-panel-alt);
         position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
       }
 
       .gutter-item img {
@@ -1104,10 +1109,16 @@ export class PostLightbox extends LitElement {
       img.dataset.showedPlaceholder = 'true';
       img.style.display = 'none';
       const placeholder = document.createElement('div');
-      placeholder.className = 'error-ghost';
+      
+      // If the failing image is in the gutter, use gutter-specific sizing
+      const isInGutter = img.closest('.gutter-content');
+      placeholder.className = isInGutter ? 'gutter-item error-ghost' : 'error-ghost';
+      
       placeholder.innerHTML = `
-        <span class="error-icon">🖼️</span>
-        <span style="font-size: 13px; opacity: 0.7;">Content Unavailable</span>
+        <span class="error-icon" style="${isInGutter ? 'font-size: 16px;' : ''}">🖼️</span>
+        <span style="font-size: ${isInGutter ? '9px' : '13px'}; opacity: 0.7;">
+          ${isInGutter ? 'N/A' : 'Content Unavailable'}
+        </span>
       `;
       img.parentElement?.insertBefore(placeholder, img);
     }

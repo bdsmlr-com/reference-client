@@ -89,6 +89,9 @@ export class PostCard extends LitElement {
         justify-content: center;
         color: var(--text-muted);
         gap: 8px;
+        width: 100%;
+        min-height: 200px;
+        border-radius: 4px;
       }
 
       .error-icon {
@@ -266,8 +269,6 @@ export class PostCard extends LitElement {
       img.style.display = 'none';
       const placeholder = document.createElement('div');
       placeholder.className = 'error-ghost';
-      // Match image aspect ratio if possible
-      placeholder.style.aspectRatio = '1 / 1'; 
       placeholder.innerHTML = `
         <span class="error-icon">🖼️</span>
         <span style="font-size: 11px; opacity: 0.7;">Content Unavailable</span>
