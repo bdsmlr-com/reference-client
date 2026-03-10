@@ -948,18 +948,35 @@ export class PostLightbox extends LitElement {
     // Push current to stack
     this.navigationStack = [...this.navigationStack, this.post];
     
+    // Reset engagement details immediately
+    this.likes = null;
+    this.comments = null;
+    this.reblogs = null;
+    this.activeDetail = null;
+    this.relatedPosts = null;
+    this.gutterOffset = 0;
+    this.gutterExhausted = false;
+
     // Fetch full post data for the new post
     try {
       const resp = await apiClient.posts.get(rec.post_id);
       if (resp.post) {
-        // Need to wrap in ProcessedPost (simplified for modal)
+        const { extractMedia } = await import('../types/post.js');
         const newPost: ProcessedPost = {
           ...resp.post,
-          _media: (await import('../types/post.js')).extractMedia(resp.post)
+          _media: extractMedia(resp.post)
         };
         this.post = newPost;
-        // In this mode, we disable linear next/prev from the original grid
         this.currentIndex = -1; 
+        
+        // Scroll panels back to top
+        this.shadowRoot?.querySelector('.lightbox-main')?.scrollTo(0, 0);
+        this.shadowRoot?.querySelector('.lightbox-info')?.scrollTo(0, 0);
+        
+        // Refresh related if gutter is open
+        if (this.gutterOpen) {
+          this.fetchRelatedPosts(true);
+        }
       }
     } catch (e) {
       console.error('Failed to navigate to related post', e);
