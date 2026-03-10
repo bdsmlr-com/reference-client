@@ -1101,13 +1101,11 @@ export class PostLightbox extends LitElement {
 
   /**
    * Rewrite CDN URLs to use imageproxy for thumbnails.
-   * e.g., /uploads/photos/foo.jpg -> /uploads/preview/150,fit/photos/foo.jpg
    */
   private getProxyUrl(url: string | undefined): string {
     if (!url) return '';
     const normalized = this.normalizeUrl(url);
-    // Use proportional 100px wide scaling for gutter thumbnails
-    if (normalized.includes('/uploads/') && !normalized.includes('/preview/')) {
+    if (normalized.includes('bdsmlr.com/uploads/') && !normalized.includes('/preview/')) {
       return normalized.replace('/uploads/', '/uploads/preview/100,fit/');
     }
     return normalized;

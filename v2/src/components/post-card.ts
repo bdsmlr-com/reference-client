@@ -244,8 +244,10 @@ export class PostCard extends LitElement {
     if (normalized.includes('ocdn012.bdsmlr.com')) {
       normalized = normalized.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
     }
-    // Use 'fit' variant to scale to fit 400px area without cropping
-    if (normalized.includes('/uploads/') && !normalized.includes('/preview/')) {
+    
+    // Convert /uploads/photos/.. to /uploads/preview/400,fit/photos/..
+    // Only if it's a standard bdsmlr upload and not already a preview
+    if (normalized.includes('bdsmlr.com/uploads/') && !normalized.includes('/preview/')) {
       return normalized.replace('/uploads/', '/uploads/preview/400,fit/');
     }
     return normalized;
