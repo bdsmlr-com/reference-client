@@ -134,7 +134,6 @@ export class PostLightbox extends LitElement {
         width: 100px;
         height: auto;
         border-radius: 4px;
-        overflow: hidden;
         cursor: pointer;
         border: 1px solid var(--border);
         transition: border-color 0.2s;
