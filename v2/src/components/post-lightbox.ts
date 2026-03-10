@@ -11,7 +11,6 @@ import { BREAKPOINTS } from '../types/ui-constants.js';
 // Z-index values follow scale from types/ui-constants.ts: STICKY=50, DROPDOWN=100, MODAL=1000, MODAL_CONTROLS=1001
 
 import { repeat } from 'lit/directives/repeat.js';
-import { choose } from 'lit/directives/choose.js';
 import { when } from 'lit/directives/when.js';
 import { recService, type RecResult } from '../services/recommendation-api.js';
 
