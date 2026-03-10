@@ -268,7 +268,7 @@ export class PostCard extends LitElement {
       img.dataset.showedPlaceholder = 'true';
       img.style.display = 'none';
       const placeholder = document.createElement('div');
-      placeholder.className = 'error-ghost';
+      placeholder.className = 'error-ghost ghost';
       placeholder.innerHTML = `
         <span class="error-icon">🖼️</span>
         <span style="font-size: 11px; opacity: 0.7;">Content Unavailable</span>

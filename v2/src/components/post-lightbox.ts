@@ -10,6 +10,9 @@ import { EventNames, type LightboxNavigateDetail } from '../types/events.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 // Z-index values follow scale from types/ui-constants.ts: STICKY=50, DROPDOWN=100, MODAL=1000, MODAL_CONTROLS=1001
 
+import { repeat } from 'lit/directives/repeat.js';
+import { choose } from 'lit/directives/choose.js';
+import { when } from 'lit/directives/when.js';
 import { recService, type RecResult } from '../services/recommendation-api.js';
 
 @customElement('post-lightbox')
@@ -173,11 +176,11 @@ export class PostLightbox extends LitElement {
       .gutter-skeleton {
         width: 100px;
         height: 100px;
+        flex-shrink: 0;
         background: linear-gradient(90deg, var(--bg-panel-alt) 25%, var(--border) 50%, var(--bg-panel-alt) 75%);
         background-size: 200% 100%;
         animation: gutter-pulse 1.5s infinite linear;
         border-radius: 4px;
-        margin-bottom: 12px;
       }
 
       @keyframes gutter-pulse {
@@ -1110,16 +1113,16 @@ export class PostLightbox extends LitElement {
       img.style.display = 'none';
       const placeholder = document.createElement('div');
       
-      // If the failing image is in the gutter, use gutter-specific sizing
+      // If the failing image is in the gutter, use gutter-specific skeleton
       const isInGutter = img.closest('.gutter-content');
-      placeholder.className = isInGutter ? 'gutter-item error-ghost' : 'error-ghost';
+      placeholder.className = isInGutter ? 'gutter-skeleton' : 'error-ghost ghost';
       
-      placeholder.innerHTML = `
-        <span class="error-icon" style="${isInGutter ? 'font-size: 16px;' : ''}">🖼️</span>
-        <span style="font-size: ${isInGutter ? '9px' : '13px'}; opacity: 0.7;">
-          ${isInGutter ? 'N/A' : 'Content Unavailable'}
-        </span>
-      `;
+      if (!isInGutter) {
+        placeholder.innerHTML = `
+          <span class="error-icon">🖼️</span>
+          <span style="font-size: 13px; opacity: 0.7;">Content Unavailable</span>
+        `;
+      }
       img.parentElement?.insertBefore(placeholder, img);
     }
   }
@@ -1427,6 +1430,25 @@ export class PostLightbox extends LitElement {
     return nothing;
   }
 
+  private renderGutterItem(rec: any) {
+    const hydrated = rec._hydratedPost;
+    const thumbUrl = this.getProxyUrl(hydrated?._media?.url);
+    
+    return html`
+      <div 
+        class="gutter-item" 
+        @click=${() => this.navigateToRelated(rec)} 
+        title="Post by @${rec.post_owner}"
+      >
+        ${when(
+          thumbUrl,
+          () => html`<img src=${thumbUrl!} alt="Related" @error=${(e: any) => e.target.src = 'https://bdsmlr.com/static/img/no-image.png'} />`,
+          () => html`<div class="gutter-skeleton"></div>`
+        )}
+      </div>
+    `;
+  }
+
   render() {
     if (!this.post) return nothing;
 
@@ -1535,19 +1557,10 @@ export class PostLightbox extends LitElement {
             <div class="gutter-content" @scroll=${this.handleGutterScroll}>
               <div style="font-weight: 600; margin-bottom: 8px;">More like this</div>
               
-              ${this.relatedPosts?.map(
-                (rec: any) => {
-                  const hydrated = rec._hydratedPost;
-                  const thumbUrl = this.getProxyUrl(hydrated?._media?.url);
-                  return html`
-                    <div class="gutter-item" @click=${() => this.navigateToRelated(rec)} title="Post by @${rec.post_owner}">
-                      ${thumbUrl 
-                        ? html`<img src=${thumbUrl} alt="Related" @error=${(e: any) => e.target.src = 'https://bdsmlr.com/static/img/no-image.png'} />`
-                        : html`<div class="type-placeholder">🖼️</div>`
-                      }
-                    </div>
-                  `;
-                }
+              ${repeat(
+                this.relatedPosts || [],
+                (rec: any) => rec.post_id || Math.random(),
+                (rec: any) => this.renderGutterItem(rec)
               )}
 
               ${this.loadingRelated 
