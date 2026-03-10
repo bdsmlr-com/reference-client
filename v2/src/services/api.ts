@@ -1070,7 +1070,7 @@ export async function resolveIdentifier(
   req: ResolveIdentifierRequest
 ): Promise<ResolveIdentifierResponse> {
   return apiRequest<ResolveIdentifierResponse>(
-    '/v2/public-read-api-v2/resolve-identifier',
+    '/v2/resolve-identifier',
     req
   );
 }
