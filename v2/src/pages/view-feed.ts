@@ -23,6 +23,7 @@ import '../components/skeleton-loader.js';
 import '../components/error-state.js';
 
 const PAGE_SIZE = 20;
+const MAX_BACKEND_FETCHES = 3;
 
 @customElement('view-feed')
 export class ViewFeed extends LitElement {
@@ -377,62 +378,69 @@ export class ViewFeed extends LitElement {
     if (this.followingBlogIds.length === 0) return;
 
     const buffer: ProcessedPost[] = [];
+    let backendFetches = 0;
     this.loading = true;
     this.loadingCurrent = 0;
 
     try {
-      // Use server-side merge with globalMerge=true
-      // FOL-009: Per API spec, pass sort_field: 0 (UNSPECIFIED) and limit_per_blog: 0 for merged FYP behavior
-      // FOL-010: Use order: 2 for DESC (0=UNSPECIFIED, 1=ASC, 2=DESC)
-      const resp = await apiClient.recentActivity.listCached({
-        blog_ids: this.followingBlogIds,
-        post_types: this.selectedTypes,
-        variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
-        global_merge: true,
-        page: {
-          page_size: PAGE_SIZE * 2,
-          page_token: this.backendCursor || undefined,
-        },
-        sort_field: 0,
-        order: 2,
-        limit_per_blog: 0,
-      });
+      while (buffer.length < PAGE_SIZE && !this.exhausted && backendFetches < MAX_BACKEND_FETCHES) {
+        backendFetches++;
 
-      const posts = resp.posts || [];
-      this.backendCursor = resp.page?.nextPageToken || null;
+        // Use server-side merge with globalMerge=true
+        // FOL-009: Per API spec, pass sort_field: 0 (UNSPECIFIED) and limit_per_blog: 0 for merged FYP behavior
+        // FOL-010: Use order: 2 for DESC (0=UNSPECIFIED, 1=ASC, 2=DESC)
+        const resp = await apiClient.recentActivity.listCached({
+          blog_ids: this.followingBlogIds,
+          post_types: this.selectedTypes,
+          variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
+          global_merge: true,
+          page: {
+            page_size: 24,
+            page_token: this.backendCursor || undefined,
+          },
+          sort_field: 0,
+          order: 2,
+          limit_per_blog: 0,
+        });
 
-      if (!this.backendCursor || posts.length === 0) {
-        this.exhausted = true;
-      }
+        const posts = resp.posts || [];
+        this.backendCursor = resp.page?.nextPageToken || null;
 
-      for (const post of posts) {
-        if (this.seenIds.has(post.id)) {
-          continue;
+        if (!this.backendCursor || posts.length === 0) {
+          this.exhausted = true;
         }
 
-        const media = extractMedia(post);
-        const mediaUrl = media.videoUrl || media.audioUrl || media.url;
-
-        if (mediaUrl) {
-          const normalizedUrl = mediaUrl.split('?')[0];
-          if (this.seenUrls.has(normalizedUrl)) {
-            this.seenIds.add(post.id);
+        for (const post of posts) {
+          if (this.seenIds.has(post.id)) {
             continue;
           }
-          this.seenUrls.add(normalizedUrl);
+
+          const media = extractMedia(post);
+          const mediaUrl = media.videoUrl || media.audioUrl || media.url;
+
+          if (mediaUrl) {
+            const normalizedUrl = mediaUrl.split('?')[0];
+            if (this.seenUrls.has(normalizedUrl)) {
+              this.seenIds.add(post.id);
+              continue;
+            }
+            this.seenUrls.add(normalizedUrl);
+          }
+
+          this.seenIds.add(post.id);
+
+          if (post.deletedAtUnix) continue;
+
+          const processedPost: ProcessedPost = {
+            ...post,
+            _media: media,
+          };
+
+          buffer.push(processedPost);
+          this.loadingCurrent = buffer.length;
+
+          if (buffer.length >= PAGE_SIZE) break;
         }
-
-        this.seenIds.add(post.id);
-
-        if (post.deletedAtUnix) continue;
-
-        const processedPost: ProcessedPost = {
-          ...post,
-          _media: media,
-        };
-
-        buffer.push(processedPost);
-        this.loadingCurrent = buffer.length;
 
         if (buffer.length >= PAGE_SIZE) break;
       }

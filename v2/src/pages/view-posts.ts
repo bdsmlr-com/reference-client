@@ -23,7 +23,7 @@ import '../components/error-state.js';
 import '../components/blog-header.js';
 
 const PAGE_SIZE = 12;
-const MAX_BACKEND_FETCHES = 20;
+const MAX_BACKEND_FETCHES = 3;
 
 @customElement('view-posts')
 export class ViewPosts extends LitElement {
@@ -270,7 +270,7 @@ export class ViewPosts extends LitElement {
           post_types: this.selectedTypes,
           variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
           page: {
-            page_size: 100,
+            page_size: 24,
             page_token: this.backendCursor || undefined,
           },
         });
