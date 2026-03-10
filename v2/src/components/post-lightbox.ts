@@ -43,6 +43,24 @@ export class PostLightbox extends LitElement {
         overflow-y: auto;
       }
 
+      .error-ghost {
+        background: var(--bg-panel-alt);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        gap: 8px;
+        width: 100%;
+        min-height: 300px;
+        border-radius: 4px;
+      }
+
+      .error-icon {
+        font-size: 32px;
+        opacity: 0.5;
+      }
+
       .lightbox-panel {
         max-width: 95vw;
         width: 1200px;
@@ -1086,9 +1104,11 @@ export class PostLightbox extends LitElement {
       img.dataset.showedPlaceholder = 'true';
       img.style.display = 'none';
       const placeholder = document.createElement('div');
-      placeholder.className = 'media-placeholder';
-      placeholder.style.cssText = 'width:100%;min-height:200px;background:var(--bg-panel-alt);display:flex;align-items:center;justify-content:center;color:var(--text-muted);border-radius:4px;';
-      placeholder.textContent = '🖼️ Image unavailable';
+      placeholder.className = 'error-ghost';
+      placeholder.innerHTML = `
+        <span class="error-icon">🖼️</span>
+        <span style="font-size: 13px; opacity: 0.7;">Content Unavailable</span>
+      `;
       img.parentElement?.insertBefore(placeholder, img);
     }
   }

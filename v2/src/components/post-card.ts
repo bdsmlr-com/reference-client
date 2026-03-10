@@ -65,6 +65,37 @@ export class PostCard extends LitElement {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       }
 
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+
+      .ghost {
+        background: linear-gradient(
+          90deg,
+          var(--bg-panel-alt) 25%,
+          var(--border) 50%,
+          var(--bg-panel-alt) 75%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 2s infinite linear;
+      }
+
+      .error-ghost {
+        background: var(--bg-panel-alt);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        gap: 8px;
+      }
+
+      .error-icon {
+        font-size: 24px;
+        opacity: 0.5;
+      }
+
       .card img {
         width: 100%;
         height: auto;
@@ -234,8 +265,13 @@ export class PostCard extends LitElement {
       img.dataset.showedPlaceholder = 'true';
       img.style.display = 'none';
       const placeholder = document.createElement('div');
-      placeholder.className = 'type-placeholder';
-      placeholder.textContent = '🖼️ Image unavailable';
+      placeholder.className = 'error-ghost';
+      // Match image aspect ratio if possible
+      placeholder.style.aspectRatio = '1 / 1'; 
+      placeholder.innerHTML = `
+        <span class="error-icon">🖼️</span>
+        <span style="font-size: 11px; opacity: 0.7;">Content Unavailable</span>
+      `;
       img.parentElement?.insertBefore(placeholder, img);
     }
   }
