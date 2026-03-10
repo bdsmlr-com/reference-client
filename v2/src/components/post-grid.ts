@@ -15,36 +15,38 @@ export class PostGrid extends LitElement {
         display: block;
       }
 
-      .grid {
-        column-count: 1;
-        column-gap: ${unsafeCSS(SPACING.MD)}px;
-        max-width: 1200px;
-        margin: 0 auto;
+      .masonry-container {
+        display: flex;
+        gap: ${unsafeCSS(SPACING.MD)}px;
         padding: 0 ${unsafeCSS(CONTAINER_SPACING.HORIZONTAL)}px;
+        max-width: 1400px;
+        margin: 0 auto;
+        align-items: flex-start;
       }
 
-      .grid-item {
-        break-inside: avoid;
-        margin-bottom: ${unsafeCSS(SPACING.MD)}px;
-        display: block;
+      .masonry-column {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: ${unsafeCSS(SPACING.MD)}px;
+        min-width: 0;
       }
 
-      /* Tablet: 2 columns */
-      @media (min-width: ${unsafeCSS(BREAKPOINTS.MOBILE)}px) {
-        .grid {
-          column-count: 2;
+      @media (max-width: ${unsafeCSS(BREAKPOINTS.TABLET)}px) {
+        .masonry-column:last-child {
+          display: none;
         }
       }
 
-      /* Desktop: 3 columns */
-      @media (min-width: ${unsafeCSS(BREAKPOINTS.TABLET)}px) {
-        .grid {
-          column-count: 3;
+      @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE)}px) {
+        .masonry-column:nth-child(2) {
+          display: none;
         }
       }
 
       .sentinel {
         height: 1px;
+        width: 100%;
       }
 
       .empty {
@@ -67,18 +69,26 @@ export class PostGrid extends LitElement {
 
   render() {
     if (this.posts.length === 0) {
-      return html`<section class="grid" role="status"><div class="empty">No posts to display</div></section>`;
+      return html`<section class="masonry-container" role="status"><div class="empty">No posts to display</div></section>`;
     }
 
+    // Distribute posts into 3 stable columns
+    const colCount = 3;
+    const columns: ProcessedPost[][] = Array.from({ length: colCount }, () => []);
+    
+    this.posts.forEach((post, i) => {
+      columns[i % colCount].push(post);
+    });
+
     return html`
-      <section class="grid" role="feed" aria-label="Post grid" aria-busy="false">
-        ${this.posts.map(
-          (post) => html`
-            <div class="grid-item">
+      <section class="masonry-container" role="feed" aria-label="Post grid">
+        ${columns.map(col => html`
+          <div class="masonry-column">
+            ${col.map(post => html`
               <post-card .post=${post} @post-select=${this.handlePostSelect}></post-card>
-            </div>
-          `
-        )}
+            `)}
+          </div>
+        `)}
       </section>
       <div class="sentinel" id="scroll-sentinel" aria-hidden="true"></div>
     `;
