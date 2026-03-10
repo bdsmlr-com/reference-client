@@ -1067,18 +1067,24 @@ export class PostLightbox extends LitElement {
     const img = e.target as HTMLImageElement;
     const src = img.src;
 
-    // Try CDN fallback first (consistent with blog-card.ts, post-card.ts, post-feed-item.ts)
+    // If a preview URL failed, fall back to the original image URL
+    if (src.includes('/preview/') && !img.dataset.triedOriginal) {
+      img.dataset.triedOriginal = 'true';
+      img.src = src.replace(/\/preview\/[^/]+\//, '/');
+      return;
+    }
+
+    // Try CDN fallback (ocdn -> cdn)
     if (src.includes('ocdn012.bdsmlr.com') && !img.dataset.triedFallback) {
       img.dataset.triedFallback = 'true';
       img.src = src.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
       return;
     }
 
-    // If fallback also fails or not applicable, show placeholder
+    // If everything failed, show placeholder
     if (!img.dataset.showedPlaceholder) {
       img.dataset.showedPlaceholder = 'true';
       img.style.display = 'none';
-      // Create and insert a placeholder element
       const placeholder = document.createElement('div');
       placeholder.className = 'media-placeholder';
       placeholder.style.cssText = 'width:100%;min-height:200px;background:var(--bg-panel-alt);display:flex;align-items:center;justify-content:center;color:var(--text-muted);border-radius:4px;';
@@ -1106,7 +1112,7 @@ export class PostLightbox extends LitElement {
     if (!url) return '';
     const normalized = this.normalizeUrl(url);
     if (normalized.includes('bdsmlr.com/uploads/') && !normalized.includes('/preview/')) {
-      return normalized.replace('/uploads/', '/uploads/preview/100,fit/');
+      return normalized.replace('/uploads/', '/uploads/preview/100x/');
     }
     return normalized;
   }

@@ -214,18 +214,25 @@ export class PostCard extends LitElement {
     const img = e.target as HTMLImageElement;
     const src = img.src;
 
-    // Try CDN fallback first (consistent with blog-card.ts and post-feed-item.ts)
+    // If a preview URL failed, fall back to the original image URL
+    if (src.includes('/preview/') && !img.dataset.triedOriginal) {
+      img.dataset.triedOriginal = 'true';
+      // Remove the /preview/VARIANT/ part of the path
+      img.src = src.replace(/\/preview\/[^/]+\//, '/');
+      return;
+    }
+
+    // Try CDN fallback (ocdn -> cdn)
     if (src.includes('ocdn012.bdsmlr.com') && !img.dataset.triedFallback) {
       img.dataset.triedFallback = 'true';
       img.src = src.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
       return;
     }
 
-    // If fallback also fails or not applicable, show placeholder
+    // If everything failed, show placeholder
     if (!img.dataset.showedPlaceholder) {
       img.dataset.showedPlaceholder = 'true';
       img.style.display = 'none';
-      // Create and insert a placeholder element
       const placeholder = document.createElement('div');
       placeholder.className = 'type-placeholder';
       placeholder.textContent = '🖼️ Image unavailable';
@@ -235,7 +242,7 @@ export class PostCard extends LitElement {
 
   /**
    * Rewrite CDN URLs to use imageproxy for thumbnails.
-   * e.g., /uploads/photos/foo.jpg -> /uploads/preview/100x/photos/foo.jpg
+   * e.g., /uploads/photos/foo.jpg -> /uploads/preview/400x/photos/foo.jpg
    */
   private getProxyUrl(url: string | undefined): string {
     if (!url) return '';
@@ -245,10 +252,9 @@ export class PostCard extends LitElement {
       normalized = normalized.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
     }
     
-    // Convert /uploads/photos/.. to /uploads/preview/400,fit/photos/..
-    // Only if it's a standard bdsmlr upload and not already a preview
+    // Use 400x width-based scaling (standard variant)
     if (normalized.includes('bdsmlr.com/uploads/') && !normalized.includes('/preview/')) {
-      return normalized.replace('/uploads/', '/uploads/preview/400,fit/');
+      return normalized.replace('/uploads/', '/uploads/preview/400x/');
     }
     return normalized;
   }
