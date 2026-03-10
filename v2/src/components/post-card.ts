@@ -99,6 +99,22 @@ export class PostCard extends LitElement {
         opacity: 0.5;
       }
 
+      .multi-image-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: bold;
+        z-index: 2;
+        pointer-events: none;
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
       .card img {
         width: 100%;
         height: auto;
@@ -339,9 +355,16 @@ export class PostCard extends LitElement {
     if (post.commentsCount) statsArr.push(`💬 ${post.commentsCount}`);
     const statsText = statsArr.join(' ');
 
+    const fileCount = post.content?.files?.length || 0;
+
     let mediaHtml;
     if (media.type === 'image' && mediaUrl) {
-      mediaHtml = html`<img src=${mediaUrl} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />`;
+      mediaHtml = html`
+        <div style="position: relative;">
+          ${fileCount > 1 ? html`<div class="multi-image-badge">1 / ${fileCount}</div>` : ''}
+          <img src=${mediaUrl} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
+        </div>
+      `;
     } else if (media.type === 'video') {
       if (mediaUrl) {
         mediaHtml = html`

@@ -85,6 +85,48 @@ export class PostLightbox extends LitElement {
         min-width: 0;
       }
 
+      .image-nav-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 5;
+        font-size: 24px;
+        transition: background 0.2s;
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .image-nav-btn:hover {
+        background: var(--accent);
+      }
+
+      .image-nav-btn.prev { left: 12px; }
+      .image-nav-btn.next { right: 12px; }
+
+      .image-counter {
+        position: absolute;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        z-index: 5;
+        backdrop-filter: blur(4px);
+      }
+
       .media-wrapper {
         position: relative;
         width: 100%;
@@ -568,6 +610,8 @@ export class PostLightbox extends LitElement {
       }
     `,
   ];
+
+  @state() private currentImageIndex = 0;
 
   @property({ type: Boolean, reflect: true }) open = false;
   @property({ type: Object }) post: ProcessedPost | null = null;
@@ -1186,6 +1230,7 @@ export class PostLightbox extends LitElement {
     }
 
     if (changedProperties.has('post') && this.post) {
+      this.currentImageIndex = 0;
       this.tagsExpanded = false;
       this.likes = null;
       this.comments = null;
@@ -1209,6 +1254,29 @@ export class PostLightbox extends LitElement {
         });
       }
     }
+  }
+
+  private nextImage(e: Event): void {
+    e.stopPropagation();
+    const files = this.post?.content?.files || [];
+    if (this.currentImageIndex < files.length - 1) {
+      this.currentImageIndex++;
+      this.resetZoom();
+    }
+  }
+
+  private prevImage(e: Event): void {
+    e.stopPropagation();
+    if (this.currentImageIndex > 0) {
+      this.currentImageIndex--;
+      this.resetZoom();
+    }
+  }
+
+  private resetZoom(): void {
+    this.zoomScale = 1;
+    this.zoomTranslateX = 0;
+    this.zoomTranslateY = 0;
   }
 
   private renderLinks(): unknown {
@@ -1272,6 +1340,7 @@ export class PostLightbox extends LitElement {
   private renderMedia(): unknown {
     if (!this.post) return nothing;
     const media = this.post._media;
+    const files = this.post.content?.files || [];
 
     if (media.type === 'video' && media.videoUrl) {
       const videoUrl = this.normalizeUrl(media.videoUrl);
@@ -1288,11 +1357,20 @@ export class PostLightbox extends LitElement {
       `;
     }
 
-    if (media.type === 'image' && media.url) {
-      const imageUrl = this.normalizeUrl(media.url);
+    if (media.type === 'image') {
+      const currentUrl = files[this.currentImageIndex] || media.url;
+      if (!currentUrl) return nothing;
+      
+      const imageUrl = this.normalizeUrl(currentUrl);
       const zoomStyle = `transform: scale(${this.zoomScale}) translate(${this.zoomTranslateX / this.zoomScale}px, ${this.zoomTranslateY / this.zoomScale}px)`;
+      
       return html`
         <div class="lightbox-media">
+          ${files.length > 1 ? html`
+            <button class="image-nav-btn prev" ?disabled=${this.currentImageIndex === 0} @click=${this.prevImage}>‹</button>
+            <button class="image-nav-btn next" ?disabled=${this.currentImageIndex === files.length - 1} @click=${this.nextImage}>›</button>
+            <div class="image-counter">${this.currentImageIndex + 1} / ${files.length}</div>
+          ` : ''}
           <img
             src=${imageUrl}
             class=${this.zoomScale > 1 ? 'zoomed' : ''}
