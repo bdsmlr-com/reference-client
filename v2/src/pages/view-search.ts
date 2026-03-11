@@ -349,17 +349,21 @@ export class ViewSearch extends LitElement {
           const media = extractMedia(post);
           const mediaUrl = media.videoUrl || media.audioUrl || media.url;
 
-          // Smart Deduplication: 
-          // 1. Regular users: hide identical images.
-          // 2. Admins: show identical images FROM DIFFERENT BLOGS, but hide duplicate Post IDs.
+          // Reblog Aggregation logic
           if (mediaUrl) {
             const normalizedUrl = mediaUrl.split('?')[0];
-            const isImageDupe = this.seenUrls.has(normalizedUrl);
+            const existingIdx = buffer.findIndex(p => p._media.url?.split('?')[0] === normalizedUrl) 
+                             ?? this.posts.findIndex(p => p._media.url?.split('?')[0] === normalizedUrl);
             
-            if (isImageDupe && !isAdmin) {
-              this.stats = { ...this.stats, dupes: this.stats.dupes + 1 };
-              this.seenIds.add(post.id);
-              continue;
+            if (existingIdx !== -1) {
+              const target = buffer[existingIdx] || this.posts[existingIdx];
+              if (target) {
+                target._reblog_variants = target._reblog_variants || [];
+                target._reblog_variants.push({ id: post.id, blogName: post.blogName });
+                this.stats = { ...this.stats, dupes: this.stats.dupes + 1 };
+                this.seenIds.add(post.id);
+                continue;
+              }
             }
             this.seenUrls.add(normalizedUrl);
           }

@@ -419,12 +419,22 @@ export class PostLightbox extends LitElement {
     const typeIcon = POST_TYPE_ICONS[post.type] || '📄';
     const blogName = post.blogName || 'unknown';
     const isReblog = post.originPostId && post.originPostId !== post.id;
+    const rbVariants = post._reblog_variants || [];
 
     if (isReblog) {
       const originName = post.originBlogName || 'unknown';
       return html`
         ${typeIcon} <a href="https://${originName}.bdsmlr.com" target="_blank">@${originName}</a> / ${post.originPostId}
         via ♻️ <a href="https://${blogName}.bdsmlr.com" target="_blank">@${blogName}</a> / ${post.id}
+        
+        ${rbVariants.length > 0 ? html`
+          <div style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">
+            Also reblogged by:
+            <select style="background: var(--bg-panel-alt); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 2px 4px; margin-left: 4px;">
+              ${rbVariants.map(v => html`<option>@${v.blogName} / ${v.id}</option>`)}
+            </select>
+          </div>
+        ` : ''}
       `;
     }
     return html`${typeIcon} <a href="https://${blogName}.bdsmlr.com" target="_blank">@${blogName}</a> / ${post.id}`;
