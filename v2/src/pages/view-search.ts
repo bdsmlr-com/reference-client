@@ -461,7 +461,9 @@ export class ViewSearch extends LitElement {
             @keypress=${this.handleKeyPress}
           />
           <sort-controls .value=${this.sortValue} @sort-change=${this.handleSortChange}></sort-controls>
-          <button ?disabled=${this.searching} @click=${() => this.search()}>Search</button>
+          <button ?disabled=${this.searching} @click=${() => this.search()}>
+            ${this.searching ? 'Searching...' : 'Search'}
+          </button>
         </div>
 
         <div class="type-pills-container">
@@ -475,6 +477,8 @@ export class ViewSearch extends LitElement {
             @variant-change=${this.handleVariantChange}
           ></variant-pills>
         </div>
+
+        ${!this.hasSearched ? html`<div class="status">Enter a query to begin searching.</div>` : ''}
 
         ${this.searching && this.posts.length === 0
           ? html`<div class="grid-container"><skeleton-loader variant="post-card" count="8" trackTime></skeleton-loader></div>`

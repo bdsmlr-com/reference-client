@@ -34,10 +34,10 @@ export class AppRoot extends LitElement {
 
   private _router = new Router(this, [
     { path: '/', render: () => html`<view-home></view-home>` },
-    { path: '/search', render: () => html`<view-search></view-search>` },
-    { path: '/blogs', render: () => html`<view-blogs></view-blogs>` },
-    { path: '/discover', render: () => html`<view-discover></view-discover>` },
-    { path: '/clear-cache', render: () => html`<view-clear-cache></view-clear-cache>` },
+    { path: '/search*', render: () => html`<view-search></view-search>` },
+    { path: '/blogs*', render: () => html`<view-blogs></view-blogs>` },
+    { path: '/discover*', render: () => html`<view-discover></view-discover>` },
+    { path: '/clear-cache*', render: () => html`<view-clear-cache></view-clear-cache>` },
     { path: '/:blog/posts', render: ({ blog }) => html`<view-posts .blog=${blog}></view-posts>` },
     { path: '/:blog/feed', render: ({ blog }) => html`<view-feed .blog=${blog}></view-feed>` },
     { path: '/:blog/archive', render: ({ blog }) => html`<view-archive .blog=${blog}></view-archive>` },
