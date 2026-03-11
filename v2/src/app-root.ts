@@ -29,8 +29,23 @@ export class AppRoot extends LitElement {
       main {
         flex: 1;
       }
+      .admin-banner {
+        background: #ff0000;
+        color: white;
+        text-align: center;
+        padding: 4px;
+        font-size: 11px;
+        font-weight: bold;
+        position: sticky;
+        top: 0;
+        z-index: 2000;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
     `
   ];
+
+  @state() private isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
 
   private _router = new Router(this, [
     { path: '/', render: () => html`<view-home></view-home>` },
@@ -92,6 +107,7 @@ export class AppRoot extends LitElement {
     else if (pathname.includes('/social')) currentPage = 'social';
 
     return html`
+      ${this.isAdmin ? html`<div class="admin-banner">Admin Mode Active (Suppressed posts visible)</div>` : ''}
       <offline-banner></offline-banner>
       <shared-nav .currentPage=${currentPage}></shared-nav>
       <main>${this._router.outlet()}</main>

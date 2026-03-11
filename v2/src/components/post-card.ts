@@ -100,6 +100,22 @@ export class PostCard extends LitElement {
         opacity: 0.5;
       }
 
+      .diagnostic-label {
+        font-family: monospace;
+        font-size: 9px;
+        background: rgba(0,0,0,0.7);
+        color: #00ff00;
+        padding: 2px 4px;
+        border-radius: 2px;
+        margin-top: 4px;
+        text-transform: uppercase;
+      }
+
+      .admin-ghost {
+        border: 2px dashed #ff0000 !important;
+        background: rgba(255, 0, 0, 0.05) !important;
+      }
+
       .multi-image-badge {
         position: absolute;
         top: 8px;
@@ -360,6 +376,9 @@ export class PostCard extends LitElement {
 
     const fileCount = post.content?.files?.length || 0;
 
+    const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+    const isTombstone = !mediaUrl && !post.body;
+
     let mediaHtml;
     if (media.type === 'image') {
       if (mediaUrl) {
@@ -371,8 +390,9 @@ export class PostCard extends LitElement {
         `;
       } else {
         mediaHtml = html`
-          <div class="error-ghost ghost" style="min-height: 150px;">
+          <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 150px;">
             <span class="error-icon">🖼️</span>
+            ${isAdmin ? html`<span class="diagnostic-label">${isTombstone ? '[TOMBSTONE]' : '[MISSING_URL]'}</span>` : ''}
             <span style="font-size: 11px; opacity: 0.7;">Content Unavailable</span>
           </div>
         `;
@@ -387,16 +407,18 @@ export class PostCard extends LitElement {
         `;
       } else {
         mediaHtml = html`
-          <div class="error-ghost ghost" style="min-height: 150px;">
+          <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 150px;">
             <span class="error-icon">🎬</span>
+            ${isAdmin ? html`<span class="diagnostic-label">${isTombstone ? '[TOMBSTONE]' : '[MISSING_URL]'}</span>` : ''}
             <span style="font-size: 11px; opacity: 0.7;">Video Unavailable</span>
           </div>
         `;
       }
     } else if (media.type === 'audio') {
       mediaHtml = html`
-        <div class="error-ghost ghost" style="min-height: 80px;">
+        <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 80px;">
           <span class="error-icon" style="font-size: 18px;">🔊</span>
+          ${isAdmin ? html`<span class="diagnostic-label">[AUDIO_GHOST]</span>` : ''}
           <span style="font-size: 10px; opacity: 0.7;">Audio: ${post.body || 'Unavailable'}</span>
         </div>
       `;
@@ -411,37 +433,42 @@ export class PostCard extends LitElement {
         `;
       } else {
         mediaHtml = html`
-          <div class="error-ghost ghost" style="min-height: 100px;">
+          <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 100px;">
             <span class="error-icon" style="font-size: 18px;">🔗</span>
+            ${isAdmin ? html`<span class="diagnostic-label">[LINK_GHOST]</span>` : ''}
             <span style="font-size: 10px; opacity: 0.7; padding: 0 8px; text-align: center;">${title}</span>
           </div>
         `;
       }
     } else if (media.type === 'chat') {
       mediaHtml = html`
-        <div class="error-ghost ghost" style="min-height: 80px;">
+        <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 80px;">
           <span class="error-icon" style="font-size: 18px;">💬</span>
+          ${isAdmin ? html`<span class="diagnostic-label">[CHAT_GHOST]</span>` : ''}
           <span style="font-size: 10px; opacity: 0.7; padding: 0 8px;">${post.body || 'Chat'}</span>
         </div>
       `;
     } else if (media.type === 'quote') {
       mediaHtml = html`
-        <div class="error-ghost ghost" style="min-height: 80px;">
+        <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 80px;">
           <span class="error-icon" style="font-size: 18px;">📜</span>
+          ${isAdmin ? html`<span class="diagnostic-label">[QUOTE_GHOST]</span>` : ''}
           <span style="font-size: 10px; opacity: 0.7; padding: 0 8px;">"${post.body || 'Quote'}"</span>
         </div>
       `;
     } else if (media.type === 'text') {
       mediaHtml = html`
-        <div class="error-ghost ghost" style="min-height: 80px;">
+        <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 80px;">
           <span class="error-icon" style="font-size: 18px;">📝</span>
+          ${isAdmin ? html`<span class="diagnostic-label">[TEXT_GHOST]</span>` : ''}
           <span style="font-size: 10px; opacity: 0.7; padding: 0 8px;">${post.body || 'Text'}</span>
         </div>
       `;
     } else {
       mediaHtml = html`
-        <div class="error-ghost ghost" style="min-height: 80px;">
+        <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 80px;">
           <span class="error-icon" style="font-size: 18px;">📝</span>
+          ${isAdmin ? html`<span class="diagnostic-label">[EMPTY_FALLBACK]</span>` : ''}
           <span style="font-size: 10px; opacity: 0.7;">Post Content Unavailable</span>
         </div>
       `;
