@@ -1282,6 +1282,7 @@ export class PostLightbox extends LitElement {
 
     // Use dynamic icon based on post type
     const typeIcon = {
+      0: '❓', // Unspecified
       1: '📝', // Text
       2: '🖼️', // Image
       3: '🎬', // Video

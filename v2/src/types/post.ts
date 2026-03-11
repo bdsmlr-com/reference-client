@@ -68,6 +68,7 @@ export const POST_TYPE_LABELS: Record<PostType, string> = {
 };
 
 export const POST_TYPE_ICONS: Record<PostType, string> = {
+  0: '❓', // Unspecified
   1: '📝', // Text
   2: '🖼️', // Image
   3: '🎬', // Video
