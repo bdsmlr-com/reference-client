@@ -413,6 +413,7 @@ export class ViewFeed extends LitElement {
         }
 
         for (const post of posts) {
+          // Never show the same exact Post ID twice
           if (this.seenIds.has(post.id)) {
             continue;
           }
@@ -420,10 +421,14 @@ export class ViewFeed extends LitElement {
           const media = extractMedia(post);
           const mediaUrl = media.videoUrl || media.audioUrl || media.url;
 
-          // Deduplicate by URL only for regular users
-          if (mediaUrl && !isAdmin) {
+          // Smart Deduplication: 
+          // 1. Regular users: hide identical images.
+          // 2. Admins: show identical images FROM DIFFERENT BLOGS, but hide duplicate Post IDs.
+          if (mediaUrl) {
             const normalizedUrl = mediaUrl.split('?')[0];
-            if (this.seenUrls.has(normalizedUrl)) {
+            const isImageDupe = this.seenUrls.has(normalizedUrl);
+            
+            if (isImageDupe && !isAdmin) {
               this.seenIds.add(post.id);
               continue;
             }
