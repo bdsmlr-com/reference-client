@@ -296,11 +296,20 @@ export class ViewPosts extends LitElement {
           const media = extractMedia(post);
           const mediaUrl = media.videoUrl || media.audioUrl || media.url;
 
+          // Reblog Aggregation logic
           if (mediaUrl) {
             const normalizedUrl = mediaUrl.split('?')[0];
-            if (this.seenUrls.has(normalizedUrl)) {
-              this.seenIds.add(post.id);
-              continue;
+            const existingIdx = buffer.findIndex(p => p._media.url?.split('?')[0] === normalizedUrl) 
+                             ?? this.posts.findIndex(p => p._media.url?.split('?')[0] === normalizedUrl);
+            
+            if (existingIdx !== -1) {
+              const target = buffer[existingIdx] || this.posts[existingIdx];
+              if (target) {
+                target._reblog_variants = target._reblog_variants || [];
+                target._reblog_variants.push({ id: post.id, blogName: post.blogName });
+                this.seenIds.add(post.id);
+                continue;
+              }
             }
             this.seenUrls.add(normalizedUrl);
           }

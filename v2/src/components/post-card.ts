@@ -39,6 +39,8 @@ function postHasChanged(newVal: ProcessedPost | undefined, oldVal: ProcessedPost
   return false;
 }
 
+import { resolveMediaUrl, isGif } from '../services/media-resolver.js';
+
 @customElement('post-card')
 export class PostCard extends LitElement {
   static styles = [
@@ -374,13 +376,27 @@ export class PostCard extends LitElement {
     const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
     const isTombstone = !mediaUrl && !post.body;
 
+    const thumbUrl = resolveMediaUrl(mediaUrl, 'thumbnail');
+    const posterUrl = resolveMediaUrl(mediaUrl, 'poster');
+    const isMediaGif = isGif(mediaUrl);
+
     let mediaHtml;
     if (media.type === 'image') {
       if (mediaUrl) {
         mediaHtml = html`
           <div style="position: relative;">
             ${fileCount > 1 ? html`<div class="multi-image-badge">1 / ${fileCount}</div>` : ''}
-            <img src=${mediaUrl} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
+            ${isMediaGif ? html`
+              <video 
+                autoplay loop muted playsinline 
+                poster=${posterUrl}
+                style="width: 100%; height: 100%; object-fit: cover;"
+              >
+                <source src=${thumbUrl} type="video/mp4">
+              </video>
+            ` : html`
+              <img src=${thumbUrl} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
+            `}
           </div>
         `;
       } else {
@@ -403,11 +419,12 @@ export class PostCard extends LitElement {
       if (mediaUrl) {
         mediaHtml = html`
           <div class="video-thumb">
-            <img src=${mediaUrl} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
+            <img src=${posterUrl} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
             <span class="video-icon">▶</span>
           </div>
         `;
-      } else {
+      }
+ else {
         mediaHtml = html`
           <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 150px;">
             <span class="error-icon">🎬</span>

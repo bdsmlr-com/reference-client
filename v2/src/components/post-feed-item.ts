@@ -42,6 +42,8 @@ function postHasChanged(newVal: ProcessedPost | undefined, oldVal: ProcessedPost
   return false;
 }
 
+import { resolveMediaUrl, isGif } from '../services/media-resolver.js';
+
 @customElement('post-feed-item')
 export class PostFeedItem extends LitElement {
   static styles = [
@@ -310,12 +312,26 @@ export class PostFeedItem extends LitElement {
 
     const tags = post.tags || [];
 
+    const feedUrl = resolveMediaUrl(media.url, 'feed');
+    const posterUrl = resolveMediaUrl(media.url, 'poster');
+    const isMediaGif = isGif(media.url);
+
     let mediaHtml;
     if (media.type === 'image') {
       if (media.url) {
         mediaHtml = html`
           <div class="media-container">
-            <img src=${media.url} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
+            ${isMediaGif ? html`
+              <video 
+                autoplay loop muted playsinline 
+                poster=${posterUrl}
+                style="width: 100%; display: block;"
+              >
+                <source src=${feedUrl} type="video/mp4">
+              </video>
+            ` : html`
+              <img src=${feedUrl} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
+            `}
           </div>
         `;
       } else {
@@ -330,11 +346,17 @@ export class PostFeedItem extends LitElement {
       if (media.url) {
         mediaHtml = html`
           <div class="media-container video-container">
-            <img src=${media.url} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
-            <span class="video-icon">▶</span>
+            <video 
+              controls 
+              poster=${posterUrl}
+              style="width: 100%; display: block;"
+            >
+              <source src=${feedUrl} type="video/mp4">
+            </video>
           </div>
         `;
-      } else {
+      }
+ else {
         mediaHtml = html`
           <div class="error-ghost ghost" style="padding: 40px; border-radius: 8px;">
             <span class="error-icon">🎬</span>

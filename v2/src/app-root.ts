@@ -8,6 +8,7 @@ import './pages/view-archive.js';
 import './pages/view-blogs.js';
 import './pages/view-search.js';
 import './pages/view-social.js';
+import './pages/view-activity.js';
 import './pages/view-discover.js';
 import './pages/view-clear-cache.js';
 import './components/shared-nav.js';
@@ -56,6 +57,7 @@ export class AppRoot extends LitElement {
     { path: '/:blog/posts', render: ({ blog }) => html`<view-posts .blog=${blog}></view-posts>` },
     { path: '/:blog/feed', render: ({ blog }) => html`<view-feed .blog=${blog}></view-feed>` },
     { path: '/:blog/archive', render: ({ blog }) => html`<view-archive .blog=${blog}></view-archive>` },
+    { path: '/:blog/activity', render: ({ blog }) => html`<view-activity .blog=${blog}></view-activity>` },
     { path: '/:blog/social', render: ({ blog }) => html`<view-social .blog=${blog}></view-social>` },
   ]);
 

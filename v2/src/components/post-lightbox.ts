@@ -10,6 +10,8 @@ import { recService, type RecResult } from '../services/recommendation-api.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { POST_TYPE_ICONS, extractMedia, type ProcessedPost } from '../types/post.js';
 
+import { resolveMediaUrl, isGif } from '../services/media-resolver.js';
+
 @customElement('post-lightbox')
 export class PostLightbox extends LitElement {
   static styles = [
@@ -383,15 +385,22 @@ export class PostLightbox extends LitElement {
     const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
     const isTombstone = !media.url && !this.post.body;
 
+    const lightboxUrl = resolveMediaUrl(currentUrl, 'lightbox');
+    const posterUrl = resolveMediaUrl(currentUrl, 'poster');
+    const isMediaGif = isGif(currentUrl);
+
     if (media.type === 'video') {
       if (media.videoUrl) {
-        return html`<video controls autoplay muted><source src=${media.videoUrl} type="video/mp4" /></video>`;
+        return html`
+          <video controls autoplay muted poster=${posterUrl}>
+            <source src=${lightboxUrl} type="video/mp4" />
+          </video>
+        `;
       }
       return this.renderGhost('🎬', isAdmin, isTombstone, 'Video Unavailable');
     }
 
     if (media.type === 'image') {
-      const currentUrl = files[this.currentImageIndex] || media.url;
       if (currentUrl) {
         return html`
           ${files.length > 1 ? html`
@@ -399,7 +408,13 @@ export class PostLightbox extends LitElement {
             <button class="image-nav-btn next" ?disabled=${this.currentImageIndex === files.length - 1} @click=${this.nextImage}>›</button>
             <div class="image-counter">${this.currentImageIndex + 1} / ${files.length}</div>
           ` : ''}
-          <img src=${currentUrl} @error=${this.handleImageError} />
+          ${isMediaGif ? html`
+            <video autoplay loop muted playsinline poster=${posterUrl}>
+              <source src=${lightboxUrl} type="video/mp4" />
+            </video>
+          ` : html`
+            <img src=${lightboxUrl} @error=${this.handleImageError} />
+          `}
         `;
       }
       return this.renderGhost('🖼️', isAdmin, isTombstone, 'Content Unavailable');
@@ -477,10 +492,11 @@ export class PostLightbox extends LitElement {
             <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
               ${repeat(this.relatedPosts, r => r.post_id, r => {
                 const hydrated = (r as any)._hydratedPost;
-                const thumb = hydrated?._media?.url || hydrated?.content?.thumbnail;
+                const rawUrl = hydrated?._media?.url || hydrated?.content?.thumbnail;
+                const thumb = resolveMediaUrl(rawUrl, 'gutter');
                 return html`
                   <div class="gutter-item" @click=${() => this.navigateToRelated(r)}>
-                    ${thumb ? html`<img src=${thumb} />` : html`<div class="gutter-skeleton"></div>`}
+                    ${rawUrl ? html`<img src=${thumb} />` : html`<div class="gutter-skeleton"></div>`}
                   </div>
                 `;
               })}

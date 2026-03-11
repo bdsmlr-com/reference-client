@@ -9,7 +9,7 @@ import {
 } from '../services/blog-resolver.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 
-type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social';
+type PageName = 'search' | 'blogs' | 'archive' | 'activity' | 'timeline' | 'following' | 'social';
 const BUILD_TAG = 'cache-alert-1';
 
 @customElement('shared-nav')
@@ -176,7 +176,7 @@ export class SharedNav extends LitElement {
   private getPageUrl(page: string): string {
     // Use PRIMARY blog (from localStorage) for blog-specific pages
     const primaryBlog = getPrimaryBlogName();
-    const blogPages = ['archive', 'posts', 'feed', 'social'];
+    const blogPages = ['archive', 'posts', 'feed', 'social', 'activity'];
 
     if (blogPages.includes(page) && primaryBlog) {
       return buildPageUrl(page, primaryBlog);
@@ -224,6 +224,7 @@ export class SharedNav extends LitElement {
       { name: 'feed', label: 'Feed', description: "Posts from blogs you follow - your dashboard feed" },
       { name: 'posts', label: 'Posts', description: "A blog's posts in chronological order" },
       { name: 'archive', label: 'Archive', description: "Browse and sort all posts from a blog" },
+      { name: 'activity', label: 'Activity', description: "Consolidated reblogs, likes, and posts" },
       { name: 'social', label: 'Connections', description: "View who follows a blog and who they follow" },
       { name: 'blogs', label: 'Discover', description: 'Discover blogs by name or description' },
       { name: 'search', label: 'Search', description: 'Search posts by tags with boolean syntax' },
