@@ -280,8 +280,6 @@ export class ViewArchive extends LitElement {
 
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
 
-    const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
-
     try {
       while (buffer.length < PAGE_SIZE && !this.exhausted && backendFetches < MAX_BACKEND_FETCHES) {
         backendFetches++;

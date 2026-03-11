@@ -348,14 +348,15 @@ export class PostCard extends LitElement {
     } else if (isReblog && isOriginDeleted) {
       // Origin deleted but we have the reblogger
       linkText = `📌 ${blogName}`;
-    const rbCount = post._reblog_variants?.length || 0;
-
-    if (isReblog) {
-      // Show reblogger + origin: reblogger ♻️ origin (clearer format)
-      const originDisplay = originBlogName || '?';
-      linkText = `${blogName} ♻️ ${originDisplay}${rbCount > 0 ? ` (+${rbCount})` : ''}`;
     } else {
-      linkText = `${typeIcon} ${blogName}${rbCount > 0 ? ` ♻️ +${rbCount}` : ''}`;
+      // Standard reblog or original post
+      const rbCount = post._reblog_variants?.length || 0;
+      if (isReblog) {
+        const originDisplay = originBlogName || '?';
+        linkText = `${blogName} ♻️ ${originDisplay}${rbCount > 0 ? ` (+${rbCount})` : ''}`;
+      } else {
+        linkText = `${typeIcon} ${blogName}${rbCount > 0 ? ` ♻️ +${rbCount}` : ''}`;
+      }
     }
 
 
