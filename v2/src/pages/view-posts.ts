@@ -257,7 +257,7 @@ export class ViewPosts extends LitElement {
     this.loadingCurrent = 0;
 
     const sortField: PostSortField = 1;
-    const order: Order = 0;
+    const order: Order = 2; // DESC
 
     try {
       while (buffer.length < PAGE_SIZE && !this.exhausted && backendFetches < MAX_BACKEND_FETCHES) {
