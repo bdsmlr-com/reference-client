@@ -15,20 +15,8 @@ export interface MediaInfo {
 
 export function extractMedia(post: Post): MediaInfo {
   const content: PostContent = post.content || {};
-  let postType: any = post.type;
+  const postType: PostType = post.type;
   
-  // Recover from stale browser caches that might have stored the backend's string ENUM names
-  if (typeof postType === 'string') {
-    if (postType === 'POST_TYPE_TEXT') postType = 1;
-    else if (postType === 'POST_TYPE_IMAGE') postType = 2;
-    else if (postType === 'POST_TYPE_VIDEO') postType = 3;
-    else if (postType === 'POST_TYPE_AUDIO') postType = 4;
-    else if (postType === 'POST_TYPE_LINK') postType = 5;
-    else if (postType === 'POST_TYPE_CHAT') postType = 6;
-    else if (postType === 'POST_TYPE_QUOTE') postType = 7;
-    else postType = parseInt(postType, 10) || 0;
-  }
-
   const files = content.files || [];
   const file = files[0];
   const thumb = content.thumbnail;
@@ -39,21 +27,24 @@ export function extractMedia(post: Post): MediaInfo {
   const quoteText = content.quoteText || '';
   const quoteSource = content.quoteSource || '';
 
+  // Use the post.body (cleaned by backend) as a fallback for all types
+  const preview = post.body || '';
+
   switch (postType) {
     case 1: // Text
-      return { type: 'text', title, text: text || html };
+      return { type: 'text', title, text: preview || text || html };
     case 2: // Image
-      return { type: 'image', url: file, html };
+      return { type: 'image', url: file, html: preview || html };
     case 3: // Video
-      return { type: 'video', url: thumb, videoUrl: file, html };
+      return { type: 'video', url: thumb, videoUrl: file, html: preview || html };
     case 4: // Audio
-      return { type: 'audio', audioUrl: file, html, text };
+      return { type: 'audio', audioUrl: file, html: preview || html, text: preview || text };
     case 5: // Link
-      return { type: 'link', url: thumb, linkUrl: url, title, html, text };
+      return { type: 'link', url: thumb, linkUrl: url, title, html: preview || html, text: preview || text };
     case 6: // Chat
-      return { type: 'chat', title, text: text || html };
+      return { type: 'chat', title, text: preview || text || html };
     case 7: // Quote
-      return { type: 'quote', quoteText, quoteSource, html };
+      return { type: 'quote', quoteText: quoteText || preview, quoteSource, html: preview || html };
     default:
       return { type: 'none' };
   }

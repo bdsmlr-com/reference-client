@@ -394,15 +394,14 @@ export class PostCard extends LitElement {
         `;
       }
     } else if (media.type === 'audio') {
-      const preview = (media.html || media.text || '').replace(/<[^>]+>/g, '').slice(0, PREVIEW_TEXT_LENGTH);
       mediaHtml = html`
         <div class="error-ghost ghost" style="min-height: 80px;">
           <span class="error-icon" style="font-size: 18px;">🔊</span>
-          <span style="font-size: 10px; opacity: 0.7;">Audio: ${preview || 'Unavailable'}</span>
+          <span style="font-size: 10px; opacity: 0.7;">Audio: ${post.body || 'Unavailable'}</span>
         </div>
       `;
     } else if (media.type === 'link') {
-      const title = media.title || 'Link';
+      const title = media.title || post.title || 'Link';
       if (mediaUrl) {
         mediaHtml = html`
           <div class="link-thumb">
@@ -414,33 +413,29 @@ export class PostCard extends LitElement {
         mediaHtml = html`
           <div class="error-ghost ghost" style="min-height: 100px;">
             <span class="error-icon" style="font-size: 18px;">🔗</span>
-            <span style="font-size: 10px; opacity: 0.7; padding: 0 8px; text-align: center;">${title.slice(0, 50)}</span>
+            <span style="font-size: 10px; opacity: 0.7; padding: 0 8px; text-align: center;">${title}</span>
           </div>
         `;
       }
     } else if (media.type === 'chat') {
-      const preview = (media.text || media.title || '').replace(/<[^>]+>/g, '').slice(0, PREVIEW_TEXT_LENGTH);
       mediaHtml = html`
         <div class="error-ghost ghost" style="min-height: 80px;">
           <span class="error-icon" style="font-size: 18px;">💬</span>
-          <span style="font-size: 10px; opacity: 0.7; padding: 0 8px;">${preview || 'Chat'}</span>
+          <span style="font-size: 10px; opacity: 0.7; padding: 0 8px;">${post.body || 'Chat'}</span>
         </div>
       `;
     } else if (media.type === 'quote') {
-      const preview = (media.quoteText || '').replace(/<[^>]+>/g, '').slice(0, PREVIEW_TEXT_LENGTH);
       mediaHtml = html`
         <div class="error-ghost ghost" style="min-height: 80px;">
           <span class="error-icon" style="font-size: 18px;">📜</span>
-          <span style="font-size: 10px; opacity: 0.7; padding: 0 8px;">"${preview || 'Quote'}"</span>
+          <span style="font-size: 10px; opacity: 0.7; padding: 0 8px;">"${post.body || 'Quote'}"</span>
         </div>
       `;
     } else if (media.type === 'text') {
-      const decoded = this.decodeHtml(media.text || '');
-      const preview = decoded.replace(/<[^>]+>/g, '').slice(0, PREVIEW_TEXT_LENGTH);
       mediaHtml = html`
         <div class="error-ghost ghost" style="min-height: 80px;">
           <span class="error-icon" style="font-size: 18px;">📝</span>
-          <span style="font-size: 10px; opacity: 0.7; padding: 0 8px;">${preview || 'Text'}</span>
+          <span style="font-size: 10px; opacity: 0.7; padding: 0 8px;">${post.body || 'Text'}</span>
         </div>
       `;
     } else {
