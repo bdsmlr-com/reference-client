@@ -298,13 +298,18 @@ export class PostLightbox extends LitElement {
   };
 
   private close() {
-    this.dispatchEvent(new CustomEvent(EventNames.CLOSE));
+    this.dispatchEvent(new CustomEvent(EventNames.CLOSE, { 
+      bubbles: true, 
+      composed: true 
+    }));
   }
 
   private navigatePrev() {
     if (this.currentIndex > 0) {
       this.dispatchEvent(new CustomEvent<LightboxNavigateDetail>(EventNames.NAVIGATE, {
-        detail: { direction: 'prev', index: this.currentIndex - 1 }
+        detail: { direction: 'prev', index: this.currentIndex - 1 },
+        bubbles: true,
+        composed: true
       }));
     }
   }
@@ -312,7 +317,9 @@ export class PostLightbox extends LitElement {
   private navigateNext() {
     if (this.currentIndex < this.posts.length - 1) {
       this.dispatchEvent(new CustomEvent<LightboxNavigateDetail>(EventNames.NAVIGATE, {
-        detail: { direction: 'next', index: this.currentIndex + 1 }
+        detail: { direction: 'next', index: this.currentIndex + 1 },
+        bubbles: true,
+        composed: true
       }));
     }
   }
