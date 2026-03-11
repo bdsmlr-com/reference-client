@@ -11,7 +11,7 @@ import {
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
-import type { Post, PostType, PostSortField, Order, PostVariant } from '../types/api.js';
+import type { PostType, PostSortField, Order, PostVariant } from '../types/api.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import '../components/sort-controls.js';
 import '../components/type-pills.js';
@@ -319,7 +319,7 @@ export class ViewSearch extends LitElement {
           post_types: this.selectedTypes,
           variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
           page: {
-            page_size: 48, // Increase batch size to find unique content faster
+            page_size: 48,
             page_token: this.backendCursor || undefined,
           },
         });
@@ -336,58 +336,47 @@ export class ViewSearch extends LitElement {
           break;
         }
 
-        const candidates: Post[] = [];
         for (const post of posts) {
-          // Never show the same exact Post ID twice
           if (this.seenIds.has(post.id)) {
             this.stats = { ...this.stats, dupes: this.stats.dupes + 1 };
             continue;
           }
 
-          const media = extractMedia(post);
-          const mediaUrl = media.videoUrl || media.audioUrl || media.url;
-
-          // Reblog Aggregation logic
-          if (mediaUrl) {
-            const normalizedUrl = mediaUrl.split('?')[0];
-            const existingIdx = buffer.findIndex(p => p._media.url?.split('?')[0] === normalizedUrl) 
-                             ?? this.posts.findIndex(p => p._media.url?.split('?')[0] === normalizedUrl);
-            
-            if (existingIdx !== -1) {
-              const target = buffer[existingIdx] || this.posts[existingIdx];
-              if (target) {
-                target._reblog_variants = target._reblog_variants || [];
-                target._reblog_variants.push({ id: post.id, blogName: post.blogName });
-                this.stats = { ...this.stats, dupes: this.stats.dupes + 1 };
-                this.seenIds.add(post.id);
-                continue;
-              }
-            }
-            this.seenUrls.add(normalizedUrl);
-          }
-
-          this.seenIds.add(post.id);
-          candidates.push(post);
-        }
-
-        for (const post of candidates) {
           const isDeleted = !!post.deletedAtUnix;
           const isReblog = post.originPostId && post.originPostId !== post.id;
           const isRedacted = isDeleted || (!post.blogName && isReblog);
 
           if (isDeleted || isRedacted) {
             this.stats = { ...this.stats, deleted: this.stats.deleted + 1 };
+            this.seenIds.add(post.id);
             continue;
           }
 
-          this.stats = { ...this.stats, found: this.stats.found + 1 };
+          const media = extractMedia(post);
+          const mediaUrl = media.url || media.videoUrl || media.audioUrl;
+          const cleanUrl = mediaUrl?.split('?')[0];
 
-          const processedPost: ProcessedPost = {
+          if (cleanUrl) {
+            const match = buffer.find(p => p._media.url?.split('?')[0] === cleanUrl) || 
+                          this.posts.find(p => p._media.url?.split('?')[0] === cleanUrl);
+
+            if (match) {
+              match._reblog_variants = match._reblog_variants || [];
+              match._reblog_variants.push({ id: post.id, blogName: post.blogName });
+              this.stats = { ...this.stats, dupes: this.stats.dupes + 1 };
+              this.seenIds.add(post.id);
+              continue;
+            }
+          }
+
+          const processed: ProcessedPost = {
             ...post,
-            _media: extractMedia(post),
+            _media: media
           };
 
-          buffer.push(processedPost);
+          this.seenIds.add(post.id);
+          buffer.push(processed);
+          this.stats = { ...this.stats, found: this.stats.found + 1 };
           this.loadingCurrent = buffer.length;
 
           if (buffer.length >= PAGE_SIZE) break;

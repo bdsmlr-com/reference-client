@@ -7,13 +7,13 @@ import { getUrlParam, setUrlParams, isBlogInPath, isDefaultTypes } from '../serv
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
-  generatePaginationCursorKey,
-  getCachedPaginationCursor,
+  
+  
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import type { Blog } from '../types/api.js';
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
-import type { Post, PostType, PostSortField, Order, PostVariant } from '../types/api.js';
+import type { PostType, PostSortField, Order } from '../types/api.js';
 import '../components/sort-controls.js';
 import '../components/type-pills.js';
 import '../components/variant-pills.js';
@@ -24,7 +24,7 @@ import '../components/skeleton-loader.js';
 import '../components/error-state.js';
 import '../components/blog-header.js';
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 48; // Higher density
 const MAX_BACKEND_FETCHES = 3;
 
 @customElement('view-archive')
@@ -62,25 +62,15 @@ export class ViewArchive extends LitElement {
         padding: 0 16px;
       }
 
-      .pills-separator {
-        color: var(--text-muted);
-        font-size: 16px;
-      }
-
       .status {
         text-align: center;
         color: var(--text-muted);
         padding: 40px 16px;
       }
 
-      .error {
-        text-align: center;
-        color: var(--error);
-        padding: 40px 16px;
-      }
-
       .grid-container {
         margin-bottom: 20px;
+        padding: 0 16px;
       }
     `,
   ];
@@ -90,16 +80,15 @@ export class ViewArchive extends LitElement {
   @state() private blogId: number | null = null;
   @state() private sortValue = 'newest';
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
-  @state() private selectedVariants: PostVariant[] = [];
   @state() private posts: ProcessedPost[] = [];
   @state() private loading = false;
   @state() private exhausted = false;
   @state() private stats: ViewStats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
-  @state() private loadingCurrent = 0;
+  
   @state() private infiniteScroll = false;
   @state() private statusMessage = '';
   @state() private errorMessage = '';
-  @state() private retrying = false;
+  
   @state() private initialLoading = false;
   @state() private blogData: Blog | null = null;
   @state() private autoRetryAttempt = 0;
@@ -107,7 +96,6 @@ export class ViewArchive extends LitElement {
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
-  private seenUrls = new Set<string>();
   private paginationKey = '';
 
   protected updated(changedProperties: PropertyValues): void {
@@ -167,7 +155,6 @@ export class ViewArchive extends LitElement {
       if (!blogId) {
         this.errorMessage = ErrorMessages.BLOG.notFound(this.blog);
         this.isRetryableError = false;
-        this.initialLoading = false;
         return;
       }
 
@@ -182,21 +169,36 @@ export class ViewArchive extends LitElement {
     }
   }
 
-  private async handleRetry(e?: CustomEvent): Promise<void> {
-    const isAutoRetry = e?.detail?.isAutoRetry ?? false;
-    this.retrying = true;
-    this.errorMessage = '';
-    this.isRetryableError = false;
+  private async loadPosts(): Promise<void> {
+    if (!this.blogId) return;
+    if (this.selectedTypes.length === 0) {
+      this.statusMessage = ErrorMessages.VALIDATION.NO_TYPES_SELECTED;
+      return;
+    }
+
+    this.backendCursor = null;
+    this.exhausted = false;
+    this.seenIds.clear();
+    this.stats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
+    this.posts = [];
+    this.statusMessage = '';
+
+    const params: Record<string, string> = {
+      sort: this.sortValue,
+      types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','),
+    };
+    if (!isBlogInPath()) {
+      params.blog = this.blog;
+    }
+    setUrlParams(params);
 
     try {
-      await this.loadFromUrl();
-      this.autoRetryAttempt = 0;
-    } catch {
-      if (isAutoRetry && this.isRetryableError) {
-        this.autoRetryAttempt++;
-      }
+      await this.fillPage();
+    } catch (e) {
+      this.errorMessage = getContextualErrorMessage(e, 'load_posts', { blogName: this.blog });
     }
-    this.retrying = false;
+
+    this.observeSentinel();
   }
 
   private observeSentinel(): void {
@@ -212,71 +214,12 @@ export class ViewArchive extends LitElement {
     });
   }
 
-  private resetState(): void {
-    this.backendCursor = null;
-    this.exhausted = false;
-    this.seenIds.clear();
-    this.seenUrls.clear();
-    this.stats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
-    this.posts = [];
-    this.statusMessage = '';
-  }
-
-  private async loadPosts(): Promise<void> {
-    if (!this.blogId) return;
-    if (this.selectedTypes.length === 0) {
-      this.statusMessage = ErrorMessages.VALIDATION.NO_TYPES_SELECTED;
-      return;
-    }
-
-    this.resetState();
-
-    const params: Record<string, string> = {
-      sort: this.sortValue,
-      types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','),
-    };
-    if (!isBlogInPath()) {
-      params.blog = this.blog;
-    }
-    setUrlParams(params);
-
-    this.paginationKey = generatePaginationCursorKey('archive', {
-      blog: this.blog,
-      sort: this.sortValue,
-      types: this.selectedTypes.join(','),
-    });
-
-    const cachedState = getCachedPaginationCursor(this.paginationKey);
-    if (cachedState && cachedState.itemCount > 0) {
-      this.backendCursor = cachedState.cursor;
-      this.exhausted = cachedState.exhausted;
-      const scrollTarget = cachedState.scrollPosition;
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          window.scrollTo({ top: scrollTarget, behavior: 'auto' });
-        }, 100);
-      });
-    }
-
-    try {
-      await this.fillPage();
-    } catch (e) {
-      this.errorMessage = getContextualErrorMessage(e, 'load_posts', { blogName: this.blog });
-      const apiError = isApiError(e) ? e : toApiError(e);
-      this.isRetryableError = apiError.isRetryable;
-    }
-
-    this.observeSentinel();
-  }
-
   private async fillPage(): Promise<void> {
     if (!this.blogId) return;
 
     const buffer: ProcessedPost[] = [];
     let backendFetches = 0;
-
     this.loading = true;
-    this.loadingCurrent = 0;
 
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
 
@@ -289,73 +232,58 @@ export class ViewArchive extends LitElement {
           sort_field: sortOpt.field as PostSortField,
           order: sortOpt.order as Order,
           post_types: this.selectedTypes,
-          variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
           page: {
-            page_size: 48, // Increase batch size to find unique content faster
+            page_size: 48,
             page_token: this.backendCursor || undefined,
           },
         });
 
         const posts = resp.posts || [];
         this.backendCursor = resp.page?.nextPageToken || null;
+        if (!this.backendCursor) this.exhausted = true;
+        if (posts.length === 0) { this.exhausted = true; break; }
 
-        if (!this.backendCursor) {
-          this.exhausted = true;
-        }
-
-        if (posts.length === 0) {
-          this.exhausted = true;
-          break;
-        }
-
-        const candidates: Post[] = [];
         for (const post of posts) {
-          // Never show the same exact Post ID twice
           if (this.seenIds.has(post.id)) {
             this.stats = { ...this.stats, dupes: this.stats.dupes + 1 };
             continue;
           }
 
-          const media = extractMedia(post);
-          const mediaUrl = media.videoUrl || media.audioUrl || media.url;
+          const isDeleted = !!post.deletedAtUnix;
+          const isReblog = post.originPostId && post.originPostId !== post.id;
+          const isRedacted = isDeleted || (!post.blogName && isReblog);
 
-          // Reblog Aggregation logic
-          if (mediaUrl) {
-            const normalizedUrl = mediaUrl.split('?')[0];
-            const existingIdx = buffer.findIndex(p => p._media.url?.split('?')[0] === normalizedUrl) 
-                             ?? this.posts.findIndex(p => p._media.url?.split('?')[0] === normalizedUrl);
-            
-            if (existingIdx !== -1) {
-              const target = buffer[existingIdx] || this.posts[existingIdx];
-              if (target) {
-                target._reblog_variants = target._reblog_variants || [];
-                target._reblog_variants.push({ id: post.id, blogName: post.blogName });
-                this.stats = { ...this.stats, dupes: this.stats.dupes + 1 };
-                this.seenIds.add(post.id);
-                continue;
-              }
-            }
-            this.seenUrls.add(normalizedUrl);
+          if (isDeleted || isRedacted) {
+            this.stats = { ...this.stats, deleted: this.stats.deleted + 1 };
+            this.seenIds.add(post.id);
+            continue;
           }
 
+          const media = extractMedia(post);
+          const mediaUrl = media.url || media.videoUrl || media.audioUrl;
+          const cleanUrl = mediaUrl?.split('?')[0];
+
+          if (cleanUrl) {
+            const match = buffer.find(p => p._media.url?.split('?')[0] === cleanUrl) || 
+                          this.posts.find(p => p._media.url?.split('?')[0] === cleanUrl);
+
+            if (match) {
+              match._reblog_variants = match._reblog_variants || [];
+              match._reblog_variants.push({ id: post.id, blogName: post.blogName });
+              this.stats = { ...this.stats, dupes: this.stats.dupes + 1 };
+              this.seenIds.add(post.id);
+              continue;
+            }
+          }
+
+          const processed: ProcessedPost = { ...post, _media: media };
           this.seenIds.add(post.id);
-          candidates.push(post);
-        }
-
-        for (const post of candidates) {
+          buffer.push(processed);
           this.stats = { ...this.stats, found: this.stats.found + 1 };
-
-          const processedPost: ProcessedPost = {
-            ...post,
-            _media: extractMedia(post),
-          };
-
-          buffer.push(processedPost);
-          this.loadingCurrent = buffer.length;
+          
 
           if (buffer.length >= PAGE_SIZE) break;
         }
-
         if (buffer.length >= PAGE_SIZE) break;
       }
 
@@ -376,23 +304,12 @@ export class ViewArchive extends LitElement {
 
   private handleSortChange(e: CustomEvent): void {
     this.sortValue = e.detail.value;
-    if (this.blogId) {
-      this.loadPosts();
-    }
+    this.loadPosts();
   }
 
   private handleTypesChange(e: CustomEvent): void {
     this.selectedTypes = e.detail.types;
-    if (this.blogId) {
-      this.loadPosts();
-    }
-  }
-
-  private handleVariantChange(e: CustomEvent): void {
-    this.selectedVariants = e.detail.variants || [];
-    if (this.blogId) {
-      this.loadPosts();
-    }
+    this.loadPosts();
   }
 
   private handlePostClick(e: CustomEvent): void {
@@ -406,93 +323,61 @@ export class ViewArchive extends LitElement {
 
   private handleInfiniteToggle(e: CustomEvent): void {
     this.infiniteScroll = e.detail.enabled;
-    if (this.infiniteScroll) {
-      this.observeSentinel();
+    if (this.infiniteScroll) this.observeSentinel();
+  }
+
+  private async handleRetry(e?: CustomEvent): Promise<void> {
+    const isAutoRetry = e?.detail?.isAutoRetry ?? false;
+    
+    this.errorMessage = '';
+    try {
+      await this.loadFromUrl();
+      this.autoRetryAttempt = 0;
+    } catch {
+      if (isAutoRetry && this.isRetryableError) this.autoRetryAttempt++;
     }
+    
   }
 
   render() {
     return html`
       <div class="content">
-        ${this.blog
-          ? html`
-              <blog-header
-                page="archive"
-                .blogName=${this.blog}
-                .blogTitle=${this.blogData?.title || ''}
-              ></blog-header>
-            `
-          : ''}
+        <blog-header page="archive" .blogName=${this.blog} .blogTitle=${this.blogData?.title || ''}></blog-header>
 
-        ${this.initialLoading && !this.blogId
-          ? html`<loading-spinner message="Loading..." trackTime></loading-spinner>`
-          : ''}
+        ${this.initialLoading ? html`<loading-spinner message="Loading archive..."></loading-spinner>` : ''}
 
-        ${this.blogId
-          ? html`
-              <div class="controls">
-                <sort-controls .value=${this.sortValue} @sort-change=${this.handleSortChange}></sort-controls>
-              </div>
+        ${this.blogId ? html`
+          <div class="controls">
+            <sort-controls .value=${this.sortValue} @sort-change=${this.handleSortChange}></sort-controls>
+          </div>
+          <div class="type-pills-container">
+            <type-pills .selectedTypes=${this.selectedTypes} @types-change=${this.handleTypesChange}></type-pills>
+          </div>
+        ` : ''}
 
-              <div class="type-pills-container">
-                <type-pills
-                  .selectedTypes=${this.selectedTypes}
-                  @types-change=${this.handleTypesChange}
-                ></type-pills>
-                <span class="pills-separator">|</span>
-                <variant-pills
-                  .loading=${this.loading}
-                  @variant-change=${this.handleVariantChange}
-                ></variant-pills>
-              </div>
-            `
-          : ''}
-
-        ${this.errorMessage
-          ? html`
-              <error-state
-                title="Error"
-                message=${this.errorMessage}
-                ?retrying=${this.retrying}
-                ?autoRetry=${this.isRetryableError}
-                .autoRetryAttempt=${this.autoRetryAttempt}
-                @retry=${this.handleRetry}
-              ></error-state>
-            `
-          : ''}
-
+        ${this.errorMessage ? html`<error-state title="Error" message=${this.errorMessage} @retry=${this.handleRetry}></error-state>` : ''}
         ${this.statusMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
 
-        ${this.loading && this.posts.length === 0 && !this.errorMessage && this.blogId
-          ? html`<div class="grid-container"><skeleton-loader variant="post-card" count="8" trackTime></skeleton-loader></div>`
-          : ''}
+        <div class="grid-container">
+          <activity-grid 
+            .items=${this.posts.map(p => ({ 
+              post: p, 
+              type: (p.originPostId && p.originPostId !== p.id) ? 'reblog' : 'post' 
+            }))} 
+            @activity-click=${this.handlePostClick}
+          ></activity-grid>
+        </div>
 
-        ${this.posts.length > 0
-          ? html`
-              <div class="grid-container">
-                <activity-grid 
-                  .items=${this.posts.map(p => ({ 
-                    post: p, 
-                    type: (p.originPostId && p.originPostId !== p.id) ? 'reblog' : 'post' 
-                  }))} 
-                  @activity-click=${this.handlePostClick}
-                ></activity-grid>
-              </div>
-
-              <load-footer
-                mode="archive"
-                pageName="archive"
-                .stats=${this.stats}
-                .loading=${this.loading}
-                .exhausted=${this.exhausted}
-                .loadingCurrent=${this.loadingCurrent}
-                .loadingTarget=${PAGE_SIZE}
-                .infiniteScroll=${this.infiniteScroll}
-                @load-more=${() => this.loadMore()}
-                @infinite-toggle=${this.handleInfiniteToggle}
-              ></load-footer>
-            `
-          : ''}
+        <load-footer
+          mode="archive"
+          pageName="archive"
+          .stats=${this.stats}
+          .loading=${this.loading}
+          .exhausted=${this.exhausted}
+          .infiniteScroll=${this.infiniteScroll}
+          @load-more=${() => this.loadMore()}
+          @infinite-toggle=${this.handleInfiniteToggle}
+        ></load-footer>
 
         <div id="scroll-sentinel" style="height:1px;"></div>
       </div>

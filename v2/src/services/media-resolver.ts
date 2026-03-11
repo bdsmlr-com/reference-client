@@ -30,18 +30,20 @@ const CONTEXT_PRESETS: Record<MediaContext, MediaOptions> = {
 function toS3Scheme(url: string): string {
   if (!url) return '';
   
-  // Support ocdn012, cdn012, cdn101, etc.
-  const cdnMatch = url.match(/(o?cdn\d+)\.bdsmlr\.com/);
-  if (cdnMatch) {
-    const host = cdnMatch[0];
-    const path = url.split(host)[1];
-    // We map all of them to the same logical S3 bucket structure
-    // (If ocdn012 maps to a specific bucket, we can adjust this)
-    const bucket = host === 'ocdn012.bdsmlr.com' ? 'ocdn012.bdsmlr.com' : 'ocdn012.bdsmlr.com';
-    return `s3://${bucket}${path}`;
+  // 1. Strip query parameters (e, t, cb, etc)
+  const cleanUrl = url.split('?')[0];
+  
+  // 2. Identify the host and the path
+  // Supports: cdn012.bdsmlr.com, ocdn012.bdsmlr.com, cdn101.bdsmlr.com, etc.
+  const hostMatch = cleanUrl.match(/(?:o?cdn\d+)\.bdsmlr\.com/);
+  if (hostMatch) {
+    const host = hostMatch[0];
+    const path = cleanUrl.split(host)[1];
+    // Map ALL variations to the same ocdn012 logical bucket for the proxy
+    return `s3://ocdn012.bdsmlr.com${path}`;
   }
 
-  return url;
+  return cleanUrl;
 }
 
 /**
