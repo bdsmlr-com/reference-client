@@ -9,7 +9,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import { when } from 'lit/directives/when.js';
 import { recService, type RecResult } from '../services/recommendation-api.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
-import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
+import { POST_TYPE_ICONS, extractMedia, type ProcessedPost } from '../types/post.js';
 import { type PostType, type Like, type Comment } from '../types/api.js';
 
 @customElement('post-lightbox')
@@ -1135,12 +1135,6 @@ export class PostLightbox extends LitElement {
   render() {
     if (!this.post) return nothing;
 
-    const post = this.post;
-    const isReblog = post.originPostId && post.originPostId !== post.id;
-    const isDeleted = !!post.deletedAtUnix;
-    const isRedacted = isDeleted || (!post.blogName && isReblog);
-    const isTombstone = !post._media?.url && !post.body;
-
     return html`
       <button class="close-btn" @click=${this.close} aria-label="Close lightbox">×</button>
       
@@ -1268,7 +1262,7 @@ export class PostLightbox extends LitElement {
 
   // Double tap to zoom helper
   private lastTap = 0;
-  private handleImageDoubleTap(e: MouseEvent) {
+  private handleImageDoubleTap() {
     const now = Date.now();
     if (now - this.lastTap < 300) {
       if (this.zoomScale > 1) {
