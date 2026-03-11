@@ -12,7 +12,7 @@ import {
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import type { Blog } from '../types/api.js';
-import { extractMedia, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
+import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { Post, PostType, PostSortField, Order, PostVariant } from '../types/api.js';
 import '../components/sort-controls.js';
 import '../components/type-pills.js';
@@ -148,7 +148,7 @@ export class ViewArchive extends LitElement {
     const sort = getUrlParam('sort');
     const types = getUrlParam('types');
 
-    if (sort) this.sortValue = sort;
+    this.sortValue = normalizeSortValue(sort);
     if (types) {
       this.selectedTypes = types.split(',').map((t) => parseInt(t, 10) as PostType);
     }

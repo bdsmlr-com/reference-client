@@ -203,7 +203,13 @@ export class ViewBlogs extends LitElement {
     const sort = getUrlParam('sort');
 
     if (q) this.query = q;
-    if (sort) this.sortValue = sort;
+    
+    // Sanitize blog sort value
+    if (sort && BLOG_SORT_OPTIONS.some(o => o.value === sort)) {
+      this.sortValue = sort;
+    } else {
+      this.sortValue = 'followers:0';
+    }
 
     const sortOpt = BLOG_SORT_OPTIONS.find((o) => o.value === this.sortValue) || BLOG_SORT_OPTIONS[0];
 

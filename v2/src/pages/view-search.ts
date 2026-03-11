@@ -10,7 +10,7 @@ import {
   getCachedPaginationCursor,
   setCachedPaginationCursor,
 } from '../services/storage.js';
-import { extractMedia, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
+import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { Post, PostType, PostSortField, Order, PostVariant } from '../types/api.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import '../components/sort-controls.js';
@@ -199,7 +199,7 @@ export class ViewSearch extends LitElement {
     const types = getUrlParam('types');
 
     if (q) this.query = q;
-    if (sort) this.sortValue = sort;
+    this.sortValue = normalizeSortValue(sort);
     if (types) {
       this.selectedTypes = types.split(',').map((t) => parseInt(t, 10) as PostType);
     }

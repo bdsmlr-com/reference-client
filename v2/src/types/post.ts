@@ -95,3 +95,12 @@ export const SORT_OPTIONS: SortOption[] = [
   { value: 'oldest', label: 'Oldest', field: 1, order: 1 },
   { value: 'unpopular', label: 'Least popular', field: 6, order: 1 },
 ];
+
+/**
+ * Strictly sanitizes a sort value from the URL.
+ * Only allows known semantic names, defaults to 'newest' for anything else.
+ */
+export function normalizeSortValue(val: string | null | undefined): string {
+  if (!val) return 'newest';
+  return SORT_OPTIONS.some((o) => o.value === val) ? val : 'newest';
+}
