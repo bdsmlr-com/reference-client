@@ -30,16 +30,15 @@ const CONTEXT_PRESETS: Record<MediaContext, MediaOptions> = {
 function toS3Scheme(url: string): string {
   if (!url) return '';
   
-  // Handle ocdn012 mapping
-  if (url.includes('ocdn012.bdsmlr.com')) {
-    const path = url.split('ocdn012.bdsmlr.com')[1];
-    return `s3://ocdn012.bdsmlr.com${path}`;
-  }
-  
-  // Generic CDN -> S3 mapping (can be expanded)
-  if (url.includes('cdn012.bdsmlr.com')) {
-    const path = url.split('cdn012.bdsmlr.com')[1];
-    return `s3://ocdn012.bdsmlr.com${path}`;
+  // Support ocdn012, cdn012, cdn101, etc.
+  const cdnMatch = url.match(/(o?cdn\d+)\.bdsmlr\.com/);
+  if (cdnMatch) {
+    const host = cdnMatch[0];
+    const path = url.split(host)[1];
+    // We map all of them to the same logical S3 bucket structure
+    // (If ocdn012 maps to a specific bucket, we can adjust this)
+    const bucket = host === 'ocdn012.bdsmlr.com' ? 'ocdn012.bdsmlr.com' : 'ocdn012.bdsmlr.com';
+    return `s3://${bucket}${path}`;
   }
 
   return url;

@@ -384,6 +384,7 @@ export class PostLightbox extends LitElement {
     const files = this.post.content?.files || [];
     const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
     const isTombstone = !media.url && !this.post.body;
+    const currentUrl = files[this.currentImageIndex] || media.url || media.videoUrl;
 
     const lightboxUrl = resolveMediaUrl(currentUrl, 'lightbox');
     const posterUrl = resolveMediaUrl(currentUrl, 'poster');

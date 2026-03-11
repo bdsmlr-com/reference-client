@@ -2,12 +2,10 @@ import { LitElement, html, css, PropertyValues } from 'lit';
 import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
-import { getContextualErrorMessage, toApiError } from '../services/api-error.js';
-import { getUrlParam, setUrlParams } from '../services/blog-resolver.js';
+import { getContextualErrorMessage } from '../services/api-error.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
-import { scrollObserver } from '../services/scroll-observer.js';
-import { extractMedia, type ProcessedPost, type ViewStats } from '../types/post.js';
-import type { Blog, Activity } from '../types/api.js';
+import { extractMedia, type ProcessedPost } from '../types/post.js';
+import type { Blog } from '../types/api.js';
 import '../components/post-grid.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
@@ -34,8 +32,6 @@ export class ViewActivity extends LitElement {
   @state() private posts: ProcessedPost[] = [];
   @state() private loading = false;
   @state() private exhausted = false;
-  @state() private stats: ViewStats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
-  @state() private infiniteScroll = false;
   @state() private statusMessage = '';
   @state() private errorMessage = '';
   @state() private blogData: Blog | null = null;
@@ -86,36 +82,36 @@ export class ViewActivity extends LitElement {
     if (!this.blogId || this.loading || this.exhausted) return;
     this.loading = true;
     try {
-      const resp = await apiClient.activity.list({
-        blog_id: this.blogId,
-        page: { page_size: PAGE_SIZE, page_token: this.backendCursor || undefined }
+      // Use recentActivity.list instead of non-existent activity.list
+      const resp = await apiClient.recentActivity.list({
+        blog_ids: [this.blogId],
+        page: { page_size: PAGE_SIZE, page_token: this.backendCursor || undefined },
+        global_merge: true,
+        sort_field: 0,
+        order: 2,
+        limit_per_blog: 0
       });
 
-      const activities: Activity[] = resp.activities || [];
+      const posts = resp.posts || [];
       this.backendCursor = resp.page?.nextPageToken || null;
       if (!this.backendCursor) this.exhausted = true;
 
-      // Map activities to posts for the grid
-      const postIds = activities.map(a => a.postId).filter((id): id is number => !!id);
-      if (postIds.length > 0) {
-        const batchResp = await apiClient.posts.batchGet({ post_ids: postIds });
-        const hydrated = (batchResp.posts || []).map(p => ({
-          ...p,
-          _media: extractMedia(p)
-        }));
-        
-        const unique = hydrated.filter(p => {
-          if (this.seenIds.has(p.id)) return false;
-          this.seenIds.add(p.id);
-          return true;
-        });
+      const hydrated = posts.map(p => ({
+        ...p,
+        _media: extractMedia(p)
+      }));
+      
+      const unique = hydrated.filter(p => {
+        if (this.seenIds.has(p.id)) return false;
+        this.seenIds.add(p.id);
+        return true;
+      });
 
-        this.posts = [...this.posts, ...unique];
-      }
+      this.posts = [...this.posts, ...unique];
 
-      if (activities.length === 0) this.exhausted = true;
+      if (posts.length === 0) this.exhausted = true;
     } catch (e) {
-      this.errorMessage = getContextualErrorMessage(e, 'load_activity');
+      this.errorMessage = getContextualErrorMessage(e, 'load_posts');
     } finally {
       this.loading = false;
     }
