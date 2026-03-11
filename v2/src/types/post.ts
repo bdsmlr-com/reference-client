@@ -15,7 +15,20 @@ export interface MediaInfo {
 
 export function extractMedia(post: Post): MediaInfo {
   const content: PostContent = post.content || {};
-  const postType: PostType = post.type;
+  let postType: any = post.type;
+  
+  // Recover from stale browser caches that might have stored the backend's string ENUM names
+  if (typeof postType === 'string') {
+    if (postType === 'POST_TYPE_TEXT') postType = 1;
+    else if (postType === 'POST_TYPE_IMAGE') postType = 2;
+    else if (postType === 'POST_TYPE_VIDEO') postType = 3;
+    else if (postType === 'POST_TYPE_AUDIO') postType = 4;
+    else if (postType === 'POST_TYPE_LINK') postType = 5;
+    else if (postType === 'POST_TYPE_CHAT') postType = 6;
+    else if (postType === 'POST_TYPE_QUOTE') postType = 7;
+    else postType = parseInt(postType, 10) || 0;
+  }
+
   const files = content.files || [];
   const file = files[0];
   const thumb = content.thumbnail;
