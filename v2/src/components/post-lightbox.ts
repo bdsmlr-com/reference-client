@@ -1273,12 +1273,6 @@ export class PostLightbox extends LitElement {
     }
   }
 
-  private resetZoom(): void {
-    this.zoomScale = 1;
-    this.zoomTranslateX = 0;
-    this.zoomTranslateY = 0;
-  }
-
   private renderLinks(): unknown {
     if (!this.post) return nothing;
     const post = this.post;
