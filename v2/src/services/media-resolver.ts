@@ -27,14 +27,32 @@ const CONTEXT_PRESETS: Record<MediaContext, MediaOptions> = {
 /**
  * Normalizes a CDN URL to an S3 scheme for imgproxy.
  */
+/**
+ * Normalizes a CDN URL to an S3 scheme for imgproxy using the authoritative bucket list.
+ */
 function toS3Scheme(url: string): string {
   if (!url) return '';
   
-  // 1. Strip query parameters
+  // 1. Strip query parameters (signed tokens, etc)
   const cleanUrl = url.split('?')[0];
   
-  // 2. Map bdsmlr CDNs to their respective S3 buckets 1:1
-  // Supports: cdn012, ocdn012, cdn101, cdn013, etc.
+  // 2. Authoritative Bucket List
+  const AUTHORITATIVE_HOSTS = [
+    'cdn002.reblogme.com',
+    'cdn013.bdsmlr.com',
+    'cdn101.bdsmlr.com',
+    'ocdn011.bdsmlr.com',
+    'ocdn012.bdsmlr.com'
+  ];
+
+  for (const host of AUTHORITATIVE_HOSTS) {
+    if (cleanUrl.includes(host)) {
+      const path = cleanUrl.split(host)[1];
+      return `s3://${host}${path}`;
+    }
+  }
+
+  // 3. Fallback for other bdsmlr CDNs following the standard pattern
   const hostMatch = cleanUrl.match(/((?:o?cdn\d+)\.bdsmlr\.com)/);
   if (hostMatch) {
     const host = hostMatch[1];
