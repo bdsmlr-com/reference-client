@@ -1,18 +1,10 @@
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, css, nothing, unsafeCSS } from 'lit';
 import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
-import { getContextualErrorMessage, isApiError, toApiError } from '../services/error-handler.js';
-import {
-  generatePaginationCursorKey,
-  getCachedPaginationCursor,
-  setCachedPaginationCursor,
-} from '../services/storage.js';
 import { formatDate, getTooltipDate } from '../services/date-formatter.js';
 import { EventNames, type LightboxNavigateDetail } from '../types/events.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
-// Z-index values follow scale from types/ui-constants.ts: STICKY=50, DROPDOWN=100, MODAL=1000, MODAL_CONTROLS=1001
-
 import { repeat } from 'lit/directives/repeat.js';
 import { when } from 'lit/directives/when.js';
 import { recService, type RecResult } from '../services/recommendation-api.js';
@@ -454,6 +446,17 @@ export class PostLightbox extends LitElement {
         transform: translateY(0);
       }
 
+      .diagnostic-label {
+        font-family: monospace;
+        font-size: 9px;
+        background: rgba(0,0,0,0.7);
+        color: #00ff00;
+        padding: 2px 4px;
+        border-radius: 2px;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+      }
+
       @media (max-width: ${unsafeCSS(BREAKPOINTS.TABLET)}px) {
         .lightbox-panel {
           width: 100vw;
@@ -545,7 +548,7 @@ export class PostLightbox extends LitElement {
       this.comments = null;
       this.reblogs = null;
       this.activeDetail = null;
-      this.navigationStack = [];
+      this.resetZoom();
       this.shadowRoot?.querySelector('.lightbox-media')?.scrollTo(0, 0);
       this.shadowRoot?.querySelector('.lightbox-info')?.scrollTo(0, 0);
       
@@ -617,24 +620,25 @@ export class PostLightbox extends LitElement {
 
   private close() {
     this.open = false;
-    this.dispatchEvent(new CustomEvent(EventNames.LIGHTBOX_CLOSE));
+    this.dispatchEvent(new CustomEvent(EventNames.CLOSE));
   }
 
   private navigatePrev() {
     if (this.hasPrev) {
-      this.dispatchEvent(new CustomEvent<LightboxNavigateDetail>(EventNames.LIGHTBOX_NAVIGATE, {
-        detail: { index: this.currentIndex - 1 }
+      this.dispatchEvent(new CustomEvent<LightboxNavigateDetail>(EventNames.NAVIGATE, {
+        detail: { direction: 'prev', index: this.currentIndex - 1 }
       }));
     }
   }
 
   private navigateNext() {
     if (this.hasNext) {
-      this.dispatchEvent(new CustomEvent<LightboxNavigateDetail>(EventNames.LIGHTBOX_NAVIGATE, {
-        detail: { index: this.currentIndex + 1 }
+      this.dispatchEvent(new CustomEvent<LightboxNavigateDetail>(EventNames.NAVIGATE, {
+        detail: { direction: 'next', index: this.currentIndex + 1 }
       }));
     }
   }
+
 
   private get hasPrev() {
     return this.currentIndex > 0;
@@ -665,7 +669,7 @@ export class PostLightbox extends LitElement {
     }
     this.loadingLikes = true;
     try {
-      const resp = await apiClient.posts.listLikes({ post_id: this.post.id });
+      const resp = await apiClient.engagement.getLikes(this.post.id);
       this.likes = resp.likes || [];
       this.activeDetail = 'likes';
     } catch (e) {
@@ -683,7 +687,7 @@ export class PostLightbox extends LitElement {
     }
     this.loadingComments = true;
     try {
-      const resp = await apiClient.posts.listComments({ post_id: this.post.id });
+      const resp = await apiClient.engagement.getComments(this.post.id);
       this.comments = resp.comments || [];
       this.activeDetail = 'comments';
     } catch (e) {
@@ -701,7 +705,7 @@ export class PostLightbox extends LitElement {
     }
     this.loadingReblogs = true;
     try {
-      const resp = await apiClient.posts.listReblogs({ post_id: this.post.id });
+      const resp = await apiClient.engagement.getReblogs(this.post.id);
       this.reblogs = resp.reblogs || [];
       this.activeDetail = 'reblogs';
     } catch (e) {
@@ -727,10 +731,7 @@ export class PostLightbox extends LitElement {
 
     this.loadingRelated = true;
     try {
-      const resp = await recService.getRelated(this.post.id, 12, this.relatedPosts.length);
-      
-      // Batch resolve metadata for these recommendations
-      const recs = resp.results || [];
+      const recs = await recService.getSimilarPosts(this.post.id, 12, this.relatedPosts.length);
       const postIds = recs.map(r => r.post_id).filter((id): id is number => !!id);
       
       if (postIds.length > 0) {
@@ -802,9 +803,12 @@ export class PostLightbox extends LitElement {
     } else {
       // Fallback: fetch detail if not hydrated
       try {
-        const resp = await apiClient.posts.get({ post_id: rec.post_id });
+        const resp = await apiClient.posts.get(rec.post_id);
         if (resp.post) {
-          this.post = resp.post;
+          this.post = {
+            ...resp.post,
+            _media: extractMedia(resp.post)
+          };
         }
       } catch (e) {
         this.showToast('Failed to load related post');
@@ -823,30 +827,24 @@ export class PostLightbox extends LitElement {
     const img = e.target as HTMLImageElement;
     const src = img.src;
 
-    // If a preview URL failed, fall back to the original image URL
     if (src.includes('/preview/') && !img.dataset.triedOriginal) {
       img.dataset.triedOriginal = 'true';
       img.src = src.replace(/\/preview\/[^/]+\//, '/');
       return;
     }
 
-    // Try CDN fallback (ocdn -> cdn)
     if (src.includes('ocdn012.bdsmlr.com') && !img.dataset.triedFallback) {
       img.dataset.triedFallback = 'true';
       img.src = src.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
       return;
     }
 
-    // If everything failed, show placeholder
     if (!img.dataset.showedPlaceholder) {
       img.dataset.showedPlaceholder = 'true';
       img.style.display = 'none';
       const placeholder = document.createElement('div');
-      
-      // If the failing image is in the gutter, use gutter-specific skeleton
       const isInGutter = img.closest('.gutter-content');
       placeholder.className = isInGutter ? 'gutter-skeleton' : 'error-ghost ghost';
-      
       if (!isInGutter) {
         placeholder.innerHTML = `
           <span class="error-icon">🖼️</span>
@@ -864,7 +862,6 @@ export class PostLightbox extends LitElement {
     const isDeleted = !!post.deletedAtUnix;
     const isOriginDeleted = !!post.originDeletedAtUnix;
 
-    // Use dynamic icon based on post type (robustly handle string or number)
     const typeVal = typeof post.type === 'string' ? {
       'POST_TYPE_TEXT': 1,
       'POST_TYPE_IMAGE': 2,
@@ -875,16 +872,7 @@ export class PostLightbox extends LitElement {
       'POST_TYPE_QUOTE': 7
     }[post.type] || parseInt(post.type, 10) : post.type;
 
-    const typeIcon = {
-      0: '❓', // Unspecified
-      1: '📝', // Text
-      2: '🖼️', // Image
-      3: '🎬', // Video
-      4: '🔊', // Audio
-      5: '🔗', // Link
-      6: '💬', // Chat
-      7: '📜', // Quote
-    }[typeVal as number] || '📄';
+    const typeIcon = POST_TYPE_ICONS[typeVal as PostType] || '📄';
 
     if (isReblog) {
       let originPart;
@@ -933,8 +921,11 @@ export class PostLightbox extends LitElement {
 
   private renderMedia(): unknown {
     if (!this.post) return nothing;
-    const media = this.post._media;
-    const files = this.post.content?.files || [];
+    const post = this.post;
+    const media = post._media;
+    const files = post.content?.files || [];
+    const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+    const isTombstone = !media.url && !post.body;
 
     if (media.type === 'video') {
       if (media.videoUrl) {
@@ -954,7 +945,7 @@ export class PostLightbox extends LitElement {
         return html`
           <div class="error-ghost ghost" style="min-height: 300px; cursor: pointer;" @click=${this.toggleGutter}>
             <span class="error-icon">🎬</span>
-            ${isAdmin ? html`<span class="diagnostic-label" style="margin-bottom: 8px;">${isTombstone ? '[TOMBSTONE]' : '[MISSING_URL]'}</span>` : ''}
+            ${isAdmin ? html`<span class="diagnostic-label">${isTombstone ? '[TOMBSTONE]' : '[MISSING_URL]'}</span>` : ''}
             <div style="font-size: 48px; animation: pulse 2s infinite; margin: 20px 0;">✨</div>
             <span style="font-size: 14px; opacity: 0.7;">Video Unavailable</span>
             <span style="font-size: 11px; opacity: 0.5; margin-top: 8px;">Click for related alternatives</span>
@@ -962,9 +953,6 @@ export class PostLightbox extends LitElement {
         `;
       }
     }
-
-    const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
-    const isTombstone = !media.url && !post.body;
 
     if (media.type === 'image') {
       const currentUrl = files[this.currentImageIndex] || media.url;
@@ -995,7 +983,7 @@ export class PostLightbox extends LitElement {
         return html`
           <div class="error-ghost ghost" style="min-height: 300px; cursor: pointer;" @click=${this.toggleGutter}>
             <span class="error-icon">🖼️</span>
-            ${isAdmin ? html`<span class="diagnostic-label" style="margin-bottom: 8px;">${isTombstone ? '[TOMBSTONE]' : '[MISSING_URL]'}</span>` : ''}
+            ${isAdmin ? html`<span class="diagnostic-label">${isTombstone ? '[TOMBSTONE]' : '[MISSING_URL]'}</span>` : ''}
             <div style="font-size: 48px; animation: pulse 2s infinite; margin: 20px 0;">✨</div>
             <span style="font-size: 14px; opacity: 0.7;">Content Unavailable</span>
             <span style="font-size: 11px; opacity: 0.5; margin-top: 8px;">Click for related alternatives</span>
@@ -1060,7 +1048,6 @@ export class PostLightbox extends LitElement {
       if (this.likes.length === 0) {
         return html`<div class="detail-section"><div class="detail-item">No likes</div></div>`;
       }
-      // Filter to show only likes with identifiable info first, then others
       const identifiedLikes = this.likes.filter((l) => l.blogName || l.blogId);
       const anonymousCount = this.likes.length - identifiedLikes.length;
 
@@ -1320,11 +1307,11 @@ export class PostLightbox extends LitElement {
     this.isPinching = false;
   }
 
-  private handleTouchStart(e: TouchEvent) {
+  private handleTouchStart() {
     // Backdrop touch handling if needed
   }
 
-  private handleTouchMove(e: TouchEvent) {
+  private handleTouchMove() {
     // Backdrop touch handling if needed
   }
 
