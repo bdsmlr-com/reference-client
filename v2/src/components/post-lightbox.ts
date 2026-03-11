@@ -300,6 +300,7 @@ export class PostLightbox extends LitElement {
   };
 
   private close() {
+    this.open = false;
     this.dispatchEvent(new CustomEvent(EventNames.CLOSE, { 
       bubbles: true, 
       composed: true 

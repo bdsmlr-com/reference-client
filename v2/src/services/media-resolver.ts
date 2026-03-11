@@ -5,7 +5,7 @@
 
 const MEDIA_PROXY_BASE = 'http://100.98.53.103:8085/unsafe';
 const DEFAULT_GRAVITY = 'gravity:sm'; // Smart gravity (object detection)
-const DETECTION_ENABLED = 'draw_detections:1';
+
 
 export type MediaContext = 'thumbnail' | 'feed' | 'lightbox' | 'gutter' | 'poster';
 
@@ -30,17 +30,16 @@ const CONTEXT_PRESETS: Record<MediaContext, MediaOptions> = {
 function toS3Scheme(url: string): string {
   if (!url) return '';
   
-  // 1. Strip query parameters (e, t, cb, etc)
+  // 1. Strip query parameters
   const cleanUrl = url.split('?')[0];
   
-  // 2. Identify the host and the path
-  // Supports: cdn012.bdsmlr.com, ocdn012.bdsmlr.com, cdn101.bdsmlr.com, etc.
-  const hostMatch = cleanUrl.match(/(?:o?cdn\d+)\.bdsmlr\.com/);
+  // 2. Map bdsmlr CDNs to their respective S3 buckets 1:1
+  // Supports: cdn012, ocdn012, cdn101, cdn013, etc.
+  const hostMatch = cleanUrl.match(/((?:o?cdn\d+)\.bdsmlr\.com)/);
   if (hostMatch) {
-    const host = hostMatch[0];
+    const host = hostMatch[1];
     const path = cleanUrl.split(host)[1];
-    // Map ALL variations to the same ocdn012 logical bucket for the proxy
-    return `s3://ocdn012.bdsmlr.com${path}`;
+    return `s3://${host}${path}`;
   }
 
   return cleanUrl;
@@ -55,24 +54,18 @@ export function resolveMediaUrl(url: string | undefined, context: MediaContext):
   const s3Url = toS3Scheme(url);
   const preset = CONTEXT_PRESETS[context];
   
-  // Build processing options
   const parts: string[] = [];
   
-  // 1. Detections (Admin/Dev feature)
-  parts.push(DETECTION_ENABLED);
-  
-  // 2. Resize logic: fill means crop-to-fit, proportional means 0 for height
+  // 1. Resize logic
   const resizeMode = (preset.height && preset.height > 0) ? 'fill' : 'fit';
   parts.push(`resize:${resizeMode}:${preset.width || 0}:${preset.height || 0}`);
   
-  // 3. Gravity
+  // 2. Gravity
   parts.push(DEFAULT_GRAVITY);
   
-  // 4. Auto-convert GIF to MP4 if requested (imgproxy supports this via extension)
+  // 3. Format conversion
   let extension = '';
   if (url.toLowerCase().endsWith('.gif') && context !== 'poster') {
-    // Note: In imgproxy, you often append @mp4 or similar to the format section
-    // but the most reliable way is setting the format option
     parts.push('format:mp4');
     extension = '@mp4';
   } else if (preset.format) {
