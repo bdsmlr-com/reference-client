@@ -308,6 +308,8 @@ export class ViewSearch extends LitElement {
 
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
 
+    const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+
     try {
       while (buffer.length < PAGE_SIZE && !this.exhausted && backendFetches < MAX_BACKEND_FETCHES) {
         backendFetches++;
@@ -319,7 +321,7 @@ export class ViewSearch extends LitElement {
           post_types: this.selectedTypes,
           variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
           page: {
-            page_size: 24,
+            page_size: 48, // Increase batch size to find unique content faster
             page_token: this.backendCursor || undefined,
           },
         });
@@ -346,7 +348,8 @@ export class ViewSearch extends LitElement {
           const media = extractMedia(post);
           const mediaUrl = media.videoUrl || media.audioUrl || media.url;
 
-          if (mediaUrl) {
+          // Deduplicate by URL only for regular users
+          if (mediaUrl && !isAdmin) {
             const normalizedUrl = mediaUrl.split('?')[0];
             if (this.seenUrls.has(normalizedUrl)) {
               this.stats = { ...this.stats, dupes: this.stats.dupes + 1 };
