@@ -1545,6 +1545,15 @@ export class PostLightbox extends LitElement {
   render() {
     if (!this.post) return nothing;
 
+    const post = this.post;
+    const isReblog = post.originPostId && post.originPostId !== post.id;
+    const isDeleted = !!post.deletedAtUnix;
+    const isRedacted = isDeleted || (!post.blogName && isReblog);
+    const isTombstone = !post._media?.url && !post.body;
+    
+    // Hide gutter glitter for unviewable posts
+    const showGutter = !isDeleted && !isRedacted && !isTombstone;
+
     return html`
       <button class="close-btn" @click=${this.close} aria-label="Close lightbox">×</button>
       
@@ -1600,9 +1609,11 @@ export class PostLightbox extends LitElement {
           <div class="lightbox-main">
             <div class="media-wrapper">
               ${this.renderMedia()}
-              <button class="related-toggle" @click=${this.toggleGutter} title="Related content">
-                ${this.loadingRelated ? html`...` : html`✨`}
-              </button>
+              ${showGutter ? html`
+                <button class="related-toggle" @click=${this.toggleGutter} title="Related content">
+                  ${this.loadingRelated ? html`...` : html`✨`}
+                </button>
+              ` : ''}
             </div>
             
             <div class="lightbox-info">
@@ -1646,7 +1657,7 @@ export class PostLightbox extends LitElement {
             </div>
           </div>
 
-          <aside class="related-gutter ${this.gutterOpen ? 'open' : ''}">
+          <aside class="related-gutter ${this.gutterOpen && showGutter ? 'open' : ''}">
             <div class="gutter-content" @scroll=${this.handleGutterScroll}>
               <div style="font-weight: 600; margin-bottom: 8px;">More like this</div>
               
@@ -1667,6 +1678,8 @@ export class PostLightbox extends LitElement {
           </aside>
         </div>
       </div>
+    `;
+  }
     `;
   }
 }
