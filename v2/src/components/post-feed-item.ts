@@ -414,6 +414,9 @@ export class PostFeedItem extends LitElement {
         ? `Reblog by ${blogName} from ${originBlogName || 'unknown'}`
         : `Post by ${blogName}`;
 
+    const { POST_TYPE_ICONS } = await import('../types/post.js');
+    const typeIcon = POST_TYPE_ICONS[post.type as number] || '📄';
+
     return html`
       <article
         class="card"
@@ -425,6 +428,7 @@ export class PostFeedItem extends LitElement {
       >
         <header class="card-header">
           <div class="blog-info">
+            ${typeIcon}
             <a
               class="blog-name"
               href=${blogUrl}

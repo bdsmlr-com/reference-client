@@ -330,11 +330,14 @@ export class PostCard extends LitElement {
         : `https://bdsmlr.com/post/${post.id}`;
     const originBlogName = post.originBlogName;
 
+    const { POST_TYPE_ICONS } = await import('../types/post.js');
+    const typeIcon = POST_TYPE_ICONS[post.type as number] || '📄';
+
     let linkText: string;
     if (isReblog && isOriginDeleted && isRedacted) {
-      linkText = '♻️ deleted';
+      linkText = `♻️ deleted`;
     } else if (isRedacted) {
-      linkText = '♻️ redacted';
+      linkText = `♻️ redacted`;
     } else if (isReblog && isOriginDeleted) {
       // Origin deleted but we have the reblogger
       linkText = `📌 ${blogName}`;
@@ -343,7 +346,7 @@ export class PostCard extends LitElement {
       const originDisplay = originBlogName || '?';
       linkText = `${blogName} ♻️ ${originDisplay}`;
     } else {
-      linkText = `📝 ${blogName}`;
+      linkText = `${typeIcon} ${blogName}`;
     }
 
     const allTags = post.tags || [];

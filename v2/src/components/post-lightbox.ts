@@ -1280,14 +1280,25 @@ export class PostLightbox extends LitElement {
     const isDeleted = !!post.deletedAtUnix;
     const isOriginDeleted = !!post.originDeletedAtUnix;
 
+    // Use dynamic icon based on post type
+    const typeIcon = {
+      1: '📝', // Text
+      2: '📄', // Image
+      3: '🎬', // Video
+      4: '🔊', // Audio
+      5: '🔗', // Link
+      6: '💬', // Chat
+      7: '📜', // Quote
+    }[post.type as number] || '📄';
+
     if (isReblog) {
       let originPart;
       if (isOriginDeleted) {
-        originPart = html`📄 <span class="deleted-text">[deleted]</span>`;
+        originPart = html`${typeIcon} <span class="deleted-text">[deleted]</span>`;
       } else {
         const originBlogName = post.originBlogName || 'unknown';
         originPart = html`
-          📄 <a href="https://${originBlogName}.bdsmlr.com" target="_blank">@${originBlogName}</a>
+          ${typeIcon} <a href="https://${originBlogName}.bdsmlr.com" target="_blank">@${originBlogName}</a>
           / <a href="https://bdsmlr.com/post/${post.originPostId}" target="_blank">${post.originPostId} ↗</a>
         `;
       }
@@ -1307,10 +1318,10 @@ export class PostLightbox extends LitElement {
     } else {
       const blogName = post.blogName || 'unknown';
       if (isDeleted) {
-        return html`📄 <span class="deleted-text">@${blogName} / ${post.id} [deleted]</span>`;
+        return html`${typeIcon} <span class="deleted-text">@${blogName} / ${post.id} [deleted]</span>`;
       }
       return html`
-        📄 <a href="https://${blogName}.bdsmlr.com" target="_blank">@${blogName}</a>
+        ${typeIcon} <a href="https://${blogName}.bdsmlr.com" target="_blank">@${blogName}</a>
         / <a href="https://${blogName}.bdsmlr.com/post/${post.id}" target="_blank">${post.id} ↗</a>
       `;
     }
