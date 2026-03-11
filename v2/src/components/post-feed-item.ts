@@ -402,8 +402,8 @@ export class PostFeedItem extends LitElement {
     } else {
       mediaHtml = html`
         <div class="error-ghost ghost" style="padding: 20px; border-radius: 8px;">
-          <span class="error-icon" style="font-size: 24px;">📄</span>
-          <span style="font-size: 13px; opacity: 0.7;">Post Content Unavailable</span>
+          <span class="error-icon" style="font-size: 24px;">📝</span>
+          <span style="font-size: 13px; opacity: 0.7;">Content Unavailable</span>
         </div>
       `;
     }

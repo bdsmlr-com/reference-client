@@ -446,7 +446,7 @@ export class PostCard extends LitElement {
     } else {
       mediaHtml = html`
         <div class="error-ghost ghost" style="min-height: 80px;">
-          <span class="error-icon" style="font-size: 18px;">📄</span>
+          <span class="error-icon" style="font-size: 18px;">📝</span>
           <span style="font-size: 10px; opacity: 0.7;">Post Content Unavailable</span>
         </div>
       `;

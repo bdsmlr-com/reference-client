@@ -68,13 +68,13 @@ export const POST_TYPE_LABELS: Record<PostType, string> = {
 };
 
 export const POST_TYPE_ICONS: Record<PostType, string> = {
-  1: '📝',
-  2: '📄',
-  3: '🎬',
-  4: '🔊',
-  5: '🔗',
-  6: '💬',
-  7: '📜',
+  1: '📝', // Text
+  2: '🖼️', // Image
+  3: '🎬', // Video
+  4: '🔊', // Audio
+  5: '🔗', // Link
+  6: '💬', // Chat
+  7: '📜', // Quote
 };
 
 export interface SortOption {
