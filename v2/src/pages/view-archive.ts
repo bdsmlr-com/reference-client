@@ -17,7 +17,7 @@ import type { Post, PostType, PostSortField, Order, PostVariant } from '../types
 import '../components/sort-controls.js';
 import '../components/type-pills.js';
 import '../components/variant-pills.js';
-import '../components/post-grid.js';
+import '../components/activity-grid.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
@@ -470,7 +470,13 @@ export class ViewArchive extends LitElement {
         ${this.posts.length > 0
           ? html`
               <div class="grid-container">
-                <post-grid .posts=${this.posts} @post-click=${this.handlePostClick}></post-grid>
+                <activity-grid 
+                  .items=${this.posts.map(p => ({ 
+                    post: p, 
+                    type: (p.originPostId && p.originPostId !== p.id) ? 'reblog' : 'post' 
+                  }))} 
+                  @activity-click=${this.handlePostClick}
+                ></activity-grid>
               </div>
 
               <load-footer

@@ -12,10 +12,11 @@ import {
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
-import type { Post, PostType, PostSortField, Order, PostVariant, Blog } from '../types/api.js';
+import type { PostType, Blog } from '../types/api.js';
 import '../components/type-pills.js';
 import '../components/variant-pills.js';
 import '../components/post-feed.js';
+import '../components/activity-grid.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
@@ -23,7 +24,6 @@ import '../components/error-state.js';
 import '../components/blog-header.js';
 
 const PAGE_SIZE = 12;
-const MAX_BACKEND_FETCHES = 3;
 
 @customElement('view-posts')
 export class ViewPosts extends LitElement {
@@ -77,7 +77,6 @@ export class ViewPosts extends LitElement {
 
   @state() private blogId: number | null = null;
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
-  @state() private selectedVariants: PostVariant[] = [];
   @state() private posts: ProcessedPost[] = [];
   @state() private loading = false;
   @state() private exhausted = false;
@@ -250,100 +249,46 @@ export class ViewPosts extends LitElement {
   private async fillPage(): Promise<void> {
     if (!this.blogId) return;
 
-    const buffer: ProcessedPost[] = [];
-    let backendFetches = 0;
-
     this.loading = true;
-    this.loadingCurrent = 0;
-
-    const sortField: PostSortField = 1;
-    const order: Order = 2; // DESC
-
     try {
-      while (buffer.length < PAGE_SIZE && !this.exhausted && backendFetches < MAX_BACKEND_FETCHES) {
-        backendFetches++;
+      // 1. Fetch Posts
+      const postsResp = await apiClient.posts.list({
+        blog_id: this.blogId,
+        sort_field: 1, // CreatedAt
+        order: 2, // DESC
+        post_types: this.selectedTypes,
+        page: { page_size: 15, page_token: this.backendCursor || undefined }
+      });
 
-        const resp = await apiClient.posts.list({
-          blog_id: this.blogId,
-          sort_field: sortField,
-          order: order,
-          post_types: this.selectedTypes,
-          variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
-          page: {
-            page_size: 24,
-            page_token: this.backendCursor || undefined,
-          },
-        });
+      // 2. Fetch Recent Activity (Likes/Comments)
+      const activityResp = await apiClient.recentActivity.list({
+        blog_ids: [this.blogId],
+        page: { page_size: 30 }, // Fetch more because we cluster them
+        global_merge: true,
+        sort_field: 0,
+        order: 2,
+        limit_per_blog: 0
+      });
 
-        const posts = resp.posts || [];
-        this.backendCursor = resp.page?.nextPageToken || null;
+      this.backendCursor = postsResp.page?.nextPageToken || null;
+      if (!this.backendCursor) this.exhausted = true;
 
-        if (!this.backendCursor) {
-          this.exhausted = true;
-        }
+      const posts = (postsResp.posts || []).map(p => ({ ...p, _media: extractMedia(p), _interactionType: (p.originPostId && p.originPostId !== p.id) ? 'reblog' : 'post' }));
+      const activities = (activityResp.posts || []).map(p => ({ ...p, _media: extractMedia(p), _interactionType: 'like' })); // Simple mapping for now
 
-        if (posts.length === 0) {
-          this.exhausted = true;
-          break;
-        }
+      // 3. Merge and Sort
+      const merged = [...posts, ...activities].sort((a, b) => (b.createdAtUnix || 0) - (a.createdAtUnix || 0));
+      
+      // 4. Filter duplicates
+      const unique = merged.filter(p => {
+        if (this.seenIds.has(p.id)) return false;
+        this.seenIds.add(p.id);
+        return true;
+      });
 
-        const candidates: Post[] = [];
-        for (const post of posts) {
-          if (this.seenIds.has(post.id)) {
-            continue;
-          }
+      this.posts = [...this.posts, ...unique as ProcessedPost[]];
+      if (merged.length === 0) this.exhausted = true;
 
-          const media = extractMedia(post);
-          const mediaUrl = media.videoUrl || media.audioUrl || media.url;
-
-          // Reblog Aggregation logic
-          if (mediaUrl) {
-            const normalizedUrl = mediaUrl.split('?')[0];
-            const existingIdx = buffer.findIndex(p => p._media.url?.split('?')[0] === normalizedUrl) 
-                             ?? this.posts.findIndex(p => p._media.url?.split('?')[0] === normalizedUrl);
-            
-            if (existingIdx !== -1) {
-              const target = buffer[existingIdx] || this.posts[existingIdx];
-              if (target) {
-                target._reblog_variants = target._reblog_variants || [];
-                target._reblog_variants.push({ id: post.id, blogName: post.blogName });
-                this.seenIds.add(post.id);
-                continue;
-              }
-            }
-            this.seenUrls.add(normalizedUrl);
-          }
-
-          this.seenIds.add(post.id);
-          candidates.push(post);
-        }
-
-        for (const post of candidates) {
-          const isDeleted = !!post.deletedAtUnix;
-
-          if (isDeleted) {
-            continue;
-          }
-
-          const processedPost: ProcessedPost = {
-            ...post,
-            _media: extractMedia(post),
-          };
-
-          buffer.push(processedPost);
-          this.loadingCurrent = buffer.length;
-
-          if (buffer.length >= PAGE_SIZE) break;
-        }
-
-        if (buffer.length >= PAGE_SIZE) break;
-      }
-
-      if (buffer.length > 0) {
-        this.posts = [...this.posts, ...buffer];
-      } else if (this.posts.length === 0 && this.exhausted) {
-        this.statusMessage = 'No posts found';
-      }
     } finally {
       this.loading = false;
     }
@@ -356,13 +301,6 @@ export class ViewPosts extends LitElement {
 
   private handleTypesChange(e: CustomEvent): void {
     this.selectedTypes = e.detail.types;
-    if (this.blogId) {
-      this.loadPosts();
-    }
-  }
-
-  private handleVariantChange(e: CustomEvent): void {
-    this.selectedVariants = e.detail.variants || [];
     if (this.blogId) {
       this.loadPosts();
     }
@@ -440,11 +378,6 @@ export class ViewPosts extends LitElement {
                   .selectedTypes=${this.selectedTypes}
                   @types-change=${this.handleTypesChange}
                 ></type-pills>
-                <span class="pills-separator">|</span>
-                <variant-pills
-                  .loading=${this.loading}
-                  @variant-change=${this.handleVariantChange}
-                ></variant-pills>
               </div>
             `
           : ''}
@@ -454,7 +387,19 @@ export class ViewPosts extends LitElement {
         ${this.posts.length > 0
           ? html`
               <div class="feed-container">
-                <post-feed .posts=${this.posts} @post-click=${this.handlePostClick}></post-feed>
+                ${this.posts.map((p: any) => {
+                  if (p._interactionType === 'post' || p._interactionType === 'reblog') {
+                    return html`<post-feed-item .post=${p} @post-select=${this.handlePostClick}></post-feed-item>`;
+                  } else {
+                    // Small interaction (Like/Comment) - show in a smaller grid
+                    return html`
+                      <div style="max-width: 600px; margin: 0 auto 20px auto;">
+                        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Interaction</div>
+                        <activity-grid compact .items=${[{ post: p, type: p._interactionType }]} @activity-click=${this.handlePostClick}></activity-grid>
+                      </div>
+                    `;
+                  }
+                })}
               </div>
 
               <load-footer
