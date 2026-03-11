@@ -9,9 +9,9 @@ export interface PageInfo {
 }
 
 // Enums - API expects integer values, not strings!
-export type PostType = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type PostType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 // PostVariant: 0=UNSPECIFIED, 1=ORIGINAL, 2=REBLOG
-export type PostVariant = 1 | 2;
+export type PostVariant = 0 | 1 | 2;
 // Order: 0 = UNSPECIFIED, 1 = ASC, 2 = DESC
 export type Order = 0 | 1 | 2;
 
@@ -19,7 +19,7 @@ export type Order = 0 | 1 | 2;
 // PostSortField: 0=UNSPECIFIED, 1=CREATED_AT, 2=LIKES_COUNT, 3=COMMENTS_COUNT, 4=REBLOGS_COUNT, 5=MENTIONS_COUNT, 6=NOTES_COUNT, 7=ID
 export type PostSortField = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 // BlogSortField: 0=UNSPECIFIED, 1=ID, 2=FOLLOWERS_COUNT, 3=POSTS_COUNT, 4=NAME, 5=CREATED_AT
-export type BlogSortField = 1 | 2 | 3 | 4 | 5;
+export type BlogSortField = 0 | 1 | 2 | 3 | 4 | 5;
 
 // Content types
 export interface PostContent {
