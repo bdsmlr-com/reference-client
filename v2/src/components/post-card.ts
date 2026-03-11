@@ -358,13 +358,22 @@ export class PostCard extends LitElement {
     const fileCount = post.content?.files?.length || 0;
 
     let mediaHtml;
-    if (media.type === 'image' && mediaUrl) {
-      mediaHtml = html`
-        <div style="position: relative;">
-          ${fileCount > 1 ? html`<div class="multi-image-badge">1 / ${fileCount}</div>` : ''}
-          <img src=${mediaUrl} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
-        </div>
-      `;
+    if (media.type === 'image') {
+      if (mediaUrl) {
+        mediaHtml = html`
+          <div style="position: relative;">
+            ${fileCount > 1 ? html`<div class="multi-image-badge">1 / ${fileCount}</div>` : ''}
+            <img src=${mediaUrl} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
+          </div>
+        `;
+      } else {
+        mediaHtml = html`
+          <div class="error-ghost ghost" style="min-height: 150px;">
+            <span class="error-icon">🖼️</span>
+            <span style="font-size: 11px; opacity: 0.7;">Content Unavailable</span>
+          </div>
+        `;
+      }
     } else if (media.type === 'video') {
       if (mediaUrl) {
         mediaHtml = html`
