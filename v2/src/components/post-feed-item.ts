@@ -7,9 +7,6 @@ import { formatDateShort, getTooltipDate } from '../services/date-formatter.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
 import { MAX_VISIBLE_TAGS, BREAKPOINTS } from '../types/ui-constants.js';
 
-/** Preview text length for full-width feed items */
-const PREVIEW_TEXT_LENGTH = 200;
-
 /**
  * Memoization helper: Determines if post property has meaningfully changed.
  * Compares key identifying and display-relevant fields to avoid unnecessary re-renders.
@@ -263,12 +260,6 @@ export class PostFeedItem extends LitElement {
   ];
 
   @property({ type: Object, hasChanged: postHasChanged }) post!: ProcessedPost;
-
-  private decodeHtml(htmlStr: string): string {
-    const txt = document.createElement('textarea');
-    txt.innerHTML = htmlStr;
-    return txt.value;
-  }
 
   private handleClick(): void {
     this.dispatchEvent(

@@ -39,6 +39,8 @@ export interface Post {
   blogId?: number;
   blogName?: string;
   type: PostType;
+  title?: string;
+  body?: string;
   content?: PostContent;
   tags?: string[];
   likesCount?: number;
@@ -46,11 +48,12 @@ export interface Post {
   reblogsCount?: number;
   mentionsCount?: number;
   notesCount?: number;
-  createdAtUnix?: number;
-  deletedAtUnix?: number;
   originPostId?: number;
   originBlogId?: number;
   originBlogName?: string;
+  createdAtUnix?: number;
+  updatedAtUnix?: number;
+  deletedAtUnix?: number;
   originDeletedAtUnix?: number;
   variant?: PostVariant;
 }
