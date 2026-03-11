@@ -1280,7 +1280,17 @@ export class PostLightbox extends LitElement {
     const isDeleted = !!post.deletedAtUnix;
     const isOriginDeleted = !!post.originDeletedAtUnix;
 
-    // Use dynamic icon based on post type
+    // Use dynamic icon based on post type (robustly handle string or number)
+    const typeVal = typeof post.type === 'string' ? {
+      'POST_TYPE_TEXT': 1,
+      'POST_TYPE_IMAGE': 2,
+      'POST_TYPE_VIDEO': 3,
+      'POST_TYPE_AUDIO': 4,
+      'POST_TYPE_LINK': 5,
+      'POST_TYPE_CHAT': 6,
+      'POST_TYPE_QUOTE': 7
+    }[post.type] || parseInt(post.type, 10) : post.type;
+
     const typeIcon = {
       0: '❓', // Unspecified
       1: '📝', // Text
@@ -1290,7 +1300,7 @@ export class PostLightbox extends LitElement {
       5: '🔗', // Link
       6: '💬', // Chat
       7: '📜', // Quote
-    }[post.type as number] || '📄';
+    }[typeVal as number] || '📄';
 
     if (isReblog) {
       let originPart;
