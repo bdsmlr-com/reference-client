@@ -1,7 +1,8 @@
 import { LitElement, html, css, nothing, unsafeCSS } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import type { ProcessedPost } from '../types/post.js';
+import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
+import { type PostType } from '../types/api.js';
 import { formatDateShort, getTooltipDate } from '../services/date-formatter.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
 import { MAX_VISIBLE_TAGS, BREAKPOINTS } from '../types/ui-constants.js';
@@ -414,8 +415,7 @@ export class PostFeedItem extends LitElement {
         ? `Reblog by ${blogName} from ${originBlogName || 'unknown'}`
         : `Post by ${blogName}`;
 
-    const { POST_TYPE_ICONS } = await import('../types/post.js');
-    const typeIcon = POST_TYPE_ICONS[post.type as number] || '📄';
+    const typeIcon = POST_TYPE_ICONS[post.type as PostType] || '📄';
 
     return html`
       <article
