@@ -1,10 +1,13 @@
-import { LitElement, html, css, nothing, unsafeCSS } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import { LitElement, html, css, nothing } from 'lit';
+import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import type { ProcessedPost } from '../types/post.js';
-import type { Like, Comment, Reblog } from '../types/api.js';
 import { apiClient } from '../services/client.js';
+import { getContextualErrorMessage, isApiError, toApiError } from '../services/error-handler.js';
+import {
+  generatePaginationCursorKey,
+  getCachedPaginationCursor,
+  setCachedPaginationCursor,
+} from '../services/storage.js';
 import { formatDate, getTooltipDate } from '../services/date-formatter.js';
 import { EventNames, type LightboxNavigateDetail } from '../types/events.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
@@ -13,6 +16,9 @@ import { BREAKPOINTS } from '../types/ui-constants.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { when } from 'lit/directives/when.js';
 import { recService, type RecResult } from '../services/recommendation-api.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
+import { type PostType, type Like, type Comment } from '../types/api.js';
 
 @customElement('post-lightbox')
 export class PostLightbox extends LitElement {
@@ -20,29 +26,23 @@ export class PostLightbox extends LitElement {
     baseStyles,
     css`
       :host {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.95);
-        z-index: 1000; /* Z_INDEX.MODAL - above sticky nav (50) and dropdowns (100) */
-        justify-content: center;
-        align-items: center;
-        padding: 20px;
-        overflow-y: auto;
+        display: block;
       }
 
-      :host([open]) {
-        display: flex;
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
       }
 
-      .lightbox-backdrop {
-        position: fixed;
-        inset: 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 60px 20px 20px;
-        overflow-y: auto;
+      .ghost {
+        background: linear-gradient(
+          90deg,
+          var(--bg-panel-alt) 25%,
+          var(--border) 50%,
+          var(--bg-panel-alt) 75%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 2s infinite linear;
       }
 
       .error-ghost {
@@ -61,28 +61,6 @@ export class PostLightbox extends LitElement {
       .error-icon {
         font-size: 32px;
         opacity: 0.5;
-      }
-
-      .lightbox-panel {
-        max-width: 95vw;
-        width: 1200px;
-        max-height: 90vh;
-        display: flex;
-        flex-direction: row;
-        align-items: stretch;
-        position: relative;
-        overflow: hidden;
-        background: var(--bg-panel);
-        border-radius: 8px;
-        transition: width 0.3s ease;
-      }
-
-      .lightbox-main {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        min-width: 0;
       }
 
       .image-nav-btn {
@@ -127,12 +105,48 @@ export class PostLightbox extends LitElement {
         backdrop-filter: blur(4px);
       }
 
+      .lightbox-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        backdrop-filter: blur(8px);
+      }
+
+      .lightbox-panel {
+        max-width: 95vw;
+        width: 1200px;
+        max-height: 90vh;
+        display: flex;
+        background: var(--bg-panel);
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      }
+
+      .lightbox-main {
+        flex: 1;
+        display: flex;
+        flex-direction: row;
+        height: 90vh;
+        min-width: 0;
+      }
+
       .media-wrapper {
         position: relative;
         width: 100%;
         flex: 1;
         display: flex;
-        background: black;
+        align-items: center;
+        justify-content: center;
+        background: #000;
         overflow: hidden;
       }
 
@@ -140,45 +154,215 @@ export class PostLightbox extends LitElement {
         width: 100%;
         height: 100%;
         display: flex;
-        justify-content: center;
         align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+
+      .lightbox-media img,
+      .lightbox-media video {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        touch-action: none;
+      }
+
+      .lightbox-info {
+        width: 400px;
+        flex-shrink: 0;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        border-left: 1px solid var(--border);
+        overflow-y: auto;
+        background: var(--bg-panel);
+      }
+
+      .lightbox-links {
+        font-size: 14px;
+        margin-bottom: 12px;
+        color: var(--text-muted);
+        line-height: 1.6;
+      }
+
+      .lightbox-links a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      .lightbox-links a:hover {
+        text-decoration: underline;
+      }
+
+      .meta {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-bottom: 24px;
+      }
+
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 24px;
+      }
+
+      .tag {
+        background: var(--bg-panel-alt);
+        padding: 4px 10px;
+        border-radius: 14px;
+        font-size: 12px;
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+
+      .lightbox-stats {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 16px;
+      }
+
+      .stat-btn {
+        background: none;
+        border: none;
+        color: var(--text);
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 4px;
+        transition: background 0.2s;
+      }
+
+      .stat-btn:hover {
+        background: var(--bg-panel-alt);
+      }
+
+      .detail-section {
+        flex: 1;
+      }
+
+      .detail-item {
+        padding: 8px 0;
+        font-size: 13px;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      .close-btn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 1001;
+        font-size: 24px;
+        transition: background 0.2s;
+        backdrop-filter: blur(4px);
+      }
+
+      .close-btn:hover {
+        background: #ff4444;
+      }
+
+      .nav-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        border: none;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 1001;
+        font-size: 32px;
+        transition: all 0.2s;
+        backdrop-filter: blur(4px);
+      }
+
+      .nav-btn:hover:not(:disabled) {
+        background: var(--accent);
+        width: 70px;
+        height: 70px;
+      }
+
+      .nav-btn:disabled {
+        opacity: 0.2;
+        cursor: not-allowed;
+      }
+
+      .nav-btn.prev { left: 40px; }
+      .nav-btn.next { right: 40px; }
+
+      .nav-counter {
+        position: absolute;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: white;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        backdrop-filter: blur(4px);
+        z-index: 1001;
       }
 
       .related-toggle {
         position: absolute;
-        top: 12px;
-        right: 12px;
-        background: rgba(0, 0, 0, 0.6);
+        bottom: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.5);
         color: white;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        width: 36px;
-        height: 36px;
+        border: none;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
         z-index: 10;
-        font-size: 18px;
-        transition: background 0.2s;
+        font-size: 20px;
+        transition: transform 0.2s;
+        backdrop-filter: blur(4px);
       }
 
       .related-toggle:hover {
+        transform: scale(1.1);
         background: var(--accent);
       }
 
       .related-gutter {
         width: 0;
-        background: var(--bg-panel-alt);
         border-left: 0 solid var(--border);
+        background: var(--bg-panel-alt);
+        transition: width 0.3s ease;
         display: flex;
         flex-direction: column;
-        transition: width 0.3s ease, border-width 0.3s;
         overflow: hidden;
       }
 
       .related-gutter.open {
-        width: 130px;
+        width: 140px;
         border-left-width: 1px;
       }
 
@@ -208,10 +392,15 @@ export class PostLightbox extends LitElement {
         justify-content: center;
       }
 
+      .gutter-item:hover {
+        border-color: var(--accent);
+      }
+
       .gutter-item img {
         width: 100%;
         height: auto;
         display: block;
+        border-radius: 3px;
       }
 
       .gutter-skeleton {
@@ -229,6 +418,22 @@ export class PostLightbox extends LitElement {
         100% { background-position: -200% 0; }
       }
 
+      .back-stack-btn {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 20px;
+        cursor: pointer;
+        z-index: 1001;
+        font-size: 13px;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      }
+
       .gutter-toast {
         position: absolute;
         top: 0;
@@ -236,7 +441,7 @@ export class PostLightbox extends LitElement {
         right: 0;
         background: var(--accent);
         color: white;
-        padding: 8px 16px;
+        padding: 8px;
         text-align: center;
         font-size: 13px;
         font-weight: 600;
@@ -249,364 +454,31 @@ export class PostLightbox extends LitElement {
         transform: translateY(0);
       }
 
-      .lightbox-media img, .lightbox-media video {
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
-      }
-
-      .back-stack-btn {
-        position: absolute;
-        top: -40px;
-        left: 0;
-        background: var(--accent);
-        color: white;
-        border: none;
-        padding: 6px 12px;
-        border-radius: 4px;
-        font-size: 12px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        z-index: 1002;
-      }
-
-      .back-stack-btn:hover {
-        background: var(--accent-hover);
-      }
-
-      .lightbox-info {
-        background: var(--bg-panel);
-        padding: 16px;
-        width: 100%;
-        max-width: 800px;
-        box-sizing: border-box;
-        overflow-y: auto;
-        max-height: 40vh;
-      }
-
-      /* Related posts styles */
-      .related-section {
-        margin-top: 20px;
-        padding-top: 16px;
-        border-top: 1px solid var(--border);
-        width: 100%;
-      }
-
-      .related-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: 12px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .related-grid {
-        display: flex;
-        gap: 8px;
-        overflow-x: auto;
-        padding-bottom: 8px;
-        scrollbar-width: thin;
-      }
-
-      .related-item {
-        flex: 0 0 auto;
-        width: 150px;
-        height: auto;
-        border-radius: 4px;
-        overflow: hidden;
-        cursor: pointer;
-        background: var(--bg-panel-alt);
-        border: 1px solid var(--border);
-      }
-
-      .related-item img {
-        width: 100%;
-        height: auto;
-        display: block;
-      }
-
-      .related-item:hover {
-        border-color: var(--accent);
-      }
-
-      .lightbox-links {
-        display: flex;
-        gap: 6px;
-        justify-content: center;
-        flex-wrap: wrap;
-        font-size: 13px;
-      }
-
-      .lightbox-links a {
-        color: var(--accent);
-      }
-
-      .meta {
-        font-size: 11px;
-        color: var(--text-muted);
-        margin-top: 8px;
-        text-align: center;
-      }
-
-      .lightbox-tags-container {
-        max-height: 60px;
-        overflow: hidden;
-        cursor: pointer;
-        position: relative;
-        margin-top: 8px;
-      }
-
-      .lightbox-tags-container.expanded {
-        max-height: none;
-      }
-
-      .lightbox-tags-container:not(.expanded)::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 20px;
-        background: linear-gradient(transparent, var(--bg-panel));
-        pointer-events: none;
-      }
-
-      .tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        justify-content: center;
-      }
-
-      .tag {
-        background: var(--accent);
-        color: white;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 11px;
-      }
-
-      .lightbox-stats {
-        margin-top: 12px;
-        display: flex;
-        gap: 12px;
-        justify-content: center;
-      }
-
-      .stat-btn {
-        cursor: pointer;
-        padding: 6px 12px;
-        border-radius: 6px;
-        background: var(--bg-panel-alt);
-        font-size: 12px;
-        color: var(--text-primary);
-        transition: background 0.2s;
-        min-height: 36px;
-      }
-
-      .stat-btn:hover {
-        background: var(--border-strong);
-      }
-
-      .stat-btn.loading {
-        opacity: 0.5;
-      }
-
-      .lightbox-details {
-        margin-top: 10px;
-        max-height: 150px;
-        overflow-y: auto;
-        text-align: left;
-      }
-
-      .detail-section {
-        background: var(--bg-panel-alt);
-        border-radius: 6px;
-        padding: 8px 12px;
-      }
-
-      .detail-item {
-        font-size: 11px;
-        color: var(--text-muted);
-        padding: 4px 0;
-        border-bottom: 1px solid var(--border);
-      }
-
-      .detail-item:last-child {
-        border-bottom: none;
-      }
-
-      .detail-item a {
-        color: var(--accent);
-      }
-
-      .detail-item .ts {
-        font-family: monospace;
-        font-size: 10px;
-        color: var(--text-muted);
-      }
-
-      .lightbox-media {
-        width: 100%;
-        max-width: 800px;
-        display: flex;
-        justify-content: center;
-      }
-
-      .lightbox-media img {
-        width: 100%;
-        max-width: 800px;
-        max-height: 70vh;
-        object-fit: contain;
-        border-radius: 0 0 8px 8px;
-        touch-action: none;
-        transition: transform 0.1s ease-out;
-      }
-
-      .lightbox-media img.zoomed {
-        cursor: grab;
-      }
-
-      .lightbox-media img.zoomed:active {
-        cursor: grabbing;
-      }
-
-      .zoom-hint {
-        position: absolute;
-        bottom: 70px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: var(--bg-panel);
-        color: var(--text-muted);
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 11px;
-        z-index: 1001; /* Z_INDEX.MODAL_CONTROLS */
-        opacity: 0;
-        transition: opacity 0.3s;
-        pointer-events: none;
-      }
-
-      .zoom-hint.visible {
-        opacity: 1;
-      }
-
-      .lightbox-media video {
-        width: 100%;
-        max-width: 800px;
-        max-height: 70vh;
-        border-radius: 0 0 8px 8px;
-      }
-
-      .lightbox-text {
-        background: var(--bg-panel-alt);
-        padding: 20px;
-        border-radius: 0 0 8px 8px;
-        width: 100%;
-        max-width: 800px;
-        max-height: 70vh;
-        overflow-y: auto;
-        font-size: 14px;
-        line-height: 1.6;
-        color: var(--text-primary);
-        box-sizing: border-box;
-      }
-
-      .lightbox-text p {
-        margin-bottom: 10px;
-      }
-
-      .lightbox-text a {
-        color: var(--accent);
-      }
-
-      .deleted-text {
-        color: var(--error);
-      }
-
-      .close-btn {
-        position: absolute;
-        top: 16px;
-        right: 16px;
-        background: var(--bg-panel);
-        color: var(--text-primary);
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
-        font-size: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        z-index: 1001; /* Z_INDEX.MODAL_CONTROLS */
-      }
-
-      .close-btn:hover {
-        background: var(--accent);
-        color: white;
-      }
-
-      .nav-btn {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        background: var(--bg-panel);
-        color: var(--text-primary);
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
-        font-size: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        z-index: 1001; /* Z_INDEX.MODAL_CONTROLS */
-        transition: all 0.2s;
-      }
-
-      .nav-btn:hover:not(:disabled) {
-        background: var(--accent);
-        color: white;
-      }
-
-      .nav-btn:disabled {
-        opacity: 0.3;
-        cursor: not-allowed;
-      }
-
-      .nav-btn.prev {
-        left: 16px;
-      }
-
-      .nav-btn.next {
-        right: 16px;
-      }
-
-      .nav-counter {
-        position: absolute;
-        bottom: 16px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: var(--bg-panel);
-        color: var(--text-muted);
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 12px;
-        z-index: 1001; /* Z_INDEX.MODAL_CONTROLS */
-      }
-
-      /* Mobile: max-width below BREAKPOINTS.MOBILE */
-      @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE - 1)}px) {
+      @media (max-width: ${unsafeCSS(BREAKPOINTS.TABLET)}px) {
+        .lightbox-panel {
+          width: 100vw;
+          height: 100vh;
+          max-width: none;
+          max-height: none;
+          border-radius: 0;
+        }
+        .lightbox-main {
+          flex-direction: column;
+          height: 100vh;
+        }
         .lightbox-info {
-          max-width: 100%;
+          width: 100%;
+          height: auto;
+          flex: none;
+          padding: 20px;
         }
-        .lightbox-text {
-          max-width: 100%;
+        .nav-btn {
+          width: 44px;
+          height: 44px;
+          font-size: 24px;
         }
+        .nav-btn.prev { left: 10px; }
+        .nav-btn.next { right: 10px; }
       }
     `,
   ];
@@ -618,195 +490,88 @@ export class PostLightbox extends LitElement {
   @property({ type: Array }) posts: ProcessedPost[] = [];
   @property({ type: Number }) currentIndex = -1;
 
-  @state() private tagsExpanded = false;
+  @state() private likes: Like[] | null = null;
+  @state() private comments: Comment[] | null = null;
+  @state() private reblogs: any[] | null = null;
+  @state() private activeDetail: 'likes' | 'comments' | 'reblogs' | null = null;
+  
   @state() private loadingLikes = false;
   @state() private loadingComments = false;
   @state() private loadingReblogs = false;
-  @state() private likes: Like[] | null = null;
-  @state() private comments: Comment[] | null = null;
-  @state() private reblogs: Reblog[] | null = null;
-  @state() private activeDetail: 'likes' | 'comments' | 'reblogs' | null = null;
-
-  // Deep Dive Stack
-  @state() private navigationStack: ProcessedPost[] = [];
-  @state() private relatedPosts: RecResult[] | null = null;
   @state() private loadingRelated = false;
   @state() private gutterOpen = false;
-  @state() private gutterExhausted = false;
-  @state() private gutterOffset = 0;
-  @state() private toastMessage = '';
+  @state() private relatedPosts: RecResult[] = [];
+  @state() private toastMessage: string | null = null;
+  @state() private navigationStack: ProcessedPost[] = [];
 
-  // Touch/swipe tracking
-  private touchStartX = 0;
-  private touchStartY = 0;
-  private touchEndX = 0;
-  private touchEndY = 0;
-  private isSwiping = false;
+  @state() private tagsExpanded = false;
 
-  // Pinch-to-zoom tracking
+  // Zoom/Pinch state
   @state() private zoomScale = 1;
   @state() private zoomTranslateX = 0;
   @state() private zoomTranslateY = 0;
-  @state() private showZoomHint = false;
   private isPinching = false;
-  private pinchStartDistance = 0;
-  private pinchStartScale = 1;
-  private panStartX = 0;
-  private panStartY = 0;
-  private panStartTranslateX = 0;
-  private panStartTranslateY = 0;
-  private isPanning = false;
-  private zoomHintTimeout: ReturnType<typeof setTimeout> | null = null;
+  private initialPinchDistance = 0;
+  private initialPinchScale = 1;
+  private zoomHintTimeout: any = null;
+  @state() private showZoomHint = false;
 
-  // Focus trap tracking
   private previouslyFocusedElement: HTMLElement | null = null;
 
-  connectedCallback(): void {
-    super.connectedCallback();
-    document.addEventListener('keydown', this.handleKeyDown);
-  }
-
-  disconnectedCallback(): void {
-    super.disconnectedCallback();
-    document.removeEventListener('keydown', this.handleKeyDown);
-  }
-
-  private handleTouchStart = (e: TouchEvent): void => {
-    if (!this.canNavigate) return;
-    const touch = e.touches[0];
-    this.touchStartX = touch.clientX;
-    this.touchStartY = touch.clientY;
-    this.isSwiping = true;
-  };
-
-  private handleTouchMove = (e: TouchEvent): void => {
-    if (!this.isSwiping) return;
-    const touch = e.touches[0];
-    this.touchEndX = touch.clientX;
-    this.touchEndY = touch.clientY;
-  };
-
-  private handleTouchEnd = (): void => {
-    if (this.isPinching) {
-      this.isPinching = false;
-      // Show zoom hint if zoomed in
-      if (this.zoomScale > 1) {
+  updated(changedProperties: Map<string, any>): void {
+    super.updated(changedProperties);
+    if (changedProperties.has('open')) {
+      if (this.open) {
+        this.previouslyFocusedElement = document.activeElement as HTMLElement;
+        document.body.style.overflow = 'hidden';
+        this.addEventListener('keydown', this.handleKeyDown);
+        this.resetZoom();
+        this.currentImageIndex = 0;
         this.showZoomHintTemporarily();
-      }
-      return;
-    }
-
-    if (this.isPanning) {
-      this.isPanning = false;
-      return;
-    }
-
-    if (!this.isSwiping) return;
-    this.isSwiping = false;
-
-    const deltaX = this.touchEndX - this.touchStartX;
-    const deltaY = this.touchEndY - this.touchStartY;
-    const minSwipeDistance = 50;
-
-    // Only trigger if horizontal swipe is dominant (more horizontal than vertical)
-    // and not zoomed in
-    if (this.zoomScale === 1 && Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
-      if (deltaX > 0) {
-        // Swipe right -> previous
-        this.navigatePrev();
       } else {
-        // Swipe left -> next
-        this.navigateNext();
+        document.body.style.overflow = '';
+        this.removeEventListener('keydown', this.handleKeyDown);
+        if (this.previouslyFocusedElement) {
+          this.previouslyFocusedElement.focus();
+          this.previouslyFocusedElement = null;
+        }
       }
     }
 
-    // Reset
-    this.touchStartX = 0;
-    this.touchStartY = 0;
-    this.touchEndX = 0;
-    this.touchEndY = 0;
-  };
-
-  // Pinch-to-zoom handlers
-  private getDistanceBetweenTouches(touches: TouchList): number {
-    if (touches.length < 2) return 0;
-    const dx = touches[0].clientX - touches[1].clientX;
-    const dy = touches[0].clientY - touches[1].clientY;
-    return Math.sqrt(dx * dx + dy * dy);
+    if (changedProperties.has('post') && this.post) {
+      this.currentImageIndex = 0;
+      this.tagsExpanded = false;
+      this.likes = null;
+      this.comments = null;
+      this.reblogs = null;
+      this.activeDetail = null;
+      this.navigationStack = [];
+      this.shadowRoot?.querySelector('.lightbox-media')?.scrollTo(0, 0);
+      this.shadowRoot?.querySelector('.lightbox-info')?.scrollTo(0, 0);
+      
+      // Refresh related if gutter is open
+      if (this.gutterOpen) {
+        this.fetchRelatedPosts(true);
+      }
+    }
   }
 
-  private handleImageTouchStart = (e: TouchEvent): void => {
-    if (e.touches.length === 2) {
-      // Start pinch gesture
-      e.preventDefault();
-      this.isPinching = true;
-      this.isSwiping = false;
-      this.pinchStartDistance = this.getDistanceBetweenTouches(e.touches);
-      this.pinchStartScale = this.zoomScale;
-    } else if (e.touches.length === 1 && this.zoomScale > 1) {
-      // Start pan gesture when zoomed
-      e.preventDefault();
-      this.isPanning = true;
-      this.isSwiping = false;
-      this.panStartX = e.touches[0].clientX;
-      this.panStartY = e.touches[0].clientY;
-      this.panStartTranslateX = this.zoomTranslateX;
-      this.panStartTranslateY = this.zoomTranslateY;
-    }
-  };
-
-  private handleImageTouchMove = (e: TouchEvent): void => {
-    if (this.isPinching && e.touches.length === 2) {
-      e.preventDefault();
-      const currentDistance = this.getDistanceBetweenTouches(e.touches);
-      const scaleDelta = currentDistance / this.pinchStartDistance;
-      let newScale = this.pinchStartScale * scaleDelta;
-
-      // Clamp scale between 1x and 4x
-      newScale = Math.max(1, Math.min(4, newScale));
-      this.zoomScale = newScale;
-
-      // Reset translation when zooming back to 1x
-      if (newScale === 1) {
-        this.zoomTranslateX = 0;
-        this.zoomTranslateY = 0;
-      }
-    } else if (this.isPanning && e.touches.length === 1 && this.zoomScale > 1) {
-      e.preventDefault();
-      const deltaX = e.touches[0].clientX - this.panStartX;
-      const deltaY = e.touches[0].clientY - this.panStartY;
-
-      // Calculate max translation based on zoom level
-      const maxTranslate = (this.zoomScale - 1) * 150;
-
-      this.zoomTranslateX = Math.max(-maxTranslate, Math.min(maxTranslate, this.panStartTranslateX + deltaX));
-      this.zoomTranslateY = Math.max(-maxTranslate, Math.min(maxTranslate, this.panStartTranslateY + deltaY));
-    }
-  };
-
-  private handleImageTouchEnd = (): void => {
-    if (this.isPinching) {
-      this.isPinching = false;
-      if (this.zoomScale > 1) {
-        this.showZoomHintTemporarily();
-      }
-    }
-    if (this.isPanning) {
-      this.isPanning = false;
-    }
-  };
-
-  private handleImageDoubleTap = (e: MouseEvent | TouchEvent): void => {
-    e.preventDefault();
-    if (this.zoomScale > 1) {
-      // Reset zoom
+  private nextImage(e: Event): void {
+    e.stopPropagation();
+    const files = this.post?.content?.files || [];
+    if (this.currentImageIndex < files.length - 1) {
+      this.currentImageIndex++;
       this.resetZoom();
-    } else {
-      // Zoom to 2x
-      this.zoomScale = 2;
-      this.showZoomHintTemporarily();
     }
-  };
+  }
+
+  private prevImage(e: Event): void {
+    e.stopPropagation();
+    if (this.currentImageIndex > 0) {
+      this.currentImageIndex--;
+      this.resetZoom();
+    }
+  }
 
   private resetZoom(): void {
     this.zoomScale = 1;
@@ -822,193 +587,207 @@ export class PostLightbox extends LitElement {
     this.showZoomHint = true;
     this.zoomHintTimeout = setTimeout(() => {
       this.showZoomHint = false;
-    }, 2000);
+    }, 3000);
   }
 
-  private handleKeyDown = (e: KeyboardEvent): void => {
+  private handleKeyDown = (e: KeyboardEvent) => {
     if (!this.open) return;
-
+    
     switch (e.key) {
       case 'Escape':
         this.close();
         break;
       case 'ArrowLeft':
-        e.preventDefault();
-        this.navigatePrev();
+        if (this.currentImageIndex > 0) {
+          this.prevImage(e);
+        } else {
+          this.navigatePrev();
+        }
         break;
       case 'ArrowRight':
-        e.preventDefault();
-        this.navigateNext();
-        break;
-      case 'Tab':
-        this.handleTabKey(e);
+        const files = this.post?.content?.files || [];
+        if (this.currentImageIndex < files.length - 1) {
+          this.nextImage(e);
+        } else {
+          this.navigateNext();
+        }
         break;
     }
   };
 
-  private handleTabKey(e: KeyboardEvent): void {
-    const focusableElements = this.getFocusableElements();
-    if (focusableElements.length === 0) return;
+  private close() {
+    this.open = false;
+    this.dispatchEvent(new CustomEvent(EventNames.LIGHTBOX_CLOSE));
+  }
 
-    const firstElement = focusableElements[0];
-    const lastElement = focusableElements[focusableElements.length - 1];
-
-    // Get currently focused element within shadow DOM
-    const activeElement = this.shadowRoot?.activeElement as HTMLElement | null;
-
-    if (e.shiftKey) {
-      // Shift+Tab: if focus is on first element, wrap to last
-      if (activeElement === firstElement || !activeElement) {
-        e.preventDefault();
-        lastElement.focus();
-      }
-    } else {
-      // Tab: if focus is on last element, wrap to first
-      if (activeElement === lastElement || !activeElement) {
-        e.preventDefault();
-        firstElement.focus();
-      }
+  private navigatePrev() {
+    if (this.hasPrev) {
+      this.dispatchEvent(new CustomEvent<LightboxNavigateDetail>(EventNames.LIGHTBOX_NAVIGATE, {
+        detail: { index: this.currentIndex - 1 }
+      }));
     }
   }
 
-  private getFocusableElements(): HTMLElement[] {
-    if (!this.shadowRoot) return [];
-
-    const focusableSelectors = [
-      'button:not([disabled])',
-      'a[href]',
-      'input:not([disabled])',
-      'select:not([disabled])',
-      'textarea:not([disabled])',
-      '[tabindex]:not([tabindex="-1"])',
-    ].join(', ');
-
-    return Array.from(
-      this.shadowRoot.querySelectorAll<HTMLElement>(focusableSelectors)
-    ).filter((el) => {
-      // Filter out hidden elements
-      const style = window.getComputedStyle(el);
-      return style.display !== 'none' && style.visibility !== 'hidden';
-    });
+  private navigateNext() {
+    if (this.hasNext) {
+      this.dispatchEvent(new CustomEvent<LightboxNavigateDetail>(EventNames.LIGHTBOX_NAVIGATE, {
+        detail: { index: this.currentIndex + 1 }
+      }));
+    }
   }
 
-  private get canNavigate(): boolean {
-    return this.posts.length > 1;
-  }
-
-  private get hasPrev(): boolean {
+  private get hasPrev() {
     return this.currentIndex > 0;
   }
 
-  private get hasNext(): boolean {
+  private get hasNext() {
     return this.currentIndex < this.posts.length - 1;
   }
 
-  private navigatePrev(): void {
-    if (this.hasPrev) {
-      this.dispatchEvent(
-        new CustomEvent<LightboxNavigateDetail>(EventNames.NAVIGATE, {
-          detail: { direction: 'prev', index: this.currentIndex - 1 },
-        })
-      );
-    }
+  private get canNavigate() {
+    return this.posts.length > 1;
   }
 
-  private navigateNext(): void {
-    if (this.hasNext) {
-      this.dispatchEvent(
-        new CustomEvent<LightboxNavigateDetail>(EventNames.NAVIGATE, {
-          detail: { direction: 'next', index: this.currentIndex + 1 },
-        })
-      );
-    }
+  private handleBackdropClick() {
+    this.close();
   }
 
-  private async toggleGutter(): Promise<void> {
-    // If closing, just close
-    if (this.gutterOpen) {
-      this.gutterOpen = false;
+  private toggleTags(e: Event) {
+    e.stopPropagation();
+    this.tagsExpanded = !this.tagsExpanded;
+  }
+
+  private async fetchLikes() {
+    if (!this.post || this.loadingLikes) return;
+    if (this.activeDetail === 'likes') {
+      this.activeDetail = null;
       return;
     }
-
-    // If opening, fetch if needed
-    if (!this.relatedPosts && !this.loadingRelated) {
-      await this.fetchRelatedPosts(true);
+    this.loadingLikes = true;
+    try {
+      const resp = await apiClient.posts.listLikes({ post_id: this.post.id });
+      this.likes = resp.likes || [];
+      this.activeDetail = 'likes';
+    } catch (e) {
+      this.likes = [];
+    } finally {
+      this.loadingLikes = false;
     }
-    
-    if (this.relatedPosts && this.relatedPosts.length === 0) {
-      this.showToast('No related content found');
+  }
+
+  private async fetchComments() {
+    if (!this.post || this.loadingComments) return;
+    if (this.activeDetail === 'comments') {
+      this.activeDetail = null;
       return;
     }
-
-    this.gutterOpen = true;
+    this.loadingComments = true;
+    try {
+      const resp = await apiClient.posts.listComments({ post_id: this.post.id });
+      this.comments = resp.comments || [];
+      this.activeDetail = 'comments';
+    } catch (e) {
+      this.comments = [];
+    } finally {
+      this.loadingComments = false;
+    }
   }
 
-  private showToast(message: string): void {
-    this.toastMessage = message;
-    setTimeout(() => {
-      this.toastMessage = '';
-    }, 3000);
+  private async fetchReblogs() {
+    if (!this.post || this.loadingReblogs) return;
+    if (this.activeDetail === 'reblogs') {
+      this.activeDetail = null;
+      return;
+    }
+    this.loadingReblogs = true;
+    try {
+      const resp = await apiClient.posts.listReblogs({ post_id: this.post.id });
+      this.reblogs = resp.reblogs || [];
+      this.activeDetail = 'reblogs';
+    } catch (e) {
+      this.reblogs = [];
+    } finally {
+      this.loadingReblogs = false;
+    }
   }
 
-  private async fetchRelatedPosts(isInitial = true): Promise<void> {
-    if (!this.post || this.loadingRelated || (!isInitial && this.gutterExhausted)) return;
+  private async toggleGutter() {
+    this.gutterOpen = !this.gutterOpen;
+    if (this.gutterOpen && this.relatedPosts.length === 0) {
+      this.fetchRelatedPosts(true);
+    }
+  }
+
+  private async fetchRelatedPosts(clearFirst = false) {
+    if (!this.post || this.loadingRelated) return;
     
-    if (isInitial) {
-      this.gutterOffset = 0;
-      this.gutterExhausted = false;
-      this.relatedPosts = null;
+    if (clearFirst) {
+      this.relatedPosts = [];
     }
 
     this.loadingRelated = true;
     try {
-      // Fetch batch of 20
-      const limit = 20;
-      const recs = await recService.getSimilarPosts(this.post.id, limit, this.gutterOffset);
+      const resp = await recService.getRelated(this.post.id, 12, this.relatedPosts.length);
       
-      if (recs.length < limit) {
-        this.gutterExhausted = true;
-      }
-
+      // Batch resolve metadata for these recommendations
+      const recs = resp.results || [];
       const postIds = recs.map(r => r.post_id).filter((id): id is number => !!id);
+      
       if (postIds.length > 0) {
-        const { extractMedia } = await import('../types/post.js');
-        const postMap = new Map();
+        const batchResp = await apiClient.posts.batchGet({ post_ids: postIds });
+        const hydratedMap = new Map(batchResp.posts?.map(p => [p.id, p]));
         
-        // Hydrate this batch
-        const resp = await apiClient.posts.batchGet({ post_ids: postIds });
-        (resp.posts || []).forEach(p => postMap.set(p.id, { ...p, _media: extractMedia(p) }));
-        
-        const hydratedRecs = recs.map(r => ({
-          ...r,
-          _hydratedPost: r.post_id ? postMap.get(r.post_id) : undefined
-        })) as any;
-
-        if (isInitial) {
-          this.relatedPosts = hydratedRecs;
-        } else {
-          this.relatedPosts = [...(this.relatedPosts || []), ...hydratedRecs];
-        }
-        
-        this.gutterOffset += recs.length;
-      } else {
-        if (isInitial) this.relatedPosts = [];
-        this.gutterExhausted = true;
+        recs.forEach(r => {
+          if (r.post_id) {
+            (r as any)._hydratedPost = hydratedMap.get(r.post_id);
+          }
+        });
       }
+
+      this.relatedPosts = [...this.relatedPosts, ...recs];
     } catch (e) {
       console.error('Failed to fetch related posts', e);
-      if (isInitial) this.relatedPosts = [];
     } finally {
       this.loadingRelated = false;
     }
   }
 
-  private handleGutterScroll(e: Event): void {
+  private handleGutterScroll(e: Event) {
     const el = e.target as HTMLElement;
-    const threshold = 100;
-    if (el.scrollHeight - el.scrollTop - el.clientHeight < threshold) {
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 100) {
       this.fetchRelatedPosts(false);
     }
+  }
+
+  private showToast(msg: string) {
+    this.toastMessage = msg;
+    setTimeout(() => {
+      this.toastMessage = null;
+    }, 3000);
+  }
+
+  /**
+   * Normalize any CDN URL to fix broken TLS on ocdn012.
+   */
+  private normalizeUrl(url: string | undefined): string {
+    if (!url) return '';
+    let normalized = url;
+    if (normalized.includes('ocdn012.bdsmlr.com')) {
+      normalized = normalized.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
+    }
+    return normalized;
+  }
+
+  /**
+   * Rewrite CDN URLs to use imageproxy for thumbnails.
+   */
+  private getProxyUrl(url: string | undefined): string {
+    if (!url) return '';
+    const normalized = this.normalizeUrl(url);
+    if (normalized.includes('bdsmlr.com/uploads/') && !normalized.includes('/preview/')) {
+      return normalized.replace('/uploads/', '/uploads/preview/100x/');
+    }
+    return normalized;
   }
 
   private async navigateToRelated(rec: RecResult): Promise<void> {
@@ -1017,119 +796,27 @@ export class PostLightbox extends LitElement {
     // Push current to stack
     this.navigationStack = [...this.navigationStack, this.post];
     
-    // Reset engagement details immediately
-    this.likes = null;
-    this.comments = null;
-    this.reblogs = null;
-    this.activeDetail = null;
-    this.relatedPosts = null;
-    this.gutterOffset = 0;
-    this.gutterExhausted = false;
-
-    // Fetch full post data for the new post
-    try {
-      const resp = await apiClient.posts.get(rec.post_id);
-      if (resp.post) {
-        const { extractMedia } = await import('../types/post.js');
-        const newPost: ProcessedPost = {
-          ...resp.post,
-          _media: extractMedia(resp.post)
-        };
-        this.post = newPost;
-        this.currentIndex = -1; 
-        
-        // Scroll panels back to top
-        this.shadowRoot?.querySelector('.lightbox-main')?.scrollTo(0, 0);
-        this.shadowRoot?.querySelector('.lightbox-info')?.scrollTo(0, 0);
-        
-        // Refresh related if gutter is open
-        if (this.gutterOpen) {
-          this.fetchRelatedPosts(true);
+    const hydrated = (rec as any)._hydratedPost;
+    if (hydrated) {
+      this.post = hydrated;
+    } else {
+      // Fallback: fetch detail if not hydrated
+      try {
+        const resp = await apiClient.posts.get({ post_id: rec.post_id });
+        if (resp.post) {
+          this.post = resp.post;
         }
+      } catch (e) {
+        this.showToast('Failed to load related post');
       }
-    } catch (e) {
-      console.error('Failed to navigate to related post', e);
     }
   }
 
-  private popStack(): void {
+  private popStack() {
     if (this.navigationStack.length === 0) return;
     const prev = this.navigationStack[this.navigationStack.length - 1];
     this.navigationStack = this.navigationStack.slice(0, -1);
     this.post = prev;
-    // If returning to a post from the original list, we could try to restore index, 
-    // but simplified for now is to keep it -1 unless we store indices too.
-  }
-
-  private decodeHtml(htmlStr: string): string {
-    const txt = document.createElement('textarea');
-    txt.innerHTML = htmlStr;
-    return txt.value;
-  }
-
-  private handleBackdropClick(e: Event): void {
-    if (e.target === e.currentTarget) {
-      this.close();
-    }
-  }
-
-  private close(): void {
-    this.open = false;
-    this.tagsExpanded = false;
-    this.likes = null;
-    this.comments = null;
-    this.reblogs = null;
-    this.activeDetail = null;
-    this.navigationStack = [];
-    this.relatedPosts = null;
-    this.gutterOpen = false;
-    this.gutterExhausted = false;
-    this.gutterOffset = 0;
-    this.resetZoom();
-    this.dispatchEvent(new CustomEvent(EventNames.CLOSE));
-  }
-
-  private toggleTags(): void {
-    this.tagsExpanded = !this.tagsExpanded;
-  }
-
-  private async fetchLikes(): Promise<void> {
-    if (!this.post || this.loadingLikes) return;
-    this.loadingLikes = true;
-    this.activeDetail = 'likes';
-    try {
-      const data = await apiClient.engagement.getLikes(this.post.id);
-      this.likes = data.likes || [];
-    } catch {
-      this.likes = [];
-    }
-    this.loadingLikes = false;
-  }
-
-  private async fetchComments(): Promise<void> {
-    if (!this.post || this.loadingComments) return;
-    this.loadingComments = true;
-    this.activeDetail = 'comments';
-    try {
-      const data = await apiClient.engagement.getComments(this.post.id);
-      this.comments = data.comments || [];
-    } catch {
-      this.comments = [];
-    }
-    this.loadingComments = false;
-  }
-
-  private async fetchReblogs(): Promise<void> {
-    if (!this.post || this.loadingReblogs) return;
-    this.loadingReblogs = true;
-    this.activeDetail = 'reblogs';
-    try {
-      const data = await apiClient.engagement.getReblogs(this.post.id);
-      this.reblogs = data.reblogs || [];
-    } catch {
-      this.reblogs = [];
-    }
-    this.loadingReblogs = false;
   }
 
   private handleImageError(e: Event): void {
@@ -1167,109 +854,6 @@ export class PostLightbox extends LitElement {
         `;
       }
       img.parentElement?.insertBefore(placeholder, img);
-    }
-  }
-
-  /**
-   * Normalize any CDN URL to fix broken TLS on ocdn012.
-   */
-  private normalizeUrl(url: string | undefined): string {
-    if (!url) return '';
-    let normalized = url;
-    if (normalized.includes('ocdn012.bdsmlr.com')) {
-      normalized = normalized.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
-    }
-    return normalized;
-  }
-
-  /**
-   * Rewrite CDN URLs to use imageproxy for thumbnails.
-   */
-  private getProxyUrl(url: string | undefined): string {
-    if (!url) return '';
-    const normalized = this.normalizeUrl(url);
-    if (normalized.includes('bdsmlr.com/uploads/') && !normalized.includes('/preview/')) {
-      return normalized.replace('/uploads/', '/uploads/preview/100x/');
-    }
-    return normalized;
-  }
-
-  private async signUnsignedImages(container: HTMLElement): Promise<void> {
-    const imgs = container.querySelectorAll('img');
-    for (const img of imgs) {
-      if (img.src.includes('bdsmlr.com') && !img.src.includes('?t=')) {
-        try {
-          img.src = await apiClient.media.signUrl(img.src);
-        } catch {
-          // Ignore signing errors
-        }
-      }
-    }
-  }
-
-  updated(changedProperties: Map<string, unknown>): void {
-    // Handle focus management when lightbox opens/closes
-    if (changedProperties.has('open')) {
-      if (this.open) {
-        // Save currently focused element before opening
-        this.previouslyFocusedElement = document.activeElement as HTMLElement | null;
-        // Focus the close button after the render completes
-        requestAnimationFrame(() => {
-          const closeBtn = this.shadowRoot?.querySelector('.close-btn') as HTMLElement | null;
-          if (closeBtn) {
-            closeBtn.focus();
-          }
-        });
-      } else {
-        // Restore focus to previously focused element when closing
-        if (this.previouslyFocusedElement) {
-          this.previouslyFocusedElement.focus();
-          this.previouslyFocusedElement = null;
-        }
-      }
-    }
-
-    if (changedProperties.has('post') && this.post) {
-      this.currentImageIndex = 0;
-      this.tagsExpanded = false;
-      this.likes = null;
-      this.comments = null;
-      this.reblogs = null;
-      this.activeDetail = null;
-      this.relatedPosts = null;
-      this.gutterOffset = 0;
-      this.gutterExhausted = false;
-      this.resetZoom();
-
-      if (this.gutterOpen) {
-        this.fetchRelatedPosts(true);
-      }
-
-      if (this.post._media.type === 'text') {
-        requestAnimationFrame(() => {
-          const textContainer = this.shadowRoot?.querySelector('.lightbox-text');
-          if (textContainer) {
-            this.signUnsignedImages(textContainer as HTMLElement);
-          }
-        });
-      }
-    }
-  }
-
-  private nextImage(e: Event): void {
-    e.stopPropagation();
-    const files = this.post?.content?.files || [];
-    if (this.currentImageIndex < files.length - 1) {
-      this.currentImageIndex++;
-      this.resetZoom();
-    }
-  }
-
-  private prevImage(e: Event): void {
-    e.stopPropagation();
-    if (this.currentImageIndex > 0) {
-      this.currentImageIndex--;
-      this.resetZoom();
     }
   }
 
@@ -1340,17 +924,11 @@ export class PostLightbox extends LitElement {
 
   private renderMeta(): unknown {
     if (!this.post) return nothing;
-    const post = this.post;
-    const isReblog = post.originPostId && post.originPostId !== post.id;
-    const isDeleted = !!post.deletedAtUnix;
-    const isOriginDeleted = !!post.originDeletedAtUnix;
-
-    let meta = isReblog ? `OP: ${post.originPostId} | RB: ${post.id}` : `Post: ${post.id}`;
-    meta += ` | Created: ${formatDate(post.createdAtUnix, 'datetime')}`;
-    if (isDeleted) meta += ` | Deleted: ${formatDate(post.deletedAtUnix, 'datetime')}`;
-    if (isOriginDeleted) meta += ` | Origin deleted: ${formatDate(post.originDeletedAtUnix, 'datetime')}`;
-
-    return meta;
+    return html`
+      <div class="ts" title="${getTooltipDate(this.post.createdAtUnix)}">
+        Posted ${formatDate(this.post.createdAtUnix, 'friendly')}
+      </div>
+    `;
   }
 
   private renderMedia(): unknown {
@@ -1358,47 +936,72 @@ export class PostLightbox extends LitElement {
     const media = this.post._media;
     const files = this.post.content?.files || [];
 
-    if (media.type === 'video' && media.videoUrl) {
-      const videoUrl = this.normalizeUrl(media.videoUrl);
-      return html`
-        <div class="lightbox-media">
-          <video controls autoplay muted @error=${(e: any) => {
-            if (e.target.src.includes('ocdn012')) {
-              e.target.src = e.target.src.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
-            }
-          }}>
-            <source src=${videoUrl} type="video/mp4" />
-          </video>
-        </div>
-      `;
+    if (media.type === 'video') {
+      if (media.videoUrl) {
+        const videoUrl = this.normalizeUrl(media.videoUrl);
+        return html`
+          <div class="lightbox-media">
+            <video controls autoplay muted @error=${(e: any) => {
+              if (e.target.src.includes('ocdn012')) {
+                e.target.src = e.target.src.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
+              }
+            }}>
+              <source src=${videoUrl} type="video/mp4" />
+            </video>
+          </div>
+        `;
+      } else {
+        return html`
+          <div class="error-ghost ghost" style="min-height: 300px; cursor: pointer;" @click=${this.toggleGutter}>
+            <span class="error-icon">🎬</span>
+            ${isAdmin ? html`<span class="diagnostic-label" style="margin-bottom: 8px;">${isTombstone ? '[TOMBSTONE]' : '[MISSING_URL]'}</span>` : ''}
+            <div style="font-size: 48px; animation: pulse 2s infinite; margin: 20px 0;">✨</div>
+            <span style="font-size: 14px; opacity: 0.7;">Video Unavailable</span>
+            <span style="font-size: 11px; opacity: 0.5; margin-top: 8px;">Click for related alternatives</span>
+          </div>
+        `;
+      }
     }
+
+    const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+    const isTombstone = !media.url && !post.body;
 
     if (media.type === 'image') {
       const currentUrl = files[this.currentImageIndex] || media.url;
-      if (!currentUrl) return nothing;
-      
-      const imageUrl = this.normalizeUrl(currentUrl);
-      const zoomStyle = `transform: scale(${this.zoomScale}) translate(${this.zoomTranslateX / this.zoomScale}px, ${this.zoomTranslateY / this.zoomScale}px)`;
-      
-      return html`
-        <div class="lightbox-media">
-          ${files.length > 1 ? html`
-            <button class="image-nav-btn prev" ?disabled=${this.currentImageIndex === 0} @click=${this.prevImage}>‹</button>
-            <button class="image-nav-btn next" ?disabled=${this.currentImageIndex === files.length - 1} @click=${this.nextImage}>›</button>
-            <div class="image-counter">${this.currentImageIndex + 1} / ${files.length}</div>
-          ` : ''}
-          <img
-            src=${imageUrl}
-            class=${this.zoomScale > 1 ? 'zoomed' : ''}
-            style=${zoomStyle}
-            @error=${this.handleImageError}
-            @touchstart=${this.handleImageTouchStart}
-            @touchmove=${this.handleImageTouchMove}
-            @touchend=${this.handleImageTouchEnd}
-            @dblclick=${this.handleImageDoubleTap}
-          />
-        </div>
-      `;
+      if (currentUrl) {
+        const imageUrl = this.normalizeUrl(currentUrl);
+        const zoomStyle = `transform: scale(${this.zoomScale}) translate(${this.zoomTranslateX / this.zoomScale}px, ${this.zoomTranslateY / this.zoomScale}px)`;
+        
+        return html`
+          <div class="lightbox-media">
+            ${files.length > 1 ? html`
+              <button class="image-nav-btn prev" ?disabled=${this.currentImageIndex === 0} @click=${this.prevImage}>‹</button>
+              <button class="image-nav-btn next" ?disabled=${this.currentImageIndex === files.length - 1} @click=${this.nextImage}>›</button>
+              <div class="image-counter">${this.currentImageIndex + 1} / ${files.length}</div>
+            ` : ''}
+            <img
+              src=${imageUrl}
+              class=${this.zoomScale > 1 ? 'zoomed' : ''}
+              style=${zoomStyle}
+              @error=${this.handleImageError}
+              @touchstart=${this.handleImageTouchStart}
+              @touchmove=${this.handleImageTouchMove}
+              @touchend=${this.handleImageTouchEnd}
+              @dblclick=${this.handleImageDoubleTap}
+            />
+          </div>
+        `;
+      } else {
+        return html`
+          <div class="error-ghost ghost" style="min-height: 300px; cursor: pointer;" @click=${this.toggleGutter}>
+            <span class="error-icon">🖼️</span>
+            ${isAdmin ? html`<span class="diagnostic-label" style="margin-bottom: 8px;">${isTombstone ? '[TOMBSTONE]' : '[MISSING_URL]'}</span>` : ''}
+            <div style="font-size: 48px; animation: pulse 2s infinite; margin: 20px 0;">✨</div>
+            <span style="font-size: 14px; opacity: 0.7;">Content Unavailable</span>
+            <span style="font-size: 11px; opacity: 0.5; margin-top: 8px;">Click for related alternatives</span>
+          </div>
+        `;
+      }
     }
 
     if (media.type === 'audio' && media.audioUrl) {
@@ -1444,8 +1047,8 @@ export class PostLightbox extends LitElement {
     }
 
     if (media.type === 'text') {
-      const title = media.title ? html`<h3 style="margin:0 0 12px 0;">${this.decodeHtml(media.title)}</h3>` : nothing;
-      const text = this.decodeHtml(media.text || '');
+      const title = media.title ? html`<h3 style="margin:0 0 12px 0;">${media.title}</h3>` : nothing;
+      const text = media.text || '';
       return html`<div class="lightbox-text">${title}${unsafeHTML(text)}</div>`;
     }
 
@@ -1550,9 +1153,6 @@ export class PostLightbox extends LitElement {
     const isDeleted = !!post.deletedAtUnix;
     const isRedacted = isDeleted || (!post.blogName && isReblog);
     const isTombstone = !post._media?.url && !post.body;
-    
-    // Hide gutter glitter for unviewable posts
-    const showGutter = !isDeleted && !isRedacted && !isTombstone;
 
     return html`
       <button class="close-btn" @click=${this.close} aria-label="Close lightbox">×</button>
@@ -1609,11 +1209,9 @@ export class PostLightbox extends LitElement {
           <div class="lightbox-main">
             <div class="media-wrapper">
               ${this.renderMedia()}
-              ${showGutter ? html`
-                <button class="related-toggle" @click=${this.toggleGutter} title="Related content">
-                  ${this.loadingRelated ? html`...` : html`✨`}
-                </button>
-              ` : ''}
+              <button class="related-toggle" @click=${this.toggleGutter} title="Related content">
+                ${this.loadingRelated ? html`...` : html`✨`}
+              </button>
             </div>
             
             <div class="lightbox-info">
@@ -1657,7 +1255,7 @@ export class PostLightbox extends LitElement {
             </div>
           </div>
 
-          <aside class="related-gutter ${this.gutterOpen && showGutter ? 'open' : ''}">
+          <aside class="related-gutter ${this.gutterOpen ? 'open' : ''}">
             <div class="gutter-content" @scroll=${this.handleGutterScroll}>
               <div style="font-weight: 600; margin-bottom: 8px;">More like this</div>
               
@@ -1680,7 +1278,58 @@ export class PostLightbox extends LitElement {
       </div>
     `;
   }
-    `;
+
+  // Double tap to zoom helper
+  private lastTap = 0;
+  private handleImageDoubleTap(e: MouseEvent) {
+    const now = Date.now();
+    if (now - this.lastTap < 300) {
+      if (this.zoomScale > 1) {
+        this.resetZoom();
+      } else {
+        this.zoomScale = 2;
+      }
+    }
+    this.lastTap = now;
+  }
+
+  // Touch handlers for zoom/pinch
+  private handleImageTouchStart(e: TouchEvent) {
+    if (e.touches.length === 2) {
+      this.isPinching = true;
+      this.initialPinchDistance = Math.hypot(
+        e.touches[0].pageX - e.touches[1].pageX,
+        e.touches[0].pageY - e.touches[1].pageY
+      );
+      this.initialPinchScale = this.zoomScale;
+    }
+  }
+
+  private handleImageTouchMove(e: TouchEvent) {
+    if (this.isPinching && e.touches.length === 2) {
+      const distance = Math.hypot(
+        e.touches[0].pageX - e.touches[1].pageX,
+        e.touches[0].pageY - e.touches[1].pageY
+      );
+      const ratio = distance / this.initialPinchDistance;
+      this.zoomScale = Math.min(Math.max(1, this.initialPinchScale * ratio), 4);
+    }
+  }
+
+  private handleImageTouchEnd() {
+    this.isPinching = false;
+  }
+
+  private handleTouchStart(e: TouchEvent) {
+    // Backdrop touch handling if needed
+  }
+
+  private handleTouchMove(e: TouchEvent) {
+    // Backdrop touch handling if needed
+  }
+
+  private handleTouchEnd() {
+    // Backdrop touch handling if needed
   }
 }
 

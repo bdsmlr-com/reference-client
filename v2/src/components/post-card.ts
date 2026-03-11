@@ -381,10 +381,17 @@ export class PostCard extends LitElement {
         `;
       } else {
         mediaHtml = html`
-          <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 150px;">
+          <div 
+            class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" 
+            style="min-height: 150px; cursor: pointer;"
+            @click=${(e: Event) => { e.stopPropagation(); this.handleClick(); }}
+            title="Content unavailable. Click to see related alternatives."
+          >
             <span class="error-icon">🖼️</span>
             ${isAdmin ? html`<span class="diagnostic-label">${isTombstone ? '[TOMBSTONE]' : '[MISSING_URL]'}</span>` : ''}
+            <div style="margin-top: 12px; font-size: 24px; animation: pulse 2s infinite;">✨</div>
             <span style="font-size: 11px; opacity: 0.7;">Content Unavailable</span>
+            <span style="font-size: 9px; opacity: 0.5; margin-top: 4px;">Click for alternatives</span>
           </div>
         `;
       }
