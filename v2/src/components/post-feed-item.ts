@@ -213,6 +213,37 @@ export class PostFeedItem extends LitElement {
         font-size: 11px;
       }
 
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+
+      .ghost {
+        background: linear-gradient(
+          90deg,
+          var(--bg-panel-alt) 25%,
+          var(--border) 50%,
+          var(--bg-panel-alt) 75%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 2s infinite linear;
+      }
+
+      .error-ghost {
+        background: var(--bg-panel-alt);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        gap: 8px;
+      }
+
+      .error-icon {
+        font-size: 32px;
+        opacity: 0.5;
+      }
+
       /* Mobile: max-width below BREAKPOINTS.MOBILE */
       @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE - 1)}px) {
         :host {
@@ -288,12 +319,21 @@ export class PostFeedItem extends LitElement {
     const tags = post.tags || [];
 
     let mediaHtml;
-    if (media.type === 'image' && media.url) {
-      mediaHtml = html`
-        <div class="media-container">
-          <img src=${media.url} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
-        </div>
-      `;
+    if (media.type === 'image') {
+      if (media.url) {
+        mediaHtml = html`
+          <div class="media-container">
+            <img src=${media.url} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
+          </div>
+        `;
+      } else {
+        mediaHtml = html`
+          <div class="error-ghost ghost" style="padding: 40px; border-radius: 8px;">
+            <span class="error-icon">🖼️</span>
+            <span style="font-size: 14px; opacity: 0.7;">Content Unavailable</span>
+          </div>
+        `;
+      }
     } else if (media.type === 'video') {
       if (media.url) {
         mediaHtml = html`
@@ -303,11 +343,21 @@ export class PostFeedItem extends LitElement {
           </div>
         `;
       } else {
-        mediaHtml = html`<div class="type-placeholder">🎬 Video</div>`;
+        mediaHtml = html`
+          <div class="error-ghost ghost" style="padding: 40px; border-radius: 8px;">
+            <span class="error-icon">🎬</span>
+            <span style="font-size: 14px; opacity: 0.7;">Video Unavailable</span>
+          </div>
+        `;
       }
     } else if (media.type === 'audio') {
       const preview = (media.html || media.text || '').replace(/<[^>]+>/g, '').slice(0, PREVIEW_TEXT_LENGTH);
-      mediaHtml = html`<div class="type-placeholder">🔊 Audio<br /><small>${preview}</small></div>`;
+      mediaHtml = html`
+        <div class="error-ghost ghost" style="padding: 20px; border-radius: 8px;">
+          <span class="error-icon" style="font-size: 24px;">🔊</span>
+          <span style="font-size: 12px; opacity: 0.7;">Audio: ${preview || 'Unavailable'}</span>
+        </div>
+      `;
     } else if (media.type === 'link') {
       const title = media.title || 'Link';
       if (media.url) {
@@ -317,20 +367,45 @@ export class PostFeedItem extends LitElement {
           </div>
         `;
       } else {
-        mediaHtml = html`<div class="type-placeholder">🔗 ${title}</div>`;
+        mediaHtml = html`
+          <div class="error-ghost ghost" style="padding: 30px; border-radius: 8px;">
+            <span class="error-icon" style="font-size: 24px;">🔗</span>
+            <span style="font-size: 12px; opacity: 0.7; text-align: center;">${title}</span>
+          </div>
+        `;
       }
     } else if (media.type === 'chat') {
       const preview = (media.text || media.title || '').replace(/<[^>]+>/g, '').slice(0, PREVIEW_TEXT_LENGTH);
-      mediaHtml = html`<div class="type-placeholder text">💬 ${preview || 'Chat'}</div>`;
+      mediaHtml = html`
+        <div class="error-ghost ghost" style="padding: 20px; border-radius: 8px;">
+          <span class="error-icon" style="font-size: 24px;">💬</span>
+          <span style="font-size: 13px; opacity: 0.7;">${preview || 'Chat'}</span>
+        </div>
+      `;
     } else if (media.type === 'quote') {
       const preview = (media.quoteText || '').replace(/<[^>]+>/g, '').slice(0, PREVIEW_TEXT_LENGTH);
-      mediaHtml = html`<div class="type-placeholder text">📜 "${preview || 'Quote'}"</div>`;
+      mediaHtml = html`
+        <div class="error-ghost ghost" style="padding: 20px; border-radius: 8px;">
+          <span class="error-icon" style="font-size: 24px;">📜</span>
+          <span style="font-size: 13px; opacity: 0.7; font-style: italic;">"${preview || 'Quote'}"</span>
+        </div>
+      `;
     } else if (media.type === 'text') {
       const decoded = this.decodeHtml(media.text || '');
       const preview = decoded.replace(/<[^>]+>/g, '').slice(0, PREVIEW_TEXT_LENGTH);
-      mediaHtml = html`<div class="type-placeholder text">📝 ${preview || 'Text'}</div>`;
+      mediaHtml = html`
+        <div class="error-ghost ghost" style="padding: 20px; border-radius: 8px;">
+          <span class="error-icon" style="font-size: 24px;">📝</span>
+          <span style="font-size: 13px; opacity: 0.7;">${preview || 'Text'}</span>
+        </div>
+      `;
     } else {
-      mediaHtml = html`<div class="type-placeholder">📄 Post</div>`;
+      mediaHtml = html`
+        <div class="error-ghost ghost" style="padding: 20px; border-radius: 8px;">
+          <span class="error-icon" style="font-size: 24px;">📄</span>
+          <span style="font-size: 13px; opacity: 0.7;">Post Content Unavailable</span>
+        </div>
+      `;
     }
 
     const articleLabel = isDeleted

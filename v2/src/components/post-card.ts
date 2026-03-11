@@ -383,11 +383,21 @@ export class PostCard extends LitElement {
           </div>
         `;
       } else {
-        mediaHtml = html`<div class="type-placeholder">🎬 Video</div>`;
+        mediaHtml = html`
+          <div class="error-ghost ghost" style="min-height: 150px;">
+            <span class="error-icon">🎬</span>
+            <span style="font-size: 11px; opacity: 0.7;">Video Unavailable</span>
+          </div>
+        `;
       }
     } else if (media.type === 'audio') {
       const preview = (media.html || media.text || '').replace(/<[^>]+>/g, '').slice(0, PREVIEW_TEXT_LENGTH);
-      mediaHtml = html`<div class="type-placeholder">🔊 Audio<br /><small>${preview}</small></div>`;
+      mediaHtml = html`
+        <div class="error-ghost ghost" style="min-height: 80px;">
+          <span class="error-icon" style="font-size: 18px;">🔊</span>
+          <span style="font-size: 10px; opacity: 0.7;">Audio: ${preview || 'Unavailable'}</span>
+        </div>
+      `;
     } else if (media.type === 'link') {
       const title = media.title || 'Link';
       if (mediaUrl) {
@@ -398,20 +408,45 @@ export class PostCard extends LitElement {
           </div>
         `;
       } else {
-        mediaHtml = html`<div class="type-placeholder">🔗 ${title.slice(0, 50)}</div>`;
+        mediaHtml = html`
+          <div class="error-ghost ghost" style="min-height: 100px;">
+            <span class="error-icon" style="font-size: 18px;">🔗</span>
+            <span style="font-size: 10px; opacity: 0.7; padding: 0 8px; text-align: center;">${title.slice(0, 50)}</span>
+          </div>
+        `;
       }
     } else if (media.type === 'chat') {
       const preview = (media.text || media.title || '').replace(/<[^>]+>/g, '').slice(0, PREVIEW_TEXT_LENGTH);
-      mediaHtml = html`<div class="type-placeholder text">💬 ${preview || 'Chat'}</div>`;
+      mediaHtml = html`
+        <div class="error-ghost ghost" style="min-height: 80px;">
+          <span class="error-icon" style="font-size: 18px;">💬</span>
+          <span style="font-size: 10px; opacity: 0.7; padding: 0 8px;">${preview || 'Chat'}</span>
+        </div>
+      `;
     } else if (media.type === 'quote') {
       const preview = (media.quoteText || '').replace(/<[^>]+>/g, '').slice(0, PREVIEW_TEXT_LENGTH);
-      mediaHtml = html`<div class="type-placeholder text">📜 "${preview || 'Quote'}"</div>`;
+      mediaHtml = html`
+        <div class="error-ghost ghost" style="min-height: 80px;">
+          <span class="error-icon" style="font-size: 18px;">📜</span>
+          <span style="font-size: 10px; opacity: 0.7; padding: 0 8px;">"${preview || 'Quote'}"</span>
+        </div>
+      `;
     } else if (media.type === 'text') {
       const decoded = this.decodeHtml(media.text || '');
       const preview = decoded.replace(/<[^>]+>/g, '').slice(0, PREVIEW_TEXT_LENGTH);
-      mediaHtml = html`<div class="type-placeholder text">📝 ${preview || 'Text'}</div>`;
+      mediaHtml = html`
+        <div class="error-ghost ghost" style="min-height: 80px;">
+          <span class="error-icon" style="font-size: 18px;">📝</span>
+          <span style="font-size: 10px; opacity: 0.7; padding: 0 8px;">${preview || 'Text'}</span>
+        </div>
+      `;
     } else {
-      mediaHtml = html`<div class="type-placeholder">📄 Post</div>`;
+      mediaHtml = html`
+        <div class="error-ghost ghost" style="min-height: 80px;">
+          <span class="error-icon" style="font-size: 18px;">📄</span>
+          <span style="font-size: 10px; opacity: 0.7;">Post Content Unavailable</span>
+        </div>
+      `;
     }
 
     const cardLabel = isDeleted
