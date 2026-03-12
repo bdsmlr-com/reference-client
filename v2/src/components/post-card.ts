@@ -388,9 +388,14 @@ export class PostCard extends LitElement {
             ${fileCount > 1 ? html`<div class="multi-image-badge">1 / ${fileCount}</div>` : ''}
             ${isMediaGif ? html`
               <video 
-                autoplay loop muted playsinline 
+                autoplay 
+                loop 
+                muted 
+                playsinline 
+                webkit-playsinline
+                preload="metadata"
                 poster=${posterUrl}
-                style="width: 100%; height: 100%; object-fit: cover;"
+                style="width: 100%; height: 100%; object-fit: cover; display: block;"
               >
                 <source src=${thumbUrl} type="video/mp4">
               </video>

@@ -324,7 +324,12 @@ export class PostFeedItem extends LitElement {
           <div class="media-container">
             ${isMediaGif ? html`
               <video 
-                autoplay loop muted playsinline 
+                autoplay 
+                loop 
+                muted 
+                playsinline 
+                webkit-playsinline
+                preload="metadata"
                 poster=${posterUrl}
                 style="width: 100%; display: block;"
               >
@@ -349,6 +354,11 @@ export class PostFeedItem extends LitElement {
           <div class="media-container video-container">
             <video 
               controls 
+              autoplay 
+              muted 
+              playsinline
+              webkit-playsinline
+              preload="metadata"
               poster=${posterUrl}
               style="width: 100%; display: block;"
             >

@@ -394,7 +394,15 @@ export class PostLightbox extends LitElement {
     if (media.type === 'video') {
       if (media.videoUrl) {
         return html`
-          <video controls autoplay muted poster=${posterUrl}>
+          <video 
+            controls 
+            autoplay 
+            muted 
+            playsinline
+            webkit-playsinline
+            preload="metadata"
+            poster=${posterUrl}
+          >
             <source src=${lightboxUrl} type="video/mp4" />
           </video>
         `;
@@ -411,7 +419,15 @@ export class PostLightbox extends LitElement {
             <div class="image-counter">${this.currentImageIndex + 1} / ${files.length}</div>
           ` : ''}
           ${isMediaGif ? html`
-            <video autoplay loop muted playsinline poster=${posterUrl}>
+            <video 
+              autoplay 
+              loop 
+              muted 
+              playsinline 
+              webkit-playsinline
+              preload="metadata"
+              poster=${posterUrl}
+            >
               <source src=${lightboxUrl} type="video/mp4" />
             </video>
           ` : html`

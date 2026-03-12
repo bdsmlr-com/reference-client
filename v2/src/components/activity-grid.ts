@@ -115,9 +115,14 @@ export class ActivityItem extends LitElement {
         ${rawUrl ? html`
           ${isMediaGif ? html`
             <video 
-              autoplay loop muted playsinline 
+              autoplay 
+              loop 
+              muted 
+              playsinline 
+              webkit-playsinline
+              preload="metadata"
               poster=${posterUrl}
-              style="width: 100%; height: 100%; object-fit: cover;"
+              style="width: 100%; height: 100%; object-fit: cover; display: block;"
               @error=${this.handleImageError}
             >
               <source src=${thumbUrl} type="video/mp4">

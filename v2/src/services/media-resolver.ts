@@ -64,17 +64,21 @@ export function resolveMediaUrl(url: string | undefined, context: MediaContext):
   const preset = CONTEXT_PRESETS[context];
   const parts: string[] = [];
   
+  const isTargetGif = url.split('?')[0].toLowerCase().endsWith('.gif');
+
+  // 1. Resize logic
   const resizeMode = (preset.height && preset.height > 0) ? 'fill' : 'fit';
   parts.push(`resize:${resizeMode}:${preset.width || 0}:${preset.height || 0}`);
-  parts.push(DEFAULT_GRAVITY);
   
+  // 2. Gravity: Skip for GIFs to prevent flickering
+  if (!isTargetGif) {
+    parts.push(DEFAULT_GRAVITY);
+  }
+  
+  // 3. Format conversion: Force MP4 for all GIFs
   let extension = '';
-  const isTargetGif = url.split('?')[0].toLowerCase().endsWith('.gif');
-  
   if (isTargetGif && context !== 'poster') {
     parts.push('format:mp4');
-    // Note: Some imgproxy setups prefer .mp4 extension at the end of the plain path
-    // extension = '@mp4'; 
   } else if (preset.format) {
     parts.push(`format:${preset.format}`);
   }
