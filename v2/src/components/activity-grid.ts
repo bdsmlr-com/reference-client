@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { resolveMediaUrl, isGif } from '../services/media-resolver.js';
+import { resolveMediaUrl, isAnimation } from '../services/media-resolver.js';
 import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
 
@@ -100,7 +100,7 @@ export class ActivityItem extends LitElement {
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
     const thumbUrl = resolveMediaUrl(rawUrl, 'thumbnail');
     const posterUrl = resolveMediaUrl(rawUrl, 'poster');
-    const isMediaGif = isGif(rawUrl);
+    const isMediaAnim = isAnimation(rawUrl);
     
     let icon = POST_TYPE_ICONS[this.post.type as PostType] || '📄';
     if (this.interactionType === 'reblog') icon = '♻️';
@@ -113,7 +113,7 @@ export class ActivityItem extends LitElement {
     return html`
       <div @click=${this.handleClick} style="width: 100%; height: 100%;">
         ${rawUrl ? html`
-          ${isMediaGif ? html`
+          ${isMediaAnim ? html`
             <video 
               autoplay 
               loop 

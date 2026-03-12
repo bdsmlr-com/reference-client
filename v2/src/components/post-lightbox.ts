@@ -10,7 +10,7 @@ import { recService, type RecResult } from '../services/recommendation-api.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { POST_TYPE_ICONS, extractMedia, type ProcessedPost } from '../types/post.js';
 
-import { resolveMediaUrl, isGif } from '../services/media-resolver.js';
+import { resolveMediaUrl, isAnimation } from '../services/media-resolver.js';
 
 @customElement('post-lightbox')
 export class PostLightbox extends LitElement {
@@ -389,7 +389,7 @@ export class PostLightbox extends LitElement {
 
     const lightboxUrl = resolveMediaUrl(currentUrl, 'lightbox');
     const posterUrl = resolveMediaUrl(currentUrl, 'poster');
-    const isMediaGif = isGif(currentUrl);
+    const isMediaAnim = isAnimation(currentUrl);
 
     if (media.type === 'video') {
       if (media.videoUrl) {
@@ -418,7 +418,7 @@ export class PostLightbox extends LitElement {
             <button class="image-nav-btn next" ?disabled=${this.currentImageIndex === files.length - 1} @click=${this.nextImage}>›</button>
             <div class="image-counter">${this.currentImageIndex + 1} / ${files.length}</div>
           ` : ''}
-          ${isMediaGif ? html`
+          ${isMediaAnim ? html`
             <video 
               autoplay 
               loop 

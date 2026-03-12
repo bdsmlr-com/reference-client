@@ -39,7 +39,7 @@ function postHasChanged(newVal: ProcessedPost | undefined, oldVal: ProcessedPost
   return false;
 }
 
-import { resolveMediaUrl, isGif } from '../services/media-resolver.js';
+import { resolveMediaUrl, isAnimation } from '../services/media-resolver.js';
 
 @customElement('post-card')
 export class PostCard extends LitElement {
@@ -378,7 +378,7 @@ export class PostCard extends LitElement {
 
     const thumbUrl = resolveMediaUrl(mediaUrl, 'thumbnail');
     const posterUrl = resolveMediaUrl(mediaUrl, 'poster');
-    const isMediaGif = isGif(mediaUrl);
+    const isMediaAnim = isAnimation(mediaUrl);
 
     let mediaHtml;
     if (media.type === 'image') {
@@ -386,7 +386,7 @@ export class PostCard extends LitElement {
         mediaHtml = html`
           <div style="position: relative;">
             ${fileCount > 1 ? html`<div class="multi-image-badge">1 / ${fileCount}</div>` : ''}
-            ${isMediaGif ? html`
+            ${isMediaAnim ? html`
               <video 
                 autoplay 
                 loop 

@@ -42,7 +42,7 @@ function postHasChanged(newVal: ProcessedPost | undefined, oldVal: ProcessedPost
   return false;
 }
 
-import { resolveMediaUrl, isGif } from '../services/media-resolver.js';
+import { resolveMediaUrl, isAnimation } from '../services/media-resolver.js';
 
 @customElement('post-feed-item')
 export class PostFeedItem extends LitElement {
@@ -315,14 +315,14 @@ export class PostFeedItem extends LitElement {
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
     const feedUrl = resolveMediaUrl(rawUrl, 'feed');
     const posterUrl = resolveMediaUrl(rawUrl, 'poster');
-    const isMediaGif = isGif(rawUrl);
+    const isMediaAnim = isAnimation(rawUrl);
 
     let mediaHtml;
     if (media.type === 'image') {
       if (media.url) {
         mediaHtml = html`
           <div class="media-container">
-            ${isMediaGif ? html`
+            ${isMediaAnim ? html`
               <video 
                 autoplay 
                 loop 

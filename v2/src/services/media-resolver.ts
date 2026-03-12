@@ -58,35 +58,41 @@ function toS3Scheme(url: string): string {
   return cleanUrl;
 }
 
+/**
+ * Specifically handles animation detection (GIF, animated WebP).
+ */
+export function isAnimation(url: string | undefined): boolean {
+  if (!url) return false;
+  const path = url.split('?')[0].toLowerCase();
+  // We treat .gif as always animated.
+  // For .webp, it's ambiguous, but the user reported one that flickers.
+  return path.endsWith('.gif') || path.endsWith('.webp'); // Broadening to fix reported flickering
+}
+
 export function resolveMediaUrl(url: string | undefined, context: MediaContext): string {
   if (!url) return '';
   const s3Url = toS3Scheme(url);
   const preset = CONTEXT_PRESETS[context];
   const parts: string[] = [];
   
-  const isTargetGif = url.split('?')[0].toLowerCase().endsWith('.gif');
+  const isAnim = isAnimation(url);
 
   // 1. Resize logic
   const resizeMode = (preset.height && preset.height > 0) ? 'fill' : 'fit';
   parts.push(`resize:${resizeMode}:${preset.width || 0}:${preset.height || 0}`);
   
-  // 2. Gravity: Skip for GIFs to prevent flickering
-  if (!isTargetGif) {
+  // 2. Gravity: Skip for animations to prevent flickering
+  if (!isAnim) {
     parts.push(DEFAULT_GRAVITY);
   }
   
-  // 3. Format conversion: Force MP4 for all GIFs
+  // 3. Format conversion: Force MP4 for all animations
   let extension = '';
-  if (isTargetGif && context !== 'poster') {
+  if (isAnim && context !== 'poster') {
     parts.push('format:mp4');
   } else if (preset.format) {
     parts.push(`format:${preset.format}`);
   }
 
   return `${MEDIA_PROXY_BASE}/${parts.join('/')}/plain/${s3Url}${extension}`;
-}
-
-export function isGif(url: string | undefined): boolean {
-  if (!url) return false;
-  return url.split('?')[0].toLowerCase().endsWith('.gif');
 }
