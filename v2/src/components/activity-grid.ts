@@ -7,7 +7,7 @@ import { type PostType } from '../types/api.js';
 
 /**
  * High-density activity item.
- * Indicating: Blog, Reblog, Like, or Comment via icons.
+ * Refactored to match Ghost Aesthetic (PostCard).
  */
 @customElement('activity-item')
 export class ActivityItem extends LitElement {
@@ -16,43 +16,92 @@ export class ActivityItem extends LitElement {
     css`
       :host {
         display: block;
-        position: relative;
-        aspect-ratio: 1 / 1;
-        background: var(--bg-panel-alt);
-        border-radius: 4px;
+      }
+
+      .card {
+        background: var(--bg-panel);
+        border-radius: 8px;
         overflow: hidden;
         cursor: pointer;
-        border: 1px solid var(--border-subtle);
-        transition: transform 0.2s, border-color 0.2s;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        position: relative;
+        border: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
       }
 
-      :host(:hover) {
-        transform: scale(1.02);
+      .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
         border-color: var(--accent);
-        z-index: 2;
       }
 
-      img, video {
+      .media-container {
+        width: 100%;
+        height: 200px;
+        background: #000;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .media-container img, 
+      .media-container video {
         width: 100%;
         height: 100%;
         object-fit: cover;
+        display: block;
       }
 
       .type-overlay {
         position: absolute;
-        top: 6px;
-        right: 6px;
-        background: rgba(0, 0, 0, 0.6);
+        top: 8px;
+        right: 8px;
+        background: rgba(0, 0, 0, 0.7);
         color: white;
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 12px;
+        font-size: 14px;
         backdrop-filter: blur(4px);
         border: 1px solid rgba(255, 255, 255, 0.2);
+        z-index: 2;
+      }
+
+      .card-body {
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .blog-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .stats-row {
+        display: flex;
+        gap: 6px;
+      }
+
+      .stat-chip {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: var(--bg-panel-alt);
+        border: 1px solid var(--border);
+        padding: 1px 6px;
+        border-radius: 10px;
+        font-size: 10px;
+        color: var(--text-muted);
       }
 
       .admin-label {
@@ -88,7 +137,7 @@ export class ActivityItem extends LitElement {
       const media = this.post._media;
       const rawUrl = media.url || media.videoUrl || media.audioUrl;
       if (rawUrl) {
-        img.src = rawUrl; // Fallback to raw backend URL
+        img.src = rawUrl;
         return;
       }
     }
@@ -108,42 +157,53 @@ export class ActivityItem extends LitElement {
     if (this.interactionType === 'comment') icon = '💬';
 
     const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
-    const isTombstone = !media.url && !this.post.body;
+    const isTombstone = !rawUrl && !this.post.body;
 
     return html`
-      <div @click=${this.handleClick} style="width: 100%; height: 100%;">
-        ${rawUrl ? html`
-          ${isMediaAnim ? html`
-            <video 
-              autoplay 
-              loop 
-              muted 
-              playsinline 
-              webkit-playsinline
-              preload="metadata"
-              poster=${posterUrl}
-              style="width: 100%; height: 100%; object-fit: cover; display: block;"
-              @error=${this.handleImageError}
-            >
-              <source src=${thumbUrl} type="video/mp4">
-            </video>
+      <article class="card" @click=${this.handleClick}>
+        <div class="media-container">
+          ${rawUrl ? html`
+            ${isMediaAnim ? html`
+              <video 
+                autoplay 
+                loop 
+                muted 
+                playsinline 
+                webkit-playsinline
+                preload="metadata"
+                poster=${posterUrl}
+                style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                @error=${this.handleImageError}
+              >
+                <source src=${thumbUrl} type="video/mp4">
+              </video>
+            ` : html`
+              <img src=${thumbUrl} loading="lazy" @error=${this.handleImageError} />
+            `}
           ` : html`
-            <img src=${thumbUrl} loading="lazy" @error=${this.handleImageError} />
+            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; opacity:0.3; font-size:24px;">
+              ${icon}
+            </div>
           `}
-        ` : html`
-          <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; opacity:0.3; font-size:24px;">
-            ${icon}
+          <div class="type-overlay" title="${this.interactionType}">${icon}</div>
+          ${isAdmin && isTombstone ? html`<div class="admin-label">Tombstone</div>` : nothing}
+        </div>
+
+        <div class="card-body">
+          <div class="blog-label">@${this.post.blogName || 'unknown'}</div>
+          <div class="stats-row">
+            ${this.post.likesCount ? html`<div class="stat-chip">❤️ ${this.post.likesCount}</div>` : ''}
+            ${this.post.reblogsCount ? html`<div class="stat-chip">♻️ ${this.post.reblogsCount}</div>` : ''}
           </div>
-        `}
-        <div class="type-overlay" title="${this.interactionType}">${icon}</div>
-        ${isAdmin && isTombstone ? html`<div class="admin-label">Tombstone</div>` : nothing}
-      </div>
+        </div>
+      </article>
     `;
   }
 }
 
 /**
  * Container for clustered activity.
+ * Responsive columns: 1 (Mobile), 2 (Tablet), 4 (Desktop)
  */
 @customElement('activity-grid')
 export class ActivityGrid extends LitElement {
@@ -152,9 +212,23 @@ export class ActivityGrid extends LitElement {
     css`
       :host {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 8px;
+        grid-template-columns: 1fr;
+        gap: 16px;
         width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      @media (min-width: 600px) {
+        :host {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      @media (min-width: 900px) {
+        :host {
+          grid-template-columns: repeat(4, 1fr);
+        }
       }
 
       /* Compact mode for mixing into feed */
@@ -165,6 +239,7 @@ export class ActivityGrid extends LitElement {
         padding: 8px;
         border-radius: 8px;
         border: 1px solid var(--border);
+        max-width: none;
       }
 
       @media (max-width: 600px) {

@@ -1,44 +1,9 @@
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
-import { MAX_VISIBLE_TAGS } from '../types/ui-constants.js';
-
-/**
- * Memoization helper: Determines if post property has meaningfully changed.
- * Compares key identifying and display-relevant fields to avoid unnecessary re-renders.
- * Returns true if post should trigger re-render, false if it can be skipped.
- */
-function postHasChanged(newVal: ProcessedPost | undefined, oldVal: ProcessedPost | undefined): boolean {
-  // If either is undefined, always re-render
-  if (!newVal || !oldVal) return true;
-  // Same reference - no change
-  if (newVal === oldVal) return false;
-  // Different post ID - definitely changed
-  if (newVal.id !== oldVal.id) return true;
-  // Check display-relevant fields that could update
-  if (newVal.likesCount !== oldVal.likesCount) return true;
-  if (newVal.reblogsCount !== oldVal.reblogsCount) return true;
-  if (newVal.commentsCount !== oldVal.commentsCount) return true;
-  if (newVal.deletedAtUnix !== oldVal.deletedAtUnix) return true;
-  if (newVal.blogName !== oldVal.blogName) return true;
-  if (newVal.originBlogName !== oldVal.originBlogName) return true;
-  // Check media URL (most visible element)
-  if (newVal._media?.url !== oldVal._media?.url) return true;
-  if (newVal._media?.type !== oldVal._media?.type) return true;
-  // Tags comparison (shallow array check)
-  const newTags = newVal.tags || [];
-  const oldTags = oldVal.tags || [];
-  if (newTags.length !== oldTags.length) return true;
-  for (let i = 0; i < Math.min(newTags.length, MAX_VISIBLE_TAGS); i++) {
-    if (newTags[i] !== oldTags[i]) return true;
-  }
-  // No meaningful changes detected
-  return false;
-}
-
 import { resolveMediaUrl, isAnimation } from '../services/media-resolver.js';
 
 @customElement('post-card')
@@ -55,157 +20,116 @@ export class PostCard extends LitElement {
         border-radius: 8px;
         overflow: hidden;
         cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
         position: relative;
         border: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
       }
 
       .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        border-color: var(--accent);
       }
 
-      @keyframes shimmer {
-        0% { background-position: -200% 0; }
-        100% { background-position: 200% 0; }
-      }
-
-      .ghost {
-        background: linear-gradient(
-          90deg,
-          var(--bg-panel-alt) 25%,
-          var(--border) 50%,
-          var(--bg-panel-alt) 75%
-        );
-        background-size: 200% 100%;
-        animation: shimmer 2s infinite linear;
-      }
-
-      .error-ghost {
+      /* Identity Header */
+      .card-header {
+        padding: 10px 12px;
         background: var(--bg-panel-alt);
+        border-bottom: 1px solid var(--border-subtle);
         display: flex;
-        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        color: var(--text-muted);
+        justify-content: space-between;
         gap: 8px;
-        width: 100%;
-        min-height: 200px;
+      }
+
+      .blog-link {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text);
+        text-decoration: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .blog-link:hover {
+        color: var(--accent);
+      }
+
+      .reblog-badge {
+        font-size: 10px;
+        background: var(--accent);
+        color: white;
+        padding: 1px 5px;
         border-radius: 4px;
+        font-weight: bold;
       }
 
-      .error-icon {
-        font-size: 24px;
-        opacity: 0.5;
+      /* Media Section - Fixed height like the skeleton */
+      .media-container {
+        width: 100%;
+        height: 200px;
+        background: #000;
+        position: relative;
+        overflow: hidden;
       }
 
-      .diagnostic-label {
-        font-family: monospace;
-        font-size: 9px;
-        background: rgba(0,0,0,0.7);
-        color: #00ff00;
-        padding: 2px 4px;
-        border-radius: 2px;
-        margin-top: 4px;
-        text-transform: uppercase;
-      }
-
-      .admin-ghost {
-        border: 2px dashed #ff0000 !important;
-        background: rgba(255, 0, 0, 0.05) !important;
+      .media-container img, 
+      .media-container video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
       }
 
       .multi-image-badge {
         position: absolute;
         top: 8px;
         right: 8px;
-        background: rgba(0, 0, 0, 0.6);
+        background: rgba(0, 0, 0, 0.7);
         color: white;
         padding: 2px 6px;
         border-radius: 4px;
         font-size: 10px;
         font-weight: bold;
-        z-index: 2;
-        pointer-events: none;
         backdrop-filter: blur(4px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        z-index: 2;
       }
 
-      .card img {
-        width: 100%;
-        height: auto;
-        display: block;
-        background: var(--bg-panel-alt);
+      /* Info & Chips */
+      .card-body {
+        padding: 12px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
       }
 
-      .type-placeholder {
-        width: 100%;
-        aspect-ratio: 1 / 1;
-        background: var(--bg-panel-alt);
+      .stats-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .stat-chip {
         display: flex;
         align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        color: var(--text-muted);
-        padding: 12px;
-        text-align: center;
-        overflow: hidden;
-      }
-
-      .type-placeholder.text {
-        font-size: 12px;
-        color: var(--text-muted);
-        align-items: flex-start;
-        justify-content: flex-start;
-        line-height: 1.4;
-      }
-
-      .video-thumb {
-        position: relative;
-        width: 100%;
-        aspect-ratio: 1 / 1;
+        gap: 4px;
         background: var(--bg-panel-alt);
+        border: 1px solid var(--border);
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        color: var(--text-muted);
+        transition: background 0.2s;
       }
 
-      .video-thumb img {
-        width: 100%;
-        height: auto;
-        aspect-ratio: 1 / 1;
-        object-fit: cover;
-      }
-
-      .video-thumb .video-icon {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 48px;
-        color: white;
-        text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
-        pointer-events: none;
-      }
-
-      .link-thumb {
-        position: relative;
-      }
-
-      .link-thumb img {
-        width: 100%;
-        height: auto;
-        aspect-ratio: 1 / 1;
-        object-fit: cover;
-      }
-
-      .link-thumb .link-icon {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        font-size: 20px;
-        opacity: 0.8;
-      }
-
-      .card-info {
-        padding: 10px;
+      .stat-chip:hover {
+        background: var(--border);
+        color: var(--text);
       }
 
       .tags {
@@ -215,323 +139,129 @@ export class PostCard extends LitElement {
       }
 
       .tag {
-        background: var(--accent);
-        color: white;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 11px;
-      }
-
-      .card-stats {
-        font-size: 12px;
-        color: var(--text-muted);
-        margin-bottom: 6px;
-      }
-
-      .post-link {
-        position: absolute;
-        top: 4px;
-        right: 4px;
-        background: rgba(0, 0, 0, 0.7);
-        color: #fff;
-        padding: 4px 8px;
-        border-radius: 4px;
         font-size: 10px;
-        text-decoration: none;
-        max-width: 140px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        z-index: 10;
+        color: var(--text-muted);
+        background: transparent;
+        border: 1px solid var(--border-subtle);
+        padding: 1px 6px;
+        border-radius: 10px;
       }
 
-      .post-link:hover {
-        background: var(--accent);
-        text-decoration: none;
+      /* Ghost/Error States */
+      .error-ghost {
+        width: 100%;
+        height: 100%;
+        background: var(--bg-panel-alt);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
       }
 
-      .post-link.deleted {
-        background: rgba(239, 68, 68, 0.8);
+      .diagnostic-label {
+        font-family: monospace;
+        font-size: 8px;
+        background: #000;
+        color: #00ff00;
+        padding: 1px 4px;
+        border-radius: 2px;
+      }
+
+      .video-overlay-icon {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 32px;
+        color: white;
+        opacity: 0.8;
+        pointer-events: none;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.5);
       }
     `,
   ];
 
-  @property({ type: Object, hasChanged: postHasChanged }) post!: ProcessedPost;
+  @property({ type: Object }) post!: ProcessedPost;
 
   private handleClick(): void {
     this.dispatchEvent(
       new CustomEvent<PostSelectDetail>(EventNames.POST_SELECT, {
         detail: { post: this.post },
+        bubbles: true,
+        composed: true
       })
     );
   }
 
-  private handleLinkClick(e: Event): void {
-    e.stopPropagation();
-  }
-
   private handleImageError(e: Event): void {
     const img = e.target as HTMLImageElement;
-    const src = img.src;
-
-    // If a preview URL failed, fall back to the original image URL
-    if (src.includes('/preview/') && !img.dataset.triedOriginal) {
+    if (!img.dataset.triedOriginal) {
       img.dataset.triedOriginal = 'true';
-      // Remove the /preview/VARIANT/ part of the path
-      img.src = src.replace(/\/preview\/[^/]+\//, '/');
-      return;
+      const rawUrl = this.post.content?.files?.[0] || this.post.content?.url;
+      if (rawUrl) {
+        img.src = rawUrl;
+        return;
+      }
     }
-
-    // Try CDN fallback (ocdn -> cdn)
-    if (src.includes('ocdn012.bdsmlr.com') && !img.dataset.triedFallback) {
-      img.dataset.triedFallback = 'true';
-      img.src = src.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
-      return;
-    }
-
-    // If everything failed, show placeholder
-    if (!img.dataset.showedPlaceholder) {
-      img.dataset.showedPlaceholder = 'true';
-      img.style.display = 'none';
-      const placeholder = document.createElement('div');
-      placeholder.className = 'error-ghost ghost';
-      placeholder.innerHTML = `
-        <span class="error-icon">🖼️</span>
-        <span style="font-size: 11px; opacity: 0.7;">Content Unavailable</span>
-      `;
-      img.parentElement?.insertBefore(placeholder, img);
-    }
-  }
-
-  /**
-   * Rewrite CDN URLs to use imageproxy for thumbnails.
-   * e.g., /uploads/photos/foo.jpg -> /uploads/preview/400x/photos/foo.jpg
-   */
-  private getProxyUrl(url: string | undefined): string {
-    if (!url) return '';
-    let normalized = url;
-    // Fix broken TLS on ocdn012
-    if (normalized.includes('ocdn012.bdsmlr.com')) {
-      normalized = normalized.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
-    }
-    
-    // Use 400x width-based scaling (standard variant)
-    if (normalized.includes('bdsmlr.com/uploads/') && !normalized.includes('/preview/')) {
-      return normalized.replace('/uploads/', '/uploads/preview/400x/');
-    }
-    return normalized;
+    img.style.display = 'none';
   }
 
   render() {
-    const post = this.post;
-    const media = post._media;
-    if (!media) return nothing;
-
-    const mediaUrl = this.getProxyUrl(media.url);
-
-    const isReblog = post.originPostId && post.originPostId !== post.id;
-    const isDeleted = !!post.deletedAtUnix;
-    const isOriginDeleted = !!post.originDeletedAtUnix;
-    const blogName = (isDeleted ? null : post.blogName) || (isReblog ? 'redacted' : 'unknown');
-    const isRedacted = isDeleted || (!post.blogName && isReblog);
-    const postUrl =
-      post.blogName && !isDeleted
-        ? `https://${blogName}.bdsmlr.com/post/${post.id}`
-        : `https://bdsmlr.com/post/${post.id}`;
-    const originBlogName = post.originBlogName;
-
-    const typeIcon = POST_TYPE_ICONS[post.type as PostType] || '📄';
-
-    let linkText: string;
-    if (isReblog && isOriginDeleted && isRedacted) {
-      linkText = `♻️ deleted`;
-    } else if (isRedacted) {
-      linkText = `♻️ redacted`;
-    } else if (isReblog && isOriginDeleted) {
-      // Origin deleted but we have the reblogger
-      linkText = `📌 ${blogName}`;
-    } else {
-      // Standard reblog or original post
-      const rbCount = post._reblog_variants?.length || 0;
-      if (isReblog) {
-        const originDisplay = originBlogName || '?';
-        linkText = `${blogName} ♻️ ${originDisplay}${rbCount > 0 ? ` (+${rbCount})` : ''}`;
-      } else {
-        linkText = `${typeIcon} ${blogName}${rbCount > 0 ? ` ♻️ +${rbCount}` : ''}`;
-      }
-    }
-
-
-    const allTags = post.tags || [];
-    const tags = allTags.slice(0, MAX_VISIBLE_TAGS);
-    const moreTagsCount = allTags.length - MAX_VISIBLE_TAGS;
-    const statsArr: string[] = [];
-    if (post.likesCount) statsArr.push(`❤️ ${post.likesCount}`);
-    if (post.reblogsCount) statsArr.push(`♻️ ${post.reblogsCount}`);
-    if (post.commentsCount) statsArr.push(`💬 ${post.commentsCount}`);
-    const statsText = statsArr.join(' ');
-
-    const fileCount = post.content?.files?.length || 0;
+    const p = this.post;
+    const media = p._media;
+    const rbCount = p._reblog_variants?.length || 0;
+    
+    // Media URLs
+    const rawUrl = media.url || media.videoUrl || media.audioUrl;
+    const thumbUrl = resolveMediaUrl(rawUrl, 'thumbnail');
+    const posterUrl = resolveMediaUrl(rawUrl, 'poster');
+    const isMediaAnim = isAnimation(rawUrl);
 
     const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
-    const isTombstone = !mediaUrl && !post.body;
+    const isTombstone = !rawUrl && !p.body;
 
-    const thumbUrl = resolveMediaUrl(mediaUrl, 'thumbnail');
-    const posterUrl = resolveMediaUrl(mediaUrl, 'poster');
-    const isMediaAnim = isAnimation(mediaUrl);
+    return html`
+      <article class="card" @click=${this.handleClick}>
+        <div class="card-header">
+          <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
+            <span class="blog-link">@${p.blogName || 'unknown'}</span>
+            ${rbCount > 0 ? html`<span class="reblog-badge" title="Aggregated reblogs">+${rbCount}</span>` : ''}
+          </div>
+          <span style="font-size: 12px; opacity: 0.5;">${POST_TYPE_ICONS[p.type as PostType] || '📄'}</span>
+        </div>
 
-    let mediaHtml;
-    if (media.type === 'image') {
-      if (mediaUrl) {
-        mediaHtml = html`
-          <div style="position: relative;">
-            ${fileCount > 1 ? html`<div class="multi-image-badge">1 / ${fileCount}</div>` : ''}
+        <div class="media-container">
+          ${rawUrl ? html`
             ${isMediaAnim ? html`
-              <video 
-                autoplay 
-                loop 
-                muted 
-                playsinline 
-                webkit-playsinline
-                preload="metadata"
-                poster=${posterUrl}
-                style="width: 100%; height: 100%; object-fit: cover; display: block;"
-              >
+              <video autoplay loop muted playsinline webkit-playsinline preload="metadata" poster=${posterUrl}>
                 <source src=${thumbUrl} type="video/mp4">
               </video>
             ` : html`
-              <img src=${thumbUrl} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
+              <img src=${thumbUrl} loading="lazy" @error=${this.handleImageError} />
             `}
-          </div>
-        `;
-      } else {
-        mediaHtml = html`
-          <div 
-            class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" 
-            style="min-height: 150px; cursor: pointer;"
-            @click=${(e: Event) => { e.stopPropagation(); this.handleClick(); }}
-            title="Content unavailable. Click to see related alternatives."
-          >
-            <span class="error-icon">🖼️</span>
-            ${isAdmin ? html`<span class="diagnostic-label">${isTombstone ? '[TOMBSTONE]' : '[MISSING_URL]'}</span>` : ''}
-            <div style="margin-top: 12px; font-size: 24px; animation: pulse 2s infinite;">✨</div>
-            <span style="font-size: 11px; opacity: 0.7;">Content Unavailable</span>
-            <span style="font-size: 9px; opacity: 0.5; margin-top: 4px;">Click for alternatives</span>
-          </div>
-        `;
-      }
-    } else if (media.type === 'video') {
-      if (mediaUrl) {
-        mediaHtml = html`
-          <div class="video-thumb">
-            <img src=${posterUrl} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
-            <span class="video-icon">▶</span>
-          </div>
-        `;
-      }
- else {
-        mediaHtml = html`
-          <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 150px;">
-            <span class="error-icon">🎬</span>
-            ${isAdmin ? html`<span class="diagnostic-label">${isTombstone ? '[TOMBSTONE]' : '[MISSING_URL]'}</span>` : ''}
-            <span style="font-size: 11px; opacity: 0.7;">Video Unavailable</span>
-          </div>
-        `;
-      }
-    } else if (media.type === 'audio') {
-      mediaHtml = html`
-        <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 80px;">
-          <span class="error-icon" style="font-size: 18px;">🔊</span>
-          ${isAdmin ? html`<span class="diagnostic-label">[AUDIO_GHOST]</span>` : ''}
-          <span style="font-size: 10px; opacity: 0.7;">Audio: ${post.body || 'Unavailable'}</span>
+            ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge">1 / ${p.content.files.length}</div>` : ''}
+            ${p.type === 3 ? html`<div class="video-overlay-icon">▶</div>` : ''}
+          ` : html`
+            <div class="error-ghost">
+              <span style="font-size: 24px; opacity: 0.3;">${POST_TYPE_ICONS[p.type as PostType] || '📄'}</span>
+              ${isAdmin && isTombstone ? html`<span class="diagnostic-label">[TOMBSTONE]</span>` : ''}
+              <div style="font-size: 24px; animation: pulse 2s infinite;">✨</div>
+            </div>
+          `}
         </div>
-      `;
-    } else if (media.type === 'link') {
-      const title = media.title || post.title || 'Link';
-      if (mediaUrl) {
-        mediaHtml = html`
-          <div class="link-thumb">
-            <img src=${mediaUrl} alt="Link" loading="lazy" @error=${this.handleImageError} />
-            <span class="link-icon">🔗</span>
-          </div>
-        `;
-      } else {
-        mediaHtml = html`
-          <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 100px;">
-            <span class="error-icon" style="font-size: 18px;">🔗</span>
-            ${isAdmin ? html`<span class="diagnostic-label">[LINK_GHOST]</span>` : ''}
-            <span style="font-size: 10px; opacity: 0.7; padding: 0 8px; text-align: center;">${title}</span>
-          </div>
-        `;
-      }
-    } else if (media.type === 'chat') {
-      mediaHtml = html`
-        <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 80px;">
-          <span class="error-icon" style="font-size: 18px;">💬</span>
-          ${isAdmin ? html`<span class="diagnostic-label">[CHAT_GHOST]</span>` : ''}
-          <span style="font-size: 10px; opacity: 0.7; padding: 0 8px;">${post.body || 'Chat'}</span>
-        </div>
-      `;
-    } else if (media.type === 'quote') {
-      mediaHtml = html`
-        <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 80px;">
-          <span class="error-icon" style="font-size: 18px;">📜</span>
-          ${isAdmin ? html`<span class="diagnostic-label">[QUOTE_GHOST]</span>` : ''}
-          <span style="font-size: 10px; opacity: 0.7; padding: 0 8px;">"${post.body || 'Quote'}"</span>
-        </div>
-      `;
-    } else if (media.type === 'text') {
-      mediaHtml = html`
-        <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 80px;">
-          <span class="error-icon" style="font-size: 18px;">📝</span>
-          ${isAdmin ? html`<span class="diagnostic-label">[TEXT_GHOST]</span>` : ''}
-          <span style="font-size: 10px; opacity: 0.7; padding: 0 8px;">${post.body || 'Text'}</span>
-        </div>
-      `;
-    } else {
-      mediaHtml = html`
-        <div class="error-ghost ghost ${isAdmin ? 'admin-ghost' : ''}" style="min-height: 80px;">
-          <span class="error-icon" style="font-size: 18px;">📝</span>
-          ${isAdmin ? html`<span class="diagnostic-label">[EMPTY_FALLBACK]</span>` : ''}
-          <span style="font-size: 10px; opacity: 0.7;">Post Content Unavailable</span>
-        </div>
-      `;
-    }
 
-    const cardLabel = isDeleted
-      ? `Deleted post from ${blogName}`
-      : isReblog
-        ? `Reblog by ${blogName} from ${originBlogName || 'unknown'}`
-        : `Post by ${blogName}`;
+        <div class="card-body">
+          <div class="stats-row">
+            ${p.likesCount ? html`<div class="stat-chip">❤️ ${p.likesCount}</div>` : ''}
+            ${p.reblogsCount ? html`<div class="stat-chip">♻️ ${p.reblogsCount}</div>` : ''}
+            ${p.commentsCount ? html`<div class="stat-chip">💬 ${p.commentsCount}</div>` : ''}
+          </div>
 
-    return html`
-      <article
-        class="card"
-        @click=${this.handleClick}
-        aria-label=${cardLabel}
-        tabindex="0"
-        @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.handleClick()}
-      >
-        <a
-          class="post-link ${isDeleted ? 'deleted' : ''}"
-          href=${isRedacted ? '#' : postUrl}
-          target=${isRedacted ? '' : '_blank'}
-          @click=${isRedacted ? (e: Event) => e.preventDefault() : this.handleLinkClick}
-          aria-label=${isRedacted ? 'Post unavailable' : `View post by ${blogName}`}
-        >
-          ${linkText}
-        </a>
-        ${mediaHtml}
-        <div class="card-info">
-          ${statsText ? html`<div class="card-stats" aria-label="Post statistics: ${statsArr.map(s => s.replace('❤️', 'likes:').replace('♻️', 'reblogs:').replace('💬', 'comments:')).join(', ')}"><span aria-hidden="true">${statsText}</span></div>` : nothing}
-          ${tags.length > 0
-            ? html`
-                <div class="tags" role="list" aria-label="Tags">
-                  ${tags.map((t) => html`<span class="tag" role="listitem">${t}</span>`)}
-                  ${moreTagsCount > 0 ? html`<span class="tag" role="listitem" aria-label="${moreTagsCount} more tags">+${moreTagsCount}</span>` : nothing}
-                </div>
-              `
-            : nothing}
+          <div class="tags">
+            ${(p.tags || []).slice(0, 3).map(t => html`<span class="tag">#${t}</span>`)}
+            ${p.tags && p.tags.length > 3 ? html`<span class="tag" style="border:none;">+${p.tags.length - 3}</span>` : ''}
+          </div>
         </div>
       </article>
     `;
