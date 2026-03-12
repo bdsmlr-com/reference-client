@@ -29,16 +29,20 @@ const CONTEXT_PRESETS: Record<MediaContext, MediaOptions> = {
 function toS3Scheme(url: string): string {
   if (!url) return '';
   
-  // Strip params just in case, though backend should have handled it
+  // 1. Strip query parameters
   const cleanUrl = url.split('?')[0];
   
-  // Extract host and path for S3 mapping
-  // Supports: cdnXXX.bdsmlr.com, ocdnXXX.bdsmlr.com, cdnXXX.reblogme.com
-  const hostMatch = cleanUrl.match(/((?:o?cdn\d+(?:\.bdsmlr|\.reblogme))\.com)/);
-  if (hostMatch) {
-    const host = hostMatch[1];
-    const path = cleanUrl.split(host)[1];
-    return `s3://${host}${path}`;
+  // 2. Identify host and path
+  const AUTHORITATIVE_DOMAINS = ['bdsmlr.com', 'reblogme.com'];
+  for (const domain of AUTHORITATIVE_DOMAINS) {
+    if (cleanUrl.includes(domain)) {
+      const parts = cleanUrl.split(domain);
+      const hostPart = parts[0].split('//')[1] || '';
+      const pathPart = parts[1];
+      if (hostPart) {
+        return `s3://${hostPart}${domain}${pathPart}`;
+      }
+    }
   }
 
   return cleanUrl;
