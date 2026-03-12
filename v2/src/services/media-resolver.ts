@@ -32,19 +32,22 @@ function toS3Scheme(url: string): string {
   // 1. Strip query parameters
   const cleanUrl = url.split('?')[0];
   
-  // 2. Identify host and path using explicit splitting
-  // Supports: cdnXXX.bdsmlr.com, ocdnXXX.bdsmlr.com, cdnXXX.reblogme.com
+  // 2. Extract host and path
+  // Rules:
+  // - cdn012.bdsmlr.com -> s3://ocdn012.bdsmlr.com
+  // - everything else -> s3://{host}
   const AUTHORITATIVE_DOMAINS = ['bdsmlr.com', 'reblogme.com'];
   
   for (const domain of AUTHORITATIVE_DOMAINS) {
     if (cleanUrl.includes(domain)) {
       const parts = cleanUrl.split(domain);
-      const hostPart = parts[0].split('//').pop() || ''; // Get hostname before the domain
+      // Get the hostname part (e.g., 'https://ocdn012.' or 'ocdn012.')
+      const hostMatch = parts[0].match(/([a-z0-9]+)\.?$/);
+      const hostPart = hostMatch ? hostMatch[1] : '';
       const pathPart = parts[1];
       
       if (hostPart) {
-        const fullHost = `${hostPart}${domain}`;
-        // Ensure ocdn012 mapping is preserved if backend somehow leaked cdn012
+        const fullHost = `${hostPart}.${domain}`;
         const finalBucket = fullHost === 'cdn012.bdsmlr.com' ? 'ocdn012.bdsmlr.com' : fullHost;
         return `s3://${finalBucket}${pathPart}`;
       }

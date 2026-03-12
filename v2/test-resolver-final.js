@@ -5,10 +5,11 @@ function toS3Scheme(url) {
   for (const domain of AUTHORITATIVE_DOMAINS) {
     if (cleanUrl.includes(domain)) {
       const parts = cleanUrl.split(domain);
-      const hostPart = parts[0].split('//').pop() || '';
+      const hostMatch = parts[0].match(/([a-z0-9]+)\.?$/);
+      const hostPart = hostMatch ? hostMatch[1] : '';
       const pathPart = parts[1];
       if (hostPart) {
-        const fullHost = `${hostPart}${domain}`;
+        const fullHost = `${hostPart}.${domain}`;
         const finalBucket = fullHost === 'cdn012.bdsmlr.com' ? 'ocdn012.bdsmlr.com' : fullHost;
         return `s3://${finalBucket}${pathPart}`;
       }
@@ -21,7 +22,7 @@ const tests = [
   { in: "https://cdn012.bdsmlr.com/uploads/1.jpg?e=123", out: "s3://ocdn012.bdsmlr.com/uploads/1.jpg" },
   { in: "https://ocdn012.bdsmlr.com/uploads/2.jpg", out: "s3://ocdn012.bdsmlr.com/uploads/2.jpg" },
   { in: "https://cdn101.bdsmlr.com/path", out: "s3://cdn101.bdsmlr.com/path" },
-  { in: "https://cdn002.reblogme.com/path", out: "s3://cdn002.reblogme.com/path" }
+  { in: "cdn002.reblogme.com/path", out: "s3://cdn002.reblogme.com/path" }
 ];
 
 tests.forEach(t => {
