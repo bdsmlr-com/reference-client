@@ -270,8 +270,22 @@ export class ViewArchive extends LitElement {
 
   private handlePostClick(e: CustomEvent): void {
     const post = e.detail.post as ProcessedPost;
+    
+    const allPosts: ProcessedPost[] = [];
+    this.timelineItems.forEach(item => {
+      if (item.type === 1 && item.post) {
+        allPosts.push(item.post as ProcessedPost);
+      } else if (item.type === 2 && item.cluster) {
+        item.cluster.interactions?.forEach(p => {
+          allPosts.push(p as ProcessedPost);
+        });
+      }
+    });
+
+    const index = allPosts.findIndex(p => p.id === post.id);
+
     this.dispatchEvent(new CustomEvent('post-click', {
-      detail: { post, posts: [post], index: 0 },
+      detail: { post, posts: allPosts, index: index >= 0 ? index : 0 },
       bubbles: true,
       composed: true
     }));
