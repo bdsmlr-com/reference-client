@@ -207,13 +207,13 @@ export class ActivityGrid extends LitElement {
 
       @media (min-width: 768px) {
         :host {
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(4, 1fr);
         }
       }
 
       @media (min-width: 1024px) {
         :host {
-          grid-template-columns: repeat(4, 1fr); /* Stable balanced grid */
+          grid-template-columns: repeat(6, 1fr); /* Super Matrix density */
         }
       }
 
