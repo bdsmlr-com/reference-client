@@ -33,6 +33,11 @@ export interface PostContent {
   quoteSource?: string;
 }
 
+export interface ReblogVariant {
+  id: number;
+  blogName?: string;
+}
+
 // Core entities
 export interface Post {
   id: number;
@@ -56,6 +61,18 @@ export interface Post {
   deletedAtUnix?: number;
   originDeletedAtUnix?: number;
   variant?: PostVariant;
+  reblog_variants?: ReblogVariant[];
+}
+
+export interface InteractionCluster {
+  label?: string;
+  interactions?: Post[];
+}
+
+export interface TimelineItem {
+  type: 0 | 1 | 2; // UNSPECIFIED, POST, CLUSTER
+  post?: Post;
+  cluster?: InteractionCluster;
 }
 
 export interface Blog {
@@ -231,12 +248,14 @@ export interface FollowEdge {
 export interface SearchPostsByTagResponse {
   posts?: Post[];
   page?: PageInfo;
+  timelineItems?: TimelineItem[];
   error?: string;
 }
 
 export interface ListBlogPostsResponse {
   posts?: Post[];
   page?: PageInfo;
+  timelineItems?: TimelineItem[];
   error?: string;
 }
 

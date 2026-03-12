@@ -11,9 +11,9 @@ import {
   
   setCachedPaginationCursor,
 } from '../services/storage.js';
-import type { Blog } from '../types/api.js';
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
-import type { PostType, PostSortField, Order } from '../types/api.js';
+import type { Blog, PostType, PostSortField, Order, TimelineItem } from '../types/api.js';
+
 import '../components/sort-controls.js';
 import '../components/type-pills.js';
 import '../components/variant-pills.js';
@@ -23,9 +23,6 @@ import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
 import '../components/error-state.js';
 import '../components/blog-header.js';
-
-const PAGE_SIZE = 48; // Higher density
-const MAX_BACKEND_FETCHES = 3;
 
 @customElement('view-archive')
 export class ViewArchive extends LitElement {
@@ -80,7 +77,7 @@ export class ViewArchive extends LitElement {
   @state() private blogId: number | null = null;
   @state() private sortValue = 'newest';
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
-  @state() private posts: ProcessedPost[] = [];
+  @state() private timelineItems: TimelineItem[] = [];
   @state() private loading = false;
   @state() private exhausted = false;
   @state() private stats: ViewStats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
@@ -121,12 +118,12 @@ export class ViewArchive extends LitElement {
   }
 
   private savePaginationState = (): void => {
-    if (this.paginationKey && this.posts.length > 0) {
+    if (this.paginationKey && this.timelineItems.length > 0) {
       setCachedPaginationCursor(
         this.paginationKey,
         this.backendCursor,
         window.scrollY,
-        this.posts.length,
+        this.timelineItems.length,
         this.exhausted
       );
     }
@@ -180,7 +177,7 @@ export class ViewArchive extends LitElement {
     this.exhausted = false;
     this.seenIds.clear();
     this.stats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
-    this.posts = [];
+    this.timelineItems = [];
     this.statusMessage = '';
 
     const params: Record<string, string> = {
@@ -217,81 +214,40 @@ export class ViewArchive extends LitElement {
   private async fillPage(): Promise<void> {
     if (!this.blogId) return;
 
-    const buffer: ProcessedPost[] = [];
-    let backendFetches = 0;
     this.loading = true;
-
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
 
     try {
-      while (buffer.length < PAGE_SIZE && !this.exhausted && backendFetches < MAX_BACKEND_FETCHES) {
-        backendFetches++;
+      const resp = await apiClient.posts.list({
+        blog_id: this.blogId,
+        sort_field: sortOpt.field as PostSortField,
+        order: sortOpt.order as Order,
+        post_types: this.selectedTypes,
+        page: {
+          page_size: 48,
+          page_token: this.backendCursor || undefined,
+        },
+      });
 
-        const resp = await apiClient.posts.list({
-          blog_id: this.blogId,
-          sort_field: sortOpt.field as PostSortField,
-          order: sortOpt.order as Order,
-          post_types: this.selectedTypes,
-          page: {
-            page_size: 48,
-            page_token: this.backendCursor || undefined,
-          },
-        });
+      this.backendCursor = resp.page?.nextPageToken || null;
+      if (!this.backendCursor) this.exhausted = true;
 
-        const posts = resp.posts || [];
-        this.backendCursor = resp.page?.nextPageToken || null;
-        if (!this.backendCursor) this.exhausted = true;
-        if (posts.length === 0) { this.exhausted = true; break; }
-
-        for (const post of posts) {
-          if (this.seenIds.has(post.id)) {
-            this.stats = { ...this.stats, dupes: this.stats.dupes + 1 };
-            continue;
-          }
-
-          const isDeleted = !!post.deletedAtUnix;
-          const isReblog = post.originPostId && post.originPostId !== post.id;
-          const isRedacted = isDeleted || (!post.blogName && isReblog);
-
-          if (isDeleted || isRedacted) {
-            this.stats = { ...this.stats, deleted: this.stats.deleted + 1 };
-            this.seenIds.add(post.id);
-            continue;
-          }
-
-          const media = extractMedia(post);
-          const mediaUrl = media.url || media.videoUrl || media.audioUrl;
-          const cleanUrl = mediaUrl?.split('?')[0];
-
-          if (cleanUrl) {
-            const match = buffer.find(p => p._media.url?.split('?')[0] === cleanUrl) || 
-                          this.posts.find(p => p._media.url?.split('?')[0] === cleanUrl);
-
-            if (match) {
-              match._reblog_variants = match._reblog_variants || [];
-              match._reblog_variants.push({ id: post.id, blogName: post.blogName });
-              this.stats = { ...this.stats, dupes: this.stats.dupes + 1 };
-              this.seenIds.add(post.id);
-              continue;
-            }
-          }
-
-          const processed: ProcessedPost = { ...post, _media: media };
-          this.seenIds.add(post.id);
-          buffer.push(processed);
-          this.stats = { ...this.stats, found: this.stats.found + 1 };
-          
-
-          if (buffer.length >= PAGE_SIZE) break;
+      // DUMB FRONTEND: Just append the pre-processed timeline items
+      const newItems = (resp.timelineItems || []).map(item => {
+        if (item.type === 1 && item.post) { // ITEM_TYPE_POST
+          const p = item.post as ProcessedPost;
+          p._media = extractMedia(p);
+        } else if (item.type === 2 && item.cluster) { // ITEM_TYPE_CLUSTER
+          item.cluster.interactions?.forEach(post => {
+            const p = post as ProcessedPost;
+            p._media = extractMedia(p);
+          });
         }
-        if (buffer.length >= PAGE_SIZE) break;
-      }
+        return item;
+      });
 
-      if (buffer.length > 0) {
-        this.posts = [...this.posts, ...buffer];
-      } else if (this.stats.found === 0 && this.exhausted) {
-        this.statusMessage = 'No posts found';
-      }
+      this.timelineItems = [...this.timelineItems, ...newItems];
+      if (newItems.length === 0) this.exhausted = true;
     } finally {
       this.loading = false;
     }
@@ -315,7 +271,7 @@ export class ViewArchive extends LitElement {
   private handlePostClick(e: CustomEvent): void {
     const post = e.detail.post as ProcessedPost;
     this.dispatchEvent(new CustomEvent('post-click', {
-      detail: { post, posts: this.posts, index: this.posts.findIndex(p => p.id === post.id) },
+      detail: { post, posts: [post], index: 0 },
       bubbles: true,
       composed: true
     }));
@@ -357,17 +313,30 @@ export class ViewArchive extends LitElement {
 
         ${this.errorMessage ? html`<error-state title="Error" message=${this.errorMessage} @retry=${this.handleRetry}></error-state>` : ''}
         ${this.statusMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
+${this.timelineItems.length > 0
+  ? html`
+      <div class="grid-container">
+        <activity-grid 
+          .items=${this.timelineItems.flatMap(entry => {
+            if (entry.type === 1 && entry.post) {
+              return [{ 
+                post: entry.post as ProcessedPost, 
+                type: (entry.post.originPostId && entry.post.originPostId !== entry.post.id) ? 'reblog' : 'post' 
+              }];
+            } else if (entry.type === 2 && entry.cluster) {
+              return (entry.cluster.interactions || []).map((post: any) => ({ 
+                post: post as ProcessedPost, 
+                type: 'like' 
+              }));
+            }
 
-        <div class="grid-container">
-          <activity-grid 
-            .items=${this.posts.map(p => ({ 
-              post: p, 
-              type: (p.originPostId && p.originPostId !== p.id) ? 'reblog' : 'post' 
-            }))} 
-            @activity-click=${this.handlePostClick}
-          ></activity-grid>
+            return [];
+          })} 
+          @activity-click=${this.handlePostClick}
+        ></activity-grid>
         </div>
-
+        `
+        : ''}
         <load-footer
           mode="archive"
           pageName="archive"

@@ -11,19 +11,18 @@ import {
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
-import type { PostType, PostSortField, Order, PostVariant } from '../types/api.js';
+import type { PostType, PostSortField, Order, PostVariant, TimelineItem } from '../types/api.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import '../components/sort-controls.js';
 import '../components/type-pills.js';
 import '../components/variant-pills.js';
-import '../components/post-grid.js';
+import '../components/activity-grid.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
 import '../components/error-state.js';
 
 const PAGE_SIZE = 12;
-const MAX_BACKEND_FETCHES = 3;
 
 @customElement('view-search')
 export class ViewSearch extends LitElement {
@@ -146,7 +145,7 @@ export class ViewSearch extends LitElement {
   @state() private sortValue = 'newest';
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
   @state() private selectedVariants: PostVariant[] = [];
-  @state() private posts: ProcessedPost[] = [];
+  @state() private timelineItems: TimelineItem[] = [];
   @state() private loading = false;
   @state() private searching = false;
   @state() private exhausted = false;
@@ -162,7 +161,6 @@ export class ViewSearch extends LitElement {
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
-  private seenUrls = new Set<string>();
   private paginationKey = '';
 
   connectedCallback(): void {
@@ -182,12 +180,12 @@ export class ViewSearch extends LitElement {
   }
 
   private savePaginationState = (): void => {
-    if (this.paginationKey && this.posts.length > 0) {
+    if (this.paginationKey && this.timelineItems.length > 0) {
       setCachedPaginationCursor(
         this.paginationKey,
         this.backendCursor,
         window.scrollY,
-        this.posts.length,
+        this.timelineItems.length,
         this.exhausted
       );
     }
@@ -226,9 +224,8 @@ export class ViewSearch extends LitElement {
     this.backendCursor = null;
     this.exhausted = false;
     this.seenIds.clear();
-    this.seenUrls.clear();
     this.stats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
-    this.posts = [];
+    this.timelineItems = [];
     this.statusMessage = '';
     this.errorMessage = '';
   }
@@ -300,102 +297,41 @@ export class ViewSearch extends LitElement {
   }
 
   private async fillPage(): Promise<void> {
-    const buffer: ProcessedPost[] = [];
-    let backendFetches = 0;
-
     this.loading = true;
-    this.loadingCurrent = 0;
-
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
 
     try {
-      while (buffer.length < PAGE_SIZE && !this.exhausted && backendFetches < MAX_BACKEND_FETCHES) {
-        backendFetches++;
+      const resp = await apiClient.posts.searchCached({
+        tag_name: this.query,
+        sort_field: sortOpt.field as PostSortField,
+        order: sortOpt.order as Order,
+        post_types: this.selectedTypes,
+        variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
+        page: {
+          page_size: 48,
+          page_token: this.backendCursor || undefined,
+        },
+      });
 
-        const resp = await apiClient.posts.searchCached({
-          tag_name: this.query,
-          sort_field: sortOpt.field as PostSortField,
-          order: sortOpt.order as Order,
-          post_types: this.selectedTypes,
-          variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
-          page: {
-            page_size: 48,
-            page_token: this.backendCursor || undefined,
-          },
-        });
+      this.backendCursor = resp.page?.nextPageToken || null;
+      if (!this.backendCursor) this.exhausted = true;
 
-        const posts = resp.posts || [];
-        this.backendCursor = resp.page?.nextPageToken || null;
-
-        if (!this.backendCursor) {
-          this.exhausted = true;
+      // DUMB FRONTEND: Just append pre-processed items
+      const newItems = (resp.timelineItems || []).map(item => {
+        if (item.type === 1 && item.post) {
+          const p = item.post as ProcessedPost;
+          p._media = extractMedia(p);
+        } else if (item.type === 2 && item.cluster) {
+          item.cluster.interactions?.forEach(post => {
+            const p = post as ProcessedPost;
+            p._media = extractMedia(p);
+          });
         }
+        return item;
+      });
 
-        if (posts.length === 0) {
-          this.exhausted = true;
-          break;
-        }
-
-        for (const post of posts) {
-          if (this.seenIds.has(post.id)) {
-            this.stats = { ...this.stats, dupes: this.stats.dupes + 1 };
-            continue;
-          }
-
-          const isDeleted = !!post.deletedAtUnix;
-          const isReblog = post.originPostId && post.originPostId !== post.id;
-          const isRedacted = isDeleted || (!post.blogName && isReblog);
-
-          if (isDeleted || isRedacted) {
-            this.stats = { ...this.stats, deleted: this.stats.deleted + 1 };
-            this.seenIds.add(post.id);
-            continue;
-          }
-
-          const media = extractMedia(post);
-          const mediaUrl = media.url || media.videoUrl || media.audioUrl;
-          const cleanUrl = mediaUrl?.split('?')[0];
-
-          if (cleanUrl) {
-            // Check if this media is already on the page
-            const match = buffer.find(p => {
-              const pUrl = p._media.url || p._media.videoUrl || p._media.audioUrl;
-              return pUrl?.split('?')[0] === cleanUrl;
-            }) || this.posts.find(p => {
-              const pUrl = p._media.url || p._media.videoUrl || p._media.audioUrl;
-              return pUrl?.split('?')[0] === cleanUrl;
-            });
-
-            if (match) {
-              match._reblog_variants = match._reblog_variants || [];
-              match._reblog_variants.push({ id: post.id, blogName: post.blogName });
-              this.stats = { ...this.stats, dupes: this.stats.dupes + 1 };
-              this.seenIds.add(post.id);
-              continue;
-            }
-          }
-
-          const processed: ProcessedPost = {
-            ...post,
-            _media: media
-          };
-
-          this.seenIds.add(post.id);
-          buffer.push(processed);
-          this.stats = { ...this.stats, found: this.stats.found + 1 };
-          this.loadingCurrent = buffer.length;
-
-          if (buffer.length >= PAGE_SIZE) break;
-        }
-
-        if (buffer.length >= PAGE_SIZE) break;
-      }
-
-      if (buffer.length > 0) {
-        this.posts = [...this.posts, ...buffer];
-      } else if (this.stats.found === 0 && this.exhausted) {
-        this.statusMessage = 'No results found';
-      }
+      this.timelineItems = [...this.timelineItems, ...newItems];
+      if (newItems.length === 0) this.exhausted = true;
     } finally {
       this.loading = false;
     }
@@ -430,7 +366,7 @@ export class ViewSearch extends LitElement {
   private handlePostClick(e: CustomEvent): void {
     const post = e.detail.post as ProcessedPost;
     this.dispatchEvent(new CustomEvent('post-click', {
-      detail: { post, posts: this.posts, index: this.posts.findIndex(p => p.id === post.id) },
+      detail: { post, posts: [post], index: 0 },
       bubbles: true,
       composed: true
     }));
@@ -485,7 +421,7 @@ export class ViewSearch extends LitElement {
 
         ${!this.hasSearched ? html`<div class="status">Enter a query to begin searching.</div>` : ''}
 
-        ${this.searching && this.posts.length === 0
+        ${this.searching && this.timelineItems.length === 0
           ? html`<div class="grid-container"><skeleton-loader variant="post-card" count="8" trackTime></skeleton-loader></div>`
           : ''}
 
@@ -504,10 +440,26 @@ export class ViewSearch extends LitElement {
 
         ${this.statusMessage && !this.searching && !this.errorMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
 
-        ${this.posts.length > 0
+        ${this.timelineItems.length > 0
           ? html`
               <div class="grid-container">
-                <post-grid .posts=${this.posts} @post-click=${this.handlePostClick}></post-grid>
+                <activity-grid 
+                  .items=${this.timelineItems.flatMap(entry => {
+                    if (entry.type === 1 && entry.post) {
+                      return [{ 
+                        post: entry.post as ProcessedPost, 
+                        type: (entry.post.originPostId && entry.post.originPostId !== entry.post.id) ? 'reblog' : 'post' 
+                      }];
+                    } else if (entry.type === 2 && entry.cluster) {
+                      return (entry.cluster.interactions || []).map((post: any) => ({ 
+                        post: post as ProcessedPost, 
+                        type: 'like' 
+                      }));
+                    }
+                    return [];
+                  })} 
+                  @activity-click=${this.handlePostClick}
+                ></activity-grid>
               </div>
 
               <load-footer
