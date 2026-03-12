@@ -10,7 +10,7 @@ import {
 import { BREAKPOINTS } from '../types/ui-constants.js';
 
 type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social';
-const BUILD_TAG = 'cache-alert-1';
+const BUILD_TAG = 'mapping-fix-v3';
 
 @customElement('shared-nav')
 export class SharedNav extends LitElement {
