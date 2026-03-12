@@ -4,10 +4,11 @@ import { baseStyles } from '../styles/theme.js';
 import { resolveMediaUrl, isAnimation } from '../services/media-resolver.js';
 import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
+import { formatDate } from '../services/date-formatter.js';
 
 /**
- * Matrix-style activity item.
- * High-density: No header, all stats overlaid on the bottom-left.
+ * Refined Matrix item (v2).
+ * Metadata below the image in two readable lines.
  */
 @customElement('activity-item')
 export class ActivityItem extends LitElement {
@@ -19,27 +20,29 @@ export class ActivityItem extends LitElement {
       }
 
       .card {
-        background: #000;
-        border-radius: 4px;
+        background: var(--bg-panel);
+        border-radius: 6px;
         overflow: hidden;
         cursor: pointer;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         position: relative;
         border: 1px solid var(--border);
-        aspect-ratio: 1 / 1;
+        display: flex;
+        flex-direction: column;
       }
 
       .card:hover {
-        transform: scale(1.02);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         border-color: var(--accent);
-        z-index: 10;
       }
 
       .media-container {
         width: 100%;
-        height: 100%;
+        aspect-ratio: 1 / 1;
+        background: #000;
         position: relative;
+        overflow: hidden;
       }
 
       img, video {
@@ -49,32 +52,33 @@ export class ActivityItem extends LitElement {
         display: block;
       }
 
-      /* Consolidated Bottom-Left Overlay */
-      .meta-overlay {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-        padding: 20px 8px 6px 8px;
+      .card-info {
+        padding: 8px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .meta-line {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .stats-line {
         display: flex;
         align-items: center;
         gap: 8px;
-        color: white;
-        font-size: 12px;
-        pointer-events: none;
+        font-size: 11px;
+        color: var(--text);
       }
 
       .stat-item {
         display: flex;
         align-items: center;
         gap: 3px;
-        text-shadow: 0 1px 4px rgba(0,0,0,0.8);
-      }
-
-      .type-icon {
-        font-size: 14px;
-        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
       }
 
       .reblog-variant-badge {
@@ -87,7 +91,9 @@ export class ActivityItem extends LitElement {
         border-radius: 4px;
         font-size: 10px;
         font-weight: bold;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        z-index: 2;
       }
 
       .admin-label {
@@ -118,8 +124,7 @@ export class ActivityItem extends LitElement {
     const img = e.target as HTMLImageElement;
     if (!img.dataset.triedOriginal) {
       img.dataset.triedOriginal = 'true';
-      const media = this.post._media;
-      const rawUrl = media.url || media.videoUrl || media.audioUrl;
+      const rawUrl = this.post._media.url || this.post._media.videoUrl || this.post._media.audioUrl;
       if (rawUrl) {
         img.src = rawUrl;
         return;
@@ -168,9 +173,14 @@ export class ActivityItem extends LitElement {
 
           ${rbCount > 0 ? html`<div class="reblog-variant-badge" title="Aggregated reblogs">+${rbCount}</div>` : ''}
           ${isAdmin && isTombstone ? html`<div class="admin-label">Tombstone</div>` : nothing}
+        </div>
 
-          <div class="meta-overlay">
-            <span class="type-icon">${typeIcon}</span>
+        <div class="card-info">
+          <div class="meta-line">
+            <span>${typeIcon}</span>
+            <span>${formatDate(p.createdAtUnix, 'date')}</span>
+          </div>
+          <div class="stats-line">
             ${p.likesCount ? html`<div class="stat-item">❤️ ${p.likesCount}</div>` : ''}
             ${p.reblogsCount ? html`<div class="stat-item">♻️ ${p.reblogsCount}</div>` : ''}
             ${p.commentsCount ? html`<div class="stat-item">💬 ${p.commentsCount}</div>` : ''}
@@ -189,7 +199,7 @@ export class ActivityGrid extends LitElement {
       :host {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
+        gap: 16px;
         width: 100%;
         max-width: 1200px;
         margin: 0 auto;
@@ -197,13 +207,13 @@ export class ActivityGrid extends LitElement {
 
       @media (min-width: 768px) {
         :host {
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(3, 1fr);
         }
       }
 
       @media (min-width: 1024px) {
         :host {
-          grid-template-columns: repeat(6, 1fr); /* Matrix density */
+          grid-template-columns: repeat(4, 1fr); /* Stable balanced grid */
         }
       }
 
