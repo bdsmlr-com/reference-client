@@ -161,6 +161,7 @@ export class ViewSearch extends LitElement {
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
+  private seenMediaKeys = new Set<string>();
   private paginationKey = '';
 
   connectedCallback(): void {
@@ -224,6 +225,7 @@ export class ViewSearch extends LitElement {
     this.backendCursor = null;
     this.exhausted = false;
     this.seenIds.clear();
+    this.seenMediaKeys.clear();
     this.stats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
     this.timelineItems = [];
     this.statusMessage = '';
@@ -317,17 +319,45 @@ export class ViewSearch extends LitElement {
       if (!this.backendCursor) this.exhausted = true;
 
       // DUMB FRONTEND: Just append pre-processed items
-      const newItems = (resp.timelineItems || []).map(item => {
+      const newItems: TimelineItem[] = [];
+      (resp.timelineItems || []).forEach(item => {
         if (item.type === 1 && item.post) {
-          const p = item.post as ProcessedPost;
-          p._media = extractMedia(p);
+          const post = item.post as ProcessedPost;
+          const media = extractMedia(post);
+          const mediaUrl = media.url || media.videoUrl || media.audioUrl;
+          const aggKey = post.originPostId ? `oid:${post.originPostId}` : (mediaUrl ? `url:${mediaUrl.split('?')[0]}` : `pid:${post.id}`);
+
+          if (this.seenIds.has(post.id) || this.seenMediaKeys.has(aggKey)) {
+            this.stats.dupes++;
+            return;
+          }
+          
+          this.seenIds.add(post.id);
+          this.seenMediaKeys.add(aggKey);
+          post._media = media;
+          newItems.push(item);
         } else if (item.type === 2 && item.cluster) {
+          const uniqueInteractions: ProcessedPost[] = [];
           item.cluster.interactions?.forEach(post => {
             const p = post as ProcessedPost;
-            p._media = extractMedia(p);
+            const media = extractMedia(p);
+            const mediaUrl = media.url || media.videoUrl || media.audioUrl;
+            const aggKey = p.originPostId ? `oid:${p.originPostId}` : (mediaUrl ? `url:${mediaUrl.split('?')[0]}` : `pid:${p.id}`);
+
+            if (this.seenIds.has(p.id) || this.seenMediaKeys.has(aggKey)) {
+              return;
+            }
+            
+            this.seenIds.add(p.id);
+            this.seenMediaKeys.add(aggKey);
+            p._media = media;
+            uniqueInteractions.push(p);
           });
+          if (uniqueInteractions.length > 0) {
+            item.cluster.interactions = uniqueInteractions;
+            newItems.push(item);
+          }
         }
-        return item;
       });
 
       this.timelineItems = [...this.timelineItems, ...newItems];
