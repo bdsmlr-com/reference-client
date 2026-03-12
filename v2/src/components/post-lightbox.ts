@@ -299,13 +299,13 @@ export class PostLightbox extends LitElement {
     }
   };
 
-  private close() {
+  private close = () => {
     this.open = false;
     this.dispatchEvent(new CustomEvent(EventNames.CLOSE, { 
       bubbles: true, 
       composed: true 
     }));
-  }
+  };
 
   private navigatePrev() {
     if (this.currentIndex > 0) {
@@ -468,12 +468,12 @@ export class PostLightbox extends LitElement {
     if (!this.post) return nothing;
 
     return html`
-      <button class="close-btn" @click=${() => this.close()} title="Close (Esc)">×</button>
+      <button class="close-btn" @click=${this.close} title="Close (Esc)">×</button>
       
-      <button class="main-nav-btn prev" ?disabled=${this.currentIndex <= 0} @click=${() => this.navigatePrev()}>‹</button>
-      <button class="main-nav-btn next" ?disabled=${this.currentIndex >= this.posts.length - 1} @click=${() => this.navigateNext()}>›</button>
+      <button class="main-nav-btn prev" ?disabled=${this.currentIndex <= 0} @click=${this.navigatePrev}>‹</button>
+      <button class="main-nav-btn next" ?disabled=${this.currentIndex >= this.posts.length - 1} @click=${this.navigateNext}>›</button>
 
-      <div class="lightbox-backdrop" @click=${() => this.close()}>
+      <div class="lightbox-backdrop" @click=${this.close}>
         <div class="lightbox-content" @click=${(e: Event) => e.stopPropagation()}>
           
           <div class="media-container">

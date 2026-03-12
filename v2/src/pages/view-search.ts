@@ -357,6 +357,7 @@ export class ViewSearch extends LitElement {
           const cleanUrl = mediaUrl?.split('?')[0];
 
           if (cleanUrl) {
+            // Find existing match in current results or buffer
             const match = buffer.find(p => p._media.url?.split('?')[0] === cleanUrl) || 
                           this.posts.find(p => p._media.url?.split('?')[0] === cleanUrl);
 

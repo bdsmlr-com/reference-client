@@ -36,7 +36,13 @@ function toS3Scheme(url: string): string {
   // 1. Strip query parameters (signed tokens, etc)
   const cleanUrl = url.split('?')[0];
   
-  // 2. Authoritative Bucket List
+  // 2. Authoritative Mapping Rules
+  // Rule: cdn012 must map to ocdn012 bucket
+  if (cleanUrl.includes('cdn012.bdsmlr.com')) {
+    const path = cleanUrl.split('cdn012.bdsmlr.com')[1];
+    return `s3://ocdn012.bdsmlr.com${path}`;
+  }
+
   const AUTHORITATIVE_HOSTS = [
     'cdn002.reblogme.com',
     'cdn013.bdsmlr.com',
