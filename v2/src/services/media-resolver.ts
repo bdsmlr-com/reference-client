@@ -69,9 +69,12 @@ export function resolveMediaUrl(url: string | undefined, context: MediaContext):
   parts.push(DEFAULT_GRAVITY);
   
   let extension = '';
-  if (url.toLowerCase().endsWith('.gif') && context !== 'poster') {
+  const isTargetGif = url.split('?')[0].toLowerCase().endsWith('.gif');
+  
+  if (isTargetGif && context !== 'poster') {
     parts.push('format:mp4');
-    extension = '@mp4';
+    // Note: Some imgproxy setups prefer .mp4 extension at the end of the plain path
+    // extension = '@mp4'; 
   } else if (preset.format) {
     parts.push(`format:${preset.format}`);
   }
@@ -80,5 +83,6 @@ export function resolveMediaUrl(url: string | undefined, context: MediaContext):
 }
 
 export function isGif(url: string | undefined): boolean {
-  return !!url?.toLowerCase().endsWith('.gif');
+  if (!url) return false;
+  return url.split('?')[0].toLowerCase().endsWith('.gif');
 }

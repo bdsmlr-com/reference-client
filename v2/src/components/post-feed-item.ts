@@ -312,9 +312,10 @@ export class PostFeedItem extends LitElement {
 
     const tags = post.tags || [];
 
-    const feedUrl = resolveMediaUrl(media.url, 'feed');
-    const posterUrl = resolveMediaUrl(media.url, 'poster');
-    const isMediaGif = isGif(media.url);
+    const rawUrl = media.url || media.videoUrl || media.audioUrl;
+    const feedUrl = resolveMediaUrl(rawUrl, 'feed');
+    const posterUrl = resolveMediaUrl(rawUrl, 'poster');
+    const isMediaGif = isGif(rawUrl);
 
     let mediaHtml;
     if (media.type === 'image') {
