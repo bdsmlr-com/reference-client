@@ -6,8 +6,8 @@ import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
 
 /**
- * High-density activity item.
- * Refactored to match Ghost Aesthetic (PostCard).
+ * Matrix-style activity item.
+ * High-density: No header, all stats overlaid on the bottom-left.
  */
 @customElement('activity-item')
 export class ActivityItem extends LitElement {
@@ -19,101 +19,85 @@ export class ActivityItem extends LitElement {
       }
 
       .card {
-        background: var(--bg-panel);
-        border-radius: 8px;
+        background: #000;
+        border-radius: 4px;
         overflow: hidden;
         cursor: pointer;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         position: relative;
         border: 1px solid var(--border);
-        display: flex;
-        flex-direction: column;
-        height: 100%;
+        aspect-ratio: 1 / 1;
       }
 
       .card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        transform: scale(1.02);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
         border-color: var(--accent);
+        z-index: 10;
       }
 
       .media-container {
         width: 100%;
-        height: 200px;
-        background: #000;
+        height: 100%;
         position: relative;
-        overflow: hidden;
       }
 
-      .media-container img, 
-      .media-container video {
+      img, video {
         width: 100%;
         height: 100%;
         object-fit: cover;
         display: block;
       }
 
-      .type-overlay {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        backdrop-filter: blur(4px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        z-index: 2;
-      }
-
-      .card-body {
-        padding: 12px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .blog-label {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--text);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .stats-row {
-        display: flex;
-        gap: 6px;
-      }
-
-      .stat-chip {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        background: var(--bg-panel-alt);
-        border: 1px solid var(--border);
-        padding: 1px 6px;
-        border-radius: 10px;
-        font-size: 10px;
-        color: var(--text-muted);
-      }
-
-      .admin-label {
+      /* Consolidated Bottom-Left Overlay */
+      .meta-overlay {
         position: absolute;
         bottom: 0;
         left: 0;
         right: 0;
-        background: rgba(255, 0, 0, 0.7);
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+        padding: 20px 8px 6px 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: white;
+        font-size: 12px;
+        pointer-events: none;
+      }
+
+      .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+      }
+
+      .type-icon {
+        font-size: 14px;
+        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+      }
+
+      .reblog-variant-badge {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        background: var(--accent);
+        color: white;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: bold;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      }
+
+      .admin-label {
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: rgba(255, 0, 0, 0.8);
         color: white;
         font-size: 8px;
-        padding: 2px;
-        text-align: center;
+        padding: 2px 4px;
         text-transform: uppercase;
       }
     `
@@ -145,19 +129,21 @@ export class ActivityItem extends LitElement {
   }
 
   render() {
-    const media = this.post._media;
+    const p = this.post;
+    const media = p._media;
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
     const thumbUrl = resolveMediaUrl(rawUrl, 'thumbnail');
     const posterUrl = resolveMediaUrl(rawUrl, 'poster');
     const isMediaAnim = isAnimation(rawUrl);
+    const rbCount = p.reblog_variants?.length || 0;
     
-    let icon = POST_TYPE_ICONS[this.post.type as PostType] || '📄';
-    if (this.interactionType === 'reblog') icon = '♻️';
-    if (this.interactionType === 'like') icon = '❤️';
-    if (this.interactionType === 'comment') icon = '💬';
+    let typeIcon = POST_TYPE_ICONS[p.type as PostType] || '📄';
+    if (this.interactionType === 'reblog') typeIcon = '♻️';
+    if (this.interactionType === 'like') typeIcon = '❤️';
+    if (this.interactionType === 'comment') typeIcon = '💬';
 
     const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
-    const isTombstone = !rawUrl && !this.post.body;
+    const isTombstone = !rawUrl && !p.body;
 
     return html`
       <article class="card" @click=${this.handleClick}>
@@ -165,14 +151,8 @@ export class ActivityItem extends LitElement {
           ${rawUrl ? html`
             ${isMediaAnim ? html`
               <video 
-                autoplay 
-                loop 
-                muted 
-                playsinline 
-                webkit-playsinline
-                preload="metadata"
-                poster=${posterUrl}
-                style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                autoplay loop muted playsinline webkit-playsinline 
+                preload="metadata" poster=${posterUrl}
                 @error=${this.handleImageError}
               >
                 <source src=${thumbUrl} type="video/mp4">
@@ -181,19 +161,19 @@ export class ActivityItem extends LitElement {
               <img src=${thumbUrl} loading="lazy" @error=${this.handleImageError} />
             `}
           ` : html`
-            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; opacity:0.3; font-size:24px;">
-              ${icon}
+            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; opacity:0.3; font-size:32px;">
+              ${typeIcon}
             </div>
           `}
-          <div class="type-overlay" title="${this.interactionType}">${icon}</div>
-          ${isAdmin && isTombstone ? html`<div class="admin-label">Tombstone</div>` : nothing}
-        </div>
 
-        <div class="card-body">
-          <div class="blog-label">@${this.post.blogName || 'unknown'}</div>
-          <div class="stats-row">
-            ${this.post.likesCount ? html`<div class="stat-chip">❤️ ${this.post.likesCount}</div>` : ''}
-            ${this.post.reblogsCount ? html`<div class="stat-chip">♻️ ${this.post.reblogsCount}</div>` : ''}
+          ${rbCount > 0 ? html`<div class="reblog-variant-badge" title="Aggregated reblogs">+${rbCount}</div>` : ''}
+          ${isAdmin && isTombstone ? html`<div class="admin-label">Tombstone</div>` : nothing}
+
+          <div class="meta-overlay">
+            <span class="type-icon">${typeIcon}</span>
+            ${p.likesCount ? html`<div class="stat-item">❤️ ${p.likesCount}</div>` : ''}
+            ${p.reblogsCount ? html`<div class="stat-item">♻️ ${p.reblogsCount}</div>` : ''}
+            ${p.commentsCount ? html`<div class="stat-item">💬 ${p.commentsCount}</div>` : ''}
           </div>
         </div>
       </article>
@@ -201,10 +181,6 @@ export class ActivityItem extends LitElement {
   }
 }
 
-/**
- * Container for clustered activity.
- * Responsive columns: 1 (Mobile), 2 (Tablet), 4 (Desktop)
- */
 @customElement('activity-grid')
 export class ActivityGrid extends LitElement {
   static styles = [
@@ -212,26 +188,25 @@ export class ActivityGrid extends LitElement {
     css`
       :host {
         display: grid;
-        grid-template-columns: 1fr;
-        gap: 16px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
         width: 100%;
         max-width: 1200px;
         margin: 0 auto;
       }
 
-      @media (min-width: 600px) {
-        :host {
-          grid-template-columns: repeat(2, 1fr);
-        }
-      }
-
-      @media (min-width: 900px) {
+      @media (min-width: 768px) {
         :host {
           grid-template-columns: repeat(4, 1fr);
         }
       }
 
-      /* Compact mode for mixing into feed */
+      @media (min-width: 1024px) {
+        :host {
+          grid-template-columns: repeat(6, 1fr); /* Matrix density */
+        }
+      }
+
       :host([compact]) {
         grid-template-columns: repeat(4, 1fr);
         gap: 4px;

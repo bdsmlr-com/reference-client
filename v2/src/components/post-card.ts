@@ -221,11 +221,15 @@ export class PostCard extends LitElement {
     const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
     const isTombstone = !rawUrl && !p.body;
 
+    const isReblog = p.originPostId && p.originPostId !== p.id;
+    const originName = p.originBlogName;
+
     return html`
       <article class="card" @click=${this.handleClick}>
         <div class="card-header">
           <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
             <span class="blog-link">@${p.blogName || 'unknown'}</span>
+            ${isReblog ? html`<span style="opacity: 0.5;">♻️</span><span class="blog-link" title="Original post by @${originName}">@${originName || '?'}</span>` : ''}
             ${rbCount > 0 ? html`<span class="reblog-badge" title="Aggregated reblogs">+${rbCount}</span>` : ''}
           </div>
           <span style="font-size: 12px; opacity: 0.5;">${POST_TYPE_ICONS[p.type as PostType] || '📄'}</span>
