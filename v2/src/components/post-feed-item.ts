@@ -276,19 +276,19 @@ export class PostFeedItem extends LitElement {
   }
 
   private handleImageError(e: Event): void {
-    const img = e.target as HTMLImageElement;
+    const el = e.target as HTMLElement;
     
-    // 1. Try Authoritative Bucket Probing
-    if (probeNextBucket(img)) return;
+    // 1. Try Authoritative Bucket Probing (Supports img and video/source)
+    if (probeNextBucket(el)) return;
 
     // 2. If all probes fail, show placeholder
-    if (!img.dataset.showedPlaceholder) {
-      img.dataset.showedPlaceholder = 'true';
-      img.style.display = 'none';
+    if (!el.dataset.showedPlaceholder) {
+      el.dataset.showedPlaceholder = 'true';
+      el.style.display = 'none';
       const placeholder = document.createElement('div');
       placeholder.className = 'type-placeholder';
       placeholder.textContent = '🖼️ Image unavailable';
-      img.parentElement?.insertBefore(placeholder, img);
+      el.parentElement?.insertBefore(placeholder, el);
     }
   }
 
@@ -327,7 +327,7 @@ export class PostFeedItem extends LitElement {
                 poster=${posterUrl}
                 style="width: 100%; display: block;"
               >
-                <source src=${feedUrl} type="video/mp4">
+                <source src=${feedUrl} type="video/mp4" @error=${this.handleImageError}>
               </video>
             ` : html`
               <img src=${feedUrl} alt="Post ${post.id}" loading="lazy" @error=${this.handleImageError} />
@@ -356,7 +356,7 @@ export class PostFeedItem extends LitElement {
               poster=${posterUrl}
               style="width: 100%; display: block;"
             >
-              <source src=${feedUrl} type="video/mp4">
+              <source src=${feedUrl} type="video/mp4" @error=${this.handleImageError}>
             </video>
           </div>
         `;

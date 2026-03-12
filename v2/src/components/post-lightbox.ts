@@ -244,11 +244,11 @@ export class PostLightbox extends LitElement {
   }
 
   private handleImageError(e: Event) {
-    const img = e.target as HTMLImageElement;
-    if (probeNextBucket(img)) return;
+    const el = e.target as HTMLElement;
+    if (probeNextBucket(el)) return;
     
-    if (img.src.includes('/preview/') && !img.dataset.triedOriginal) {
-      img.dataset.triedOriginal = 'true'; img.src = img.src.replace(/\/preview\/[^/]+\//, '/');
+    if (el instanceof HTMLImageElement && el.src.includes('/preview/') && !el.dataset.triedOriginal) {
+      el.dataset.triedOriginal = 'true'; el.src = el.src.replace(/\/preview\/[^/]+\//, '/');
     }
   }
 
@@ -266,7 +266,7 @@ export class PostLightbox extends LitElement {
 
     if (media.type === 'video') {
       if (media.videoUrl) {
-        return html`<video controls autoplay muted playsinline webkit-playsinline preload="metadata" poster=${posterUrl}><source src=${lightboxUrl} type="video/mp4" /></video>`;
+        return html`<video controls autoplay muted playsinline webkit-playsinline preload="metadata" poster=${posterUrl}><source src=${lightboxUrl} type="video/mp4" @error=${this.handleImageError} /></video>`;
       }
       return this.renderGhost('🎬', isAdmin, isTombstone, 'Video Unavailable');
     }
@@ -280,7 +280,7 @@ export class PostLightbox extends LitElement {
             <div class="image-counter">${this.currentImageIndex + 1} / ${files.length}</div>
           ` : ''}
           ${isMediaAnim ? html`
-            <video autoplay loop muted playsinline webkit-playsinline preload="metadata" poster=${posterUrl}><source src=${lightboxUrl} type="video/mp4" /></video>
+            <video autoplay loop muted playsinline webkit-playsinline preload="metadata" poster=${posterUrl}><source src=${lightboxUrl} type="video/mp4" @error=${this.handleImageError} /></video>
           ` : html`<img src=${lightboxUrl} @error=${this.handleImageError} />`}
         `;
       }

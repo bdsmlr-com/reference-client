@@ -121,22 +121,22 @@ export class ActivityItem extends LitElement {
   }
 
   private handleImageError(e: Event) {
-    const img = e.target as HTMLImageElement;
+    const el = e.target as HTMLElement;
     
-    // 1. Try Authoritative Bucket Probing
-    if (probeNextBucket(img)) return;
+    // 1. Try Authoritative Bucket Probing (Supports img and video/source)
+    if (probeNextBucket(el)) return;
 
     // 2. Try Raw Backend URL (Final Fallback)
-    if (!img.dataset.triedOriginal) {
-      img.dataset.triedOriginal = 'true';
+    if (el instanceof HTMLImageElement && !el.dataset.triedOriginal) {
+      el.dataset.triedOriginal = 'true';
       const media = this.post._media;
       const rawUrl = media.url || media.videoUrl || media.audioUrl;
       if (rawUrl) {
-        img.src = rawUrl;
+        el.src = rawUrl;
         return;
       }
     }
-    img.style.display = 'none';
+    el.style.display = 'none';
   }
 
   render() {
@@ -164,9 +164,8 @@ export class ActivityItem extends LitElement {
               <video 
                 autoplay loop muted playsinline webkit-playsinline 
                 preload="metadata" poster=${posterUrl}
-                @error=${this.handleImageError}
               >
-                <source src=${thumbUrl} type="video/mp4">
+                <source src=${thumbUrl} type="video/mp4" @error=${this.handleImageError}>
               </video>
             ` : html`
               <img src=${thumbUrl} loading="lazy" @error=${this.handleImageError} />

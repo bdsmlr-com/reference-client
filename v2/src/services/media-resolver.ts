@@ -82,15 +82,21 @@ export function resolveMediaUrl(url: string | undefined, context: MediaContext):
 
 export function isAnimation(url: string | undefined): boolean {
   if (!url) return false;
-  return url.split('?')[0].toLowerCase().endsWith('.gif') || url.split('?')[0].toLowerCase().endsWith('.webp');
+  const path = url.split('?')[0].toLowerCase();
+  return path.endsWith('.gif') || path.endsWith('.webp');
 }
 
 /**
- * Probes the next available bucket if an image fails to load.
+ * Probes the next available bucket if a media element fails to load.
+ * Supports HTMLImageElement, HTMLVideoElement, and HTMLSourceElement.
  */
-export function probeNextBucket(img: HTMLImageElement): boolean {
-  const currentSrc = img.src;
-  if (!currentSrc.includes('/plain/s3://')) return false;
+export function probeNextBucket(el: HTMLElement): boolean {
+  let currentSrc = '';
+  if (el instanceof HTMLImageElement) currentSrc = el.src;
+  else if (el instanceof HTMLVideoElement) currentSrc = el.src;
+  else if (el instanceof HTMLSourceElement) currentSrc = el.src;
+
+  if (!currentSrc || !currentSrc.includes('/plain/s3://')) return false;
 
   const parts = currentSrc.split('/plain/s3://');
   const proxyPart = parts[0];
@@ -98,7 +104,7 @@ export function probeNextBucket(img: HTMLImageElement): boolean {
   const currentBucket = s3Path.split('/')[0];
   const filePath = s3Path.substring(currentBucket.length);
 
-  // Determine current index in the rotation
+  // Determine next bucket in the registry
   let nextIndex = 0;
   const currentIndex = BUCKET_LIST.indexOf(currentBucket);
   if (currentIndex !== -1) {
@@ -107,7 +113,23 @@ export function probeNextBucket(img: HTMLImageElement): boolean {
 
   if (nextIndex < BUCKET_LIST.length) {
     const nextBucket = BUCKET_LIST[nextIndex];
-    img.src = `${proxyPart}/plain/s3://${nextBucket}${filePath}`;
+    const nextSrc = `${proxyPart}/plain/s3://${nextBucket}${filePath}`;
+    
+    if (el instanceof HTMLImageElement) el.src = nextSrc;
+    else if (el instanceof HTMLVideoElement) {
+      el.src = nextSrc;
+      el.load();
+      el.play().catch(() => {}); // Autoplay might be blocked if not muted
+    }
+    else if (el instanceof HTMLSourceElement) {
+      const video = el.parentElement as HTMLVideoElement;
+      el.src = nextSrc;
+      if (video && video.load) {
+        video.load();
+        video.play().catch(() => {});
+      }
+    }
+    
     console.log(`[MediaProbe] Failover: ${currentBucket} -> ${nextBucket}`);
     return true;
   }

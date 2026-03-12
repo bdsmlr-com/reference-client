@@ -195,21 +195,21 @@ export class PostCard extends LitElement {
   }
 
   private handleImageError(e: Event): void {
-    const img = e.target as HTMLImageElement;
+    const el = e.target as HTMLElement;
     
-    // 1. Try Authoritative Bucket Probing
-    if (probeNextBucket(img)) return;
+    // 1. Try Authoritative Bucket Probing (Supports img and video/source)
+    if (probeNextBucket(el)) return;
 
     // 2. Try Raw Backend URL (Final Fallback)
-    if (!img.dataset.triedOriginal) {
-      img.dataset.triedOriginal = 'true';
+    if (el instanceof HTMLImageElement && !el.dataset.triedOriginal) {
+      el.dataset.triedOriginal = 'true';
       const rawUrl = this.post.content?.files?.[0] || this.post.content?.url;
       if (rawUrl) {
-        img.src = rawUrl;
+        el.src = rawUrl;
         return;
       }
     }
-    img.style.display = 'none';
+    el.style.display = 'none';
   }
 
   render() {
@@ -244,7 +244,7 @@ export class PostCard extends LitElement {
           ${rawUrl ? html`
             ${isMediaAnim ? html`
               <video autoplay loop muted playsinline webkit-playsinline preload="metadata" poster=${posterUrl}>
-                <source src=${thumbUrl} type="video/mp4">
+                <source src=${thumbUrl} type="video/mp4" @error=${this.handleImageError}>
               </video>
             ` : html`
               <img src=${thumbUrl} loading="lazy" @error=${this.handleImageError} />
