@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "export VITE_BUILD_SHA=$(git rev-parse --short HEAD) && tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
