@@ -193,8 +193,8 @@ export const EventNames = {
   INFINITE_TOGGLE: 'infinite-toggle', // From load-footer
 
   // Lightbox events
-  NAVIGATE: 'navigate', // From post-lightbox
-  CLOSE: 'close', // From post-lightbox
+  LIGHTBOX_NAVIGATE: 'lightbox-navigate',
+  LIGHTBOX_CLOSE: 'lightbox-close',
 
   // Error state events
   RETRY: 'retry', // From error-state

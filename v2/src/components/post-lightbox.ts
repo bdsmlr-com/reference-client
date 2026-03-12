@@ -300,8 +300,7 @@ export class PostLightbox extends LitElement {
   };
 
   private close = () => {
-    this.open = false;
-    this.dispatchEvent(new CustomEvent(EventNames.CLOSE, { 
+    this.dispatchEvent(new CustomEvent(EventNames.LIGHTBOX_CLOSE, { 
       bubbles: true, 
       composed: true 
     }));
@@ -309,7 +308,7 @@ export class PostLightbox extends LitElement {
 
   private navigatePrev() {
     if (this.currentIndex > 0) {
-      this.dispatchEvent(new CustomEvent<LightboxNavigateDetail>(EventNames.NAVIGATE, {
+      this.dispatchEvent(new CustomEvent<LightboxNavigateDetail>(EventNames.LIGHTBOX_NAVIGATE, {
         detail: { direction: 'prev', index: this.currentIndex - 1 },
         bubbles: true,
         composed: true
@@ -319,7 +318,7 @@ export class PostLightbox extends LitElement {
 
   private navigateNext() {
     if (this.currentIndex < this.posts.length - 1) {
-      this.dispatchEvent(new CustomEvent<LightboxNavigateDetail>(EventNames.NAVIGATE, {
+      this.dispatchEvent(new CustomEvent<LightboxNavigateDetail>(EventNames.LIGHTBOX_NAVIGATE, {
         detail: { direction: 'next', index: this.currentIndex + 1 },
         bubbles: true,
         composed: true

@@ -112,13 +112,14 @@ export class AppRoot extends LitElement {
       <shared-nav .currentPage=${currentPage}></shared-nav>
       <main>${this._router.outlet()}</main>
       <post-lightbox
-        ?open=${this.lightboxOpen}
+        .open=${this.lightboxOpen}
         .post=${this.lightboxPost}
         .posts=${this.lightboxPosts}
         .currentIndex=${this.lightboxIndex}
-        @close=${this.handleLightboxClose}
-        @navigate=${this.handleLightboxNavigate}
+        @lightbox-close=${this.handleLightboxClose}
+        @lightbox-navigate=${this.handleLightboxNavigate}
       ></post-lightbox>
+
     `;
   }
 }

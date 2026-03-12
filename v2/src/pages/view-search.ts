@@ -357,9 +357,14 @@ export class ViewSearch extends LitElement {
           const cleanUrl = mediaUrl?.split('?')[0];
 
           if (cleanUrl) {
-            // Find existing match in current results or buffer
-            const match = buffer.find(p => p._media.url?.split('?')[0] === cleanUrl) || 
-                          this.posts.find(p => p._media.url?.split('?')[0] === cleanUrl);
+            // Check if this media is already on the page
+            const match = buffer.find(p => {
+              const pUrl = p._media.url || p._media.videoUrl || p._media.audioUrl;
+              return pUrl?.split('?')[0] === cleanUrl;
+            }) || this.posts.find(p => {
+              const pUrl = p._media.url || p._media.videoUrl || p._media.audioUrl;
+              return pUrl?.split('?')[0] === cleanUrl;
+            });
 
             if (match) {
               match._reblog_variants = match._reblog_variants || [];
