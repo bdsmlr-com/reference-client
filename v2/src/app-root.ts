@@ -83,10 +83,6 @@ export class AppRoot extends LitElement {
     this.lightboxOpen = true;
   }
 
-  private handleLightboxClose() {
-    this.lightboxOpen = false;
-  }
-
   private handleLightboxNavigate(e: CustomEvent) {
     const { index } = e.detail;
     if (index >= 0 && index < this.lightboxPosts.length) {
@@ -116,7 +112,7 @@ export class AppRoot extends LitElement {
         .post=${this.lightboxPost}
         .posts=${this.lightboxPosts}
         .currentIndex=${this.lightboxIndex}
-        @lightbox-close=${this.handleLightboxClose}
+        @lightbox-close=${() => this.lightboxOpen = false}
         @lightbox-navigate=${this.handleLightboxNavigate}
       ></post-lightbox>
 

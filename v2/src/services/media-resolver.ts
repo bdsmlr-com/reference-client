@@ -1,6 +1,6 @@
 /**
  * Centralized Media Resolver for imgproxy-based transformations.
- * Backend is the source of truth for hosts.
+ * DUMB FRONTEND: Trusts the backend URLs entirely.
  */
 
 const MEDIA_PROXY_BASE = 'http://100.98.53.103:8085/unsafe';
@@ -23,24 +23,24 @@ const CONTEXT_PRESETS: Record<MediaContext, MediaOptions> = {
 };
 
 /**
- * Maps a URL to an S3 scheme for imgproxy.
- * Trusts the hostname provided by the backend (Python-side normalization).
+ * Normalizes a URL to an S3 scheme for imgproxy.
+ * Only identifies host and path to wrap in s3://.
  */
 function toS3Scheme(url: string): string {
   if (!url) return '';
   
-  // 1. Strip query parameters
+  // Strip params just in case, though backend should have handled it
   const cleanUrl = url.split('?')[0];
   
-  // 2. Identify the host and the path from any bdsmlr/reblogme domain
-  const hostMatch = cleanUrl.match(/((?:o?cdn\d+\.bdsmlr|cdn\d+\.reblogme)\.com)/);
+  // Extract host and path for S3 mapping
+  // Supports: cdnXXX.bdsmlr.com, ocdnXXX.bdsmlr.com, cdnXXX.reblogme.com
+  const hostMatch = cleanUrl.match(/((?:o?cdn\d+(?:\.bdsmlr|\.reblogme))\.com)/);
   if (hostMatch) {
     const host = hostMatch[1];
     const path = cleanUrl.split(host)[1];
     return `s3://${host}${path}`;
   }
 
-  // If no match, return as-is (might be an external URL)
   return cleanUrl;
 }
 

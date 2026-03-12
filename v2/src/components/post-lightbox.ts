@@ -301,7 +301,7 @@ export class PostLightbox extends LitElement {
 
   private close(e?: Event) {
     if (e) e.stopPropagation();
-    this.dispatchEvent(new CustomEvent(EventNames.LIGHTBOX_CLOSE, { 
+    this.dispatchEvent(new CustomEvent('lightbox-close', { 
       bubbles: true, 
       composed: true 
     }));
