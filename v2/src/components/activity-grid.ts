@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { resolveMediaUrl } from '../services/media-resolver.js';
+import { resolveMediaUrl, isGif } from '../services/media-resolver.js';
 import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
 
@@ -97,7 +97,10 @@ export class ActivityItem extends LitElement {
 
   render() {
     const media = this.post._media;
-    const thumbUrl = resolveMediaUrl(media.url || media.videoUrl || media.audioUrl, 'thumbnail');
+    const rawUrl = media.url || media.videoUrl || media.audioUrl;
+    const thumbUrl = resolveMediaUrl(rawUrl, 'thumbnail');
+    const posterUrl = resolveMediaUrl(rawUrl, 'poster');
+    const isMediaGif = isGif(rawUrl);
     
     let icon = POST_TYPE_ICONS[this.post.type as PostType] || '📄';
     if (this.interactionType === 'reblog') icon = '♻️';
@@ -109,7 +112,20 @@ export class ActivityItem extends LitElement {
 
     return html`
       <div @click=${this.handleClick} style="width: 100%; height: 100%;">
-        ${thumbUrl ? html`<img src=${thumbUrl} loading="lazy" @error=${this.handleImageError} />` : html`
+        ${rawUrl ? html`
+          ${isMediaGif ? html`
+            <video 
+              autoplay loop muted playsinline 
+              poster=${posterUrl}
+              style="width: 100%; height: 100%; object-fit: cover;"
+              @error=${this.handleImageError}
+            >
+              <source src=${thumbUrl} type="video/mp4">
+            </video>
+          ` : html`
+            <img src=${thumbUrl} loading="lazy" @error=${this.handleImageError} />
+          `}
+        ` : html`
           <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; opacity:0.3; font-size:24px;">
             ${icon}
           </div>
