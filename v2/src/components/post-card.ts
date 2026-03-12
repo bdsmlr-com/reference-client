@@ -4,7 +4,7 @@ import { baseStyles } from '../styles/theme.js';
 import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
-import { resolveMediaUrl, isAnimation } from '../services/media-resolver.js';
+import { resolveMediaUrl, isAnimation, probeNextBucket } from '../services/media-resolver.js';
 
 @customElement('post-card')
 export class PostCard extends LitElement {
@@ -196,6 +196,11 @@ export class PostCard extends LitElement {
 
   private handleImageError(e: Event): void {
     const img = e.target as HTMLImageElement;
+    
+    // 1. Try Authoritative Bucket Probing
+    if (probeNextBucket(img)) return;
+
+    // 2. Try Raw Backend URL (Final Fallback)
     if (!img.dataset.triedOriginal) {
       img.dataset.triedOriginal = 'true';
       const rawUrl = this.post.content?.files?.[0] || this.post.content?.url;

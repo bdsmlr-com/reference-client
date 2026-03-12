@@ -42,7 +42,7 @@ function postHasChanged(newVal: ProcessedPost | undefined, oldVal: ProcessedPost
   return false;
 }
 
-import { resolveMediaUrl, isAnimation } from '../services/media-resolver.js';
+import { resolveMediaUrl, isAnimation, probeNextBucket } from '../services/media-resolver.js';
 
 @customElement('post-feed-item')
 export class PostFeedItem extends LitElement {
@@ -277,20 +277,14 @@ export class PostFeedItem extends LitElement {
 
   private handleImageError(e: Event): void {
     const img = e.target as HTMLImageElement;
-    const src = img.src;
+    
+    // 1. Try Authoritative Bucket Probing
+    if (probeNextBucket(img)) return;
 
-    // Try CDN fallback first (consistent with blog-card.ts and post-card.ts)
-    if (src.includes('ocdn012.bdsmlr.com') && !img.dataset.triedFallback) {
-      img.dataset.triedFallback = 'true';
-      img.src = src.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
-      return;
-    }
-
-    // If fallback also fails or not applicable, show placeholder
+    // 2. If all probes fail, show placeholder
     if (!img.dataset.showedPlaceholder) {
       img.dataset.showedPlaceholder = 'true';
       img.style.display = 'none';
-      // Create and insert a placeholder element
       const placeholder = document.createElement('div');
       placeholder.className = 'type-placeholder';
       placeholder.textContent = '🖼️ Image unavailable';

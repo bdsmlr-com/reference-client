@@ -9,7 +9,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import { recService, type RecResult } from '../services/recommendation-api.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { POST_TYPE_ICONS, extractMedia, type ProcessedPost } from '../types/post.js';
-import { resolveMediaUrl, isAnimation } from '../services/media-resolver.js';
+import { resolveMediaUrl, isAnimation, probeNextBucket } from '../services/media-resolver.js';
 import type { Like, Comment, Reblog, PostType } from '../types/api.js';
 
 @customElement('post-lightbox')
@@ -245,10 +245,10 @@ export class PostLightbox extends LitElement {
 
   private handleImageError(e: Event) {
     const img = e.target as HTMLImageElement;
+    if (probeNextBucket(img)) return;
+    
     if (img.src.includes('/preview/') && !img.dataset.triedOriginal) {
       img.dataset.triedOriginal = 'true'; img.src = img.src.replace(/\/preview\/[^/]+\//, '/');
-    } else if (img.src.includes('ocdn012') && !img.dataset.triedFallback) {
-      img.dataset.triedFallback = 'true'; img.src = img.src.replace('ocdn012', 'cdn012');
     }
   }
 

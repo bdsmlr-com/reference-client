@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { resolveMediaUrl, isAnimation } from '../services/media-resolver.js';
+import { resolveMediaUrl, isAnimation, probeNextBucket } from '../services/media-resolver.js';
 import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
 import { formatDate } from '../services/date-formatter.js';
@@ -122,9 +122,15 @@ export class ActivityItem extends LitElement {
 
   private handleImageError(e: Event) {
     const img = e.target as HTMLImageElement;
+    
+    // 1. Try Authoritative Bucket Probing
+    if (probeNextBucket(img)) return;
+
+    // 2. Try Raw Backend URL (Final Fallback)
     if (!img.dataset.triedOriginal) {
       img.dataset.triedOriginal = 'true';
-      const rawUrl = this.post._media.url || this.post._media.videoUrl || this.post._media.audioUrl;
+      const media = this.post._media;
+      const rawUrl = media.url || media.videoUrl || media.audioUrl;
       if (rawUrl) {
         img.src = rawUrl;
         return;

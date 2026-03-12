@@ -8,6 +8,14 @@ const DEFAULT_GRAVITY = 'gravity:sm';
 
 export type MediaContext = 'thumbnail' | 'feed' | 'lightbox' | 'gutter' | 'poster';
 
+export const BUCKET_LIST = [
+  'ocdn012.bdsmlr.com',
+  'cdn101.bdsmlr.com',
+  'ocdn011.bdsmlr.com',
+  'cdn013.bdsmlr.com',
+  'cdn002.reblogme.com'
+];
+
 interface MediaOptions {
   width?: number;
   height?: number;
@@ -23,17 +31,12 @@ const CONTEXT_PRESETS: Record<MediaContext, MediaOptions> = {
 };
 
 /**
- * Normalizes a URL to an S3 scheme for imgproxy.
- * Only identifies host and path to wrap in s3://.
+ * Maps a URL to an S3 scheme for imgproxy.
  */
 function toS3Scheme(url: string): string {
   if (!url) return '';
-  
-  // 1. Strip query parameters
   const cleanUrl = url.split('?')[0];
   
-  // 2. Authoritative Mapping
-  // We strictly identify the host and the path
   let host = '';
   let path = '';
 
@@ -50,23 +53,10 @@ function toS3Scheme(url: string): string {
   }
 
   if (host && path) {
-    // Priority rule: any host that looks like cdn012 -> ocdn012
     const finalHost = host.includes('cdn012') ? 'ocdn012.bdsmlr.com' : host;
     return `s3://${finalHost}${path}`;
   }
-
   return cleanUrl;
-}
-
-/**
- * Specifically handles animation detection (GIF, animated WebP).
- */
-export function isAnimation(url: string | undefined): boolean {
-  if (!url) return false;
-  const path = url.split('?')[0].toLowerCase();
-  // We treat .gif as always animated.
-  // For .webp, it's ambiguous, but the user reported one that flickers.
-  return path.endsWith('.gif') || path.endsWith('.webp'); // Broadening to fix reported flickering
 }
 
 export function resolveMediaUrl(url: string | undefined, context: MediaContext): string {
@@ -76,23 +66,51 @@ export function resolveMediaUrl(url: string | undefined, context: MediaContext):
   const parts: string[] = [];
   
   const isAnim = isAnimation(url);
-
-  // 1. Resize logic
   const resizeMode = (preset.height && preset.height > 0) ? 'fill' : 'fit';
   parts.push(`resize:${resizeMode}:${preset.width || 0}:${preset.height || 0}`);
   
-  // 2. Gravity: Skip for animations to prevent flickering
-  if (!isAnim) {
-    parts.push(DEFAULT_GRAVITY);
-  }
+  if (!isAnim) parts.push(DEFAULT_GRAVITY);
   
-  // 3. Format conversion: Force MP4 for all animations
-  let extension = '';
   if (isAnim && context !== 'poster') {
     parts.push('format:mp4');
   } else if (preset.format) {
     parts.push(`format:${preset.format}`);
   }
 
-  return `${MEDIA_PROXY_BASE}/${parts.join('/')}/plain/${s3Url}${extension}`;
+  return `${MEDIA_PROXY_BASE}/${parts.join('/')}/plain/${s3Url}`;
+}
+
+export function isAnimation(url: string | undefined): boolean {
+  if (!url) return false;
+  return url.split('?')[0].toLowerCase().endsWith('.gif') || url.split('?')[0].toLowerCase().endsWith('.webp');
+}
+
+/**
+ * Probes the next available bucket if an image fails to load.
+ */
+export function probeNextBucket(img: HTMLImageElement): boolean {
+  const currentSrc = img.src;
+  if (!currentSrc.includes('/plain/s3://')) return false;
+
+  const parts = currentSrc.split('/plain/s3://');
+  const proxyPart = parts[0];
+  const s3Path = parts[1];
+  const currentBucket = s3Path.split('/')[0];
+  const filePath = s3Path.substring(currentBucket.length);
+
+  // Determine current index in the rotation
+  let nextIndex = 0;
+  const currentIndex = BUCKET_LIST.indexOf(currentBucket);
+  if (currentIndex !== -1) {
+    nextIndex = currentIndex + 1;
+  }
+
+  if (nextIndex < BUCKET_LIST.length) {
+    const nextBucket = BUCKET_LIST[nextIndex];
+    img.src = `${proxyPart}/plain/s3://${nextBucket}${filePath}`;
+    console.log(`[MediaProbe] Failover: ${currentBucket} -> ${nextBucket}`);
+    return true;
+  }
+
+  return false;
 }
