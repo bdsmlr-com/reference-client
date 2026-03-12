@@ -465,7 +465,8 @@ export class PostLightbox extends LitElement {
   }
 
   render() {
-    if (!this.open || !this.post) return nothing;
+    if (!this.open) return nothing;
+    if (!this.post) return nothing;
 
     return html`
       <button class="close-btn" @click=${(e: Event) => this.close(e)} title="Close (Esc)">×</button>

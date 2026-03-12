@@ -81,6 +81,20 @@ export class ActivityItem extends LitElement {
     }));
   }
 
+  private handleImageError(e: Event) {
+    const img = e.target as HTMLImageElement;
+    if (!img.dataset.triedOriginal) {
+      img.dataset.triedOriginal = 'true';
+      const media = this.post._media;
+      const rawUrl = media.url || media.videoUrl || media.audioUrl;
+      if (rawUrl) {
+        img.src = rawUrl; // Fallback to raw backend URL
+        return;
+      }
+    }
+    img.style.display = 'none';
+  }
+
   render() {
     const media = this.post._media;
     const thumbUrl = resolveMediaUrl(media.url || media.videoUrl || media.audioUrl, 'thumbnail');
@@ -95,7 +109,7 @@ export class ActivityItem extends LitElement {
 
     return html`
       <div @click=${this.handleClick} style="width: 100%; height: 100%;">
-        ${thumbUrl ? html`<img src=${thumbUrl} loading="lazy" />` : html`
+        ${thumbUrl ? html`<img src=${thumbUrl} loading="lazy" @error=${this.handleImageError} />` : html`
           <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; opacity:0.3; font-size:24px;">
             ${icon}
           </div>

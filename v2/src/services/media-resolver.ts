@@ -32,15 +32,21 @@ function toS3Scheme(url: string): string {
   // 1. Strip query parameters
   const cleanUrl = url.split('?')[0];
   
-  // 2. Identify host and path
+  // 2. Identify host and path using explicit splitting
+  // Supports: cdnXXX.bdsmlr.com, ocdnXXX.bdsmlr.com, cdnXXX.reblogme.com
   const AUTHORITATIVE_DOMAINS = ['bdsmlr.com', 'reblogme.com'];
+  
   for (const domain of AUTHORITATIVE_DOMAINS) {
     if (cleanUrl.includes(domain)) {
       const parts = cleanUrl.split(domain);
-      const hostPart = parts[0].split('//')[1] || '';
+      const hostPart = parts[0].split('//').pop() || ''; // Get hostname before the domain
       const pathPart = parts[1];
+      
       if (hostPart) {
-        return `s3://${hostPart}${domain}${pathPart}`;
+        const fullHost = `${hostPart}${domain}`;
+        // Ensure ocdn012 mapping is preserved if backend somehow leaked cdn012
+        const finalBucket = fullHost === 'cdn012.bdsmlr.com' ? 'ocdn012.bdsmlr.com' : fullHost;
+        return `s3://${finalBucket}${pathPart}`;
       }
     }
   }
