@@ -32,26 +32,27 @@ function toS3Scheme(url: string): string {
   // 1. Strip query parameters
   const cleanUrl = url.split('?')[0];
   
-  // 2. Extract host and path
-  // Rules:
-  // - cdn012.bdsmlr.com -> s3://ocdn012.bdsmlr.com
-  // - everything else -> s3://{host}
-  const AUTHORITATIVE_DOMAINS = ['bdsmlr.com', 'reblogme.com'];
-  
-  for (const domain of AUTHORITATIVE_DOMAINS) {
-    if (cleanUrl.includes(domain)) {
-      const parts = cleanUrl.split(domain);
-      // Get the hostname part (e.g., 'https://ocdn012.' or 'ocdn012.')
-      const hostMatch = parts[0].match(/([a-z0-9]+)\.?$/);
-      const hostPart = hostMatch ? hostMatch[1] : '';
-      const pathPart = parts[1];
-      
-      if (hostPart) {
-        const fullHost = `${hostPart}.${domain}`;
-        const finalBucket = fullHost === 'cdn012.bdsmlr.com' ? 'ocdn012.bdsmlr.com' : fullHost;
-        return `s3://${finalBucket}${pathPart}`;
-      }
-    }
+  // 2. Authoritative Mapping
+  // We strictly identify the host and the path
+  let host = '';
+  let path = '';
+
+  if (cleanUrl.includes('bdsmlr.com')) {
+    const parts = cleanUrl.split('bdsmlr.com');
+    const rawHost = parts[0].split('//').pop() || '';
+    host = `${rawHost}bdsmlr.com`;
+    path = parts[1];
+  } else if (cleanUrl.includes('reblogme.com')) {
+    const parts = cleanUrl.split('reblogme.com');
+    const rawHost = parts[0].split('//').pop() || '';
+    host = `${rawHost}reblogme.com`;
+    path = parts[1];
+  }
+
+  if (host && path) {
+    // Priority rule: any host that looks like cdn012 -> ocdn012
+    const finalHost = host.includes('cdn012') ? 'ocdn012.bdsmlr.com' : host;
+    return `s3://${finalHost}${path}`;
   }
 
   return cleanUrl;
