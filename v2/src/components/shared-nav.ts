@@ -10,7 +10,7 @@ import {
 import { BREAKPOINTS } from '../types/ui-constants.js';
 
 type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social';
-const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'dev';
+const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'final-fix-v6';
 
 @customElement('shared-nav')
 export class SharedNav extends LitElement {

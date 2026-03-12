@@ -300,7 +300,12 @@ export class PostLightbox extends LitElement {
   };
 
   private close(e?: Event) {
-    if (e) e.stopPropagation();
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    // Set local state as well just in case parent is slow
+    this.open = false;
     this.dispatchEvent(new CustomEvent('lightbox-close', { 
       bubbles: true, 
       composed: true 
