@@ -6,6 +6,7 @@ import { formatDate } from '../services/date-formatter.js';
 import { EventNames, type LightboxNavigateDetail } from '../types/events.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import { repeat } from 'lit/directives/repeat.js';
+import { keyed } from 'lit/directives/keyed.js';
 import { recService, type RecResult } from '../services/recommendation-api.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { POST_TYPE_ICONS, extractMedia, type ProcessedPost } from '../types/post.js';
@@ -266,7 +267,7 @@ export class PostLightbox extends LitElement {
 
     if (media.type === 'video') {
       if (media.videoUrl) {
-        return html`<video controls autoplay muted playsinline webkit-playsinline preload="metadata" poster=${posterUrl}><source src=${lightboxUrl} type="video/mp4" @error=${this.handleImageError} /></video>`;
+        return keyed(currentUrl, html`<video controls autoplay muted playsinline webkit-playsinline preload="metadata" poster=${posterUrl}><source src=${lightboxUrl} type="video/mp4" @error=${this.handleImageError} /></video>`);
       }
       return this.renderGhost('🎬', isAdmin, isTombstone, 'Video Unavailable');
     }
@@ -279,9 +280,10 @@ export class PostLightbox extends LitElement {
             <button class="image-nav-btn next" ?disabled=${this.currentImageIndex === files.length - 1} @click=${this.nextImage}>›</button>
             <div class="image-counter">${this.currentImageIndex + 1} / ${files.length}</div>
           ` : ''}
-          ${isMediaAnim ? html`
-            <video autoplay loop muted playsinline webkit-playsinline preload="metadata" poster=${posterUrl}><source src=${lightboxUrl} type="video/mp4" @error=${this.handleImageError} /></video>
-          ` : html`<img src=${lightboxUrl} @error=${this.handleImageError} />`}
+          ${keyed(currentUrl, isMediaAnim ? 
+            html`<video autoplay loop muted playsinline webkit-playsinline preload="metadata" poster=${posterUrl}><source src=${lightboxUrl} type="video/mp4" @error=${this.handleImageError} /></video>` : 
+            html`<img src=${lightboxUrl} @error=${this.handleImageError} />`
+          )}
         `;
       }
       return this.renderGhost('🖼️', isAdmin, isTombstone, 'Content Unavailable');
