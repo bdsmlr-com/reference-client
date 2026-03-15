@@ -5,13 +5,11 @@ import { apiClient } from '../services/client.js';
 import { formatDate } from '../services/date-formatter.js';
 import { EventNames, type LightboxNavigateDetail } from '../types/events.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
-import { repeat } from 'lit/directives/repeat.js';
-import { recService, type RecResult } from '../services/recommendation-api.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { POST_TYPE_ICONS, extractMedia, type ProcessedPost } from '../types/post.js';
 import type { Like, Comment, Reblog, PostType } from '../types/api.js';
 import './media-renderer.js';
-import './load-footer.js';
+import './post-recommendations.js';
 
 @customElement('post-lightbox')
 export class PostLightbox extends LitElement {
@@ -91,25 +89,6 @@ export class PostLightbox extends LitElement {
       .detail-item:last-child { border-bottom: none; }
       .detail-item a { color: var(--accent); text-decoration: none; }
 
-      /* Related Gutter ✨ */
-      .gutter-section { margin-top: 24px; }
-      .gutter-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 12px;
-        width: 100%;
-      }
-      .gutter-item {
-        aspect-ratio: 1/1;
-        background: var(--bg-panel-alt);
-        border-radius: 4px;
-        overflow: hidden;
-        cursor: pointer;
-        border: 1px solid var(--border);
-        transition: transform 0.2s;
-      }
-      .gutter-item:hover { transform: scale(1.05); border-color: var(--accent); }
-
       .main-nav-btn {
         position: fixed; top: 50%; transform: translateY(-50%);
         background: rgba(255, 255, 255, 0.05); color: white; border: 1px solid rgba(255, 255, 255, 0.1);
@@ -136,17 +115,11 @@ export class PostLightbox extends LitElement {
   @property({ type: Array }) posts: ProcessedPost[] = [];
   @property({ type: Number }) currentIndex = -1;
 
-  @state() private loadingRelated = false;
-  @state() private relatedPosts: RecResult[] = [];
-  @state() private navigationStack: ProcessedPost[] = [];
   @state() private activeTab: 'likes' | 'reblogs' | 'comments' | null = null;
   @state() private likes: Like[] | null = null;
   @state() private comments: Comment[] | null = null;
   @state() private reblogs: Reblog[] | null = null;
   @state() private loadingDetails = false;
-  @state() private infiniteScroll = false;
-  @state() private exhaustedGutter = false;
-  @state() private underlyingUrl: string = window.location.href;
 
   connectedCallback() {
     super.connectedCallback();
@@ -158,48 +131,18 @@ export class PostLightbox extends LitElement {
     window.removeEventListener('popstate', this.handlePopState);
   }
 
-  private handlePopState = (_e: PopStateEvent) => {
-    if (!this.open) return;
-
-    // If the new state has a postId, try to show that post in the lightbox
-    const pathname = window.location.pathname;
-    const postMatch = pathname.match(/\/post\/(\d+)/);
-    
-    if (postMatch) {
-      const postId = parseInt(postMatch[1]);
-      if (this.post?.id !== postId) {
-        this.loadPostById(postId);
-      }
-    } else {
-      // If we're no longer on a post URL, close the lightbox
-      this.close(undefined, false);
+  private handlePopState = () => {
+    if (this.open) {
+      this.close();
     }
   };
-
-  private async loadPostById(id: number) {
-    try {
-      const resp = await apiClient.posts.get(id);
-      if (resp.post) {
-        this.post = { ...resp.post, _media: extractMedia(resp.post) };
-        this.currentIndex = -1; // Reset index since we're "off-list"
-      }
-    } catch (e) {
-      console.error('Failed to load post for lightbox', e);
-    }
-  }
 
   updated(changedProperties: Map<string, any>): void {
     super.updated(changedProperties);
     if (changedProperties.has('open')) {
       if (this.open) {
         document.body.style.overflow = 'hidden';
-        // Only store underlyingUrl if it's NOT a post detail page
-        // This is "where we go back to" when closing the lightbox
-        if (!window.location.pathname.startsWith('/post/')) {
-          this.underlyingUrl = window.location.href;
-        }
         this.addEventListener('keydown', this.handleKeyDown);
-        this.syncUrl();
       } else {
         document.body.style.overflow = '';
         this.removeEventListener('keydown', this.handleKeyDown);
@@ -211,20 +154,7 @@ export class PostLightbox extends LitElement {
       this.likes = null;
       this.comments = null;
       this.reblogs = null;
-      this.exhaustedGutter = false;
-      this.fetchRelatedPosts(true);
       this.shadowRoot?.querySelector('.lightbox-backdrop')?.scrollTo(0, 0);
-      if (this.open) this.syncUrl();
-    }
-  }
-
-  private syncUrl() {
-    if (!this.post) return;
-    const postUrl = `/post/${this.post.id}`;
-    if (window.location.pathname !== postUrl) {
-      window.history.pushState({ postId: this.post.id }, '', postUrl);
-      // Dispatch popstate so the background view-post (if any) updates in sync
-      window.dispatchEvent(new PopStateEvent('popstate'));
     }
   }
 
@@ -235,23 +165,9 @@ export class PostLightbox extends LitElement {
     if (e.key === 'ArrowRight') this.navigateNext();
   };
 
-  private close(e?: Event, restoreUrl = true) {
+  private close(e?: Event) {
     if (e) { e.stopPropagation(); e.preventDefault(); }
     this.open = false;
-    
-    if (restoreUrl && this.underlyingUrl) {
-      const isCurrentlyPost = window.location.pathname.startsWith('/post/');
-      const wasPost = new URL(this.underlyingUrl).pathname.startsWith('/post/');
-      
-      // If we started on a post page and ended on a (possibly different) post page,
-      // stay on the current URL so we don't jump back to the first post.
-      // Otherwise (e.g. came from Feed), restore the original URL.
-      if (!wasPost && isCurrentlyPost && window.location.href !== this.underlyingUrl) {
-        window.history.pushState({}, '', this.underlyingUrl);
-        window.dispatchEvent(new PopStateEvent('popstate'));
-      }
-    }
-
     this.dispatchEvent(new CustomEvent('lightbox-close', { bubbles: true, composed: true }));
   }
 
@@ -269,10 +185,6 @@ export class PostLightbox extends LitElement {
         detail: { direction: 'next', index: this.currentIndex + 1 }, bubbles: true, composed: true
       }));
     }
-  }
-
-  private handleInfiniteToggle(e: CustomEvent) {
-    this.infiniteScroll = e.detail.enabled;
   }
 
   private async toggleTab(tab: 'likes' | 'reblogs' | 'comments') {
@@ -299,72 +211,8 @@ export class PostLightbox extends LitElement {
     }
   }
 
-  private async fetchRelatedPosts(clearFirst = false) {
-    if (!this.post || this.loadingRelated || this.exhaustedGutter) return;
-    if (clearFirst) {
-      this.relatedPosts = [];
-      this.exhaustedGutter = false;
-    }
-    
-    if (this.relatedPosts.length >= 96) {
-      this.exhaustedGutter = true;
-      return;
-    }
-
-    this.loadingRelated = true;
-    try {
-      const recs = await recService.getSimilarPosts(this.post.id, 12, this.relatedPosts.length);
-      if (recs.length === 0) {
-        this.exhaustedGutter = true;
-      }
-
-      const postIds = recs.map(r => r.post_id).filter((id): id is number => !!id);
-      if (postIds.length > 0) {
-        try {
-          const batchResp = await apiClient.posts.batchGet({ post_ids: postIds });
-          const hydratedMap = new Map(batchResp.posts?.map(p => [p.id, p]));
-          
-          recs.forEach(r => { 
-            if (r.post_id) {
-              const p = hydratedMap.get(r.post_id);
-              if (p) {
-                const processed = p as ProcessedPost;
-                processed._media = extractMedia(processed);
-                (r as any)._hydratedPost = processed;
-              }
-            }
-          });
-        } catch (e) {
-          console.error('[Lightbox] Gutter hydration failed', e);
-        }
-      }
-      
-      this.relatedPosts = [...this.relatedPosts, ...recs];
-      if (this.relatedPosts.length >= 96) this.exhaustedGutter = true;
-      this.requestUpdate(); 
-    } finally { this.loadingRelated = false; }
-  }
-
-  private async navigateToRelated(rec: RecResult) {
-    if (!this.post || !rec.post_id) return;
-    this.navigationStack = [...this.navigationStack, this.post];
-    const hydrated = (rec as any)._hydratedPost;
-    if (hydrated) { 
-      this.post = hydrated;
-      this.currentIndex = -1;
-    } 
-    else {
-      const resp = await apiClient.posts.get(rec.post_id);
-      if (resp.post) {
-        this.post = { ...resp.post, _media: extractMedia(resp.post) };
-        this.currentIndex = -1;
-      }
-    }
-  }
-
   private renderMedia() {
     if (!this.post) return nothing;
-    // Defensive check: sometimes re-navigation or hydration gaps might miss this
     const media = this.post._media || extractMedia(this.post);
     if (!media) return this.renderGhost('🖼️', false, false, 'Media Error');
 
@@ -391,12 +239,11 @@ export class PostLightbox extends LitElement {
 
   private renderGhost(icon: string, isAdmin: boolean, isTombstone: boolean, label: string) {
     return html`
-      <div class="error-ghost ghost" style="cursor: pointer;" @click=${() => this.shadowRoot?.querySelector('.gutter-section')?.scrollIntoView({ behavior: 'smooth' })}>
+      <div class="error-ghost ghost">
         <span class="error-icon">${icon}</span>
         ${isAdmin ? html`<span class="diagnostic-label">${isTombstone ? '[TOMBSTONE]' : '[MISSING_URL]'}</span>` : ''}
         <div style="font-size: 48px; animation: pulse 2s infinite; margin: 20px 0;">✨</div>
         <span style="font-size: 14px; opacity: 0.7;">${label}</span>
-        <span style="font-size: 11px; opacity: 0.5; margin-top: 8px;">Scroll down for related alternatives</span>
       </div>
     `;
   }
@@ -474,40 +321,17 @@ export class PostLightbox extends LitElement {
               ${unsafeHTML(p.content?.html || p.body || '')}
             </div>
 
-            <h3 style="margin-top: 0;">More like this ✨</h3>
-            ${this.loadingRelated && this.relatedPosts.length === 0 ? html`<loading-spinner message="Finding related posts..."></loading-spinner>` : ''}
-            
-            ${!this.loadingRelated && this.relatedPosts.length === 0 ? html`
-              <div style="text-align: center; padding: 20px; opacity: 0.5; font-size: 13px;">No related posts found.</div>
-            ` : ''}
-
-            <div class="gutter-grid" style="margin-bottom: 24px;">
-              ${repeat(this.relatedPosts, r => r.post_id, r => {
-                const h = (r as any)._hydratedPost;
-                if (!h) return html`<div class="gutter-skeleton"></div>`;
-                
-                const raw = h._media?.url || h._media?.videoUrl || h.content?.thumbnail;
-                return html`
-                  <div class="gutter-item" @click=${() => this.navigateToRelated(r)}>
-                    <media-renderer .src=${raw} .type=${'gutter'}></media-renderer>
-                  </div>
-                `;
-              })}
-            </div>
-
-            <load-footer
-              mode="list"
-              .loading=${this.loadingRelated}
-              .exhausted=${this.exhaustedGutter}
-              .infiniteScroll=${this.infiniteScroll}
-              .persistSelection=${false}
-              @load-more=${() => this.fetchRelatedPosts()}
-              @infinite-toggle=${this.handleInfiniteToggle}
-            ></load-footer>
+            <post-recommendations .postId=${p.id} mode="list"></post-recommendations>
           </div>
         </div>
       </div>
     `;
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'post-lightbox': PostLightbox;
   }
 }
 
