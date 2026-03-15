@@ -145,6 +145,8 @@ export class PostLightbox extends LitElement {
   @state() private comments: Comment[] | null = null;
   @state() private reblogs: Reblog[] | null = null;
   @state() private loadingDetails = false;
+  @state() private infiniteScroll = false;
+  @state() private exhaustedGutter = false;
 
   updated(changedProperties: Map<string, any>): void {
     super.updated(changedProperties);
@@ -163,9 +165,14 @@ export class PostLightbox extends LitElement {
       this.likes = null;
       this.comments = null;
       this.reblogs = null;
+      this.exhaustedGutter = false;
       this.fetchRelatedPosts(true);
       this.shadowRoot?.querySelector('.lightbox-backdrop')?.scrollTo(0, 0);
     }
+  }
+
+  private handleInfiniteToggle(e: CustomEvent) {
+    this.infiniteScroll = e.detail.enabled;
   }
 
   private handleKeyDown = (e: KeyboardEvent) => {
@@ -379,18 +386,18 @@ export class PostLightbox extends LitElement {
             ${this.renderEngagementDetail()}
 
             <div class="tags">${(p.tags || []).map(t => html`<span class="tag">#${t}</span>`)}</div>
-            <div class="body-text">${unsafeHTML(p.content?.html || p.body || '')}</div>
-          </div>
+            <div class="body-text" style="margin-bottom: 32px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 24px;">
+              ${unsafeHTML(p.content?.html || p.body || '')}
+            </div>
 
-          <div class="info-section gutter-section">
             <h3 style="margin-top: 0;">More like this ✨</h3>
-            ${this.loadingRelated ? html`<loading-spinner message="Finding related posts..."></loading-spinner>` : ''}
+            ${this.loadingRelated && this.relatedPosts.length === 0 ? html`<loading-spinner message="Finding related posts..."></loading-spinner>` : ''}
             
             ${!this.loadingRelated && this.relatedPosts.length === 0 ? html`
               <div style="text-align: center; padding: 20px; opacity: 0.5; font-size: 13px;">No related posts found.</div>
             ` : ''}
 
-            <div class="gutter-grid">
+            <div class="gutter-grid" style="margin-bottom: 24px;">
               ${repeat(this.relatedPosts, r => r.post_id, r => {
                 const h = (r as any)._hydratedPost;
                 if (!h) return html`<div class="gutter-skeleton"></div>`;
@@ -403,6 +410,16 @@ export class PostLightbox extends LitElement {
                 `;
               })}
             </div>
+
+            <load-footer
+              mode="list"
+              .loading=${this.loadingRelated}
+              .exhausted=${this.exhaustedGutter}
+              .infiniteScroll=${this.infiniteScroll}
+              .persistSelection=${false}
+              @load-more=${() => this.fetchRelatedPosts()}
+              @infinite-toggle=${this.handleInfiniteToggle}
+            ></load-footer>
           </div>
         </div>
       </div>
