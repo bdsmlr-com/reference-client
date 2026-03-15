@@ -3,7 +3,7 @@
  * DUMB FRONTEND: Trusts the backend URLs entirely.
  */
 
-const MEDIA_PROXY_BASE = '//100.98.53.103:8085/unsafe';
+const MEDIA_PROXY_BASE = '//media-origin.bdsmlr.com:8085/unsafe';
 const DEFAULT_GRAVITY = 'gravity:sm';
 
 export type MediaContext = 'thumbnail' | 'feed' | 'lightbox' | 'gutter' | 'poster';

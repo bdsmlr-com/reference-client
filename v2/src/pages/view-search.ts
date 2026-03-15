@@ -161,7 +161,7 @@ export class ViewSearch extends LitElement {
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
-  private seenMediaKeys = new Set<string>();
+  private renderedMediaKeys = new Set<string>(); // Authoritative uniqueness
   private paginationKey = '';
 
   connectedCallback(): void {
@@ -225,7 +225,7 @@ export class ViewSearch extends LitElement {
     this.backendCursor = null;
     this.exhausted = false;
     this.seenIds.clear();
-    this.seenMediaKeys.clear();
+    this.renderedMediaKeys.clear();
     this.stats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
     this.timelineItems = [];
     this.statusMessage = '';
@@ -325,15 +325,15 @@ export class ViewSearch extends LitElement {
           const post = item.post as ProcessedPost;
           const media = extractMedia(post);
           const mediaUrl = media.url || media.videoUrl || media.audioUrl;
-          const aggKey = post.originPostId ? `oid:${post.originPostId}` : (mediaUrl ? `url:${mediaUrl.split('?')[0]}` : `pid:${post.id}`);
+          const contentKey = post.originPostId ? `oid:${post.originPostId}` : (mediaUrl ? `url:${mediaUrl.split('?')[0]}` : `pid:${post.id}`);
 
-          if (this.seenIds.has(post.id) || this.seenMediaKeys.has(aggKey)) {
+          if (this.seenIds.has(post.id) || this.renderedMediaKeys.has(contentKey)) {
             this.stats.dupes++;
             return;
           }
           
           this.seenIds.add(post.id);
-          this.seenMediaKeys.add(aggKey);
+          this.renderedMediaKeys.add(contentKey);
           post._media = media;
           newItems.push(item);
         } else if (item.type === 2 && item.cluster) {
@@ -342,14 +342,14 @@ export class ViewSearch extends LitElement {
             const p = post as ProcessedPost;
             const media = extractMedia(p);
             const mediaUrl = media.url || media.videoUrl || media.audioUrl;
-            const aggKey = p.originPostId ? `oid:${p.originPostId}` : (mediaUrl ? `url:${mediaUrl.split('?')[0]}` : `pid:${p.id}`);
+            const contentKey = p.originPostId ? `oid:${p.originPostId}` : (mediaUrl ? `url:${mediaUrl.split('?')[0]}` : `pid:${p.id}`);
 
-            if (this.seenIds.has(p.id) || this.seenMediaKeys.has(aggKey)) {
+            if (this.seenIds.has(p.id) || this.renderedMediaKeys.has(contentKey)) {
               return;
             }
             
             this.seenIds.add(p.id);
-            this.seenMediaKeys.add(aggKey);
+            this.renderedMediaKeys.add(contentKey);
             p._media = media;
             uniqueInteractions.push(p);
           });
