@@ -6,7 +6,6 @@ import { formatDate } from '../services/date-formatter.js';
 import { EventNames, type LightboxNavigateDetail } from '../types/events.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { keyed } from 'lit/directives/keyed.js';
 import { recService, type RecResult } from '../services/recommendation-api.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { POST_TYPE_ICONS, extractMedia, type ProcessedPost } from '../types/post.js';
@@ -56,12 +55,19 @@ export class PostLightbox extends LitElement {
 
       .lightbox-content { width: 100%; max-width: 1200px; display: flex; flex-direction: column; gap: 24px; margin: 0 auto; }
 
+      .media-stack {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
       .media-container {
         width: 100%; background: #000; border-radius: 8px; overflow: hidden;
         position: relative; display: flex; align-items: center; justify-content: center;
         min-height: 200px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
       }
-      .media-container img, .media-container video { max-width: 100%; display: block; height: auto; max-height: 85vh; }
+      .media-container img, .media-container video { max-width: 100%; display: block; height: auto; max-height: 95vh; }
 
       .info-section { background: var(--bg-panel); padding: 24px; border-radius: 8px; border: 1px solid var(--border); width: 100%; }
       .lightbox-links { font-size: 16px; margin-bottom: 16px; color: var(--text-muted); }
@@ -84,16 +90,6 @@ export class PostLightbox extends LitElement {
       .detail-item { padding: 8px; border-bottom: 1px solid var(--border-subtle); font-size: 13px; display: flex; align-items: center; justify-content: space-between; }
       .detail-item:last-child { border-bottom: none; }
       .detail-item a { color: var(--accent); text-decoration: none; }
-
-      .image-nav-btn {
-        position: absolute; top: 50%; transform: translateY(-50%);
-        background: rgba(0, 0, 0, 0.5); color: white; border: none;
-        width: 50px; height: 50px; border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        cursor: pointer; z-index: 10; font-size: 32px;
-      }
-      .image-nav-btn.prev { left: 20px; } .image-nav-btn.next { right: 20px; }
-      .image-counter { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.6); color: white; padding: 4px 16px; border-radius: 20px; font-size: 13px; z-index: 10; }
 
       .main-nav-btn {
         position: fixed; top: 50%; transform: translateY(-50%);
@@ -121,7 +117,6 @@ export class PostLightbox extends LitElement {
   @property({ type: Array }) posts: ProcessedPost[] = [];
   @property({ type: Number }) currentIndex = -1;
 
-  @state() private currentImageIndex = 0;
   @state() private loadingRelated = false;
   @state() private relatedPosts: RecResult[] = [];
   @state() private navigationStack: ProcessedPost[] = [];
@@ -139,7 +134,6 @@ export class PostLightbox extends LitElement {
       if (this.open) {
         document.body.style.overflow = 'hidden';
         this.addEventListener('keydown', this.handleKeyDown);
-        this.currentImageIndex = 0;
       } else {
         document.body.style.overflow = '';
         this.removeEventListener('keydown', this.handleKeyDown);
@@ -147,7 +141,6 @@ export class PostLightbox extends LitElement {
     }
 
     if (changedProperties.has('post') && this.post) {
-      this.currentImageIndex = 0;
       this.activeTab = null;
       this.likes = null;
       this.comments = null;
@@ -160,11 +153,8 @@ export class PostLightbox extends LitElement {
   private handleKeyDown = (e: KeyboardEvent) => {
     if (!this.open) return;
     if (e.key === 'Escape') this.close();
-    if (e.key === 'ArrowLeft') this.currentImageIndex > 0 ? this.prevImage(e) : this.navigatePrev();
-    if (e.key === 'ArrowRight') {
-      const files = this.post?.content?.files || [];
-      this.currentImageIndex < files.length - 1 ? this.nextImage(e) : this.navigateNext();
-    }
+    if (e.key === 'ArrowLeft') this.navigatePrev();
+    if (e.key === 'ArrowRight') this.navigateNext();
   };
 
   private close(e?: Event) {
@@ -188,9 +178,6 @@ export class PostLightbox extends LitElement {
       }));
     }
   }
-
-  private nextImage(e: Event) { e.stopPropagation(); const files = this.post?.content?.files || []; if (this.currentImageIndex < files.length - 1) this.currentImageIndex++; }
-  private prevImage(e: Event) { e.stopPropagation(); if (this.currentImageIndex > 0) this.currentImageIndex--; }
 
   // Engagement Fetchers
   private async toggleTab(tab: 'likes' | 'reblogs' | 'comments') {
@@ -259,36 +246,43 @@ export class PostLightbox extends LitElement {
     const files = this.post.content?.files || [];
     const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
     const isTombstone = !media.url && !this.post.body;
-    const currentUrl = files[this.currentImageIndex] || media.url || media.videoUrl;
 
-    const lightboxUrl = resolveMediaUrl(currentUrl, 'lightbox');
-    const posterUrl = resolveMediaUrl(currentUrl, 'poster');
-    const isMediaAnim = isAnimation(currentUrl);
+    // Use files if present, otherwise fallback to single url
+    const mediaSources = files.length > 0 ? files : (media.videoUrl || media.url ? [media.videoUrl || media.url] : []);
 
-    if (media.type === 'video') {
-      if (media.videoUrl) {
-        return keyed(currentUrl, html`<video controls autoplay muted playsinline webkit-playsinline preload="metadata" poster=${posterUrl}><source src=${lightboxUrl} type="video/mp4" @error=${this.handleImageError} /></video>`);
-      }
-      return this.renderGhost('🎬', isAdmin, isTombstone, 'Video Unavailable');
+    if (mediaSources.length === 0) {
+      return this.renderGhost(media.type === 'video' ? '🎬' : '🖼️', isAdmin, isTombstone, 'Content Unavailable');
     }
 
-    if (media.type === 'image') {
-      if (currentUrl) {
-        return html`
-          ${files.length > 1 ? html`
-            <button class="image-nav-btn prev" ?disabled=${this.currentImageIndex === 0} @click=${this.prevImage}>‹</button>
-            <button class="image-nav-btn next" ?disabled=${this.currentImageIndex === files.length - 1} @click=${this.nextImage}>›</button>
-            <div class="image-counter">${this.currentImageIndex + 1} / ${files.length}</div>
-          ` : ''}
-          ${keyed(currentUrl, isMediaAnim ? 
-            html`<video autoplay loop muted playsinline webkit-playsinline preload="metadata" poster=${posterUrl}><source src=${lightboxUrl} type="video/mp4" @error=${this.handleImageError} /></video>` : 
-            html`<img src=${lightboxUrl} @error=${this.handleImageError} />`
-          )}
-        `;
-      }
-      return this.renderGhost('🖼️', isAdmin, isTombstone, 'Content Unavailable');
-    }
-    return nothing;
+    return html`
+      <div class="media-stack">
+        ${mediaSources.map(src => {
+          const isAnim = isAnimation(src);
+          const lightboxUrl = resolveMediaUrl(src, 'lightbox');
+          const posterUrl = resolveMediaUrl(src, 'poster');
+
+          return html`
+            <div class="media-container">
+              ${isAnim ? html`
+                <video 
+                  autoplay 
+                  loop 
+                  muted 
+                  playsinline 
+                  webkit-playsinline 
+                  preload="metadata" 
+                  poster=${posterUrl}
+                >
+                  <source src=${lightboxUrl} type="video/mp4" @error=${this.handleImageError} />
+                </video>
+              ` : html`
+                <img src=${lightboxUrl} @error=${this.handleImageError} />
+              `}
+            </div>
+          `;
+        })}
+      </div>
+    `;
   }
 
   private renderGhost(icon: string, isAdmin: boolean, isTombstone: boolean, label: string) {
@@ -355,7 +349,9 @@ export class PostLightbox extends LitElement {
 
       <div class="lightbox-backdrop" @click=${(e: Event) => this.close(e)}>
         <div class="lightbox-content" @click=${(e: Event) => e.stopPropagation()}>
-          <div class="media-container">${this.renderMedia()}</div>
+          <div class="media-container" style="background:transparent; box-shadow:none;">
+            ${this.renderMedia()}
+          </div>
 
           <div class="info-section">
             <div class="lightbox-links">${this.renderLinks()}</div>
