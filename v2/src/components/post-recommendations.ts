@@ -55,15 +55,10 @@ export class PostRecommendations extends LitElement {
   @state() private loading = false;
   @state() private exhausted = false;
   @state() private infiniteScroll = false;
+  @state() private error = '';
 
-  private currentFetchId = 0;
+  private currentAbortController: AbortController | null = null;
   private seenIds = new Set<number>();
-
-  protected firstUpdated(): void {
-    if (this.postId) {
-      this.resetAndFetch();
-    }
-  }
 
   updated(changedProperties: Map<string, any>): void {
     if (changedProperties.has('postId')) {
@@ -72,45 +67,60 @@ export class PostRecommendations extends LitElement {
   }
 
   private async resetAndFetch() {
-    const id = typeof this.postId === 'string' ? parseInt(this.postId, 10) : this.postId;
-    if (!id) return;
+    const id = this.getNormalizedPostId();
+    if (!id) {
+      this.relatedPosts = [];
+      this.seenIds.clear();
+      return;
+    }
     
-    this.currentFetchId++;
-    const fetchId = this.currentFetchId;
+    // Cancel any in-flight request
+    if (this.currentAbortController) {
+      this.currentAbortController.abort();
+    }
+    this.currentAbortController = new AbortController();
+    const signal = this.currentAbortController.signal;
     
     this.relatedPosts = [];
     this.seenIds.clear();
     this.exhausted = false;
     this.loading = false;
+    this.error = '';
     
-    await this.fetchMore(fetchId);
+    await this.fetchMore(signal);
   }
 
-  private async fetchMore(fetchId?: number) {
-    const id = typeof this.postId === 'string' ? parseInt(this.postId, 10) : this.postId;
+  private getNormalizedPostId(): number {
+    if (typeof this.postId === 'number') return this.postId;
+    if (typeof this.postId === 'string') return parseInt(this.postId, 10) || 0;
+    return 0;
+  }
+
+  private async fetchMore(signal?: AbortSignal) {
+    const id = this.getNormalizedPostId();
     if (!id || this.loading || this.exhausted) return;
     
-    // If we were called with a specific fetchId, ensure it's still current
-    if (fetchId !== undefined && fetchId !== this.currentFetchId) return;
+    // If we're called manually (e.g. Load More button), use the current controller's signal
+    const fetchSignal = signal || this.currentAbortController?.signal;
 
     this.loading = true;
-    const currentId = this.currentFetchId;
+    this.error = '';
 
     try {
       const recs = await recService.getSimilarPosts(id, 12, this.relatedPosts.length);
       
-      // Abandon if a new fetch has started in the meantime
-      if (currentId !== this.currentFetchId) return;
+      if (fetchSignal?.aborted) return;
 
       if (recs.length === 0) {
         this.exhausted = true;
         return;
       }
 
-      // Backend sometimes uses 'id' instead of 'post_id'
+      // Normalize IDs from backend
       recs.forEach(r => {
-        if (!r.post_id && (r as any).id) {
-          r.post_id = parseInt((r as any).id, 10);
+        const rawId = r.post_id || (r as any).id;
+        if (rawId) {
+          r.post_id = typeof rawId === 'string' ? parseInt(rawId, 10) : rawId;
         }
       });
 
@@ -120,6 +130,8 @@ export class PostRecommendations extends LitElement {
 
       if (postIds.length > 0) {
         const batchResp = await apiClient.posts.batchGet({ post_ids: postIds });
+        if (fetchSignal?.aborted) return;
+
         const hydratedMap = new Map(batchResp.posts?.map(p => [p.id, p]));
         
         recs.forEach(r => { 
@@ -139,13 +151,15 @@ export class PostRecommendations extends LitElement {
       newItems.forEach(r => { if (r.post_id) this.seenIds.add(r.post_id); });
 
       this.relatedPosts = [...this.relatedPosts, ...newItems];
-      if (this.relatedPosts.length >= 96 || newItems.length === 0) this.exhausted = true;
-    } catch (e) {
-      console.error('Failed to fetch recommendations', e);
-    } finally {
-      if (currentId === this.currentFetchId) {
-        this.loading = false;
+      if (newItems.length === 0 || this.relatedPosts.length >= 96) {
+        this.exhausted = true;
       }
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return;
+      console.error('Failed to fetch recommendations', e);
+      this.error = 'Failed to load related posts.';
+    } finally {
+      this.loading = false;
     }
   }
 
@@ -154,20 +168,21 @@ export class PostRecommendations extends LitElement {
   }
 
   private navigateToRelated(rec: RecResult) {
-    const id = rec.post_id || (rec as any).id;
+    const id = rec.post_id;
     if (id) {
-      // Direct navigation to the post page as per user's "Best Practice" requirement
       window.location.href = `/post/${id}`;
     }
   }
 
   render() {
-    const id = typeof this.postId === 'string' ? parseInt(this.postId, 10) : this.postId;
-    if (id === undefined || id === null) return nothing;
+    const id = this.getNormalizedPostId();
+    if (!id) return nothing;
 
     return html`
       <h3>More like this ✨</h3>
       
+      ${this.error ? html`<div class="error-text" style="color: var(--error); font-size: 13px; margin-bottom: 16px;">${this.error}</div>` : ''}
+
       <div class="gutter-grid">
         ${repeat(this.relatedPosts, r => r.post_id, r => {
           const h = (r as any)._hydratedPost;
