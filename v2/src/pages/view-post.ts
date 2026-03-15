@@ -82,6 +82,7 @@ export class ViewPost extends LitElement {
   @state() private post: ProcessedPost | null = null;
   @state() private relatedPosts: RecResult[] = [];
   @state() private loadingRelated = false;
+  private hasAutoOpened = false;
 
   protected updated(changedProperties: Map<string, any>): void {
     if (changedProperties.has('postId')) {
@@ -105,6 +106,22 @@ export class ViewPost extends LitElement {
           ...resp.post,
           _media: extractMedia(resp.post)
         };
+        
+        // AUTO-OPEN LIGHTBOX ON DEEP LINK
+        // Only if we haven't already auto-opened for this instance
+        if (!this.hasAutoOpened) {
+          this.hasAutoOpened = true;
+          this.dispatchEvent(new CustomEvent('post-click', {
+            detail: { 
+              post: this.post,
+              posts: [this.post],
+              index: 0
+            },
+            bubbles: true,
+            composed: true
+          }));
+        }
+
         this.fetchRelatedPosts();
       } else {
         this.error = 'Post not found.';

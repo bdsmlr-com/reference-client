@@ -194,6 +194,7 @@ export class PostLightbox extends LitElement {
       if (this.open) {
         document.body.style.overflow = 'hidden';
         // Only store underlyingUrl if it's NOT a post detail page
+        // This is "where we go back to" when closing the lightbox
         if (!window.location.pathname.startsWith('/post/')) {
           this.underlyingUrl = window.location.href;
         }
@@ -221,9 +222,9 @@ export class PostLightbox extends LitElement {
     if (!this.post) return;
     const postUrl = `/post/${this.post.id}`;
     if (window.location.pathname !== postUrl) {
-      // If we are navigating to a "related" post, we WANT a pushState
-      // so the back button takes us to the previous post.
       window.history.pushState({ postId: this.post.id }, '', postUrl);
+      // Dispatch popstate so the background view-post (if any) updates in sync
+      window.dispatchEvent(new PopStateEvent('popstate'));
     }
   }
 
@@ -238,11 +239,17 @@ export class PostLightbox extends LitElement {
     if (e) { e.stopPropagation(); e.preventDefault(); }
     this.open = false;
     
-    // Restore underlying URL if we were on a different page (like a feed)
-    if (restoreUrl && this.underlyingUrl && window.location.href !== this.underlyingUrl) {
-      // If we are currently on a /post/ URL but the underlying page was / or /blog,
-      // going back to the underlying URL is appropriate.
-      window.history.pushState({}, '', this.underlyingUrl);
+    if (restoreUrl && this.underlyingUrl) {
+      const isCurrentlyPost = window.location.pathname.startsWith('/post/');
+      const wasPost = new URL(this.underlyingUrl).pathname.startsWith('/post/');
+      
+      // If we started on a post page and ended on a (possibly different) post page,
+      // stay on the current URL so we don't jump back to the first post.
+      // Otherwise (e.g. came from Feed), restore the original URL.
+      if (!wasPost && isCurrentlyPost && window.location.href !== this.underlyingUrl) {
+        window.history.pushState({}, '', this.underlyingUrl);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
     }
 
     this.dispatchEvent(new CustomEvent('lightbox-close', { bubbles: true, composed: true }));
