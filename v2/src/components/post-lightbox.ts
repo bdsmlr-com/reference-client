@@ -53,7 +53,7 @@ export class PostLightbox extends LitElement {
       }
       .close-btn:hover { background: #ff4444; border-color: #ff4444; transform: scale(1.1); }
 
-      .lightbox-content { width: 100%; max-width: 1200px; display: flex; flex-direction: column; gap: 24px; margin: 0 auto; }
+      .lightbox-content { width: 100%; max-width: 80vw; display: flex; flex-direction: column; gap: 24px; margin: 0 auto; }
 
       .media-stack {
         width: 100%;
@@ -257,6 +257,8 @@ export class PostLightbox extends LitElement {
   private renderMedia() {
     if (!this.post) return nothing;
     const media = this.post._media;
+    if (!media) return this.renderGhost('🖼️', false, false, 'Media Error');
+
     const files = this.post.content?.files || [];
     const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
     const isTombstone = !media.url && !this.post.body;
@@ -364,10 +366,18 @@ export class PostLightbox extends LitElement {
 
           <div class="info-section gutter-section">
             <h3 style="margin-top: 0;">More like this ✨</h3>
+            ${this.loadingRelated ? html`<loading-spinner message="Finding related posts..."></loading-spinner>` : ''}
+            
+            ${!this.loadingRelated && this.relatedPosts.length === 0 ? html`
+              <div style="text-align: center; padding: 20px; opacity: 0.5; font-size: 13px;">No related posts found.</div>
+            ` : ''}
+
             <div class="gutter-grid">
               ${repeat(this.relatedPosts, r => r.post_id, r => {
                 const h = (r as any)._hydratedPost;
-                const raw = h?._media?.url || h?.content?.thumbnail;
+                if (!h) return html`<div class="gutter-skeleton"></div>`;
+                
+                const raw = h._media?.url || h._media?.videoUrl || h.content?.thumbnail;
                 return html`
                   <div class="gutter-item" @click=${() => this.navigateToRelated(r)}>
                     <media-renderer .src=${raw} .type=${'gutter'}></media-renderer>
