@@ -231,7 +231,16 @@ export class PostLightbox extends LitElement {
       if (postIds.length > 0) {
         const batchResp = await apiClient.posts.batchGet({ post_ids: postIds });
         const hydratedMap = new Map(batchResp.posts?.map(p => [p.id, p]));
-        recs.forEach(r => { if (r.post_id) (r as any)._hydratedPost = hydratedMap.get(r.post_id); });
+        recs.forEach(r => { 
+          if (r.post_id) {
+            const p = hydratedMap.get(r.post_id);
+            if (p) {
+              // CRITICAL: Attach extracted media metadata
+              (p as any)._media = extractMedia(p);
+              (r as any)._hydratedPost = p;
+            }
+          }
+        });
       }
       this.relatedPosts = [...this.relatedPosts, ...recs];
     } finally { this.loadingRelated = false; }
@@ -256,7 +265,8 @@ export class PostLightbox extends LitElement {
 
   private renderMedia() {
     if (!this.post) return nothing;
-    const media = this.post._media;
+    // Defensive check: sometimes re-navigation or hydration gaps might miss this
+    const media = this.post._media || extractMedia(this.post);
     if (!media) return this.renderGhost('🖼️', false, false, 'Media Error');
 
     const files = this.post.content?.files || [];
