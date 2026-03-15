@@ -60,6 +60,12 @@ export class PostRecommendations extends LitElement {
   private currentAbortController: AbortController | null = null;
   private seenIds = new Set<number>();
 
+  protected firstUpdated(): void {
+    if (this.postId) {
+      this.resetAndFetch();
+    }
+  }
+
   updated(changedProperties: Map<string, any>): void {
     if (changedProperties.has('postId')) {
       this.resetAndFetch();
@@ -178,7 +184,10 @@ export class PostRecommendations extends LitElement {
     const id = this.getNormalizedPostId();
     if (!id) return nothing;
 
+    const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+
     return html`
+      ${isAdmin ? html`<div style="font-family:monospace; font-size:10px; color:#00ff00; background:#000; padding:2px 4px; border-radius:4px; margin-bottom:8px;">[REC_DEBUG: id=${id}, count=${this.relatedPosts.length}, loading=${this.loading}]</div>` : ''}
       <h3>More like this ✨</h3>
       
       ${this.error ? html`<div class="error-text" style="color: var(--error); font-size: 13px; margin-bottom: 16px;">${this.error}</div>` : ''}
