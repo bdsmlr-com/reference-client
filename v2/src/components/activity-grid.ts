@@ -224,17 +224,21 @@ export class ActivityGrid extends LitElement {
         width: 100%;
         max-width: 1200px;
         margin: 0 auto;
+        padding: 0 16px;
+        box-sizing: border-box;
       }
 
       @media (min-width: 768px) {
         :host {
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(4, 1fr); /* Matching Skeleton exactly */
         }
       }
 
-      @media (min-width: 1024px) {
+      @media (max-width: 600px) {
         :host {
-          grid-template-columns: repeat(6, 1fr); /* Super Matrix density */
+          grid-template-columns: 1fr;
+          gap: 12px;
+          padding: 0 12px;
         }
       }
 

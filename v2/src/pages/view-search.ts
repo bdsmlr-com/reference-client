@@ -123,6 +123,7 @@ export class ViewSearch extends LitElement {
 
       .grid-container {
         margin-bottom: 20px;
+        padding: 0 16px;
       }
 
       @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE - 1)}px) {
