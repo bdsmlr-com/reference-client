@@ -411,7 +411,7 @@ export class PostLightbox extends LitElement {
                 const raw = h?._media?.url || h?.content?.thumbnail;
                 return html`
                   <div class="gutter-item" @click=${() => this.navigateToRelated(r)}>
-                    ${raw ? html`<img src=${resolveMediaUrl(raw, 'gutter')} />` : html`<div class="gutter-skeleton"></div>`}
+                    ${raw ? html`<img src=${resolveMediaUrl(raw, 'gutter')} @error=${this.handleImageError} />` : html`<div class="gutter-skeleton"></div>`}
                   </div>
                 `;
               })}
