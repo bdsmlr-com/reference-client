@@ -8,7 +8,6 @@ import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
   generatePaginationCursorKey,
-  getCachedPaginationCursor,
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
@@ -350,18 +349,6 @@ export class ViewFeed extends LitElement {
       types: this.selectedTypes.join(','),
       variants: this.selectedVariants.join(','),
     });
-
-    const cachedState = getCachedPaginationCursor(this.paginationKey);
-    if (cachedState && cachedState.itemCount > 0) {
-      this.backendCursor = cachedState.cursor;
-      this.exhausted = cachedState.exhausted;
-      const scrollTarget = cachedState.scrollPosition;
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          window.scrollTo({ top: scrollTarget, behavior: 'auto' });
-        }, 100);
-      });
-    }
 
     try {
       await this.fillPage();
