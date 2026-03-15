@@ -81,6 +81,21 @@ export class ActivityItem extends LitElement {
         gap: 3px;
       }
 
+      .multi-image-badge {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 9px;
+        font-weight: bold;
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        z-index: 3;
+      }
+
       .reblog-variant-badge {
         position: absolute;
         top: 6px;
@@ -176,6 +191,7 @@ export class ActivityItem extends LitElement {
             </div>
           `}
 
+          ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge" title="Post contains ${p.content.files.length} items">1 / ${p.content.files.length}</div>` : ''}
           ${rbCount > 0 ? html`<div class="reblog-variant-badge" title="Aggregated reblogs">+${rbCount}</div>` : ''}
           ${isAdmin && isTombstone ? html`<div class="admin-label">Tombstone</div>` : nothing}
         </div>

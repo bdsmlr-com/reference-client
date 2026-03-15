@@ -3,8 +3,7 @@
  * DUMB FRONTEND: Trusts the backend URLs entirely.
  */
 
-const MEDIA_PROXY_BASE = 'http://100.98.53.103:8085/unsafe';
-const DEFAULT_GRAVITY = 'gravity:sm';
+import { MEDIA_PROXY_BASE, DEFAULT_GRAVITY } from '../config.js';
 
 export type MediaContext = 'thumbnail' | 'feed' | 'lightbox' | 'gutter' | 'poster';
 
