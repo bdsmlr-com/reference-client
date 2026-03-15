@@ -219,7 +219,7 @@ export class PostCard extends LitElement {
     
     // Media URLs
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
-    const thumbUrl = resolveMediaUrl(rawUrl, 'thumbnail');
+    const thumbUrl = resolveMediaUrl(rawUrl, 'gallery-grid');
     const posterUrl = resolveMediaUrl(rawUrl, 'poster');
     const isMediaAnim = isAnimation(rawUrl);
 

@@ -3,9 +3,9 @@
  * Supports environment-specific routing (unsafe vs fixed paths).
  */
 
-import { CONFIG } from '../config.js';
+import { CONFIG, MEDIA_PRESETS } from '../config.js';
 
-export type MediaContext = 'thumbnail' | 'feed' | 'lightbox' | 'gutter' | 'poster';
+export type MediaRenderType = 'gallery-grid' | 'gallery-masonry' | 'feed' | 'lightbox' | 'gutter' | 'poster';
 
 export const BUCKET_LIST = [
   'ocdn012.bdsmlr.com',
@@ -14,20 +14,6 @@ export const BUCKET_LIST = [
   'cdn013.bdsmlr.com',
   'cdn002.reblogme.com'
 ];
-
-interface MediaOptions {
-  width?: number;
-  height?: number;
-  format?: 'webp' | 'mp4' | 'jpg';
-}
-
-const CONTEXT_PRESETS: Record<MediaContext, MediaOptions> = {
-  thumbnail: { width: 300, height: 300 },
-  feed: { width: 600, height: 0 },
-  lightbox: { width: 1200, height: 0 },
-  gutter: { width: 150, height: 150 },
-  poster: { width: 600, height: 0, format: 'jpg' }
-};
 
 /**
  * Maps a URL to an S3 scheme for imgproxy.
@@ -58,29 +44,32 @@ function toS3Scheme(url: string): string {
   return cleanUrl;
 }
 
-export function resolveMediaUrl(url: string | undefined, context: MediaContext): string {
+export function resolveMediaUrl(url: string | undefined, type: MediaRenderType): string {
   if (!url) return '';
   const s3Url = toS3Scheme(url);
-  const preset = CONTEXT_PRESETS[context];
+  const preset = MEDIA_PRESETS[type];
   
+  if (!preset) {
+    console.warn(`[MediaResolver] Missing preset for type: ${type}`);
+    return url;
+  }
+
   if (CONFIG.imgproxyMode === 'fixed') {
     // FIXED PATH MODE: Uses pre-configured gateway aliases
-    // Example: https://media.bdsmlr.com/thumbnail/s3://ocdn012.bdsmlr.com/...
-    return `${CONFIG.mediaProxyBase}/${context}/${s3Url}`;
+    return `${CONFIG.mediaProxyBase}/${type}/${s3Url}`;
   }
 
   // UNSAFE MODE: Dynamic transformations
   const parts: string[] = [];
   const isAnim = isAnimation(url);
   
-  const resizeMode = (preset.height && preset.height > 0) ? 'fill' : 'fit';
-  parts.push(`resize:${resizeMode}:${preset.width || 0}:${preset.height || 0}`);
+  parts.push(`resize:${preset.resize}:${preset.width}:${preset.height}`);
   
   if (!isAnim) {
-    parts.push(CONFIG.defaultGravity);
+    parts.push(preset.gravity);
   }
   
-  if (isAnim && context !== 'poster') {
+  if (isAnim && type !== 'poster') {
     parts.push('format:mp4');
   } else if (preset.format) {
     parts.push(`format:${preset.format}`);

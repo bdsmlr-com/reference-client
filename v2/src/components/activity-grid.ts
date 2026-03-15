@@ -158,7 +158,7 @@ export class ActivityItem extends LitElement {
     const p = this.post;
     const media = p._media;
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
-    const thumbUrl = resolveMediaUrl(rawUrl, 'thumbnail');
+    const thumbUrl = resolveMediaUrl(rawUrl, 'gallery-grid');
     const posterUrl = resolveMediaUrl(rawUrl, 'poster');
     const isMediaAnim = isAnimation(rawUrl);
     const rbCount = p.reblog_variants?.length || 0;
