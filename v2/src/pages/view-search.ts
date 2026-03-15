@@ -7,7 +7,6 @@ import { getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-reso
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
   generatePaginationCursorKey,
-  getCachedPaginationCursor,
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
@@ -256,18 +255,6 @@ export class ViewSearch extends LitElement {
       sort: this.sortValue,
       types: this.selectedTypes.join(','),
     });
-
-    const cachedState = getCachedPaginationCursor(this.paginationKey);
-    if (cachedState && cachedState.itemCount > 0) {
-      this.backendCursor = cachedState.cursor;
-      this.exhausted = cachedState.exhausted;
-      const scrollTarget = cachedState.scrollPosition;
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          window.scrollTo({ top: scrollTarget, behavior: 'auto' });
-        }, 100);
-      });
-    }
 
     try {
       await this.fillPage();
