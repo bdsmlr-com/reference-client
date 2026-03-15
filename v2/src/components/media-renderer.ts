@@ -67,11 +67,21 @@ export class MediaRenderer extends LitElement {
   }
 
   render() {
-    if (this.showPlaceholder || !this.src) {
+    // If src is truly missing, show a descriptive placeholder immediately
+    if (!this.src) {
       return html`
-        <div class="error-placeholder">
-          <span>🖼️</span>
-          <span>Content Unavailable</span>
+        <div class="error-placeholder" style="background: #1a1a1a; border: 1px dashed #333;">
+          <span style="font-size: 20px; opacity: 0.5;">❓</span>
+          <span style="font-size: 10px; opacity: 0.3;">No Source</span>
+        </div>
+      `;
+    }
+
+    if (this.showPlaceholder) {
+      return html`
+        <div class="error-placeholder" style="background: #1a1a1a; border: 1px solid #442222;">
+          <span style="font-size: 20px; opacity: 0.5;">🖼️</span>
+          <span style="font-size: 10px; opacity: 0.3;">Load Failed</span>
         </div>
       `;
     }

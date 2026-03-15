@@ -229,20 +229,28 @@ export class PostLightbox extends LitElement {
       const recs = await recService.getSimilarPosts(this.post.id, 12, this.relatedPosts.length);
       const postIds = recs.map(r => r.post_id).filter((id): id is number => !!id);
       if (postIds.length > 0) {
-        const batchResp = await apiClient.posts.batchGet({ post_ids: postIds });
-        const hydratedMap = new Map(batchResp.posts?.map(p => [p.id, p]));
-        recs.forEach(r => { 
-          if (r.post_id) {
-            const p = hydratedMap.get(r.post_id);
-            if (p) {
-              // CRITICAL: Attach extracted media metadata
-              (p as any)._media = extractMedia(p);
-              (r as any)._hydratedPost = p;
+        try {
+          const batchResp = await apiClient.posts.batchGet({ post_ids: postIds });
+          const hydratedMap = new Map(batchResp.posts?.map(p => [p.id, p]));
+          
+          recs.forEach(r => { 
+            if (r.post_id) {
+              const p = hydratedMap.get(r.post_id);
+              if (p) {
+                // Ensure media is extracted
+                const processed = p as ProcessedPost;
+                processed._media = extractMedia(processed);
+                (r as any)._hydratedPost = processed;
+              }
             }
-          }
-        });
+          });
+        } catch (e) {
+          console.error('[Lightbox] Gutter hydration failed', e);
+        }
       }
+      
       this.relatedPosts = [...this.relatedPosts, ...recs];
+      this.requestUpdate(); // Force Lit to see the new _hydratedPost properties
     } finally { this.loadingRelated = false; }
   }
 

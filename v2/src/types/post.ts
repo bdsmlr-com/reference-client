@@ -36,7 +36,9 @@ export function extractMedia(post: Post): MediaInfo {
     case 2: // Image
       return { type: 'image', url: file, html: preview || html };
     case 3: // Video
-      return { type: 'video', url: thumb, videoUrl: file, html: preview || html };
+      // Fallback: If no dedicated thumbnail, use the video file itself as the source
+      // imgproxy can often extract a frame from the video.
+      return { type: 'video', url: thumb || file, videoUrl: file, html: preview || html };
     case 4: // Audio
       return { type: 'audio', audioUrl: file, html: preview || html, text: preview || text };
     case 5: // Link
