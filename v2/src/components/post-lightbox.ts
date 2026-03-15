@@ -11,6 +11,7 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { POST_TYPE_ICONS, extractMedia, type ProcessedPost } from '../types/post.js';
 import type { Like, Comment, Reblog, PostType } from '../types/api.js';
 import './media-renderer.js';
+import './load-footer.js';
 
 @customElement('post-lightbox')
 export class PostLightbox extends LitElement {
@@ -138,8 +139,6 @@ export class PostLightbox extends LitElement {
   @state() private loadingRelated = false;
   @state() private relatedPosts: RecResult[] = [];
   @state() private navigationStack: ProcessedPost[] = [];
-
-  // Interaction Details State
   @state() private activeTab: 'likes' | 'reblogs' | 'comments' | null = null;
   @state() private likes: Like[] | null = null;
   @state() private comments: Comment[] | null = null;
@@ -147,13 +146,32 @@ export class PostLightbox extends LitElement {
   @state() private loadingDetails = false;
   @state() private infiniteScroll = false;
   @state() private exhaustedGutter = false;
+  @state() private underlyingUrl: string = window.location.href;
+
+  connectedCallback() {
+    super.connectedCallback();
+    window.addEventListener('popstate', this.handlePopState);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener('popstate', this.handlePopState);
+  }
+
+  private handlePopState = () => {
+    if (this.open) {
+      this.close(undefined, false); // Close without pushing back to stack
+    }
+  };
 
   updated(changedProperties: Map<string, any>): void {
     super.updated(changedProperties);
     if (changedProperties.has('open')) {
       if (this.open) {
         document.body.style.overflow = 'hidden';
+        this.underlyingUrl = window.location.href;
         this.addEventListener('keydown', this.handleKeyDown);
+        this.syncUrl();
       } else {
         document.body.style.overflow = '';
         this.removeEventListener('keydown', this.handleKeyDown);
@@ -168,11 +186,16 @@ export class PostLightbox extends LitElement {
       this.exhaustedGutter = false;
       this.fetchRelatedPosts(true);
       this.shadowRoot?.querySelector('.lightbox-backdrop')?.scrollTo(0, 0);
+      if (this.open) this.syncUrl();
     }
   }
 
-  private handleInfiniteToggle(e: CustomEvent) {
-    this.infiniteScroll = e.detail.enabled;
+  private syncUrl() {
+    if (!this.post) return;
+    const postUrl = `/post/${this.post.id}`;
+    if (window.location.pathname !== postUrl) {
+      window.history.pushState({ postId: this.post.id }, '', postUrl);
+    }
   }
 
   private handleKeyDown = (e: KeyboardEvent) => {
@@ -182,9 +205,15 @@ export class PostLightbox extends LitElement {
     if (e.key === 'ArrowRight') this.navigateNext();
   };
 
-  private close(e?: Event) {
+  private close(e?: Event, pushBack = true) {
     if (e) { e.stopPropagation(); e.preventDefault(); }
     this.open = false;
+    
+    // Restore underlying URL if we pushed post states
+    if (pushBack && window.location.href !== this.underlyingUrl) {
+      window.history.pushState({}, '', this.underlyingUrl);
+    }
+
     this.dispatchEvent(new CustomEvent('lightbox-close', { bubbles: true, composed: true }));
   }
 
@@ -202,6 +231,10 @@ export class PostLightbox extends LitElement {
         detail: { direction: 'next', index: this.currentIndex + 1 }, bubbles: true, composed: true
       }));
     }
+  }
+
+  private handleInfiniteToggle(e: CustomEvent) {
+    this.infiniteScroll = e.detail.enabled;
   }
 
   private async toggleTab(tab: 'likes' | 'reblogs' | 'comments') {
@@ -229,11 +262,24 @@ export class PostLightbox extends LitElement {
   }
 
   private async fetchRelatedPosts(clearFirst = false) {
-    if (!this.post || this.loadingRelated) return;
-    if (clearFirst) this.relatedPosts = [];
+    if (!this.post || this.loadingRelated || this.exhaustedGutter) return;
+    if (clearFirst) {
+      this.relatedPosts = [];
+      this.exhaustedGutter = false;
+    }
+    
+    if (this.relatedPosts.length >= 96) {
+      this.exhaustedGutter = true;
+      return;
+    }
+
     this.loadingRelated = true;
     try {
       const recs = await recService.getSimilarPosts(this.post.id, 12, this.relatedPosts.length);
+      if (recs.length === 0) {
+        this.exhaustedGutter = true;
+      }
+
       const postIds = recs.map(r => r.post_id).filter((id): id is number => !!id);
       if (postIds.length > 0) {
         try {
@@ -244,7 +290,6 @@ export class PostLightbox extends LitElement {
             if (r.post_id) {
               const p = hydratedMap.get(r.post_id);
               if (p) {
-                // Ensure media is extracted
                 const processed = p as ProcessedPost;
                 processed._media = extractMedia(processed);
                 (r as any)._hydratedPost = processed;
@@ -257,7 +302,8 @@ export class PostLightbox extends LitElement {
       }
       
       this.relatedPosts = [...this.relatedPosts, ...recs];
-      this.requestUpdate(); // Force Lit to see the new _hydratedPost properties
+      if (this.relatedPosts.length >= 96) this.exhaustedGutter = true;
+      this.requestUpdate(); 
     } finally { this.loadingRelated = false; }
   }
 
@@ -424,5 +470,11 @@ export class PostLightbox extends LitElement {
         </div>
       </div>
     `;
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'post-lightbox': PostLightbox;
   }
 }
