@@ -256,6 +256,12 @@ export class SkeletonLoader extends LitElement {
         }
       }
 
+      @media (min-width: 1024px) {
+        .skeleton-grid {
+          grid-template-columns: repeat(6, 1fr); /* Matching Super Matrix */
+        }
+      }
+
       /* Feed layout - always single column */
       .skeleton-feed {
         display: flex;
