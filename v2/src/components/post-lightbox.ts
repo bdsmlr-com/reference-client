@@ -9,8 +9,8 @@ import { repeat } from 'lit/directives/repeat.js';
 import { recService, type RecResult } from '../services/recommendation-api.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { POST_TYPE_ICONS, extractMedia, type ProcessedPost } from '../types/post.js';
-import { resolveMediaUrl, isAnimation, probeNextBucket } from '../services/media-resolver.js';
 import type { Like, Comment, Reblog, PostType } from '../types/api.js';
+import './media-renderer.js';
 
 @customElement('post-lightbox')
 export class PostLightbox extends LitElement {
@@ -63,11 +63,10 @@ export class PostLightbox extends LitElement {
       }
 
       .media-container {
-        width: 100%; background: #000; border-radius: 8px; overflow: hidden;
+        width: 100%; border-radius: 8px; overflow: hidden;
         position: relative; display: flex; align-items: center; justify-content: center;
-        min-height: 200px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
       }
-      .media-container img, .media-container video { max-width: 100%; display: block; height: auto; max-height: 95vh; }
 
       .info-section { background: var(--bg-panel); padding: 24px; border-radius: 8px; border: 1px solid var(--border); width: 100%; }
       .lightbox-links { font-size: 16px; margin-bottom: 16px; color: var(--text-muted); }
@@ -92,9 +91,7 @@ export class PostLightbox extends LitElement {
       .detail-item a { color: var(--accent); text-decoration: none; }
 
       /* Related Gutter ✨ */
-      .gutter-section {
-        margin-top: 24px;
-      }
+      .gutter-section { margin-top: 24px; }
       .gutter-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -110,22 +107,7 @@ export class PostLightbox extends LitElement {
         border: 1px solid var(--border);
         transition: transform 0.2s;
       }
-      .gutter-item:hover {
-        transform: scale(1.05);
-        border-color: var(--accent);
-      }
-      .gutter-item img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-      .gutter-skeleton {
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, var(--bg-panel-alt) 25%, var(--border) 50%, var(--bg-panel-alt) 75%);
-        background-size: 200% 100%;
-        animation: loading 1.5s infinite;
-      }
+      .gutter-item:hover { transform: scale(1.05); border-color: var(--accent); }
 
       .main-nav-btn {
         position: fixed; top: 50%; transform: translateY(-50%);
@@ -189,7 +171,6 @@ export class PostLightbox extends LitElement {
   private handleKeyDown = (e: KeyboardEvent) => {
     if (!this.open) return;
     if (e.key === 'Escape') this.close();
-    // Re-enabling Keyboard Post-to-Post Navigation
     if (e.key === 'ArrowLeft') this.navigatePrev();
     if (e.key === 'ArrowRight') this.navigateNext();
   };
@@ -216,7 +197,6 @@ export class PostLightbox extends LitElement {
     }
   }
 
-  // Engagement Fetchers
   private async toggleTab(tab: 'likes' | 'reblogs' | 'comments') {
     if (this.activeTab === tab) { this.activeTab = null; return; }
     this.activeTab = tab;
@@ -263,7 +243,7 @@ export class PostLightbox extends LitElement {
     const hydrated = (rec as any)._hydratedPost;
     if (hydrated) { 
       this.post = hydrated;
-      this.currentIndex = -1; // Detach from main list index if navigating from recommendations
+      this.currentIndex = -1;
     } 
     else {
       const resp = await apiClient.posts.get(rec.post_id);
@@ -271,15 +251,6 @@ export class PostLightbox extends LitElement {
         this.post = { ...resp.post, _media: extractMedia(resp.post) };
         this.currentIndex = -1;
       }
-    }
-  }
-
-  private handleImageError(e: Event) {
-    const el = e.target as HTMLElement;
-    if (probeNextBucket(el)) return;
-    
-    if (el instanceof HTMLImageElement && el.src.includes('/preview/') && !el.dataset.triedOriginal) {
-      el.dataset.triedOriginal = 'true'; el.src = el.src.replace(/\/preview\/[^/]+\//, '/');
     }
   }
 
@@ -298,23 +269,11 @@ export class PostLightbox extends LitElement {
 
     return html`
       <div class="media-stack">
-        ${mediaSources.map(src => {
-          const isAnim = isAnimation(src);
-          const lightboxUrl = resolveMediaUrl(src, 'lightbox');
-          const posterUrl = resolveMediaUrl(src, 'poster');
-
-          return html`
-            <div class="media-container">
-              ${isAnim ? html`
-                <video autoplay loop muted playsinline webkit-playsinline preload="metadata" poster=${posterUrl}>
-                  <source src=${lightboxUrl} type="video/mp4" @error=${this.handleImageError} />
-                </video>
-              ` : html`
-                <img src=${lightboxUrl} @error=${this.handleImageError} />
-              `}
-            </div>
-          `;
-        })}
+        ${mediaSources.map(src => html`
+          <div class="media-container">
+            <media-renderer .src=${src} .type=${'lightbox'}></media-renderer>
+          </div>
+        `)}
       </div>
     `;
   }
@@ -411,7 +370,7 @@ export class PostLightbox extends LitElement {
                 const raw = h?._media?.url || h?.content?.thumbnail;
                 return html`
                   <div class="gutter-item" @click=${() => this.navigateToRelated(r)}>
-                    ${raw ? html`<img src=${resolveMediaUrl(raw, 'gutter')} @error=${this.handleImageError} />` : html`<div class="gutter-skeleton"></div>`}
+                    <media-renderer .src=${raw} .type=${'gutter'}></media-renderer>
                   </div>
                 `;
               })}

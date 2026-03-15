@@ -1,14 +1,15 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { resolveMediaUrl, isAnimation, probeNextBucket } from '../services/media-resolver.js';
 import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
 import { formatDate } from '../services/date-formatter.js';
+import './media-renderer.js';
 
 /**
  * Refined Matrix item (v2).
  * Metadata below the image in two readable lines.
+ * Uses centralized <media-renderer>.
  */
 @customElement('activity-item')
 export class ActivityItem extends LitElement {
@@ -43,13 +44,6 @@ export class ActivityItem extends LitElement {
         background: #000;
         position: relative;
         overflow: hidden;
-      }
-
-      img, video {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
       }
 
       .card-info {
@@ -120,6 +114,7 @@ export class ActivityItem extends LitElement {
         font-size: 8px;
         padding: 2px 4px;
         text-transform: uppercase;
+        z-index: 4;
       }
     `
   ];
@@ -135,32 +130,10 @@ export class ActivityItem extends LitElement {
     }));
   }
 
-  private handleImageError(e: Event) {
-    const el = e.target as HTMLElement;
-    
-    // 1. Try Authoritative Bucket Probing (Supports img and video/source)
-    if (probeNextBucket(el)) return;
-
-    // 2. Try Raw Backend URL (Final Fallback)
-    if (el instanceof HTMLImageElement && !el.dataset.triedOriginal) {
-      el.dataset.triedOriginal = 'true';
-      const media = this.post._media;
-      const rawUrl = media.url || media.videoUrl || media.audioUrl;
-      if (rawUrl) {
-        el.src = rawUrl;
-        return;
-      }
-    }
-    el.style.display = 'none';
-  }
-
   render() {
     const p = this.post;
     const media = p._media;
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
-    const thumbUrl = resolveMediaUrl(rawUrl, 'gallery-grid');
-    const posterUrl = resolveMediaUrl(rawUrl, 'poster');
-    const isMediaAnim = isAnimation(rawUrl);
     const rbCount = p.reblog_variants?.length || 0;
     
     let typeIcon = POST_TYPE_ICONS[p.type as PostType] || '📄';
@@ -174,22 +147,11 @@ export class ActivityItem extends LitElement {
     return html`
       <article class="card" @click=${this.handleClick}>
         <div class="media-container">
-          ${rawUrl ? html`
-            ${isMediaAnim ? html`
-              <video 
-                autoplay loop muted playsinline webkit-playsinline 
-                preload="metadata" poster=${posterUrl}
-              >
-                <source src=${thumbUrl} type="video/mp4" @error=${this.handleImageError}>
-              </video>
-            ` : html`
-              <img src=${thumbUrl} loading="lazy" @error=${this.handleImageError} />
-            `}
-          ` : html`
-            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; opacity:0.3; font-size:32px;">
-              ${typeIcon}
-            </div>
-          `}
+          <media-renderer 
+            .src=${rawUrl} 
+            .type=${'gallery-grid'}
+            style="object-fit: cover;"
+          ></media-renderer>
 
           ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge" title="Post contains ${p.content.files.length} items">1 / ${p.content.files.length}</div>` : ''}
           ${rbCount > 0 ? html`<div class="reblog-variant-badge" title="Aggregated reblogs">+${rbCount}</div>` : ''}
@@ -236,15 +198,7 @@ export class ActivityGrid extends LitElement {
 
       @media (min-width: 1024px) {
         :host {
-          grid-template-columns: repeat(6, 1fr); /* Restoring Super Matrix */
-        }
-      }
-
-      @media (max-width: 600px) {
-        :host {
-          grid-template-columns: 1fr;
-          gap: 12px;
-          padding: 0 12px;
+          grid-template-columns: repeat(6, 1fr); /* Super Matrix density */
         }
       }
 

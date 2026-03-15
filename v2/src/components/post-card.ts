@@ -4,7 +4,7 @@ import { baseStyles } from '../styles/theme.js';
 import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
-import { resolveMediaUrl, isAnimation, probeNextBucket } from '../services/media-resolver.js';
+import './media-renderer.js';
 
 @customElement('post-card')
 export class PostCard extends LitElement {
@@ -77,14 +77,6 @@ export class PostCard extends LitElement {
         overflow: hidden;
       }
 
-      .media-container img, 
-      .media-container video {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-      }
-
       .multi-image-badge {
         position: absolute;
         top: 8px;
@@ -147,25 +139,17 @@ export class PostCard extends LitElement {
         border-radius: 10px;
       }
 
-      /* Ghost/Error States */
-      .error-ghost {
-        width: 100%;
-        height: 100%;
-        background: var(--bg-panel-alt);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-      }
-
       .diagnostic-label {
+        position: absolute;
+        bottom: 8px;
+        left: 8px;
         font-family: monospace;
         font-size: 8px;
-        background: #000;
+        background: rgba(0,0,0,0.8);
         color: #00ff00;
         padding: 1px 4px;
         border-radius: 2px;
+        z-index: 2;
       }
 
       .video-overlay-icon {
@@ -178,6 +162,7 @@ export class PostCard extends LitElement {
         opacity: 0.8;
         pointer-events: none;
         text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        z-index: 2;
       }
     `,
   ];
@@ -194,24 +179,6 @@ export class PostCard extends LitElement {
     );
   }
 
-  private handleImageError(e: Event): void {
-    const el = e.target as HTMLElement;
-    
-    // 1. Try Authoritative Bucket Probing (Supports img and video/source)
-    if (probeNextBucket(el)) return;
-
-    // 2. Try Raw Backend URL (Final Fallback)
-    if (el instanceof HTMLImageElement && !el.dataset.triedOriginal) {
-      el.dataset.triedOriginal = 'true';
-      const rawUrl = this.post.content?.files?.[0] || this.post.content?.url;
-      if (rawUrl) {
-        el.src = rawUrl;
-        return;
-      }
-    }
-    el.style.display = 'none';
-  }
-
   render() {
     const p = this.post;
     const media = p._media;
@@ -219,15 +186,11 @@ export class PostCard extends LitElement {
     
     // Media URLs
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
-    const thumbUrl = resolveMediaUrl(rawUrl, 'gallery-grid');
-    const posterUrl = resolveMediaUrl(rawUrl, 'poster');
-    const isMediaAnim = isAnimation(rawUrl);
+    const isReblog = p.originPostId && p.originPostId !== p.id;
+    const originName = p.originBlogName;
 
     const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
     const isTombstone = !rawUrl && !p.body;
-
-    const isReblog = p.originPostId && p.originPostId !== p.id;
-    const originName = p.originBlogName;
 
     return html`
       <article class="card" @click=${this.handleClick}>
@@ -241,23 +204,15 @@ export class PostCard extends LitElement {
         </div>
 
         <div class="media-container">
-          ${rawUrl ? html`
-            ${isMediaAnim ? html`
-              <video autoplay loop muted playsinline webkit-playsinline preload="metadata" poster=${posterUrl}>
-                <source src=${thumbUrl} type="video/mp4" @error=${this.handleImageError}>
-              </video>
-            ` : html`
-              <img src=${thumbUrl} loading="lazy" @error=${this.handleImageError} />
-            `}
-            ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge">1 / ${p.content.files.length}</div>` : ''}
-            ${p.type === 3 ? html`<div class="video-overlay-icon">▶</div>` : ''}
-          ` : html`
-            <div class="error-ghost">
-              <span style="font-size: 24px; opacity: 0.3;">${POST_TYPE_ICONS[p.type as PostType] || '📄'}</span>
-              ${isAdmin && isTombstone ? html`<span class="diagnostic-label">[TOMBSTONE]</span>` : ''}
-              <div style="font-size: 24px; animation: pulse 2s infinite;">✨</div>
-            </div>
-          `}
+          <media-renderer 
+            .src=${rawUrl} 
+            .type=${'gallery-grid'}
+            style="object-fit: cover;"
+          ></media-renderer>
+          
+          ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge">1 / ${p.content.files.length}</div>` : ''}
+          ${p.type === 3 ? html`<div class="video-overlay-icon">▶</div>` : ''}
+          ${isAdmin && isTombstone ? html`<div class="diagnostic-label">[TOMBSTONE]</div>` : ''}
         </div>
 
         <div class="card-body">
