@@ -2,8 +2,37 @@
  * Global application configuration.
  */
 
-// In production, this would likely come from an environment variable or a build-time injection.
-// For now, we use the authoritative dev IP.
-export const MEDIA_PROXY_BASE = 'http://100.98.53.103:8085/unsafe';
+export type ImgproxyMode = 'unsafe' | 'fixed';
 
-export const DEFAULT_GRAVITY = 'gravity:sm';
+export interface AppConfig {
+  name: string;
+  mediaProxyBase: string;
+  imgproxyMode: ImgproxyMode;
+  defaultGravity: string;
+}
+
+export const ENV_CONFIGS: Record<string, AppConfig> = {
+  dev: {
+    name: 'Development',
+    mediaProxyBase: 'http://100.98.53.103:8085/unsafe',
+    imgproxyMode: 'unsafe',
+    defaultGravity: 'gravity:sm'
+  },
+  staging: {
+    name: 'Staging',
+    mediaProxyBase: 'http://100.98.53.103:8085/unsafe',
+    imgproxyMode: 'unsafe',
+    defaultGravity: 'gravity:sm'
+  },
+  prod: {
+    name: 'Production',
+    mediaProxyBase: 'https://media.bdsmlr.com', // Future fixed path host
+    imgproxyMode: 'fixed',
+    defaultGravity: 'gravity:sm'
+  }
+};
+
+// CURRENT ACTIVE ENVIRONMENT
+export const ACTIVE_ENV = 'staging';
+
+export const CONFIG = ENV_CONFIGS[ACTIVE_ENV];

@@ -1,9 +1,9 @@
 /**
  * Centralized Media Resolver for imgproxy-based transformations.
- * DUMB FRONTEND: Trusts the backend URLs entirely.
+ * Supports environment-specific routing (unsafe vs fixed paths).
  */
 
-import { MEDIA_PROXY_BASE, DEFAULT_GRAVITY } from '../config.js';
+import { CONFIG } from '../config.js';
 
 export type MediaContext = 'thumbnail' | 'feed' | 'lightbox' | 'gutter' | 'poster';
 
@@ -62,13 +62,23 @@ export function resolveMediaUrl(url: string | undefined, context: MediaContext):
   if (!url) return '';
   const s3Url = toS3Scheme(url);
   const preset = CONTEXT_PRESETS[context];
-  const parts: string[] = [];
   
+  if (CONFIG.imgproxyMode === 'fixed') {
+    // FIXED PATH MODE: Uses pre-configured gateway aliases
+    // Example: https://media.bdsmlr.com/thumbnail/s3://ocdn012.bdsmlr.com/...
+    return `${CONFIG.mediaProxyBase}/${context}/${s3Url}`;
+  }
+
+  // UNSAFE MODE: Dynamic transformations
+  const parts: string[] = [];
   const isAnim = isAnimation(url);
+  
   const resizeMode = (preset.height && preset.height > 0) ? 'fill' : 'fit';
   parts.push(`resize:${resizeMode}:${preset.width || 0}:${preset.height || 0}`);
   
-  if (!isAnim) parts.push(DEFAULT_GRAVITY);
+  if (!isAnim) {
+    parts.push(CONFIG.defaultGravity);
+  }
   
   if (isAnim && context !== 'poster') {
     parts.push('format:mp4');
@@ -76,7 +86,7 @@ export function resolveMediaUrl(url: string | undefined, context: MediaContext):
     parts.push(`format:${preset.format}`);
   }
 
-  return `${MEDIA_PROXY_BASE}/${parts.join('/')}/plain/${s3Url}`;
+  return `${CONFIG.mediaProxyBase}/${parts.join('/')}/plain/${s3Url}`;
 }
 
 export function isAnimation(url: string | undefined): boolean {
@@ -87,7 +97,6 @@ export function isAnimation(url: string | undefined): boolean {
 
 /**
  * Probes the next available bucket if a media element fails to load.
- * Supports HTMLImageElement, HTMLVideoElement, and HTMLSourceElement.
  */
 export function probeNextBucket(el: HTMLElement): boolean {
   let currentSrc = '';
@@ -103,7 +112,6 @@ export function probeNextBucket(el: HTMLElement): boolean {
   const currentBucket = s3Path.split('/')[0];
   const filePath = s3Path.substring(currentBucket.length);
 
-  // Determine next bucket in the registry
   let nextIndex = 0;
   const currentIndex = BUCKET_LIST.indexOf(currentBucket);
   if (currentIndex !== -1) {
@@ -118,7 +126,7 @@ export function probeNextBucket(el: HTMLElement): boolean {
     else if (el instanceof HTMLVideoElement) {
       el.src = nextSrc;
       el.load();
-      el.play().catch(() => {}); // Autoplay might be blocked if not muted
+      el.play().catch(() => {});
     }
     else if (el instanceof HTMLSourceElement) {
       const video = el.parentElement as HTMLVideoElement;
