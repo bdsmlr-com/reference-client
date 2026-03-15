@@ -62,6 +62,7 @@ export class PostEngagement extends LitElement {
       this.likes = null;
       this.comments = null;
       this.reblogs = null;
+      this.loadingDetails = false;
     }
   }
 
@@ -74,13 +75,32 @@ export class PostEngagement extends LitElement {
     try {
       if (tab === 'likes' && !this.likes) {
         const resp = await apiClient.engagement.getLikes(this.post.id);
-        this.likes = resp.likes || [];
+        const list = resp.likes || [];
+        const seen = new Set();
+        this.likes = list.filter(l => {
+          if (seen.has(l.blogName)) return false;
+          seen.add(l.blogName);
+          return true;
+        });
       } else if (tab === 'reblogs' && !this.reblogs) {
         const resp = await apiClient.engagement.getReblogs(this.post.id);
-        this.reblogs = resp.reblogs || [];
+        const list = resp.reblogs || [];
+        const seen = new Set();
+        this.reblogs = list.filter(r => {
+          if (seen.has(r.blogName)) return false;
+          seen.add(r.blogName);
+          return true;
+        });
       } else if (tab === 'comments' && !this.comments) {
         const resp = await apiClient.engagement.getComments(this.post.id);
-        this.comments = resp.comments || [];
+        const list = resp.comments || [];
+        const seen = new Set();
+        this.comments = list.filter(c => {
+          const key = `${c.blogName}:${c.body}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
       }
     } catch (e) {
       console.error(`Failed to fetch ${tab}`, e);
@@ -111,7 +131,10 @@ export class PostEngagement extends LitElement {
       return html`<div class="detail-list">${this.likes.map(l => html`<div class="detail-item"><span>❤️ by <a href="/${l.blogName}/posts">@${l.blogName}</a></span><span class="ts">${formatDate(l.createdAtUnix, 'friendly')}</span></div>`)}</div>`;
     }
     if (this.activeTab === 'reblogs' && this.reblogs) {
-      return html`<div class="detail-list">${this.reblogs.map(r => html`<div class="detail-item"><span>♻️ by <a href="/${r.blogName}/posts">@${r.blogName}</a></span><span><a href="/post/${r.postId}">post:${r.postId}</a></span></div>`)}</div>`;
+      return html`<div class="detail-list">${this.reblogs.map(r => {
+        const targetPostId = r.postId || (r as any).id;
+        return html`<div class="detail-item"><span>♻️ by <a href="/${r.blogName}/posts">@${r.blogName}</a></span><span><a href="/post/${targetPostId}">post:${targetPostId}</a></span></div>`;
+      })}</div>`;
     }
     if (this.activeTab === 'comments' && this.comments) {
       return html`<div class="detail-list">${this.comments.map(c => html`<div class="detail-item"><span>💬 <b>@${c.blogName}</b>: ${c.body}</span><span class="ts">${formatDate(c.createdAtUnix, 'friendly')}</span></div>`)}</div>`;
