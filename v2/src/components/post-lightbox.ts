@@ -158,18 +158,45 @@ export class PostLightbox extends LitElement {
     window.removeEventListener('popstate', this.handlePopState);
   }
 
-  private handlePopState = () => {
-    if (this.open) {
-      this.close(undefined, false); // Close without pushing back to stack
+  private handlePopState = (_e: PopStateEvent) => {
+    if (!this.open) return;
+
+    // If the new state has a postId, try to show that post in the lightbox
+    const pathname = window.location.pathname;
+    const postMatch = pathname.match(/\/post\/(\d+)/);
+    
+    if (postMatch) {
+      const postId = parseInt(postMatch[1]);
+      if (this.post?.id !== postId) {
+        this.loadPostById(postId);
+      }
+    } else {
+      // If we're no longer on a post URL, close the lightbox
+      this.close(undefined, false);
     }
   };
+
+  private async loadPostById(id: number) {
+    try {
+      const resp = await apiClient.posts.get(id);
+      if (resp.post) {
+        this.post = { ...resp.post, _media: extractMedia(resp.post) };
+        this.currentIndex = -1; // Reset index since we're "off-list"
+      }
+    } catch (e) {
+      console.error('Failed to load post for lightbox', e);
+    }
+  }
 
   updated(changedProperties: Map<string, any>): void {
     super.updated(changedProperties);
     if (changedProperties.has('open')) {
       if (this.open) {
         document.body.style.overflow = 'hidden';
-        this.underlyingUrl = window.location.href;
+        // Only store underlyingUrl if it's NOT a post detail page
+        if (!window.location.pathname.startsWith('/post/')) {
+          this.underlyingUrl = window.location.href;
+        }
         this.addEventListener('keydown', this.handleKeyDown);
         this.syncUrl();
       } else {
@@ -194,6 +221,8 @@ export class PostLightbox extends LitElement {
     if (!this.post) return;
     const postUrl = `/post/${this.post.id}`;
     if (window.location.pathname !== postUrl) {
+      // If we are navigating to a "related" post, we WANT a pushState
+      // so the back button takes us to the previous post.
       window.history.pushState({ postId: this.post.id }, '', postUrl);
     }
   }
@@ -205,12 +234,14 @@ export class PostLightbox extends LitElement {
     if (e.key === 'ArrowRight') this.navigateNext();
   };
 
-  private close(e?: Event, pushBack = true) {
+  private close(e?: Event, restoreUrl = true) {
     if (e) { e.stopPropagation(); e.preventDefault(); }
     this.open = false;
     
-    // Restore underlying URL if we pushed post states
-    if (pushBack && window.location.href !== this.underlyingUrl) {
+    // Restore underlying URL if we were on a different page (like a feed)
+    if (restoreUrl && this.underlyingUrl && window.location.href !== this.underlyingUrl) {
+      // If we are currently on a /post/ URL but the underlying page was / or /blog,
+      // going back to the underlying URL is appropriate.
       window.history.pushState({}, '', this.underlyingUrl);
     }
 
