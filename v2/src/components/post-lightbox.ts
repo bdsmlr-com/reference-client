@@ -91,6 +91,42 @@ export class PostLightbox extends LitElement {
       .detail-item:last-child { border-bottom: none; }
       .detail-item a { color: var(--accent); text-decoration: none; }
 
+      /* Related Gutter ✨ */
+      .gutter-section {
+        margin-top: 24px;
+      }
+      .gutter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 12px;
+        width: 100%;
+      }
+      .gutter-item {
+        aspect-ratio: 1/1;
+        background: var(--bg-panel-alt);
+        border-radius: 4px;
+        overflow: hidden;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        transition: transform 0.2s;
+      }
+      .gutter-item:hover {
+        transform: scale(1.05);
+        border-color: var(--accent);
+      }
+      .gutter-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .gutter-skeleton {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, var(--bg-panel-alt) 25%, var(--border) 50%, var(--bg-panel-alt) 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+      }
+
       .main-nav-btn {
         position: fixed; top: 50%; transform: translateY(-50%);
         background: rgba(255, 255, 255, 0.05); color: white; border: 1px solid rgba(255, 255, 255, 0.1);
@@ -153,6 +189,7 @@ export class PostLightbox extends LitElement {
   private handleKeyDown = (e: KeyboardEvent) => {
     if (!this.open) return;
     if (e.key === 'Escape') this.close();
+    // Re-enabling Keyboard Post-to-Post Navigation
     if (e.key === 'ArrowLeft') this.navigatePrev();
     if (e.key === 'ArrowRight') this.navigateNext();
   };
@@ -224,10 +261,16 @@ export class PostLightbox extends LitElement {
     if (!this.post || !rec.post_id) return;
     this.navigationStack = [...this.navigationStack, this.post];
     const hydrated = (rec as any)._hydratedPost;
-    if (hydrated) { this.post = hydrated; } 
+    if (hydrated) { 
+      this.post = hydrated;
+      this.currentIndex = -1; // Detach from main list index if navigating from recommendations
+    } 
     else {
       const resp = await apiClient.posts.get(rec.post_id);
-      if (resp.post) this.post = { ...resp.post, _media: extractMedia(resp.post) };
+      if (resp.post) {
+        this.post = { ...resp.post, _media: extractMedia(resp.post) };
+        this.currentIndex = -1;
+      }
     }
   }
 
@@ -247,7 +290,6 @@ export class PostLightbox extends LitElement {
     const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
     const isTombstone = !media.url && !this.post.body;
 
-    // Use files if present, otherwise fallback to single url
     const mediaSources = files.length > 0 ? files : (media.videoUrl || media.url ? [media.videoUrl || media.url] : []);
 
     if (mediaSources.length === 0) {
@@ -264,15 +306,7 @@ export class PostLightbox extends LitElement {
           return html`
             <div class="media-container">
               ${isAnim ? html`
-                <video 
-                  autoplay 
-                  loop 
-                  muted 
-                  playsinline 
-                  webkit-playsinline 
-                  preload="metadata" 
-                  poster=${posterUrl}
-                >
+                <video autoplay loop muted playsinline webkit-playsinline preload="metadata" poster=${posterUrl}>
                   <source src=${lightboxUrl} type="video/mp4" @error=${this.handleImageError} />
                 </video>
               ` : html`
@@ -371,11 +405,15 @@ export class PostLightbox extends LitElement {
 
           <div class="info-section gutter-section">
             <h3 style="margin-top: 0;">More like this ✨</h3>
-            <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
+            <div class="gutter-grid">
               ${repeat(this.relatedPosts, r => r.post_id, r => {
                 const h = (r as any)._hydratedPost;
                 const raw = h?._media?.url || h?.content?.thumbnail;
-                return html`<div class="gutter-item" @click=${() => this.navigateToRelated(r)}>${raw ? html`<img src=${resolveMediaUrl(raw, 'gutter')} />` : html`<div class="gutter-skeleton"></div>`}</div>`;
+                return html`
+                  <div class="gutter-item" @click=${() => this.navigateToRelated(r)}>
+                    ${raw ? html`<img src=${resolveMediaUrl(raw, 'gutter')} />` : html`<div class="gutter-skeleton"></div>`}
+                  </div>
+                `;
               })}
             </div>
           </div>
