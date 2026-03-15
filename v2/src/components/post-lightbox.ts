@@ -334,9 +334,3 @@ declare global {
     'post-lightbox': PostLightbox;
   }
 }
-
-declare global {
-  interface HTMLElementTagNameMap {
-    'post-lightbox': PostLightbox;
-  }
-}

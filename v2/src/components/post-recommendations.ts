@@ -56,24 +56,35 @@ export class PostRecommendations extends LitElement {
   @state() private exhausted = false;
   @state() private infiniteScroll = false;
 
+  protected firstUpdated(): void {
+    if (this.postId) {
+      this.resetAndFetch();
+    }
+  }
+
   updated(changedProperties: Map<string, any>): void {
-    if (changedProperties.has('postId') && this.postId) {
+    if (changedProperties.has('postId')) {
       this.resetAndFetch();
     }
   }
 
   private async resetAndFetch() {
+    const id = typeof this.postId === 'string' ? parseInt(this.postId, 10) : this.postId;
+    if (!id) return;
+    
     this.relatedPosts = [];
     this.exhausted = false;
+    this.loading = false; // Reset loading state
     await this.fetchMore();
   }
 
   private async fetchMore() {
-    if (!this.postId || this.loading || this.exhausted) return;
+    const id = typeof this.postId === 'string' ? parseInt(this.postId, 10) : this.postId;
+    if (!id || this.loading || this.exhausted) return;
     this.loading = true;
 
     try {
-      const recs = await recService.getSimilarPosts(this.postId, 12, this.relatedPosts.length);
+      const recs = await recService.getSimilarPosts(id, 12, this.relatedPosts.length);
       if (recs.length === 0) {
         this.exhausted = true;
         return;
@@ -110,14 +121,16 @@ export class PostRecommendations extends LitElement {
   }
 
   private navigateToRelated(rec: RecResult) {
-    if (rec.post_id) {
+    const id = rec.post_id || (rec as any).id;
+    if (id) {
       // Direct navigation to the post page as per user's "Best Practice" requirement
-      window.location.href = `/post/${rec.post_id}`;
+      window.location.href = `/post/${id}`;
     }
   }
 
   render() {
-    if (!this.postId) return nothing;
+    const id = typeof this.postId === 'string' ? parseInt(this.postId, 10) : this.postId;
+    if (id === undefined || id === null) return nothing;
 
     return html`
       <h3>More like this ✨</h3>
