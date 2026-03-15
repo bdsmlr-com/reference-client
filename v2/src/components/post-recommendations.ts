@@ -56,6 +56,9 @@ export class PostRecommendations extends LitElement {
   @state() private exhausted = false;
   @state() private infiniteScroll = false;
 
+  private currentFetchId = 0;
+  private seenIds = new Set<number>();
+
   protected firstUpdated(): void {
     if (this.postId) {
       this.resetAndFetch();
@@ -72,25 +75,49 @@ export class PostRecommendations extends LitElement {
     const id = typeof this.postId === 'string' ? parseInt(this.postId, 10) : this.postId;
     if (!id) return;
     
+    this.currentFetchId++;
+    const fetchId = this.currentFetchId;
+    
     this.relatedPosts = [];
+    this.seenIds.clear();
     this.exhausted = false;
-    this.loading = false; // Reset loading state
-    await this.fetchMore();
+    this.loading = false;
+    
+    await this.fetchMore(fetchId);
   }
 
-  private async fetchMore() {
+  private async fetchMore(fetchId?: number) {
     const id = typeof this.postId === 'string' ? parseInt(this.postId, 10) : this.postId;
     if (!id || this.loading || this.exhausted) return;
+    
+    // If we were called with a specific fetchId, ensure it's still current
+    if (fetchId !== undefined && fetchId !== this.currentFetchId) return;
+
     this.loading = true;
+    const currentId = this.currentFetchId;
 
     try {
       const recs = await recService.getSimilarPosts(id, 12, this.relatedPosts.length);
+      
+      // Abandon if a new fetch has started in the meantime
+      if (currentId !== this.currentFetchId) return;
+
       if (recs.length === 0) {
         this.exhausted = true;
         return;
       }
 
-      const postIds = recs.map(r => r.post_id).filter((id): id is number => !!id);
+      // Backend sometimes uses 'id' instead of 'post_id'
+      recs.forEach(r => {
+        if (!r.post_id && (r as any).id) {
+          r.post_id = parseInt((r as any).id, 10);
+        }
+      });
+
+      const postIds = recs
+        .map(r => r.post_id)
+        .filter((pid): pid is number => !!pid && !this.seenIds.has(pid));
+
       if (postIds.length > 0) {
         const batchResp = await apiClient.posts.batchGet({ post_ids: postIds });
         const hydratedMap = new Map(batchResp.posts?.map(p => [p.id, p]));
@@ -107,12 +134,18 @@ export class PostRecommendations extends LitElement {
         });
       }
       
-      this.relatedPosts = [...this.relatedPosts, ...recs];
-      if (this.relatedPosts.length >= 96) this.exhausted = true;
+      // De-duplicate items before appending
+      const newItems = recs.filter(r => r.post_id && !this.seenIds.has(r.post_id));
+      newItems.forEach(r => { if (r.post_id) this.seenIds.add(r.post_id); });
+
+      this.relatedPosts = [...this.relatedPosts, ...newItems];
+      if (this.relatedPosts.length >= 96 || newItems.length === 0) this.exhausted = true;
     } catch (e) {
       console.error('Failed to fetch recommendations', e);
     } finally {
-      this.loading = false;
+      if (currentId === this.currentFetchId) {
+        this.loading = false;
+      }
     }
   }
 
