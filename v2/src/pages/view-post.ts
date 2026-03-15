@@ -7,6 +7,7 @@ import { getContextualErrorMessage } from '../services/api-error.js';
 import '../components/skeleton-loader.js';
 import '../components/post-feed-item.js';
 import '../components/post-recommendations.js';
+import '../components/post-engagement.js';
 
 @customElement('view-post')
 export class ViewPost extends LitElement {
@@ -41,6 +42,12 @@ export class ViewPost extends LitElement {
       }
       .back-link:hover {
         color: var(--accent);
+      }
+      .separator {
+        text-align: center;
+        margin: 32px 0;
+        font-size: 24px;
+        opacity: 0.5;
       }
     `
   ];
@@ -122,6 +129,10 @@ export class ViewPost extends LitElement {
       </div>
 
       <post-feed-item .post=${this.post} @post-click=${this.handlePostClick}></post-feed-item>
+
+      <post-engagement .post=${this.post} standalone></post-engagement>
+
+      <div class="separator">💕</div>
 
       <post-recommendations .postId=${this.post.id} mode="grid"></post-recommendations>
     `;

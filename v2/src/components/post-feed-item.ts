@@ -202,10 +202,10 @@ export class PostFeedItem extends LitElement {
       <article class="card" @click=${this.handlePostClick}>
         <header class="card-header">
           <div class="blog-info">
-            <a href="/${blogName}" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
+            <a href="/${blogName}/posts" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
             ${isReblog ? html`
               <span class="reblog-indicator">
-                ♻️ <a href="/${originBlogName}" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${originBlogName}</a>
+                ♻️ <a href="/${originBlogName}/posts" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${originBlogName}</a>
               </span>
             ` : ''}
           </div>

@@ -1,15 +1,13 @@
 import { LitElement, html, css, nothing, unsafeCSS } from 'lit';
-import { customElement, state, property } from 'lit/decorators.js';
+import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { apiClient } from '../services/client.js';
-import { formatDate } from '../services/date-formatter.js';
 import { EventNames, type LightboxNavigateDetail } from '../types/events.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
-import { POST_TYPE_ICONS, extractMedia, type ProcessedPost } from '../types/post.js';
-import type { Like, Comment, Reblog, PostType } from '../types/api.js';
+import { extractMedia, type ProcessedPost } from '../types/post.js';
 import './media-renderer.js';
 import './post-recommendations.js';
+import './post-engagement.js';
 
 @customElement('post-lightbox')
 export class PostLightbox extends LitElement {
@@ -68,26 +66,6 @@ export class PostLightbox extends LitElement {
       }
 
       .info-section { background: var(--bg-panel); padding: 24px; border-radius: 8px; border: 1px solid var(--border); width: 100%; }
-      .lightbox-links { font-size: 16px; margin-bottom: 16px; color: var(--text-muted); }
-      .lightbox-links a { color: var(--accent); text-decoration: none; font-weight: 600; }
-      .meta { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
-      .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-      .tag { background: var(--bg-panel-alt); padding: 4px 12px; border-radius: 16px; font-size: 13px; color: var(--text); border: 1px solid var(--border); }
-
-      /* Stats & Detail Lists */
-      .stats-bar { display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 16px; }
-      .stat-btn {
-        background: var(--bg-panel-alt); border: 1px solid var(--border);
-        padding: 6px 12px; border-radius: 20px; font-size: 13px; color: var(--text);
-        cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;
-      }
-      .stat-btn:hover { border-color: var(--accent); }
-      .stat-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
-
-      .detail-list { background: var(--bg-panel-alt); border-radius: 8px; padding: 12px; margin-top: 12px; max-height: 300px; overflow-y: auto; }
-      .detail-item { padding: 8px; border-bottom: 1px solid var(--border-subtle); font-size: 13px; display: flex; align-items: center; justify-content: space-between; }
-      .detail-item:last-child { border-bottom: none; }
-      .detail-item a { color: var(--accent); text-decoration: none; }
 
       .main-nav-btn {
         position: fixed; top: 50%; transform: translateY(-50%);
@@ -114,12 +92,6 @@ export class PostLightbox extends LitElement {
   @property({ type: Object }) post: ProcessedPost | null = null;
   @property({ type: Array }) posts: ProcessedPost[] = [];
   @property({ type: Number }) currentIndex = -1;
-
-  @state() private activeTab: 'likes' | 'reblogs' | 'comments' | null = null;
-  @state() private likes: Like[] | null = null;
-  @state() private comments: Comment[] | null = null;
-  @state() private reblogs: Reblog[] | null = null;
-  @state() private loadingDetails = false;
 
   connectedCallback() {
     super.connectedCallback();
@@ -150,10 +122,6 @@ export class PostLightbox extends LitElement {
     }
 
     if (changedProperties.has('post') && this.post) {
-      this.activeTab = null;
-      this.likes = null;
-      this.comments = null;
-      this.reblogs = null;
       this.shadowRoot?.querySelector('.lightbox-backdrop')?.scrollTo(0, 0);
     }
   }
@@ -184,30 +152,6 @@ export class PostLightbox extends LitElement {
       this.dispatchEvent(new CustomEvent<LightboxNavigateDetail>(EventNames.LIGHTBOX_NAVIGATE, {
         detail: { direction: 'next', index: this.currentIndex + 1 }, bubbles: true, composed: true
       }));
-    }
-  }
-
-  private async toggleTab(tab: 'likes' | 'reblogs' | 'comments') {
-    if (this.activeTab === tab) { this.activeTab = null; return; }
-    this.activeTab = tab;
-    if (!this.post) return;
-
-    this.loadingDetails = true;
-    try {
-      if (tab === 'likes' && !this.likes) {
-        const resp = await apiClient.engagement.getLikes(this.post.id);
-        this.likes = resp.likes || [];
-      } else if (tab === 'reblogs' && !this.reblogs) {
-        const resp = await apiClient.engagement.getReblogs(this.post.id);
-        this.reblogs = resp.reblogs || [];
-      } else if (tab === 'comments' && !this.comments) {
-        const resp = await apiClient.engagement.getComments(this.post.id);
-        this.comments = resp.comments || [];
-      }
-    } catch (e) {
-      console.error(`Failed to fetch ${tab}`, e);
-    } finally {
-      this.loadingDetails = false;
     }
   }
 
@@ -248,47 +192,6 @@ export class PostLightbox extends LitElement {
     `;
   }
 
-  private renderLinks() {
-    if (!this.post) return nothing;
-    const p = this.post;
-    const typeIcon = POST_TYPE_ICONS[p.type as PostType] || '📄';
-    const isReblog = p.originPostId && p.originPostId !== p.id;
-    const rbVariants = p.reblog_variants || [];
-
-    if (isReblog) {
-      return html`
-        ${typeIcon} <a href="https://${p.originBlogName}.bdsmlr.com" target="_blank">@${p.originBlogName}</a> / ${p.originPostId}
-        via ♻️ <a href="https://${p.blogName}.bdsmlr.com" target="_blank">@${p.blogName}</a> / ${p.id}
-        
-        ${rbVariants.length > 0 ? html`
-          <div style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">
-            Also reblogged by:
-            <select @change=${(e: any) => window.open(`https://bdsmlr.com/post/${e.target.value.split('/').pop().trim()}`)} style="background: var(--bg-panel-alt); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 2px 4px; margin-left: 4px;">
-              <option disabled selected>Select a variant...</option>
-              ${rbVariants.map(v => html`<option value="${v.id}">@${v.blogName} / ${v.id}</option>`)}
-            </select>
-          </div>
-        ` : ''}
-      `;
-    }
-    return html`${typeIcon} <a href="https://${p.blogName}.bdsmlr.com" target="_blank">@${p.blogName}</a> / ${p.id}`;
-  }
-
-  private renderEngagementDetail() {
-    if (this.loadingDetails) return html`<loading-spinner message="Fetching details..."></loading-spinner>`;
-    
-    if (this.activeTab === 'likes' && this.likes) {
-      return html`<div class="detail-list">${this.likes.map(l => html`<div class="detail-item"><span>❤️ by <a href="https://${l.blogName}.bdsmlr.com" target="_blank">@${l.blogName}</a></span><span class="ts">${formatDate(l.createdAtUnix, 'friendly')}</span></div>`)}</div>`;
-    }
-    if (this.activeTab === 'reblogs' && this.reblogs) {
-      return html`<div class="detail-list">${this.reblogs.map(r => html`<div class="detail-item"><span>♻️ by <a href="https://${r.blogName}.bdsmlr.com" target="_blank">@${r.blogName}</a></span><span><a href="https://bdsmlr.com/post/${r.postId}" target="_blank">post:${r.postId}</a></span></div>`)}</div>`;
-    }
-    if (this.activeTab === 'comments' && this.comments) {
-      return html`<div class="detail-list">${this.comments.map(c => html`<div class="detail-item"><span>💬 <b>@${c.blogName}</b>: ${c.body}</span><span class="ts">${formatDate(c.createdAtUnix, 'friendly')}</span></div>`)}</div>`;
-    }
-    return nothing;
-  }
-
   render() {
     if (!this.open || !this.post) return nothing;
     const p = this.post;
@@ -305,21 +208,11 @@ export class PostLightbox extends LitElement {
           </div>
 
           <div class="info-section">
-            <div class="lightbox-links">${this.renderLinks()}</div>
-            <div class="meta">Posted ${formatDate(p.createdAtUnix, 'friendly')}</div>
-            
-            <div class="stats-bar">
-              <button class="stat-btn ${this.activeTab === 'likes' ? 'active' : ''}" @click=${() => this.toggleTab('likes')}>❤️ ${p.likesCount || 0}</button>
-              <button class="stat-btn ${this.activeTab === 'reblogs' ? 'active' : ''}" @click=${() => this.toggleTab('reblogs')}>♻️ ${p.reblogsCount || 0}</button>
-              <button class="stat-btn ${this.activeTab === 'comments' ? 'active' : ''}" @click=${() => this.toggleTab('comments')}>💬 ${p.commentsCount || 0}</button>
-            </div>
-
-            ${this.renderEngagementDetail()}
-
-            <div class="tags">${(p.tags || []).map(t => html`<span class="tag">#${t}</span>`)}</div>
             <div class="body-text" style="margin-bottom: 32px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 24px;">
               ${unsafeHTML(p.content?.html || p.body || '')}
             </div>
+
+            <post-engagement .post=${p}></post-engagement>
 
             <post-recommendations .postId=${p.id} mode="list"></post-recommendations>
           </div>
