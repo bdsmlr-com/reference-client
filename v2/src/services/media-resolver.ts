@@ -22,25 +22,23 @@ function toS3Scheme(url: string): string {
   if (!url) return '';
   const cleanUrl = url.split('?')[0];
   
-  let host = '';
-  let path = '';
+  try {
+    const parsed = new URL(cleanUrl);
+    let host = parsed.hostname;
+    const path = parsed.pathname;
 
-  if (cleanUrl.includes('bdsmlr.com')) {
-    const parts = cleanUrl.split('bdsmlr.com');
-    const rawHost = parts[0].split('//').pop() || '';
-    host = `${rawHost}bdsmlr.com`;
-    path = parts[1];
-  } else if (cleanUrl.includes('reblogme.com')) {
-    const parts = cleanUrl.split('reblogme.com');
-    const rawHost = parts[0].split('//').pop() || '';
-    host = `${rawHost}reblogme.com`;
-    path = parts[1];
+    // Handle standard bdsmlr/reblogme/tumblr domains
+    if (host.includes('bdsmlr.com') || host.includes('reblogme.com') || host.includes('media.tumblr.com')) {
+      // Normalize host (cdn012 -> ocdn012)
+      if (host.includes('cdn012')) {
+        host = 'ocdn012.bdsmlr.com';
+      }
+      return `s3://${host}${path}`;
+    }
+  } catch (e) {
+    // Not a valid absolute URL, return as-is
   }
 
-  if (host && path) {
-    const finalHost = host.includes('cdn012') ? 'ocdn012.bdsmlr.com' : host;
-    return `s3://${finalHost}${path}`;
-  }
   return cleanUrl;
 }
 
