@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "export VITE_BUILD_SHA=$(git rev-parse --short HEAD) && tsc && vite build",
+    "build": "export VITE_BUILD_ENV=$(grep 'export const ACTIVE_ENV' src/config.ts | cut -d\"'\" -f2) && export VITE_BUILD_SHA=${VITE_BUILD_ENV}@$(git rev-parse --short HEAD) && tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
