@@ -36,7 +36,11 @@ function toS3Scheme(url: string): string {
       return `s3://${host}${path}`;
     }
   } catch (e) {
-    // Not a valid absolute URL, return as-is
+    // Relative path (e.g. /uploads/photos/...)
+    if (cleanUrl.startsWith('/') || cleanUrl.startsWith('uploads/')) {
+      const path = cleanUrl.startsWith('/') ? cleanUrl : `/${cleanUrl}`;
+      return `s3://ocdn012.bdsmlr.com${path}`;
+    }
   }
 
   return cleanUrl;
@@ -61,12 +65,15 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
   const parts: string[] = [];
   const isAnim = isAnimation(url);
   
-  parts.push(`resize:${preset.resize}:${preset.width}:${preset.height}`);
-  
+  // 1. Gravity (e.g. gravity:sm)
   if (!isAnim) {
     parts.push(preset.gravity);
   }
+
+  // 2. Resize
+  parts.push(`resize:${preset.resize}:${preset.width}:${preset.height}`);
   
+  // 3. Format
   if (isAnim && type !== 'poster') {
     parts.push('format:mp4');
   } else if (preset.format) {
