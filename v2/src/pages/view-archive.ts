@@ -12,11 +12,9 @@ import {
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
-import type { Blog, PostType, PostSortField, Order, TimelineItem } from '../types/api.js';
+import type { Blog, PostType, PostSortField, Order, TimelineItem, PostVariant } from '../types/api.js';
 
-import '../components/sort-controls.js';
-import '../components/type-pills.js';
-import '../components/variant-pills.js';
+import '../components/filter-bar.js';
 import '../components/activity-grid.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
@@ -39,26 +37,6 @@ export class ViewArchive extends LitElement {
         padding: 20px 0;
       }
 
-      .controls {
-        max-width: 600px;
-        margin: 0 auto 20px;
-        padding: 0 16px;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        justify-content: center;
-      }
-
-      .type-pills-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 20px;
-        padding: 0 16px;
-      }
-
       .status {
         text-align: center;
         color: var(--text-muted);
@@ -77,6 +55,7 @@ export class ViewArchive extends LitElement {
   @state() private blogId: number | null = null;
   @state() private sortValue = 'newest';
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
+  @state() private selectedVariants: PostVariant[] = [];
   @state() private timelineItems: TimelineItem[] = [];
   @state() private loading = false;
   @state() private exhausted = false;
@@ -133,10 +112,14 @@ export class ViewArchive extends LitElement {
   private async loadFromUrl(): Promise<void> {
     const sort = getUrlParam('sort');
     const types = getUrlParam('types');
+    const variants = getUrlParam('variants');
 
     this.sortValue = normalizeSortValue(sort);
     if (types) {
       this.selectedTypes = types.split(',').map((t) => parseInt(t, 10) as PostType);
+    }
+    if (variants) {
+      this.selectedVariants = variants.split(',').map((v) => parseInt(v, 10) as PostVariant);
     }
 
     if (!this.blog) {
@@ -185,6 +168,7 @@ export class ViewArchive extends LitElement {
     const params: Record<string, string> = {
       sort: this.sortValue,
       types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','),
+      variants: this.selectedVariants.length > 0 ? this.selectedVariants.join(',') : '',
     };
     if (!isBlogInPath()) {
       params.blog = this.blog;
@@ -225,6 +209,7 @@ export class ViewArchive extends LitElement {
         sort_field: sortOpt.field as PostSortField,
         order: sortOpt.order as Order,
         post_types: this.selectedTypes,
+        variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
         page: {
           page_size: 48,
           page_token: this.backendCursor || undefined,
@@ -300,6 +285,11 @@ export class ViewArchive extends LitElement {
     this.loadPosts();
   }
 
+  private handleVariantChange(e: CustomEvent): void {
+    this.selectedVariants = e.detail.variants || [];
+    this.loadPosts();
+  }
+
   private handlePostClick(e: CustomEvent): void {
     const post = e.detail.post as ProcessedPost;
     
@@ -349,12 +339,17 @@ export class ViewArchive extends LitElement {
         ${this.initialLoading ? html`<loading-spinner message="Loading archive..."></loading-spinner>` : ''}
 
         ${this.blogId ? html`
-          <div class="controls">
-            <sort-controls .value=${this.sortValue} @sort-change=${this.handleSortChange}></sort-controls>
-          </div>
-          <div class="type-pills-container">
-            <type-pills .selectedTypes=${this.selectedTypes} @types-change=${this.handleTypesChange}></type-pills>
-          </div>
+          <filter-bar
+            .sortValue=${this.sortValue}
+            .selectedTypes=${this.selectedTypes}
+            .selectedVariants=${this.selectedVariants}
+            .showSort=${true}
+            .showVariants=${true}
+            .loading=${this.loading}
+            @sort-change=${this.handleSortChange}
+            @types-change=${this.handleTypesChange}
+            @variant-change=${this.handleVariantChange}
+          ></filter-bar>
         ` : ''}
 
         ${this.errorMessage ? html`<error-state title="Error" message=${this.errorMessage} @retry=${this.handleRetry}></error-state>` : ''}

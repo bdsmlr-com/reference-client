@@ -13,8 +13,7 @@ import {
 import { extractMedia, type ProcessedPost } from '../types/post.js';
 import type { PostType, PostVariant, Blog } from '../types/api.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
-import '../components/type-pills.js';
-import '../components/variant-pills.js';
+import '../components/filter-bar.js';
 import '../components/post-feed.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
@@ -521,17 +520,14 @@ export class ViewFeed extends LitElement {
 
         ${this.followingBlogIds.length > 0
           ? html`
-              <div class="filters-container">
-                <type-pills
-                  .selectedTypes=${this.selectedTypes}
-                  @types-change=${this.handleTypesChange}
-                ></type-pills>
-                <span class="pills-separator">|</span>
-                <variant-pills
-                  .loading=${this.loading}
-                  @variant-change=${this.handleVariantChange}
-                ></variant-pills>
-              </div>
+              <filter-bar
+                .selectedTypes=${this.selectedTypes}
+                .selectedVariants=${this.selectedVariants}
+                .showVariants=${true}
+                .loading=${this.loading}
+                @types-change=${this.handleTypesChange}
+                @variant-change=${this.handleVariantChange}
+              ></filter-bar>
             `
           : ''}
 

@@ -12,14 +12,13 @@ import {
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { PostType, PostSortField, Order, PostVariant, TimelineItem } from '../types/api.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
-import '../components/sort-controls.js';
-import '../components/type-pills.js';
-import '../components/variant-pills.js';
+import '../components/filter-bar.js';
 import '../components/activity-grid.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
 import '../components/error-state.js';
+import '../components/type-pills.js'; // Might still be used elsewhere or redundant but keeping imports safe
 
 const PAGE_SIZE = 12;
 
@@ -196,11 +195,15 @@ export class ViewSearch extends LitElement {
     const q = getUrlParam('q');
     const sort = getUrlParam('sort');
     const types = getUrlParam('types');
+    const variants = getUrlParam('variants');
 
     if (q) this.query = q;
     this.sortValue = normalizeSortValue(sort);
     if (types) {
       this.selectedTypes = types.split(',').map((t) => parseInt(t, 10) as PostType);
+    }
+    if (variants) {
+      this.selectedVariants = variants.split(',').map((v) => parseInt(v, 10) as PostVariant);
     }
 
     if (this.query) {
@@ -247,6 +250,7 @@ export class ViewSearch extends LitElement {
       q: this.query,
       sort: this.sortValue,
       types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','),
+      variants: this.selectedVariants.length > 0 ? this.selectedVariants.join(',') : '',
     };
     setUrlParams(params);
 
@@ -254,6 +258,7 @@ export class ViewSearch extends LitElement {
       q: this.query,
       sort: this.sortValue,
       types: this.selectedTypes.join(','),
+      variants: this.selectedVariants.join(','),
     });
 
     try {
@@ -439,17 +444,14 @@ export class ViewSearch extends LitElement {
           </button>
         </div>
 
-        <div class="type-pills-container">
-          <type-pills
-            .selectedTypes=${this.selectedTypes}
-            @types-change=${this.handleTypesChange}
-          ></type-pills>
-          <span class="pills-separator">|</span>
-          <variant-pills
-            .loading=${this.loading}
-            @variant-change=${this.handleVariantChange}
-          ></variant-pills>
-        </div>
+        <filter-bar
+          .selectedTypes=${this.selectedTypes}
+          .selectedVariants=${this.selectedVariants}
+          .showVariants=${true}
+          .loading=${this.loading}
+          @types-change=${this.handleTypesChange}
+          @variant-change=${this.handleVariantChange}
+        ></filter-bar>
 
         ${!this.hasSearched ? html`<div class="status">Enter a query to begin searching.</div>` : ''}
 

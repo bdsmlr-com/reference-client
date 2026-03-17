@@ -7,8 +7,8 @@ import { getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-reso
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
-import type { PostType, Blog, TimelineItem } from '../types/api.js';
-import '../components/type-pills.js';
+import type { PostType, Blog, TimelineItem, PostVariant } from '../types/api.js';
+import '../components/filter-bar.js';
 import '../components/post-feed-item.js';
 import '../components/activity-grid.js';
 import '../components/load-footer.js';
@@ -25,7 +25,6 @@ export class ViewPosts extends LitElement {
     css`
       :host { display: block; min-height: 100vh; background: var(--bg-primary); }
       .content { padding: 20px 0; }
-      .type-pills-container { display: flex; justify-content: center; margin-bottom: 20px; }
       .feed-container { margin-bottom: 20px; }
       .interaction-cluster { 
         max-width: 600px; 
@@ -43,6 +42,7 @@ export class ViewPosts extends LitElement {
 
   @state() private blogId: number | null = null;
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
+  @state() private selectedVariants: PostVariant[] = [];
   @state() private timelineItems: TimelineItem[] = [];
   @state() private loading = false;
   @state() private exhausted = false;
@@ -84,8 +84,15 @@ export class ViewPosts extends LitElement {
     if (!this.blogId) return;
     this.resetState();
     const types = getUrlParam('types');
+    const variants = getUrlParam('variants');
     if (types) this.selectedTypes = types.split(',').map(t => parseInt(t, 10) as PostType);
-    setUrlParams({ types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','), blog: this.blog });
+    if (variants) this.selectedVariants = variants.split(',').map(v => parseInt(v, 10) as PostVariant);
+    
+    setUrlParams({ 
+      types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','), 
+      variants: this.selectedVariants.length > 0 ? this.selectedVariants.join(',') : '',
+      blog: this.blog 
+    });
     await this.fillPage();
     this.observeSentinel();
   }
@@ -118,6 +125,7 @@ export class ViewPosts extends LitElement {
         sort_field: 1, 
         order: 2,
         post_types: this.selectedTypes,
+        variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
         page: { page_size: PAGE_SIZE, page_token: this.backendCursor || undefined }
       });
 
@@ -179,6 +187,11 @@ export class ViewPosts extends LitElement {
     this.loadPosts();
   }
 
+  private handleVariantChange(e: CustomEvent) {
+    this.selectedVariants = e.detail.variants || [];
+    this.loadPosts();
+  }
+
   private handleInfiniteToggle(e: CustomEvent) {
     this.infiniteScroll = e.detail.enabled;
     if (this.infiniteScroll) this.observeSentinel();
@@ -189,9 +202,14 @@ export class ViewPosts extends LitElement {
       <div class="content">
         <blog-header page="posts" .blogName=${this.blog} .blogTitle=${this.blogData?.title || ''}></blog-header>
 
-        <div class="type-pills-container">
-          <type-pills .selectedTypes=${this.selectedTypes} @types-change=${this.handleTypesChange}></type-pills>
-        </div>
+        <filter-bar
+          .selectedTypes=${this.selectedTypes}
+          .selectedVariants=${this.selectedVariants}
+          .showVariants=${true}
+          .loading=${this.loading}
+          @types-change=${this.handleTypesChange}
+          @variant-change=${this.handleVariantChange}
+        ></filter-bar>
 
         ${this.errorMessage ? html`<error-state message=${this.errorMessage}></error-state>` : ''}
 
