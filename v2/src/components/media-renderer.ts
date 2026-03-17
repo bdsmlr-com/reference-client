@@ -90,6 +90,15 @@ export class MediaRenderer extends LitElement {
     const resolvedUrl = resolveMediaUrl(this.src, this.type);
     const posterUrl = resolveMediaUrl(this.src, 'poster');
 
+    if (!resolvedUrl) {
+      return html`
+        <div class="error-placeholder" style="background: #221111; border: 1px solid #ff4444;">
+          <span style="font-size: 20px;">🚫</span>
+          <span style="font-size: 10px; color: #ff4444;">No Host</span>
+        </div>
+      `;
+    }
+
     if (isAnim) {
       return html`
         <video 

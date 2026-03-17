@@ -27,6 +27,11 @@ function toS3Scheme(url: string): string {
     let host = parsed.hostname;
     const path = parsed.pathname;
 
+    if (!host) {
+      console.error(`[MediaResolver] FAIL HARD: Missing hostname in URL: ${cleanUrl}`);
+      return '';
+    }
+
     // Handle standard bdsmlr/reblogme/tumblr domains
     if (host.includes('bdsmlr.com') || host.includes('reblogme.com') || host.includes('media.tumblr.com')) {
       // Normalize host (cdn012 -> ocdn012)
@@ -36,11 +41,8 @@ function toS3Scheme(url: string): string {
       return `s3://${host}${path}`;
     }
   } catch (e) {
-    // Relative path (e.g. /uploads/photos/...)
-    if (cleanUrl.startsWith('/') || cleanUrl.startsWith('uploads/')) {
-      const path = cleanUrl.startsWith('/') ? cleanUrl : `/${cleanUrl}`;
-      return `s3://ocdn012.bdsmlr.com${path}`;
-    }
+    console.error(`[MediaResolver] FAIL HARD: Invalid or relative URL provided: ${cleanUrl}`);
+    return '';
   }
 
   return cleanUrl;
