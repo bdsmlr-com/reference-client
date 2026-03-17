@@ -10,12 +10,12 @@
   "environments": {
     "dev": {
       "name": "Development",
-      "mediaProxyBase": "http://100.98.53.103:8085/unsafe",
+      "mediaProxyBase": "https://imgproxy.i.bdsmlr.com",
       "imgproxyMode": "unsafe"
     },
     "staging": {
       "name": "Staging",
-      "mediaProxyBase": "http://100.98.53.103:8085/unsafe",
+      "mediaProxyBase": "https://imgproxy.i.bdsmlr.com",
       "imgproxyMode": "unsafe"
     },
     "prod": {
