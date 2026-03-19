@@ -176,13 +176,19 @@ export class PostLightbox extends LitElement {
   private renderAdminDebug() {
     if (!isAdminMode() || !this.post) return nothing;
     
+    const params = new URLSearchParams(window.location.search);
+    const activeMode = params.get('media_mode') || 'default';
+
     const media = this.post._media || extractMedia(this.post);
     const files = this.post.content?.files || [];
     const sources = files.length > 0 ? files : (media?.videoUrl || media?.url ? [media.videoUrl || media.url] : []);
 
     return html`
       <div class="admin-debug-panel">
-        <h4>🛠️ Admin Media Debug</h4>
+        <h4>🛠️ Admin Media Debug (MODE: ${activeMode})</h4>
+        <div style="font-size: 10px; color: #888; margin-bottom: 12px;">
+          Toggles: ?media_mode=[ergonomic|unsafe|origin]
+        </div>
         <div class="entry"><span class="label">POST_ID:</span> ${this.post.id}</div>
         ${sources.map((src, i) => html`
           <div style="margin-top: 12px; border-top: 1px solid #333; padding-top: 8px;">

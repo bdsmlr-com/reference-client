@@ -4,6 +4,7 @@
  */
 
 import { CONFIG, MEDIA_PRESETS } from '../config.js';
+import { isAdminMode } from './blog-resolver.js';
 
 export type MediaRenderType = 'gallery-grid' | 'gallery-masonry' | 'feed' | 'lightbox' | 'gutter' | 'poster';
 
@@ -21,7 +22,20 @@ export const BUCKET_LIST = [
  */
 function toS3Scheme(url: string): [string, string] {
   if (!url) return ['', ''];
-  const parts = url.split('?');
+  
+  // 1. Detect and Unwrap existing proxying to prevent double-proxying
+  let targetUrl = url;
+  if (url.includes('/plain/s3://')) {
+    const parts = url.split('/plain/s3://');
+    targetUrl = 'https://' + parts[1];
+  } else if (url.includes('media.i.bdsmlr.com/')) {
+    // pattern: /media.i.bdsmlr.com/<alias>/<bucket>/<path>
+    const parts = url.split('media.i.bdsmlr.com/')[1].split('/');
+    // parts[0] is alias, parts[1] is bucket, parts[2...] is path
+    targetUrl = 'https://' + parts.slice(1).join('/');
+  }
+
+  const parts = targetUrl.split('?');
   const cleanUrl = parts[0];
   const queryParams = parts[1] || '';
   
@@ -51,6 +65,18 @@ function toS3Scheme(url: string): [string, string] {
 
 export function resolveMediaUrl(url: string | undefined, type: MediaRenderType): string {
   if (!url) return '';
+
+  // ADMIN OVERRIDE: ?admin=true&media_mode=origin
+  const params = new URLSearchParams(window.location.search);
+  const modeOverride = (isAdminMode() && params.get('media_mode')) || null;
+
+  if (modeOverride === 'origin') {
+    // Unwrap and return direct CDN link
+    const [s3Url, queryParams] = toS3Scheme(url);
+    const queryString = queryParams ? `?${queryParams}` : '';
+    return s3Url.replace('s3://', 'https://') + queryString;
+  }
+
   const [s3Url, queryParams] = toS3Scheme(url);
   const preset = MEDIA_PRESETS[type];
   
@@ -59,8 +85,9 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
   }
 
   const queryString = queryParams ? `?${queryParams}` : '';
+  const currentMode = modeOverride || CONFIG.imgproxyMode;
 
-  if (CONFIG.imgproxyMode === 'fixed') {
+  if (currentMode === 'fixed' || currentMode === 'ergonomic') {
     // FIXED PATH MODE: Uses pre-configured gateway aliases
     // Pattern: /media.i.bdsmlr.com/<type>/s3://bucket/path?sig
     const base = CONFIG.mediaProxyBase.replace('imgproxy.i.', 'media.i.');
@@ -114,18 +141,22 @@ export function probeNextBucket(el: HTMLElement): boolean {
 
   if (currentSrc.includes('/plain/s3://')) {
     const parts = currentSrc.split('/plain/s3://');
-    proxyPart = parts[0] + '/plain/s3:'; // Keep protocol part for reconstruction
+    proxyPart = parts[0] + '/plain/s3:'; 
     const rest = parts[1].split('?');
     s3Path = rest[0];
     queryParams = rest[1] ? `?${rest[1]}` : '';
   } else {
     // Ergonomic: /<alias>/<bucket>/<path>?...
-    const urlObj = new URL(currentSrc);
-    const pathParts = urlObj.pathname.split('/');
-    // pathParts[0]='', [1]=alias, [2]=bucket, [3...]=path
-    proxyPart = `${urlObj.origin}/${pathParts[1]}`;
-    s3Path = pathParts.slice(2).join('/');
-    queryParams = urlObj.search;
+    try {
+      const urlObj = new URL(currentSrc);
+      const pathParts = urlObj.pathname.split('/');
+      // pathParts[0]='', [1]=alias, [2]=bucket, [3...]=path
+      proxyPart = `${urlObj.origin}/${pathParts[1]}`;
+      s3Path = pathParts.slice(2).join('/');
+      queryParams = urlObj.search;
+    } catch (e) {
+      return false;
+    }
   }
 
   const pathSegments = s3Path.replace(/^\/\//, '').split('/');
