@@ -1,7 +1,6 @@
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { resolveMediaUrl, isAnimation, probeNextBucket, type MediaRenderType } from '../services/media-resolver.js';
-import { isAdminMode } from '../services/blog-resolver.js';
 
 /**
  * Universal Media Renderer
@@ -38,22 +37,6 @@ export class MediaRenderer extends LitElement {
       font-size: 12px;
       gap: 8px;
     }
-
-    .admin-debug {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(0,0,0,0.8);
-      color: #00ff00;
-      font-family: monospace;
-      font-size: 9px;
-      padding: 4px;
-      z-index: 10;
-      pointer-events: none;
-      word-break: break-all;
-      border-top: 1px solid #00ff00;
-    }
   `;
 
   @property({ type: String }) src: string | undefined = '';
@@ -83,16 +66,6 @@ export class MediaRenderer extends LitElement {
     this.showPlaceholder = true;
   }
 
-  private renderDebug(resolvedUrl: string) {
-    if (!isAdminMode()) return nothing;
-    return html`
-      <div class="admin-debug">
-        RAW: ${this.src}<br/>
-        RES: ${resolvedUrl}
-      </div>
-    `;
-  }
-
   render() {
     // If src is truly missing, show a descriptive placeholder immediately
     if (!this.src) {
@@ -101,7 +74,6 @@ export class MediaRenderer extends LitElement {
           <span style="font-size: 20px; opacity: 0.5;">❓</span>
           <span style="font-size: 10px; opacity: 0.3;">No Source</span>
         </div>
-        ${this.renderDebug('')}
       `;
     }
 
@@ -111,7 +83,6 @@ export class MediaRenderer extends LitElement {
           <span style="font-size: 20px; opacity: 0.5;">🖼️</span>
           <span style="font-size: 10px; opacity: 0.3;">Load Failed</span>
         </div>
-        ${this.renderDebug(resolveMediaUrl(this.src, this.type))}
       `;
     }
 
@@ -125,7 +96,6 @@ export class MediaRenderer extends LitElement {
           <span style="font-size: 20px;">🚫</span>
           <span style="font-size: 10px; color: #ff4444;">No Host</span>
         </div>
-        ${this.renderDebug('')}
       `;
     }
 
@@ -143,7 +113,6 @@ export class MediaRenderer extends LitElement {
         >
           <source src=${resolvedUrl} type="video/mp4" @error=${this.handleError}>
         </video>
-        ${this.renderDebug(resolvedUrl)}
       `;
     }
 
@@ -155,7 +124,6 @@ export class MediaRenderer extends LitElement {
         style="object-fit: inherit;"
         @error=${this.handleError} 
       />
-      ${this.renderDebug(resolvedUrl)}
     `;
   }
 }

@@ -5,6 +5,8 @@ import { EventNames, type LightboxNavigateDetail } from '../types/events.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
+import { isAdminMode } from '../services/blog-resolver.js';
+import { resolveMediaUrl } from '../services/media-resolver.js';
 import './media-renderer.js';
 import './post-recommendations.js';
 import './post-engagement.js';
@@ -81,6 +83,22 @@ export class PostLightbox extends LitElement {
       .error-ghost { width: 100%; min-height: 300px; background: var(--bg-panel-alt); display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); border-radius: 8px; }
       .diagnostic-label { font-family: monospace; font-size: 10px; background: #000; color: #00ff00; padding: 2px 6px; border-radius: 4px; margin-bottom: 12px; }
 
+      .admin-debug-panel {
+        background: #000;
+        color: #00ff00;
+        font-family: monospace;
+        font-size: 11px;
+        padding: 16px;
+        border-radius: 8px;
+        border: 1px solid #00ff00;
+        margin-bottom: 24px;
+        word-break: break-all;
+        line-height: 1.4;
+      }
+      .admin-debug-panel h4 { color: #fff; margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; }
+      .admin-debug-panel .entry { margin-bottom: 8px; }
+      .admin-debug-panel .label { color: #888; margin-right: 8px; }
+
       @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE)}px) {
         .main-nav-btn { display: none; }
         .info-section { padding: 16px; }
@@ -155,13 +173,34 @@ export class PostLightbox extends LitElement {
     }
   }
 
+  private renderAdminDebug() {
+    if (!isAdminMode() || !this.post) return nothing;
+    
+    const media = this.post._media || extractMedia(this.post);
+    const files = this.post.content?.files || [];
+    const sources = files.length > 0 ? files : (media?.videoUrl || media?.url ? [media.videoUrl || media.url] : []);
+
+    return html`
+      <div class="admin-debug-panel">
+        <h4>🛠️ Admin Media Debug</h4>
+        <div class="entry"><span class="label">POST_ID:</span> ${this.post.id}</div>
+        ${sources.map((src, i) => html`
+          <div style="margin-top: 12px; border-top: 1px solid #333; padding-top: 8px;">
+            <div class="entry"><span class="label">MEDIA[${i}] RAW:</span> ${src}</div>
+            <div class="entry"><span class="label">MEDIA[${i}] RES:</span> ${resolveMediaUrl(src, 'lightbox')}</div>
+          </div>
+        `)}
+      </div>
+    `;
+  }
+
   private renderMedia() {
     if (!this.post) return nothing;
     const media = this.post._media || extractMedia(this.post);
     if (!media) return this.renderGhost('🖼️', false, false, 'Media Error');
 
     const files = this.post.content?.files || [];
-    const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+    const isAdmin = isAdminMode();
     const isTombstone = !media.url && !this.post.body;
 
     const mediaSources = files.length > 0 ? files : (media.videoUrl || media.url ? [media.videoUrl || media.url] : []);
@@ -208,6 +247,8 @@ export class PostLightbox extends LitElement {
           </div>
 
           <div class="info-section">
+            ${this.renderAdminDebug()}
+
             <div class="body-text" style="margin-bottom: 32px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 24px;">
               ${unsafeHTML(p.content?.html || p.body || '')}
             </div>
