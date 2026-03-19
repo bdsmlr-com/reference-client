@@ -29,7 +29,9 @@ function toS3Scheme(url: string): [string, string] {
     const parts = url.split('/plain/s3://');
     targetUrl = 'https://' + parts[1];
   } else if (url.includes('media.i.bdsmlr.com/')) {
+    // pattern: /media.i.bdsmlr.com/<alias>/<bucket>/<path>
     const parts = url.split('media.i.bdsmlr.com/')[1].split('/');
+    // parts[0] is alias, parts[1] is bucket, parts[2...] is path
     targetUrl = 'https://' + parts.slice(1).join('/');
   }
 
@@ -82,26 +84,34 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
   const currentMode = modeOverride || CONFIG.imgproxyMode;
 
   const isAnim = isAnimation(url);
-  const parts: string[] = [];
-
+  
   if (currentMode === 'fixed' || currentMode === 'ergonomic') {
+    // FIXED PATH MODE: Uses pre-configured gateway aliases
+    // Pattern: /media.i.bdsmlr.com/<type>/s3://bucket/path?sig
     const base = CONFIG.mediaProxyBase.replace('imgproxy.i.', 'media.i.');
+    // Note: We use the 'type' (e.g. 'lightbox', 'feed') directly as the Nginx alias
     return `${base}/${type}/${s3Url}${queryString}`;
   }
 
   // UNSAFE MODE: Dynamic transformations
+  const parts: string[] = [];
+  
+  // 1. Gravity (e.g. g:sm)
   if (!isAnim) {
     parts.push(preset.gravity.replace('gravity:', 'g:'));
   }
 
+  // 2. Resize
   parts.push(`rs:${preset.resize}:${preset.width}:${preset.height}`);
   
+  // 3. Format
   if (isAnim && type !== 'poster') {
     parts.push('format:mp4');
   } else if (preset.format) {
     parts.push(`format:${preset.format}`);
   }
 
+  // Pattern: /imgproxy.i.bdsmlr.com/unsafe/<filters>/plain/s3://bucket/path?sig
   return `${CONFIG.mediaProxyBase}/unsafe/${parts.join('/')}/plain/${s3Url}${queryString}`;
 }
 
@@ -133,6 +143,7 @@ export function probeNextBucket(el: HTMLElement): boolean {
 
   if (currentSrc.includes('/plain/s3://')) {
     const parts = currentSrc.split('/plain/s3://');
+    // Important: keep the filters part of the proxyPart
     proxyPart = parts[0] + '/plain/s3:'; 
     const rest = parts[1].split('?');
     s3Path = rest[0];
@@ -141,6 +152,7 @@ export function probeNextBucket(el: HTMLElement): boolean {
     try {
       const urlObj = new URL(currentSrc);
       const pathParts = urlObj.pathname.split('/');
+      // pathParts[0]='', [1]=alias, [2]=bucket, [3...]=path
       proxyPart = `${urlObj.origin}/${pathParts[1]}`;
       s3Path = pathParts.slice(2).join('/');
       queryParams = urlObj.search;
