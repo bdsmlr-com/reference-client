@@ -5,6 +5,7 @@ import { apiClient } from '../services/client.js';
 import { recService, type RecResult } from '../services/recommendation-api.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
 import { repeat } from 'lit/directives/repeat.js';
+import { scrollObserver } from '../services/scroll-observer.js';
 import './media-renderer.js';
 import './load-footer.js';
 import './loading-spinner.js';
@@ -40,6 +41,10 @@ export class PostRecommendations extends LitElement {
         border-radius: 8px;
         animation: pulse 2s infinite;
       }
+      #scroll-sentinel {
+        height: 20px;
+        margin-top: 20px;
+      }
       @keyframes pulse {
         0% { opacity: 0.5; }
         50% { opacity: 0.8; }
@@ -60,9 +65,30 @@ export class PostRecommendations extends LitElement {
   private currentAbortController: AbortController | null = null;
   private seenIds = new Set<number>();
 
+  connectedCallback(): void {
+    super.connectedCallback();
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
+    if (sentinel) {
+      scrollObserver.unobserve(sentinel);
+    }
+  }
+
   protected firstUpdated(): void {
     if (this.postId) {
       this.resetAndFetch();
+    }
+    
+    const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
+    if (sentinel) {
+      scrollObserver.observe(sentinel, () => {
+        if (this.infiniteScroll && !this.loading && !this.exhausted) {
+          this.fetchMore();
+        }
+      });
     }
   }
 
@@ -213,9 +239,12 @@ export class PostRecommendations extends LitElement {
         .loading=${this.loading}
         .exhausted=${this.exhausted}
         .infiniteScroll=${this.infiniteScroll}
+        .pageName=${'post-recommendations'}
         @load-more=${() => this.fetchMore()}
         @infinite-toggle=${this.handleInfiniteToggle}
       ></load-footer>
+
+      <div id="scroll-sentinel"></div>
     `;
   }
 }

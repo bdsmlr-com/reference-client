@@ -17,63 +17,67 @@ export const BUCKET_LIST = [
 
 /**
  * Maps a URL to an S3 scheme for imgproxy.
+ * Returns [s3Url, queryParams]
  */
-function toS3Scheme(url: string): string {
-  if (!url) return '';
-  const cleanUrl = url.split('?')[0];
+function toS3Scheme(url: string): [string, string] {
+  if (!url) return ['', ''];
+  const parts = url.split('?');
+  const cleanUrl = parts[0];
+  const queryParams = parts[1] || '';
   
   try {
-    const parsed = new URL(cleanUrl);
+    const parsed = new URL(cleanUrl.startsWith('http') ? cleanUrl : `https://ocdn012.bdsmlr.com${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`);
     let host = parsed.hostname;
     const path = parsed.pathname;
 
     if (!host) {
-      console.error(`[MediaResolver] FAIL HARD: Missing hostname in URL: ${cleanUrl}`);
-      return '';
+      return ['', ''];
     }
 
     // Handle standard bdsmlr/reblogme/tumblr domains
     if (host.includes('bdsmlr.com') || host.includes('reblogme.com') || host.includes('media.tumblr.com')) {
       // Normalize host (cdn012 -> ocdn012)
-      if (host.includes('cdn012')) {
+      if (host.includes('cdn012') && !host.includes('ocdn012')) {
         host = 'ocdn012.bdsmlr.com';
       }
-      return `s3://${host}${path}`;
+      return [`s3://${host}${path}`, queryParams];
     }
+    
+    return [cleanUrl, queryParams];
   } catch (e) {
-    console.error(`[MediaResolver] FAIL HARD: Invalid or relative URL provided: ${cleanUrl}`);
-    return '';
+    return [cleanUrl, queryParams];
   }
-
-  return cleanUrl;
 }
 
 export function resolveMediaUrl(url: string | undefined, type: MediaRenderType): string {
   if (!url) return '';
-  const s3Url = toS3Scheme(url);
+  const [s3Url, queryParams] = toS3Scheme(url);
   const preset = MEDIA_PRESETS[type];
   
   if (!preset) {
-    console.warn(`[MediaResolver] Missing preset for type: ${type}`);
     return url;
   }
 
+  const queryString = queryParams ? `?${queryParams}` : '';
+
   if (CONFIG.imgproxyMode === 'fixed') {
     // FIXED PATH MODE: Uses pre-configured gateway aliases
-    return `${CONFIG.mediaProxyBase}/${type}/${s3Url}`;
+    // Pattern: /media.i.bdsmlr.com/<type>/s3://bucket/path?sig
+    const base = CONFIG.mediaProxyBase.replace('imgproxy.i.', 'media.i.');
+    return `${base}/${type}/${s3Url}${queryString}`;
   }
 
   // UNSAFE MODE: Dynamic transformations
   const parts: string[] = [];
   const isAnim = isAnimation(url);
   
-  // 1. Gravity (e.g. gravity:sm)
+  // 1. Gravity (e.g. g:sm)
   if (!isAnim) {
-    parts.push(preset.gravity);
+    parts.push(preset.gravity.replace('gravity:', 'g:'));
   }
 
   // 2. Resize
-  parts.push(`resize:${preset.resize}:${preset.width}:${preset.height}`);
+  parts.push(`rs:${preset.resize}:${preset.width}:${preset.height}`);
   
   // 3. Format
   if (isAnim && type !== 'poster') {
@@ -82,7 +86,8 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
     parts.push(`format:${preset.format}`);
   }
 
-  return `${CONFIG.mediaProxyBase}/${parts.join('/')}/plain/${s3Url}`;
+  // Pattern: /imgproxy.i.bdsmlr.com/unsafe/<filters>/plain/s3://bucket/path?sig
+  return `${CONFIG.mediaProxyBase}/unsafe/${parts.join('/')}/plain/${s3Url}${queryString}`;
 }
 
 export function isAnimation(url: string | undefined): boolean {
@@ -100,13 +105,32 @@ export function probeNextBucket(el: HTMLElement): boolean {
   else if (el instanceof HTMLVideoElement) currentSrc = el.src;
   else if (el instanceof HTMLSourceElement) currentSrc = el.src;
 
-  if (!currentSrc || !currentSrc.includes('/plain/s3://')) return false;
+  // Handle both /unsafe/ and ergonomic aliases
+  if (!currentSrc || (!currentSrc.includes('/plain/s3://') && !currentSrc.includes('.bdsmlr.com/'))) return false;
 
-  const parts = currentSrc.split('/plain/s3://');
-  const proxyPart = parts[0];
-  const s3Path = parts[1];
-  const currentBucket = s3Path.split('/')[0];
-  const filePath = s3Path.substring(currentBucket.length);
+  let proxyPart = '';
+  let s3Path = '';
+  let queryParams = '';
+
+  if (currentSrc.includes('/plain/s3://')) {
+    const parts = currentSrc.split('/plain/s3://');
+    proxyPart = parts[0] + '/plain/s3:'; // Keep protocol part for reconstruction
+    const rest = parts[1].split('?');
+    s3Path = rest[0];
+    queryParams = rest[1] ? `?${rest[1]}` : '';
+  } else {
+    // Ergonomic: /<alias>/<bucket>/<path>?...
+    const urlObj = new URL(currentSrc);
+    const pathParts = urlObj.pathname.split('/');
+    // pathParts[0]='', [1]=alias, [2]=bucket, [3...]=path
+    proxyPart = `${urlObj.origin}/${pathParts[1]}`;
+    s3Path = pathParts.slice(2).join('/');
+    queryParams = urlObj.search;
+  }
+
+  const pathSegments = s3Path.replace(/^\/\//, '').split('/');
+  const currentBucket = pathSegments[0];
+  const filePath = '/' + pathSegments.slice(1).join('/');
 
   let nextIndex = 0;
   const currentIndex = BUCKET_LIST.indexOf(currentBucket);
@@ -116,7 +140,13 @@ export function probeNextBucket(el: HTMLElement): boolean {
 
   if (nextIndex < BUCKET_LIST.length) {
     const nextBucket = BUCKET_LIST[nextIndex];
-    const nextSrc = `${proxyPart}/plain/s3://${nextBucket}${filePath}`;
+    let nextSrc = '';
+    
+    if (currentSrc.includes('/plain/s3://')) {
+      nextSrc = `${proxyPart}//${nextBucket}${filePath}${queryParams}`;
+    } else {
+      nextSrc = `${proxyPart}/${nextBucket}${filePath}${queryParams}`;
+    }
     
     if (el instanceof HTMLImageElement) el.src = nextSrc;
     else if (el instanceof HTMLVideoElement) {
