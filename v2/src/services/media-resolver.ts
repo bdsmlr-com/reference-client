@@ -29,9 +29,7 @@ function toS3Scheme(url: string): [string, string] {
     const parts = url.split('/plain/s3://');
     targetUrl = 'https://' + parts[1];
   } else if (url.includes('media.i.bdsmlr.com/')) {
-    // pattern: /media.i.bdsmlr.com/<alias>/<bucket>/<path>
     const parts = url.split('media.i.bdsmlr.com/')[1].split('/');
-    // parts[0] is alias, parts[1] is bucket, parts[2...] is path
     targetUrl = 'https://' + parts.slice(1).join('/');
   }
 
@@ -48,9 +46,7 @@ function toS3Scheme(url: string): [string, string] {
       return ['', ''];
     }
 
-    // Handle standard bdsmlr/reblogme/tumblr domains
     if (host.includes('bdsmlr.com') || host.includes('reblogme.com') || host.includes('media.tumblr.com')) {
-      // Normalize host (cdn012 -> ocdn012)
       if (host.includes('cdn012') && !host.includes('ocdn012')) {
         host = 'ocdn012.bdsmlr.com';
       }
@@ -66,12 +62,10 @@ function toS3Scheme(url: string): [string, string] {
 export function resolveMediaUrl(url: string | undefined, type: MediaRenderType): string {
   if (!url) return '';
 
-  // ADMIN OVERRIDE: ?admin=true&media_mode=origin
   const params = new URLSearchParams(window.location.search);
   const modeOverride = (isAdminMode() && params.get('media_mode')) || null;
 
   if (modeOverride === 'origin') {
-    // Unwrap and return direct CDN link
     const [s3Url, queryParams] = toS3Scheme(url);
     const queryString = queryParams ? `?${queryParams}` : '';
     return s3Url.replace('s3://', 'https://') + queryString;
@@ -87,39 +81,38 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
   const queryString = queryParams ? `?${queryParams}` : '';
   const currentMode = modeOverride || CONFIG.imgproxyMode;
 
+  const isAnim = isAnimation(url);
+  const parts: string[] = [];
+
   if (currentMode === 'fixed' || currentMode === 'ergonomic') {
-    // FIXED PATH MODE: Uses pre-configured gateway aliases
-    // Pattern: /media.i.bdsmlr.com/<type>/s3://bucket/path?sig
     const base = CONFIG.mediaProxyBase.replace('imgproxy.i.', 'media.i.');
     return `${base}/${type}/${s3Url}${queryString}`;
   }
 
   // UNSAFE MODE: Dynamic transformations
-  const parts: string[] = [];
-  const isAnim = isAnimation(url);
-  
-  // 1. Gravity (e.g. g:sm)
   if (!isAnim) {
     parts.push(preset.gravity.replace('gravity:', 'g:'));
   }
 
-  // 2. Resize
   parts.push(`rs:${preset.resize}:${preset.width}:${preset.height}`);
   
-  // 3. Format
   if (isAnim && type !== 'poster') {
     parts.push('format:mp4');
   } else if (preset.format) {
     parts.push(`format:${preset.format}`);
   }
 
-  // Pattern: /imgproxy.i.bdsmlr.com/unsafe/<filters>/plain/s3://bucket/path?sig
   return `${CONFIG.mediaProxyBase}/unsafe/${parts.join('/')}/plain/${s3Url}${queryString}`;
 }
 
 export function isAnimation(url: string | undefined): boolean {
   if (!url) return false;
-  const path = url.split('?')[0].toLowerCase();
+  // Unwrap if needed to check original extension
+  let checkUrl = url;
+  if (url.includes('/plain/s3://')) {
+    checkUrl = url.split('/plain/s3://')[1];
+  }
+  const path = checkUrl.split('?')[0].toLowerCase();
   return path.endsWith('.gif') || path.endsWith('.webp');
 }
 
@@ -132,7 +125,6 @@ export function probeNextBucket(el: HTMLElement): boolean {
   else if (el instanceof HTMLVideoElement) currentSrc = el.src;
   else if (el instanceof HTMLSourceElement) currentSrc = el.src;
 
-  // Handle both /unsafe/ and ergonomic aliases
   if (!currentSrc || (!currentSrc.includes('/plain/s3://') && !currentSrc.includes('.bdsmlr.com/'))) return false;
 
   let proxyPart = '';
@@ -146,11 +138,9 @@ export function probeNextBucket(el: HTMLElement): boolean {
     s3Path = rest[0];
     queryParams = rest[1] ? `?${rest[1]}` : '';
   } else {
-    // Ergonomic: /<alias>/<bucket>/<path>?...
     try {
       const urlObj = new URL(currentSrc);
       const pathParts = urlObj.pathname.split('/');
-      // pathParts[0]='', [1]=alias, [2]=bucket, [3...]=path
       proxyPart = `${urlObj.origin}/${pathParts[1]}`;
       s3Path = pathParts.slice(2).join('/');
       queryParams = urlObj.search;

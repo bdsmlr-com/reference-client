@@ -1,6 +1,7 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { resolveMediaUrl, isAnimation, probeNextBucket, type MediaRenderType } from '../services/media-resolver.js';
+import { isAdminMode } from '../services/blog-resolver.js';
 
 /**
  * Universal Media Renderer
@@ -22,7 +23,7 @@ export class MediaRenderer extends LitElement {
       width: 100%;
       height: 100%;
       display: block;
-      object-fit: inherit; /* Allow parent to control fit (cover/contain) */
+      object-fit: inherit;
     }
 
     .error-placeholder {
@@ -36,6 +37,22 @@ export class MediaRenderer extends LitElement {
       color: var(--text-muted);
       font-size: 12px;
       gap: 8px;
+    }
+
+    .admin-debug {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.8);
+      color: #00ff00;
+      font-family: monospace;
+      font-size: 9px;
+      padding: 4px;
+      z-index: 10;
+      pointer-events: none;
+      word-break: break-all;
+      border-top: 1px solid #00ff00;
     }
   `;
 
@@ -54,11 +71,21 @@ export class MediaRenderer extends LitElement {
     if (probeNextBucket(el)) return;
 
     // 2. Try Raw Backend URL (Final Fallback)
-    if (el instanceof HTMLImageElement && !this.triedOriginal) {
+    if (!this.triedOriginal) {
       this.triedOriginal = true;
       if (this.src) {
-        el.src = this.src;
-        return;
+        if (el instanceof HTMLImageElement) {
+          el.src = this.src;
+          return;
+        } else if (el instanceof HTMLSourceElement || el instanceof HTMLVideoElement) {
+          // If video fails, maybe try the original src directly (though it's a gif)
+          const video = el instanceof HTMLVideoElement ? el : (el.parentElement as HTMLVideoElement);
+          if (video) {
+            video.src = this.src;
+            video.load();
+            return;
+          }
+        }
       }
     }
 
@@ -66,8 +93,19 @@ export class MediaRenderer extends LitElement {
     this.showPlaceholder = true;
   }
 
+  private renderDebug(resolvedUrl: string) {
+    if (!isAdminMode()) return nothing;
+    // Only show simple debug if NOT in lightbox (lightbox has its own panel)
+    if (this.type === 'lightbox') return nothing;
+    
+    return html`
+      <div class="admin-debug">
+        ${resolvedUrl.substring(0, 60)}...
+      </div>
+    `;
+  }
+
   render() {
-    // If src is truly missing, show a descriptive placeholder immediately
     if (!this.src) {
       return html`
         <div class="error-placeholder" style="background: #1a1a1a; border: 1px dashed #333;">
@@ -99,7 +137,7 @@ export class MediaRenderer extends LitElement {
       `;
     }
 
-    if (isAnim) {
+    if (isAnim && this.type !== 'poster') {
       return html`
         <video 
           autoplay 
@@ -110,9 +148,11 @@ export class MediaRenderer extends LitElement {
           preload="metadata" 
           poster=${posterUrl}
           style="object-fit: inherit;"
+          @error=${this.handleError}
         >
           <source src=${resolvedUrl} type="video/mp4" @error=${this.handleError}>
         </video>
+        ${this.renderDebug(resolvedUrl)}
       `;
     }
 
@@ -124,6 +164,7 @@ export class MediaRenderer extends LitElement {
         style="object-fit: inherit;"
         @error=${this.handleError} 
       />
+      ${this.renderDebug(resolvedUrl)}
     `;
   }
 }
