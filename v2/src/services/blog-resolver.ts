@@ -41,10 +41,18 @@ const RESERVED_PAGE_ROUTES = [
  */
 export function isAdminMode(): boolean {
   const params = new URLSearchParams(window.location.search);
-  if (params.get('admin') === 'true') {
+  const adminParam = params.get('admin');
+  
+  if (adminParam === 'true') {
     localStorage.setItem('bdsmlr_admin', 'true');
     return true;
   }
+  
+  if (adminParam === 'false') {
+    localStorage.removeItem('bdsmlr_admin');
+    return false;
+  }
+
   return localStorage.getItem('bdsmlr_admin') === 'true';
 }
 
