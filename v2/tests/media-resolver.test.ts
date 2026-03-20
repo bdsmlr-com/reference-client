@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { toS3Scheme, resolveMediaUrl, isAnimation, BUCKET_LIST } from './media-resolver.js';
-import { CONFIG } from '../config.js';
+import { toS3Scheme, resolveMediaUrl, isAnimation } from '../src/services/media-resolver.js';
+import { CONFIG } from '../src/config.js';
 
 describe('Media Resolver', () => {
   beforeEach(() => {
@@ -52,7 +52,7 @@ describe('Media Resolver', () => {
     it('should respect admin media_mode override', () => {
       // Mock URL search params
       const spy = vi.spyOn(URLSearchParams.prototype, 'get');
-      spy.mockImplementation((key) => {
+      spy.mockImplementation((key: string) => {
         if (key === 'admin') return 'true';
         if (key === 'media_mode') return 'origin';
         return null;
@@ -75,7 +75,7 @@ describe('Media Resolver', () => {
       expect(isAnimation('/foo.webp')).toBe(true);
     });
 
-    it('should unwrapp and detect animations in proxied URLs', () => {
+    it('should unwrap and detect animations in proxied URLs', () => {
       const proxied = 'https://imgproxy.i.bdsmlr.com/unsafe/rs:fill:300:300/plain/s3://ocdn012.bdsmlr.com/foo.gif?e=123';
       expect(isAnimation(proxied)).toBe(true);
     });

@@ -20,7 +20,7 @@ export const BUCKET_LIST = [
  * Maps a URL to an S3 scheme for imgproxy.
  * Returns [s3Url, queryParams]
  */
-function toS3Scheme(url: string): [string, string] {
+export function toS3Scheme(url: string): [string, string] {
   if (!url) return ['', ''];
   
   // 1. Detect and Unwrap existing proxying to prevent double-proxying
