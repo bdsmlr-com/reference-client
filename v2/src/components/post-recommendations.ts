@@ -11,6 +11,8 @@ import './media-renderer.js';
 import './load-footer.js';
 import './loading-spinner.js';
 
+const RECS_PAGE_SIZE = 20;
+
 @customElement('post-recommendations')
 export class PostRecommendations extends LitElement {
   static styles = [
@@ -140,7 +142,7 @@ export class PostRecommendations extends LitElement {
     this.error = '';
 
     try {
-      const recs = await recService.getSimilarPosts(id, 12, this.relatedPosts.length);
+      const recs = await recService.getSimilarPosts(id, RECS_PAGE_SIZE, this.relatedPosts.length);
       
       if (fetchSignal?.aborted) return;
 
@@ -239,6 +241,7 @@ export class PostRecommendations extends LitElement {
         .mode=${this.mode}
         .loading=${this.loading}
         .exhausted=${this.exhausted}
+        .loadingTarget=${RECS_PAGE_SIZE}
         .infiniteScroll=${this.infiniteScroll}
         .pageName=${'post-recommendations'}
         @load-more=${() => this.fetchMore()}
