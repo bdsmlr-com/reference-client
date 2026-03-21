@@ -25,6 +25,8 @@ export class PostEngagement extends LitElement {
 
       .lightbox-links { font-size: 16px; margin-bottom: 12px; color: var(--text-muted); }
       .lightbox-links a { color: var(--accent); text-decoration: none; font-weight: 600; }
+      .post-id-link { display: inline-flex; align-items: center; gap: 4px; }
+      .post-id-outlink { font-size: 12px; opacity: 0.75; }
       
       .meta { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
 
@@ -117,7 +119,8 @@ export class PostEngagement extends LitElement {
 
     if (isReblog) {
       return html`
-        ${typeIcon} <a href="/${p.originBlogName}/posts">@${p.originBlogName}</a> / ${p.originPostId}
+        ${typeIcon} <a href="/${p.originBlogName}/posts">@${p.originBlogName}</a> /
+        <a class="post-id-link" href="/post/${p.originPostId}">${p.originPostId}<span class="post-id-outlink">↗</span></a>
         via ♻️ <a href="/${p.blogName}/posts">@${p.blogName}</a> / ${p.id}
       `;
     }

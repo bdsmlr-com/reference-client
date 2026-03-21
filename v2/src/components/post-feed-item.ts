@@ -184,7 +184,7 @@ export class PostFeedItem extends LitElement {
 
     const isReblog = post.originPostId && post.originPostId !== post.id;
     const blogName = post.blogName || 'unknown';
-    const originBlogName = post.originBlogName;
+    const originBlogName = post.originBlogName || 'unknown';
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
 
     let mediaHtml;
@@ -202,12 +202,14 @@ export class PostFeedItem extends LitElement {
       <article class="card" @click=${this.handlePostClick}>
         <header class="card-header">
           <div class="blog-info">
-            <a href="/${blogName}/posts" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
             ${isReblog ? html`
+              <a href="/${originBlogName}/posts" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${originBlogName}</a>
               <span class="reblog-indicator">
-                ♻️ <a href="/${originBlogName}/posts" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${originBlogName}</a>
+                ♻️ via <a href="/${blogName}/posts" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
               </span>
-            ` : ''}
+            ` : html`
+              <a href="/${blogName}/posts" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
+            `}
           </div>
           <time class="post-date" title=${getTooltipDate(post.createdAtUnix)}>${formatDateShort(post.createdAtUnix)}</time>
         </header>
