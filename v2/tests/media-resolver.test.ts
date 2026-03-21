@@ -38,6 +38,12 @@ describe('Media Resolver', () => {
       const [s3Url] = toS3Scheme(ergonomic);
       expect(s3Url).toBe('s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
     });
+
+    it('should unwrap an ergonomic s3 URL', () => {
+      const ergonomicS3 = 'https://media.i.bdsmlr.com/gutter/s3://ocdn012.bdsmlr.com/uploads/foo.gif?e=123&t=abc';
+      const [s3Url] = toS3Scheme(ergonomicS3);
+      expect(s3Url).toBe('s3://ocdn012.bdsmlr.com/uploads/foo.gif');
+    });
   });
 
   describe('resolveMediaUrl', () => {
@@ -53,6 +59,14 @@ describe('Media Resolver', () => {
       const url = resolveMediaUrl('/uploads/foo.jpg', 'lightbox');
       // Should map 'lightbox' render type to the 'lightbox' alias
       expect(url).toContain('media.bdsmlr.com/lightbox/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
+    });
+
+    it('should re-alias ergonomic s3 media URLs for lightbox', () => {
+      CONFIG.imgproxyMode = 'fixed';
+      CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
+      const src = 'https://media.i.bdsmlr.com/gutter/s3://ocdn012.bdsmlr.com/uploads/foo.gif?e=123&t=abc';
+      const url = resolveMediaUrl(src, 'lightbox');
+      expect(url).toContain('media.bdsmlr.com/lightbox/s3://ocdn012.bdsmlr.com/uploads/foo.gif?e=123&t=abc');
     });
 
     it('should respect admin media_mode override', () => {

@@ -28,6 +28,10 @@ export function toS3Scheme(url: string): [string, string] {
   if (url.includes('/plain/s3://')) {
     const parts = url.split('/plain/s3://');
     targetUrl = 'https://' + parts[1];
+  } else if (url.includes('/s3://')) {
+    // pattern: /<alias>/s3://<bucket>/<path>
+    const parts = url.split('/s3://');
+    targetUrl = 'https://' + parts[1];
   } else if (url.includes('media.i.bdsmlr.com/')) {
     // pattern: /media.i.bdsmlr.com/<alias>/<bucket>/<path>
     const parts = url.split('media.i.bdsmlr.com/')[1].split('/');
