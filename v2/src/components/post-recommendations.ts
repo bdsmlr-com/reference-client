@@ -67,6 +67,7 @@ export class PostRecommendations extends LitElement {
 
   private currentAbortController: AbortController | null = null;
   private seenIds = new Set<number>();
+  private nextOffset = 0;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -118,6 +119,7 @@ export class PostRecommendations extends LitElement {
     
     this.relatedPosts = [];
     this.seenIds.clear();
+    this.nextOffset = 0;
     this.exhausted = false;
     this.loading = false;
     this.error = '';
@@ -142,7 +144,8 @@ export class PostRecommendations extends LitElement {
     this.error = '';
 
     try {
-      const recs = await recService.getSimilarPosts(id, RECS_PAGE_SIZE, this.relatedPosts.length);
+      const requestOffset = this.nextOffset;
+      const recs = await recService.getSimilarPosts(id, RECS_PAGE_SIZE, requestOffset);
       
       if (fetchSignal?.aborted) return;
 
@@ -150,6 +153,7 @@ export class PostRecommendations extends LitElement {
         this.exhausted = true;
         return;
       }
+      this.nextOffset += RECS_PAGE_SIZE;
 
       // Normalize IDs from backend
       recs.forEach(r => {
@@ -186,7 +190,7 @@ export class PostRecommendations extends LitElement {
       newItems.forEach(r => { if (r.post_id) this.seenIds.add(r.post_id); });
 
       this.relatedPosts = [...this.relatedPosts, ...newItems];
-      if (newItems.length === 0 || this.relatedPosts.length >= 96) {
+      if (recs.length < RECS_PAGE_SIZE || this.relatedPosts.length >= 96) {
         this.exhausted = true;
       }
     } catch (e) {
