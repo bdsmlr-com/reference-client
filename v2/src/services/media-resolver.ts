@@ -156,6 +156,8 @@ export function probeNextBucket(el: HTMLElement): boolean {
   let proxyPart = '';
   let s3Path = '';
   let queryParams = '';
+  let ergonomicS3Alias = '';
+  let usesErgonomicS3 = false;
 
   if (currentSrc.includes('/plain/s3://')) {
     const parts = currentSrc.split('/plain/s3://');
@@ -164,6 +166,23 @@ export function probeNextBucket(el: HTMLElement): boolean {
     const rest = parts[1].split('?');
     s3Path = rest[0];
     queryParams = rest[1] ? `?${rest[1]}` : '';
+  } else if (currentSrc.includes('/s3://')) {
+    // Ergonomic form: https://media.i.../<alias>/s3://<bucket>/<path>?...
+    try {
+      const urlObj = new URL(currentSrc);
+      const afterHost = `${urlObj.pathname}${urlObj.search}`.replace(/^\/+/, '');
+      const alias = afterHost.split('/')[0];
+      const s3Part = afterHost.slice(alias.length + 1).split('?')[0];
+      const m = s3Part.match(/^s3:\/\/([^/]+)(\/.*)$/);
+      if (!m) return false;
+      ergonomicS3Alias = alias;
+      usesErgonomicS3 = true;
+      s3Path = `${m[1]}${m[2]}`;
+      queryParams = urlObj.search;
+      proxyPart = `${urlObj.origin}/${alias}/s3:`;
+    } catch (e) {
+      return false;
+    }
   } else {
     try {
       const urlObj = new URL(currentSrc);
@@ -193,6 +212,8 @@ export function probeNextBucket(el: HTMLElement): boolean {
     
     if (currentSrc.includes('/plain/s3://')) {
       nextSrc = `${proxyPart}//${nextBucket}${filePath}${queryParams}`;
+    } else if (usesErgonomicS3) {
+      nextSrc = `${new URL(currentSrc).origin}/${ergonomicS3Alias}/s3://${nextBucket}${filePath}${queryParams}`;
     } else {
       nextSrc = `${proxyPart}/${nextBucket}${filePath}${queryParams}`;
     }
