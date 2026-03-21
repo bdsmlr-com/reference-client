@@ -7,6 +7,7 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { resolveMediaUrl } from '../services/media-resolver.js';
+import { buildLightboxMediaSources } from '../services/lightbox-media-sources.js';
 import './media-renderer.js';
 import './post-recommendations.js';
 import './post-engagement.js';
@@ -239,11 +240,9 @@ export class PostLightbox extends LitElement {
     const media = this.post._media || extractMedia(this.post);
     if (!media) return this.renderGhost('🖼️', false, false, 'Media Error');
 
-    const files = this.post.content?.files || [];
     const isAdmin = isAdminMode();
     const isTombstone = !media.url && !this.post.body;
-
-    const mediaSources = files.length > 0 ? files : (media.videoUrl || media.url ? [media.videoUrl || media.url] : []);
+    const mediaSources = buildLightboxMediaSources(this.post);
 
     if (mediaSources.length === 0) {
       return this.renderGhost(media.type === 'video' ? '🎬' : '🖼️', isAdmin, isTombstone, 'Content Unavailable');
