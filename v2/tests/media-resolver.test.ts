@@ -1,8 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { toS3Scheme, resolveMediaUrl, isAnimation, toOriginFallbackUrl } from '../src/services/media-resolver.js';
+import { toS3Scheme, resolveMediaUrl, isAnimation, toOriginFallbackUrl, probeNextBucket } from '../src/services/media-resolver.js';
 import { CONFIG } from '../src/config.js';
 
 describe('Media Resolver', () => {
+  class MockImageElement {
+    src = '';
+  }
+
+  class MockVideoElement {
+    src = '';
+    load() {}
+    play() { return Promise.resolve(); }
+  }
+
+  class MockSourceElement {
+    src = '';
+    parentElement: MockVideoElement | null = null;
+  }
+
   beforeEach(() => {
     vi.resetModules();
     vi.stubGlobal('window', { location: { search: '' } });
@@ -11,6 +26,9 @@ describe('Media Resolver', () => {
       setItem: vi.fn(),
       removeItem: vi.fn(),
     });
+    vi.stubGlobal('HTMLImageElement', MockImageElement as any);
+    vi.stubGlobal('HTMLVideoElement', MockVideoElement as any);
+    vi.stubGlobal('HTMLSourceElement', MockSourceElement as any);
     // Default to staging-like config
     CONFIG.imgproxyMode = 'unsafe';
     CONFIG.mediaProxyBase = 'https://imgproxy.i.bdsmlr.com';
@@ -107,6 +125,30 @@ describe('Media Resolver', () => {
       expect(toOriginFallbackUrl(proxied)).toBe(
         'https://ocdn012.bdsmlr.com/uploads/photos/2022/05/1004843/bdsmlr-1004843-KPLXZD8diD.gif?e=1774200450&t=BZ3y2EbrPv-1ftNvtr7IEcXx2hKksgeqaKipo2lMs5M&cb=1774114050'
       );
+    });
+  });
+
+  describe('probeNextBucket', () => {
+    it('should fail over ergonomic s3 URLs while preserving alias and query params', () => {
+      const img = new MockImageElement();
+      img.src = 'https://media.i.bdsmlr.com/gutter/s3://ocdn012.bdsmlr.com/uploads/photos/2023/08/11289205/bdsmlr-11289205-s3pdSudIvT.gif?e=1774206957&t=hqHlN9H94QRTWcWH9XdFxd9tKxsKGaTjW6m6WYjTPzY&cb=1774120557';
+
+      const didProbe = probeNextBucket(img as any);
+
+      expect(didProbe).toBe(true);
+      expect(img.src).toBe(
+        'https://media.i.bdsmlr.com/gutter/s3://cdn101.bdsmlr.com/uploads/photos/2023/08/11289205/bdsmlr-11289205-s3pdSudIvT.gif?e=1774206957&t=hqHlN9H94QRTWcWH9XdFxd9tKxsKGaTjW6m6WYjTPzY&cb=1774120557'
+      );
+    });
+
+    it('should return false when already at last bucket', () => {
+      const img = new MockImageElement();
+      img.src = 'https://media.i.bdsmlr.com/gutter/s3://cdn002.reblogme.com/uploads/photos/2023/08/11289205/bdsmlr-11289205-s3pdSudIvT.gif?e=1&t=2';
+
+      const didProbe = probeNextBucket(img as any);
+
+      expect(didProbe).toBe(false);
+      expect(img.src).toContain('cdn002.reblogme.com');
     });
   });
 });
