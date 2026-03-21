@@ -409,6 +409,13 @@ async function apiRequest<T>(
     (body as Record<string, unknown>).admin = true;
   }
 
+  // Backend admin gating for several endpoints is query-param based.
+  // Keep body.admin for compatibility, but force admin=true in the URL as well.
+  const endpointUrl = new URL(`${API_BASE}${normalizedEndpoint}`, window.location.origin);
+  if (isAdminMode() && !endpointUrl.searchParams.has('admin')) {
+    endpointUrl.searchParams.set('admin', 'true');
+  }
+
   // Check offline state before making request
   if (isOffline()) {
     throw new ApiError(
@@ -450,7 +457,7 @@ async function apiRequest<T>(
   }
 
   try {
-    const resp = await fetch(`${API_BASE}${normalizedEndpoint}`, {
+    const resp = await fetch(endpointUrl.toString(), {
       method: 'POST',
       headers,
       body: JSON.stringify(body),

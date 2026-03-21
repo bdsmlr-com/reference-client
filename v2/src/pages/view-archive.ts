@@ -3,7 +3,7 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
-import { getUrlParam, setUrlParams, isBlogInPath, isDefaultTypes } from '../services/blog-resolver.js';
+import { getUrlParam, setUrlParams, isBlogInPath, isDefaultTypes, isAdminMode } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
@@ -202,6 +202,7 @@ export class ViewArchive extends LitElement {
 
     this.loading = true;
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
+    const isAdmin = isAdminMode();
 
     try {
       const resp = await apiClient.posts.list({
@@ -230,7 +231,7 @@ export class ViewArchive extends LitElement {
           const mediaUrl = media.url || media.videoUrl || media.audioUrl;
           const contentKey = post.originPostId ? `oid:${post.originPostId}` : (mediaUrl ? `url:${mediaUrl.split('?')[0]}` : `pid:${post.id}`);
 
-          if (this.seenIds.has(post.id) || this.renderedMediaKeys.has(contentKey)) {
+          if (!isAdmin && (this.seenIds.has(post.id) || this.renderedMediaKeys.has(contentKey))) {
             this.stats.dupes++;
             return;
           }
@@ -247,7 +248,7 @@ export class ViewArchive extends LitElement {
             const mediaUrl = media.url || media.videoUrl || media.audioUrl;
             const contentKey = p.originPostId ? `oid:${p.originPostId}` : (mediaUrl ? `url:${mediaUrl.split('?')[0]}` : `pid:${p.id}`);
 
-            if (this.seenIds.has(p.id) || this.renderedMediaKeys.has(contentKey)) {
+            if (!isAdmin && (this.seenIds.has(p.id) || this.renderedMediaKeys.has(contentKey))) {
               return;
             }
             

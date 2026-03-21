@@ -6,6 +6,7 @@ import { recService, type RecResult } from '../services/recommendation-api.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { scrollObserver } from '../services/scroll-observer.js';
+import { isAdminMode } from '../services/blog-resolver.js';
 import './media-renderer.js';
 import './load-footer.js';
 import './loading-spinner.js';
@@ -210,7 +211,7 @@ export class PostRecommendations extends LitElement {
     const id = this.getNormalizedPostId();
     if (!id) return nothing;
 
-    const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+    const isAdmin = isAdminMode();
 
     return html`
       ${isAdmin ? html`<div style="font-family:monospace; font-size:10px; color:#00ff00; background:#000; padding:2px 4px; border-radius:4px; margin-bottom:8px;">[REC_DEBUG: id=${id}, count=${this.relatedPosts.length}, loading=${this.loading}]</div>` : ''}

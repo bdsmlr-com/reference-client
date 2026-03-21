@@ -4,6 +4,7 @@ import { baseStyles } from '../styles/theme.js';
 import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
+import { isAdminMode } from '../services/blog-resolver.js';
 import './media-renderer.js';
 
 @customElement('post-card')
@@ -164,6 +165,34 @@ export class PostCard extends LitElement {
         text-shadow: 0 2px 10px rgba(0,0,0,0.5);
         z-index: 2;
       }
+
+      .status-badges {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        z-index: 3;
+      }
+
+      .status-badge {
+        font-family: monospace;
+        font-size: 9px;
+        line-height: 1;
+        color: #fff;
+        padding: 3px 5px;
+        border-radius: 4px;
+        text-transform: uppercase;
+      }
+
+      .status-badge.deleted {
+        background: rgba(190, 35, 35, 0.92);
+      }
+
+      .status-badge.origin-deleted {
+        background: rgba(143, 54, 214, 0.92);
+      }
     `,
   ];
 
@@ -189,8 +218,10 @@ export class PostCard extends LitElement {
     const isReblog = p.originPostId && p.originPostId !== p.id;
     const originName = p.originBlogName;
 
-    const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+    const isAdmin = isAdminMode();
     const isTombstone = !rawUrl && !p.body;
+    const isDeleted = Boolean(p.deletedAtUnix);
+    const isOriginDeleted = Boolean(p.originDeletedAtUnix);
 
     return html`
       <article class="card" @click=${this.handleClick}>
@@ -212,6 +243,12 @@ export class PostCard extends LitElement {
           
           ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge">1 / ${p.content.files.length}</div>` : ''}
           ${p.type === 3 ? html`<div class="video-overlay-icon">▶</div>` : ''}
+          ${isAdmin && (isDeleted || isOriginDeleted) ? html`
+            <div class="status-badges">
+              ${isDeleted ? html`<div class="status-badge deleted">deleted</div>` : ''}
+              ${isOriginDeleted ? html`<div class="status-badge origin-deleted">origin deleted</div>` : ''}
+            </div>
+          ` : ''}
           ${isAdmin && isTombstone ? html`<div class="diagnostic-label">[TOMBSTONE]</div>` : ''}
         </div>
 

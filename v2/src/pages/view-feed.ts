@@ -3,7 +3,7 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
-import { setUrlParams, isBlogInPath } from '../services/blog-resolver.js';
+import { setUrlParams, isBlogInPath, isAdminMode } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
@@ -368,7 +368,7 @@ export class ViewFeed extends LitElement {
     this.loading = true;
     this.loadingCurrent = 0;
 
-    const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+    const isAdmin = isAdminMode();
 
     try {
       while (buffer.length < PAGE_SIZE && !this.exhausted && backendFetches < MAX_BACKEND_FETCHES) {
@@ -422,7 +422,7 @@ export class ViewFeed extends LitElement {
           }
 
           this.seenIds.add(post.id);
-          if (post.deletedAtUnix) continue;
+          if (post.deletedAtUnix && !isAdmin) continue;
 
           const processedPost: ProcessedPost = {
             ...post,

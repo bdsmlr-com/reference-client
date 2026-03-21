@@ -4,6 +4,7 @@ import { baseStyles } from '../styles/theme.js';
 import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
 import { formatDate } from '../services/date-formatter.js';
+import { isAdminMode } from '../services/blog-resolver.js';
 import './media-renderer.js';
 
 /**
@@ -116,6 +117,16 @@ export class ActivityItem extends LitElement {
         text-transform: uppercase;
         z-index: 4;
       }
+
+      .admin-label.origin-deleted {
+        top: 18px;
+        background: rgba(120, 70, 210, 0.9);
+      }
+
+      .admin-label.tombstone {
+        top: 36px;
+        background: rgba(24, 125, 44, 0.9);
+      }
     `
   ];
 
@@ -141,8 +152,10 @@ export class ActivityItem extends LitElement {
     if (this.interactionType === 'like') typeIcon = '❤️';
     if (this.interactionType === 'comment') typeIcon = '💬';
 
-    const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+    const isAdmin = isAdminMode();
     const isTombstone = !rawUrl && !p.body;
+    const isDeleted = Boolean(p.deletedAtUnix);
+    const isOriginDeleted = Boolean(p.originDeletedAtUnix);
 
     return html`
       <article class="card" @click=${this.handleClick}>
@@ -155,7 +168,9 @@ export class ActivityItem extends LitElement {
 
           ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge" title="Post contains ${p.content.files.length} items">1 / ${p.content.files.length}</div>` : ''}
           ${rbCount > 0 ? html`<div class="reblog-variant-badge" title="Aggregated reblogs">+${rbCount}</div>` : ''}
-          ${isAdmin && isTombstone ? html`<div class="admin-label">Tombstone</div>` : nothing}
+          ${isAdmin && isDeleted ? html`<div class="admin-label">Deleted</div>` : nothing}
+          ${isAdmin && isOriginDeleted ? html`<div class="admin-label origin-deleted">Origin Deleted</div>` : nothing}
+          ${isAdmin && isTombstone ? html`<div class="admin-label tombstone">Tombstone</div>` : nothing}
         </div>
 
         <div class="card-info">

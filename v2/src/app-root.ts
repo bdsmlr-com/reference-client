@@ -16,6 +16,7 @@ import './components/offline-banner.js';
 import './components/post-lightbox.js';
 import { initTheme, injectGlobalStyles, baseStyles } from './styles/theme.js';
 import type { ProcessedPost } from './types/post.js';
+import { isAdminMode } from './services/blog-resolver.js';
 
 @customElement('app-root')
 export class AppRoot extends LitElement {
@@ -45,8 +46,6 @@ export class AppRoot extends LitElement {
       }
     `
   ];
-
-  @state() private isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
 
   private _router = new Router(this, [
     { path: '/', render: () => html`<view-home></view-home>` },
@@ -96,6 +95,7 @@ export class AppRoot extends LitElement {
   render() {
     // Determine current page for shared-nav highlighting
     const pathname = window.location.pathname;
+    const isAdmin = isAdminMode();
     let currentPage: any = 'home';
     if (pathname.includes('/posts')) currentPage = 'timeline';
     else if (pathname.includes('/feed')) currentPage = 'following';
@@ -105,7 +105,7 @@ export class AppRoot extends LitElement {
     else if (pathname.includes('/social')) currentPage = 'social';
 
     return html`
-      ${this.isAdmin ? html`<div class="admin-banner">Admin Mode Active (Suppressed posts visible)</div>` : ''}
+      ${isAdmin ? html`<div class="admin-banner">Admin Mode Active (Suppressed posts visible)</div>` : ''}
       <offline-banner></offline-banner>
       <shared-nav .currentPage=${currentPage}></shared-nav>
       <main>${this._router.outlet()}</main>

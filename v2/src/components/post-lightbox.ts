@@ -99,6 +99,40 @@ export class PostLightbox extends LitElement {
       .admin-debug-panel .entry { margin-bottom: 8px; }
       .admin-debug-panel .label { color: #888; margin-right: 8px; }
 
+      .admin-state-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 12px;
+      }
+
+      .state-pill {
+        font-family: monospace;
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        text-transform: uppercase;
+      }
+
+      .state-pill.deleted {
+        color: #ffd6d6;
+        background: rgba(168, 30, 30, 0.35);
+        border-color: rgba(255, 105, 105, 0.45);
+      }
+
+      .state-pill.origin-deleted {
+        color: #ead9ff;
+        background: rgba(89, 48, 142, 0.35);
+        border-color: rgba(190, 150, 255, 0.4);
+      }
+
+      .state-pill.tombstone {
+        color: #d8f5de;
+        background: rgba(28, 111, 47, 0.3);
+        border-color: rgba(116, 214, 140, 0.4);
+      }
+
       @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE)}px) {
         .main-nav-btn { display: none; }
         .info-section { padding: 16px; }
@@ -240,6 +274,9 @@ export class PostLightbox extends LitElement {
   render() {
     if (!this.open || !this.post) return nothing;
     const p = this.post;
+    const isAdmin = isAdminMode();
+    const media = p._media || extractMedia(p);
+    const isTombstone = !media.url && !media.videoUrl && !media.audioUrl && !p.body;
 
     return html`
       <button class="close-btn" @click=${(e: Event) => this.close(e)} title="Close (Esc)">×</button>
@@ -253,6 +290,13 @@ export class PostLightbox extends LitElement {
           </div>
 
           <div class="info-section">
+            ${isAdmin && (p.deletedAtUnix || p.originDeletedAtUnix || isTombstone) ? html`
+              <div class="admin-state-strip">
+                ${p.deletedAtUnix ? html`<span class="state-pill deleted">deleted</span>` : ''}
+                ${p.originDeletedAtUnix ? html`<span class="state-pill origin-deleted">origin deleted</span>` : ''}
+                ${isTombstone ? html`<span class="state-pill tombstone">tombstone</span>` : ''}
+              </div>
+            ` : ''}
             ${this.renderAdminDebug()}
 
             <div class="body-text" style="margin-bottom: 32px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 24px;">
