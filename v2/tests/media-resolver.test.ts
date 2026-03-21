@@ -1,10 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { toS3Scheme, resolveMediaUrl, isAnimation } from '../src/services/media-resolver.js';
+import { toS3Scheme, resolveMediaUrl, isAnimation, toOriginFallbackUrl } from '../src/services/media-resolver.js';
 import { CONFIG } from '../src/config.js';
 
 describe('Media Resolver', () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.stubGlobal('window', { location: { search: '' } });
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    });
     // Default to staging-like config
     CONFIG.imgproxyMode = 'unsafe';
     CONFIG.mediaProxyBase = 'https://imgproxy.i.bdsmlr.com';
@@ -78,6 +84,15 @@ describe('Media Resolver', () => {
     it('should unwrap and detect animations in proxied URLs', () => {
       const proxied = 'https://imgproxy.i.bdsmlr.com/unsafe/rs:fill:300:300/plain/s3://ocdn012.bdsmlr.com/foo.gif?e=123';
       expect(isAnimation(proxied)).toBe(true);
+    });
+  });
+
+  describe('toOriginFallbackUrl', () => {
+    it('should convert media proxy URL to direct origin URL preserving signature params', () => {
+      const proxied = 'https://media.i.bdsmlr.com/fit:1200:0/ocdn012.bdsmlr.com/uploads/photos/2022/05/1004843/bdsmlr-1004843-KPLXZD8diD.gif?e=1774200450&t=BZ3y2EbrPv-1ftNvtr7IEcXx2hKksgeqaKipo2lMs5M&cb=1774114050';
+      expect(toOriginFallbackUrl(proxied)).toBe(
+        'https://ocdn012.bdsmlr.com/uploads/photos/2022/05/1004843/bdsmlr-1004843-KPLXZD8diD.gif?e=1774200450&t=BZ3y2EbrPv-1ftNvtr7IEcXx2hKksgeqaKipo2lMs5M&cb=1774114050'
+      );
     });
   });
 });

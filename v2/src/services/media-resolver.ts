@@ -127,6 +127,18 @@ export function isAnimation(url: string | undefined): boolean {
 }
 
 /**
+ * Build a direct-origin fallback URL from any media URL shape.
+ * Keeps existing signature query params so the same auth envelope is preserved.
+ */
+export function toOriginFallbackUrl(url: string | undefined): string {
+  if (!url) return '';
+  const [s3Url, queryParams] = toS3Scheme(url);
+  if (!s3Url) return url;
+  const queryString = queryParams ? `?${queryParams}` : '';
+  return s3Url.replace('s3://', 'https://') + queryString;
+}
+
+/**
  * Probes the next available bucket if a media element fails to load.
  */
 export function probeNextBucket(el: HTMLElement): boolean {

@@ -1,6 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { resolveMediaUrl, isAnimation, probeNextBucket, type MediaRenderType } from '../services/media-resolver.js';
+import { resolveMediaUrl, isAnimation, probeNextBucket, toOriginFallbackUrl, type MediaRenderType } from '../services/media-resolver.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 
 /**
@@ -74,14 +74,15 @@ export class MediaRenderer extends LitElement {
     if (!this.triedOriginal) {
       this.triedOriginal = true;
       if (this.src) {
+        const fallbackSrc = toOriginFallbackUrl(this.src);
         if (el instanceof HTMLImageElement) {
-          el.src = this.src;
+          el.src = fallbackSrc;
           return;
         } else if (el instanceof HTMLSourceElement || el instanceof HTMLVideoElement) {
           // If video fails, maybe try the original src directly (though it's a gif)
           const video = el instanceof HTMLVideoElement ? el : (el.parentElement as HTMLVideoElement);
           if (video) {
-            video.src = this.src;
+            video.src = fallbackSrc;
             video.load();
             return;
           }
