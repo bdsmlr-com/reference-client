@@ -11,6 +11,11 @@ import {
   getCachedPaginationCursor,
   setCachedPaginationCursor,
 } from '../services/storage.js';
+import {
+  mergeFollowEdges,
+  countNewFollowEdges,
+  shouldStopFollowPagination,
+} from '../services/follow-pagination.js';
 import type { FollowEdge, Blog } from '../types/api.js';
 import '../components/blog-list.js';
 import '../components/load-footer.js';
@@ -304,8 +309,15 @@ export class ViewSocial extends LitElement {
 
       if (this.activeTab === 'followers') {
         const items = resp.followers || [];
-        this.followers = [...this.followers, ...items];
-        this.followersCursor = nextPageTokenFromApi;
+        const newlyAddedCount = countNewFollowEdges(this.followers, items);
+        this.followers = mergeFollowEdges(this.followers, items);
+        const shouldStop = shouldStopFollowPagination({
+          previousCursor: cursor,
+          nextCursor: nextPageTokenFromApi,
+          incomingCount: items.length,
+          newlyAddedCount,
+        });
+        this.followersCursor = shouldStop ? null : nextPageTokenFromApi;
 
         if (this.followersCount === 0 && this.followers.length > 0) {
           this.followersCount = this.followers.length;
@@ -323,13 +335,20 @@ export class ViewSocial extends LitElement {
           return;
         }
 
-        if (!this.followersCursor || items.length === 0) {
+        if (shouldStop) {
           this.followersExhausted = true;
         }
       } else {
         const items = resp.following || [];
-        this.following = [...this.following, ...items];
-        this.followingCursor = nextPageTokenFromApi;
+        const newlyAddedCount = countNewFollowEdges(this.following, items);
+        this.following = mergeFollowEdges(this.following, items);
+        const shouldStop = shouldStopFollowPagination({
+          previousCursor: cursor,
+          nextCursor: nextPageTokenFromApi,
+          incomingCount: items.length,
+          newlyAddedCount,
+        });
+        this.followingCursor = shouldStop ? null : nextPageTokenFromApi;
 
         if (this.followingCount === 0 && this.following.length > 0) {
           this.followingCount = this.following.length;
@@ -347,7 +366,7 @@ export class ViewSocial extends LitElement {
           return;
         }
 
-        if (!this.followingCursor || items.length === 0) {
+        if (shouldStop) {
           this.followingExhausted = true;
         }
       }
