@@ -137,6 +137,13 @@ export class TimelineStream extends LitElement {
       }
 
       if (item.type === 2 && item.cluster) {
+        if (kind === 'reblog') {
+          for (const raw of (item.cluster.interactions || [])) {
+            const post = raw as ProcessedPost;
+            renderable.push({ type: 'post', post });
+          }
+          continue;
+        }
         if (kind !== 'like' && kind !== 'comment') {
           renderable.push({
             type: 'legacy-cluster',

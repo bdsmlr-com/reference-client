@@ -67,6 +67,13 @@ describe('hybrid activity stream', () => {
     expect(streamSrc).toContain("if (existingIndex === undefined)");
   });
 
+  it('renders reblog cluster interactions as full-size feed cards', () => {
+    const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
+
+    expect(streamSrc).toContain("if (kind === 'reblog')");
+    expect(streamSrc).toContain("renderable.push({ type: 'post', post });");
+  });
+
   it('classifies variant=2 timeline posts as reblogs', () => {
     const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
 
