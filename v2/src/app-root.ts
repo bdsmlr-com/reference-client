@@ -14,9 +14,12 @@ import './pages/view-clear-cache.js';
 import './components/shared-nav.js';
 import './components/offline-banner.js';
 import './components/post-lightbox.js';
+import './components/contract-error-screen.js';
 import { initTheme, injectGlobalStyles, baseStyles } from './styles/theme.js';
 import type { ProcessedPost } from './types/post.js';
 import { isAdminMode, syncAdminModeFromUrl } from './services/blog-resolver.js';
+import { loadRenderContract } from './services/render-contract.js';
+import { validateRenderContract } from './services/render-contract-validator.js';
 
 @customElement('app-root')
 export class AppRoot extends LitElement {
@@ -64,11 +67,16 @@ export class AppRoot extends LitElement {
   @state() private lightboxPost: ProcessedPost | null = null;
   @state() private lightboxPosts: ProcessedPost[] = [];
   @state() private lightboxIndex = -1;
+  @state() private contractErrors: string[] = [];
 
   constructor() {
     super();
     injectGlobalStyles();
     initTheme();
+    const validation = validateRenderContract(loadRenderContract());
+    if (!validation.ok) {
+      this.contractErrors = validation.errors;
+    }
   }
 
   connectedCallback() {
@@ -97,6 +105,10 @@ export class AppRoot extends LitElement {
   }
 
   render() {
+    if (this.contractErrors.length > 0) {
+      return html`<contract-error-screen .errors=${this.contractErrors}></contract-error-screen>`;
+    }
+
     // Determine current page for shared-nav highlighting
     const pathname = window.location.pathname;
     const isAdmin = isAdminMode();
