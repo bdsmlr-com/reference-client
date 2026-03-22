@@ -38,11 +38,13 @@ export class TimelineStream extends LitElement {
   private inferItemKind(item: TimelineItem): ActivityKind {
     if (item.type === 1 && item.post) {
       const p = item.post as ProcessedPost;
+      if (p.variant === 2) return 'reblog';
       return p.originPostId && p.originPostId !== p.id ? 'reblog' : 'post';
     }
     if (item.type === 2 && item.cluster) {
       const label = (item.cluster.label || '').toLowerCase();
       if (label.includes('comment')) return 'comment';
+      if (label.includes('reblog')) return 'reblog';
       return 'like';
     }
     return 'post';

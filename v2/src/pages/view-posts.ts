@@ -9,7 +9,9 @@ import { scrollObserver } from '../services/scroll-observer.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
 import type { PostType, Blog, TimelineItem, PostVariant } from '../types/api.js';
 import {
+  DEFAULT_ACTIVITY_KINDS,
   getBlogActivityKindsPreference,
+  normalizeActivityKinds,
   setBlogActivityKindsPreference,
   type ActivityKind,
 } from '../services/profile.js';
@@ -82,12 +84,15 @@ export class ViewPosts extends LitElement {
     this.resetState();
     const types = getUrlParam('types');
     const variants = getUrlParam('variants');
+    const activity = getUrlParam('activity');
     if (types) this.selectedTypes = types.split(',').map(t => parseInt(t, 10) as PostType);
     if (variants) this.selectedVariants = variants.split(',').map(v => parseInt(v, 10) as PostVariant);
+    if (activity) this.activityKinds = normalizeActivityKinds(activity, DEFAULT_ACTIVITY_KINDS);
     
     setUrlParams({ 
       types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','), 
       variants: this.selectedVariants.length > 0 ? this.selectedVariants.join(',') : '',
+      activity: this.activityKinds.join(',') === DEFAULT_ACTIVITY_KINDS.join(',') ? '' : this.activityKinds.join(','),
       blog: this.blog 
     });
     await this.fillPage();
@@ -195,8 +200,12 @@ export class ViewPosts extends LitElement {
   }
 
   private handleActivityKindsChange(e: CustomEvent): void {
-    this.activityKinds = e.detail.kinds || ['post', 'reblog', 'like', 'comment'];
+    this.activityKinds = normalizeActivityKinds((e.detail.kinds || []).join(','), DEFAULT_ACTIVITY_KINDS);
     setBlogActivityKindsPreference(this.activityKinds);
+    setUrlParams({
+      activity: this.activityKinds.join(',') === DEFAULT_ACTIVITY_KINDS.join(',') ? '' : this.activityKinds.join(','),
+      blog: this.blog,
+    });
   }
 
   render() {

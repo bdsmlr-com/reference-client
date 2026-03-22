@@ -42,4 +42,17 @@ describe('hybrid activity stream', () => {
     expect(streamSrc).toContain('<activity-grid');
     expect(streamSrc).toContain('showActorInCluster');
   });
+
+  it('classifies variant=2 timeline posts as reblogs', () => {
+    const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
+
+    expect(streamSrc).toContain('p.variant === 2');
+  });
+
+  it('syncs activity kind filters into posts URL state', () => {
+    const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
+
+    expect(postsSrc).toContain("getUrlParam('activity')");
+    expect(postsSrc).toContain('activity:');
+  });
 });

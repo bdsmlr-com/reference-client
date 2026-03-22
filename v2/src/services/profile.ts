@@ -1,5 +1,6 @@
 export type GalleryMode = 'grid' | 'masonry';
 export type ActivityKind = 'post' | 'reblog' | 'like' | 'comment';
+export const DEFAULT_ACTIVITY_KINDS: ActivityKind[] = ['post', 'reblog', 'like', 'comment'];
 
 const USERNAME_KEY = 'bdsmlr_profile_username';
 const GALLERY_MODE_KEY = 'bdsmlr_gallery_mode';
@@ -119,9 +120,9 @@ export function setSearchSortPreference(sortValue: string): void {
   });
 }
 
-function normalizeActivityKinds(input: string | null, fallback: ActivityKind[]): ActivityKind[] {
+export function normalizeActivityKinds(input: string | null, fallback: ActivityKind[] = DEFAULT_ACTIVITY_KINDS): ActivityKind[] {
   if (!input) return fallback;
-  const allowed: ActivityKind[] = ['post', 'reblog', 'like', 'comment'];
+  const allowed: ActivityKind[] = DEFAULT_ACTIVITY_KINDS;
   const list = input
     .split(',')
     .map((v) => v.trim())
@@ -130,7 +131,7 @@ function normalizeActivityKinds(input: string | null, fallback: ActivityKind[]):
 }
 
 export function getFollowingActivityKindsPreference(): ActivityKind[] {
-  return normalizeActivityKinds(readStorage(FOLLOWING_ACTIVITY_KINDS_KEY), ['post', 'reblog', 'like', 'comment']);
+  return normalizeActivityKinds(readStorage(FOLLOWING_ACTIVITY_KINDS_KEY), DEFAULT_ACTIVITY_KINDS);
 }
 
 export function setFollowingActivityKindsPreference(kinds: ActivityKind[]): void {
@@ -138,7 +139,7 @@ export function setFollowingActivityKindsPreference(kinds: ActivityKind[]): void
 }
 
 export function getBlogActivityKindsPreference(): ActivityKind[] {
-  return normalizeActivityKinds(readStorage(BLOG_ACTIVITY_KINDS_KEY), ['post', 'reblog', 'like', 'comment']);
+  return normalizeActivityKinds(readStorage(BLOG_ACTIVITY_KINDS_KEY), DEFAULT_ACTIVITY_KINDS);
 }
 
 export function setBlogActivityKindsPreference(kinds: ActivityKind[]): void {
