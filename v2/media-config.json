@@ -68,6 +68,15 @@
             "loading": { "cardType": "post_grid", "count": 12 }
           }
         }
+      },
+      "search": {
+        "slots": {
+          "main_stream": {
+            "cards": ["post_grid"],
+            "async": true,
+            "loading": { "cardType": "post_grid", "count": 8 }
+          }
+        }
       }
     },
     "cards": {

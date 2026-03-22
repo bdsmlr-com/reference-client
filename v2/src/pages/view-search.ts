@@ -19,6 +19,8 @@ import {
   getSearchSortPreference,
   setSearchSortPreference,
 } from '../services/profile.js';
+import { getPageSlotConfig } from '../services/render-page.js';
+import type { RenderSlotConfig } from '../config.js';
 import '../components/filter-bar.js';
 import '../components/activity-grid.js';
 import '../components/load-footer.js';
@@ -26,6 +28,7 @@ import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
 import '../components/error-state.js';
 import '../components/type-pills.js'; // Might still be used elsewhere or redundant but keeping imports safe
+import '../components/render-card.js';
 
 const PAGE_SIZE = 12;
 
@@ -165,6 +168,7 @@ export class ViewSearch extends LitElement {
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
   @state() private galleryMode: GalleryMode = getGalleryMode();
+  private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('search', 'main_stream');
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
@@ -475,7 +479,15 @@ export class ViewSearch extends LitElement {
         ${!this.hasSearched ? html`<div class="status">Enter a query to begin searching.</div>` : ''}
 
         ${this.searching && this.timelineItems.length === 0
-          ? html`<div class="grid-container"><skeleton-loader variant="post-card" count="8" trackTime></skeleton-loader></div>`
+          ? html`
+              <div class="grid-container">
+                <render-card
+                  cardType=${this.mainSlotConfig.loading?.cardType || ''}
+                  count=${this.mainSlotConfig.loading?.count}
+                  loading
+                ></render-card>
+              </div>
+            `
           : ''}
 
         ${this.errorMessage

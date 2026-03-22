@@ -20,6 +20,8 @@ import {
   getArchiveSortPreference,
   setArchiveSortPreference,
 } from '../services/profile.js';
+import { getPageSlotConfig } from '../services/render-page.js';
+import type { RenderSlotConfig } from '../config.js';
 
 import '../components/filter-bar.js';
 import '../components/activity-grid.js';
@@ -28,6 +30,7 @@ import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
 import '../components/error-state.js';
 import '../components/blog-header.js';
+import '../components/render-card.js';
 
 @customElement('view-archive')
 export class ViewArchive extends LitElement {
@@ -77,6 +80,7 @@ export class ViewArchive extends LitElement {
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
   @state() private galleryMode: GalleryMode = getGalleryMode();
+  private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('archive', 'main_stream');
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
@@ -399,6 +403,17 @@ ${this.timelineItems.length > 0
         </div>
         `
         : ''}
+        ${this.loading && this.timelineItems.length === 0 && !this.errorMessage
+          ? html`
+              <div class="grid-container">
+                <render-card
+                  cardType=${this.mainSlotConfig.loading?.cardType || ''}
+                  count=${this.mainSlotConfig.loading?.count}
+                  loading
+                ></render-card>
+              </div>
+            `
+          : ''}
         <load-footer
           mode="archive"
           pageName="archive"

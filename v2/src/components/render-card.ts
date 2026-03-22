@@ -13,6 +13,7 @@ export function getCardSkeletonPlan(cardType: string): RenderSkeletonConfig | un
 export class RenderCard extends LitElement {
   @property({ type: String }) cardType = '';
   @property({ type: Boolean }) loading = false;
+  @property({ type: Number }) count?: number;
 
   createRenderRoot() {
     return this;
@@ -22,7 +23,8 @@ export class RenderCard extends LitElement {
     if (this.loading) {
       const skeleton = getCardSkeletonPlan(this.cardType);
       if (!skeleton) return nothing;
-      return html`<skeleton-loader variant=${skeleton.variant} count=${skeleton.count_policy.default}></skeleton-loader>`;
+      const skeletonCount = this.count ?? skeleton.count_policy.default;
+      return html`<skeleton-loader variant=${skeleton.variant} count=${skeletonCount}></skeleton-loader>`;
     }
     return html`<slot></slot>`;
   }
