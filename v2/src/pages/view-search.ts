@@ -12,6 +12,7 @@ import {
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { PostType, PostSortField, Order, PostVariant, TimelineItem } from '../types/api.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
+import { getGalleryMode, PROFILE_EVENTS, type GalleryMode } from '../services/profile.js';
 import '../components/filter-bar.js';
 import '../components/activity-grid.js';
 import '../components/load-footer.js';
@@ -157,6 +158,7 @@ export class ViewSearch extends LitElement {
   @state() private retrying = false;
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
+  @state() private galleryMode: GalleryMode = getGalleryMode();
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
@@ -167,6 +169,7 @@ export class ViewSearch extends LitElement {
     super.connectedCallback();
     this.loadFromUrl();
     window.addEventListener('beforeunload', this.savePaginationState);
+    window.addEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
   }
 
   disconnectedCallback(): void {
@@ -177,7 +180,12 @@ export class ViewSearch extends LitElement {
     if (sentinel) {
       scrollObserver.unobserve(sentinel);
     }
+    window.removeEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
   }
+
+  private handleGalleryModeChanged = (): void => {
+    this.galleryMode = getGalleryMode();
+  };
 
   private savePaginationState = (): void => {
     if (this.paginationKey && this.timelineItems.length > 0) {
@@ -478,6 +486,7 @@ export class ViewSearch extends LitElement {
           ? html`
               <div class="grid-container">
                 <activity-grid 
+                  .mode=${this.galleryMode}
                   .items=${this.timelineItems.flatMap(entry => {
                     if (entry.type === 1 && entry.post) {
                       return [{ 

@@ -6,10 +6,21 @@ import {
   getViewedBlogName,
   buildPageUrl,
   isDevMode,
+  setStoredBlogName,
 } from '../services/blog-resolver.js';
+import {
+  getCurrentUsername,
+  isLoggedIn,
+  clearCurrentUsername,
+  setCurrentUsername,
+  getGalleryMode,
+  setGalleryMode,
+  PROFILE_EVENTS,
+  type GalleryMode,
+} from '../services/profile.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 
-type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social';
+type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social' | 'posts';
 const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'final-fix-v6';
 
 @customElement('shared-nav')
@@ -23,7 +34,7 @@ export class SharedNav extends LitElement {
         border-bottom: 1px solid var(--border);
         position: sticky;
         top: 0;
-        z-index: 50; /* Z_INDEX.STICKY - below modals (1000) and dropdowns (100) */
+        z-index: 50;
       }
 
       .nav-container {
@@ -75,29 +86,47 @@ export class SharedNav extends LitElement {
         color: white;
       }
 
+      .right-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        position: relative;
+      }
+
       .theme-toggle,
-      .cache-clear {
+      .profile-toggle,
+      .menu-button,
+      .gallery-toggle {
         padding: 6px 10px;
         border-radius: 4px;
         background: var(--bg-panel-alt);
         color: var(--text-primary);
-        font-size: 16px;
+        font-size: 13px;
+        border: 1px solid var(--border);
         transition: background 0.2s;
-        min-width: 36px;
         min-height: 36px;
-        display: flex;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
+        text-decoration: none;
       }
 
-      .theme-toggle:hover {
+      .theme-toggle {
+        font-size: 16px;
+        min-width: 36px;
+      }
+
+      .theme-toggle:hover,
+      .profile-toggle:hover,
+      .menu-button:hover,
+      .gallery-toggle:hover {
         background: var(--border-strong);
       }
 
-      .cache-clear {
-        font-size: 13px;
-        min-width: 44px;
-        text-decoration: none;
+      .gallery-toggle.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
       }
 
       .build-tag {
@@ -105,8 +134,89 @@ export class SharedNav extends LitElement {
         color: var(--text-muted);
       }
 
+      .profile-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        width: 260px;
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 120;
+      }
 
-      /* Indicator shown when viewing a different blog than primary */
+      .menu-section-title {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .current-user {
+        font-size: 13px;
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+
+      .gallery-row {
+        display: flex;
+        gap: 6px;
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        padding: 16px;
+      }
+
+      .modal {
+        width: min(420px, 100%);
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .modal h3 {
+        margin: 0;
+        font-size: 16px;
+      }
+
+      .modal p {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+
+      .modal input {
+        width: 100%;
+        min-height: 36px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+      }
+
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
       .viewing-indicator {
         font-size: 11px;
         color: var(--text-muted);
@@ -137,7 +247,6 @@ export class SharedNav extends LitElement {
         color: var(--accent);
       }
 
-      /* BREAKPOINTS.MOBILE (480px) - standardized responsive breakpoint */
       @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE)}px) {
         .nav-container {
           flex-wrap: wrap;
@@ -153,28 +262,63 @@ export class SharedNav extends LitElement {
         nav {
           justify-content: center;
         }
+
+        .right-controls {
+          width: 100%;
+          justify-content: center;
+          flex-wrap: wrap;
+        }
+
+        .profile-menu {
+          right: 50%;
+          transform: translateX(50%);
+          width: min(320px, calc(100vw - 24px));
+        }
       }
     `,
   ];
 
   @property({ type: String }) currentPage: PageName = 'search';
   @state() private theme: Theme = getStoredTheme();
+  @state() private menuOpen = false;
+  @state() private loginModalOpen = false;
+  @state() private usernameInput = '';
+  @state() private currentUsername: string | null = getCurrentUsername();
+  @state() private galleryMode: GalleryMode = getGalleryMode();
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    document.addEventListener('click', this.handleDocumentClick);
+    window.addEventListener(PROFILE_EVENTS.usernameChanged, this.handleProfileStateChange as EventListener);
+    window.addEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleProfileStateChange as EventListener);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    document.removeEventListener('click', this.handleDocumentClick);
+    window.removeEventListener(PROFILE_EVENTS.usernameChanged, this.handleProfileStateChange as EventListener);
+    window.removeEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleProfileStateChange as EventListener);
+  }
+
+  private handleDocumentClick = (e: MouseEvent): void => {
+    if (!this.menuOpen) return;
+    const path = e.composedPath();
+    if (!path.includes(this)) {
+      this.menuOpen = false;
+    }
+  };
+
+  private handleProfileStateChange = (): void => {
+    this.currentUsername = getCurrentUsername();
+    this.galleryMode = getGalleryMode();
+  };
 
   private toggleTheme(): void {
     this.theme = this.theme === 'dark' ? 'light' : 'dark';
     setStoredTheme(this.theme);
   }
 
-  /**
-   * Get URL for a page nav link.
-   *
-   * NAV-007 fix: Blog-specific pages (following, timeline, archive, social) now use
-   * the PRIMARY blog from localStorage, not the currently viewed blog from URL.
-   * This ensures nav links always take you to YOUR blog's pages, not the blog you
-   * happen to be viewing.
-   */
   private getPageUrl(page: string): string {
-    // Use PRIMARY blog (from localStorage) for blog-specific pages
     const primaryBlog = getPrimaryBlogName();
     const blogPages = ['archive', 'posts', 'feed', 'social'];
 
@@ -182,6 +326,14 @@ export class SharedNav extends LitElement {
       return buildPageUrl(page, primaryBlog);
     }
     return buildPageUrl(page);
+  }
+
+  private getLogoUrl(): string {
+    const primaryBlog = getPrimaryBlogName() || getCurrentUsername();
+    if (primaryBlog) {
+      return buildPageUrl('feed', primaryBlog);
+    }
+    return this.getHomeUrl();
   }
 
   private getHomeUrl(): string {
@@ -192,14 +344,10 @@ export class SharedNav extends LitElement {
     return isDevMode() ? 'clear-cache.html' : '/clear-cache';
   }
 
-  /**
-   * Check if currently viewing a different blog than the primary one.
-   */
   private isViewingDifferentBlog(): boolean {
     const primaryBlog = getPrimaryBlogName();
     const viewedBlog = getViewedBlogName();
 
-    // If no primary blog set, or no blog being viewed, no indicator needed
     if (!primaryBlog || !viewedBlog) {
       return false;
     }
@@ -207,10 +355,6 @@ export class SharedNav extends LitElement {
     return primaryBlog.toLowerCase() !== viewedBlog.toLowerCase();
   }
 
-  /**
-   * Handle click on "back to primary" link - navigates to primary blog's version
-   * of the current page.
-   */
   private handleBackToPrimary(): void {
     const primaryBlog = getPrimaryBlogName();
     if (primaryBlog) {
@@ -219,25 +363,120 @@ export class SharedNav extends LitElement {
     }
   }
 
+  private toggleProfileMenu(e: Event): void {
+    e.stopPropagation();
+    this.menuOpen = !this.menuOpen;
+  }
+
+  private openLoginModal(): void {
+    this.menuOpen = false;
+    this.loginModalOpen = true;
+    this.usernameInput = this.currentUsername || getPrimaryBlogName() || '';
+  }
+
+  private closeLoginModal(): void {
+    this.loginModalOpen = false;
+    this.usernameInput = '';
+  }
+
+  private submitLogin(): void {
+    const normalized = this.usernameInput.trim().replace(/^@/, '');
+    if (!normalized) {
+      return;
+    }
+
+    setCurrentUsername(normalized);
+    setStoredBlogName(normalized);
+    this.currentUsername = normalized;
+    this.loginModalOpen = false;
+    window.location.href = buildPageUrl('feed', normalized);
+  }
+
+  private handleLogout(): void {
+    clearCurrentUsername();
+    this.currentUsername = null;
+    this.menuOpen = false;
+  }
+
+  private handleGalleryMode(mode: GalleryMode): void {
+    setGalleryMode(mode);
+    this.galleryMode = mode;
+  }
+
+  private renderProfileMenu() {
+    const loggedIn = isLoggedIn();
+
+    return html`
+      <div class="profile-menu" role="menu" aria-label="Profile and settings menu">
+        ${loggedIn
+          ? html`
+              <div class="menu-section-title">Profile & Settings</div>
+              <div class="current-user">@${this.currentUsername}</div>
+              <div class="menu-section-title">Gallery view</div>
+              <div class="gallery-row" aria-label="Gallery view">
+                <button
+                  class="gallery-toggle ${this.galleryMode === 'grid' ? 'active' : ''}"
+                  @click=${() => this.handleGalleryMode('grid')}
+                >Grid</button>
+                <button
+                  class="gallery-toggle ${this.galleryMode === 'masonry' ? 'active' : ''}"
+                  @click=${() => this.handleGalleryMode('masonry')}
+                >Masonry</button>
+              </div>
+              <a class="menu-button" href=${this.getClearCacheUrl()}>Clear cache</a>
+              <button class="menu-button" @click=${this.handleLogout}>Log out</button>
+            `
+          : html`
+              <div class="menu-section-title">Profile & Settings</div>
+              <button class="menu-button" @click=${this.openLoginModal}>Log in</button>
+              <a class="menu-button" href=${this.getClearCacheUrl()}>Clear cache</a>
+            `}
+      </div>
+    `;
+  }
+
+  private renderLoginModal() {
+    if (!this.loginModalOpen) {
+      return '';
+    }
+
+    return html`
+      <div class="modal-backdrop" @click=${this.closeLoginModal}>
+        <section class="modal" role="dialog" aria-label="Login" @click=${(e: Event) => e.stopPropagation()}>
+          <h3>Log in</h3>
+          <p>Enter your blog username. This is local-only for now.</p>
+          <input
+            type="text"
+            placeholder="username"
+            .value=${this.usernameInput}
+            @input=${(e: Event) => (this.usernameInput = (e.target as HTMLInputElement).value)}
+            @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.submitLogin()}
+          />
+          <div class="modal-actions">
+            <button class="menu-button" @click=${this.closeLoginModal}>Cancel</button>
+            <button class="menu-button" @click=${this.submitLogin}>Log in</button>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
   render() {
     const pages = [
-      { name: 'feed', label: 'Feed', description: "Posts from blogs you follow - your dashboard feed" },
       { name: 'posts', label: 'Activity', description: "A blog's full timeline including reblogs, likes, and comments" },
-      { name: 'archive', label: 'Archive', description: "High-density matrix of all blog interactions" },
-      { name: 'social', label: 'Connections', description: "View who follows a blog and who they follow" },
+      { name: 'archive', label: 'Archive', description: 'High-density matrix of all blog interactions' },
+      { name: 'social', label: 'Connections', description: 'View who follows a blog and who they follow' },
       { name: 'blogs', label: 'Discover', description: 'Discover blogs by name or description' },
       { name: 'search', label: 'Search', description: 'Search posts by tags with boolean syntax' },
     ];
 
     const viewedBlog = getViewedBlogName();
     const showViewingIndicator = this.isViewingDifferentBlog();
-
-    // Map old internal page names to new ones for active highlighting
-    const activePage = this.currentPage === 'following' ? 'feed' : (this.currentPage === 'timeline' ? 'posts' : this.currentPage);
+    const activePage = this.currentPage === 'following' ? 'posts' : (this.currentPage === 'timeline' ? 'posts' : this.currentPage);
 
     return html`
       <header class="nav-container">
-        <a href=${this.getHomeUrl()} class="logo" title="Developer home and quickstart guide" aria-label="BDSMLR Home">BDSMLR</a>
+        <a href=${this.getLogoUrl()} class="logo" title="Go to feed" aria-label="BDSMLR feed">BDSMLR</a>
         <nav aria-label="Main navigation">
           ${pages.map(
             (page) => html`
@@ -268,22 +507,21 @@ export class SharedNav extends LitElement {
               </span>
             `
           : ''}
-        <a
-          class="cache-clear"
-          href=${this.getClearCacheUrl()}
-          title="Clear cached data and return"
-          aria-label="Clear cached data and return"
-        >Clear cache</a>
-        <span class="build-tag" aria-label="Build tag">${BUILD_TAG}</span>
-        <button
-          class="theme-toggle"
-          @click=${this.toggleTheme}
-          title="Toggle theme"
-          aria-label=${this.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-        >
-          <span aria-hidden="true">${this.theme === 'dark' ? '☀️' : '🌙'}</span>
-        </button>
+        <div class="right-controls">
+          <span class="build-tag" aria-label="Build tag">${BUILD_TAG}</span>
+          <button
+            class="theme-toggle"
+            @click=${this.toggleTheme}
+            title="Toggle theme"
+            aria-label=${this.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          >
+            <span aria-hidden="true">${this.theme === 'dark' ? '☀️' : '🌙'}</span>
+          </button>
+          <button class="profile-toggle" @click=${this.toggleProfileMenu}>Profile &amp; Settings</button>
+          ${this.menuOpen ? this.renderProfileMenu() : ''}
+        </div>
       </header>
+      ${this.renderLoginModal()}
     `;
   }
 }

@@ -7,11 +7,6 @@ import { formatDate } from '../services/date-formatter.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import './media-renderer.js';
 
-/**
- * Refined Matrix item (v2).
- * Metadata below the image in two readable lines.
- * Uses centralized <media-renderer>.
- */
 @customElement('activity-item')
 export class ActivityItem extends LitElement {
   static styles = [
@@ -45,6 +40,14 @@ export class ActivityItem extends LitElement {
         background: #000;
         position: relative;
         overflow: hidden;
+      }
+
+      :host([mode='masonry']) .media-container {
+        aspect-ratio: auto;
+      }
+
+      :host([mode='masonry']) media-renderer {
+        height: auto;
       }
 
       .card-info {
@@ -127,17 +130,18 @@ export class ActivityItem extends LitElement {
         top: 36px;
         background: rgba(24, 125, 44, 0.9);
       }
-    `
+    `,
   ];
 
   @property({ type: Object }) post!: ProcessedPost;
   @property({ type: String }) interactionType: 'post' | 'reblog' | 'like' | 'comment' = 'post';
+  @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
 
   private handleClick() {
     this.dispatchEvent(new CustomEvent('activity-click', {
       detail: { post: this.post },
       bubbles: true,
-      composed: true
+      composed: true,
     }));
   }
 
@@ -146,7 +150,7 @@ export class ActivityItem extends LitElement {
     const media = p._media;
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
     const rbCount = p.reblog_variants?.length || 0;
-    
+
     let typeIcon = POST_TYPE_ICONS[p.type as PostType] || '📄';
     if (this.interactionType === 'reblog') typeIcon = '♻️';
     if (this.interactionType === 'like') typeIcon = '❤️';
@@ -156,14 +160,15 @@ export class ActivityItem extends LitElement {
     const isTombstone = !rawUrl && !p.body;
     const isDeleted = Boolean(p.deletedAtUnix);
     const isOriginDeleted = Boolean(p.originDeletedAtUnix);
+    const renderType = this.mode === 'masonry' ? 'gallery-masonry' : 'gallery-grid';
 
     return html`
       <article class="card" @click=${this.handleClick}>
         <div class="media-container">
-          <media-renderer 
-            .src=${rawUrl} 
-            .type=${'gallery-grid'}
-            style="object-fit: cover;"
+          <media-renderer
+            .src=${rawUrl}
+            .type=${renderType}
+            style="object-fit: ${this.mode === 'masonry' ? 'contain' : 'cover'};"
           ></media-renderer>
 
           ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge" title="Post contains ${p.content.files.length} items">1 / ${p.content.files.length}</div>` : ''}
@@ -213,8 +218,31 @@ export class ActivityGrid extends LitElement {
 
       @media (min-width: 1024px) {
         :host {
-          grid-template-columns: repeat(6, 1fr); /* Super Matrix density */
+          grid-template-columns: repeat(6, 1fr);
         }
+      }
+
+      :host([mode='masonry']) {
+        display: block;
+        columns: 2;
+        column-gap: 16px;
+      }
+
+      @media (min-width: 768px) {
+        :host([mode='masonry']) {
+          columns: 4;
+        }
+      }
+
+      @media (min-width: 1024px) {
+        :host([mode='masonry']) {
+          columns: 6;
+        }
+      }
+
+      :host([mode='masonry']) activity-item {
+        break-inside: avoid;
+        margin-bottom: 16px;
       }
 
       :host([compact]) {
@@ -228,18 +256,21 @@ export class ActivityGrid extends LitElement {
       }
 
       @media (max-width: 600px) {
-        :host([compact]) { grid-template-columns: repeat(3, 1fr); }
+        :host([compact]) {
+          grid-template-columns: repeat(3, 1fr);
+        }
       }
-    `
+    `,
   ];
 
-  @property({ type: Array }) items: { post: ProcessedPost, type: any }[] = [];
+  @property({ type: Array }) items: { post: ProcessedPost; type: any }[] = [];
   @property({ type: Boolean, reflect: true }) compact = false;
+  @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
 
   render() {
     return html`
-      ${this.items.map(item => html`
-        <activity-item .post=${item.post} .interactionType=${item.type}></activity-item>
+      ${this.items.map((item) => html`
+        <activity-item .post=${item.post} .interactionType=${item.type} .mode=${this.mode}></activity-item>
       `)}
     `;
   }

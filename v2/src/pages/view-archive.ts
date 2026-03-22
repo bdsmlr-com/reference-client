@@ -13,6 +13,7 @@ import {
 } from '../services/storage.js';
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { Blog, PostType, PostSortField, Order, TimelineItem, PostVariant } from '../types/api.js';
+import { getGalleryMode, PROFILE_EVENTS, type GalleryMode } from '../services/profile.js';
 
 import '../components/filter-bar.js';
 import '../components/activity-grid.js';
@@ -69,6 +70,7 @@ export class ViewArchive extends LitElement {
   @state() private blogData: Blog | null = null;
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
+  @state() private galleryMode: GalleryMode = getGalleryMode();
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
@@ -84,6 +86,7 @@ export class ViewArchive extends LitElement {
   connectedCallback(): void {
     super.connectedCallback();
     window.addEventListener('beforeunload', this.savePaginationState);
+    window.addEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
   }
 
   disconnectedCallback(): void {
@@ -94,8 +97,13 @@ export class ViewArchive extends LitElement {
     if (sentinel) {
       scrollObserver.unobserve(sentinel);
     }
+    window.removeEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
     clearBlogTheme();
   }
+
+  private handleGalleryModeChanged = (): void => {
+    this.galleryMode = getGalleryMode();
+  };
 
   private savePaginationState = (): void => {
     if (this.paginationKey && this.timelineItems.length > 0) {
@@ -359,6 +367,7 @@ ${this.timelineItems.length > 0
   ? html`
       <div class="grid-container">
         <activity-grid 
+          .mode=${this.galleryMode}
           .items=${this.timelineItems.flatMap(entry => {
             if (entry.type === 1 && entry.post) {
               return [{ 
