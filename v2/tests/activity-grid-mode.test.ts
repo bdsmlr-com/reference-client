@@ -12,6 +12,14 @@ describe('gallery mode wiring', () => {
     expect(src).toContain(":host([mode='masonry'])");
   });
 
+  it('uses stable row-first column assignment for masonry pagination', () => {
+    const src = readFileSync(join(ROOT, 'components/activity-grid.ts'), 'utf8');
+
+    expect(src).toContain('const colCount = this.compact ? 4 : this.getMasonryColumnCount();');
+    expect(src).toContain('columns[i % colCount].push(item);');
+    expect(src).not.toContain(":host([mode='masonry']) {\n        display: block;\n        columns:");
+  });
+
   it('archive and search views pass persisted gallery mode into activity-grid', () => {
     const archiveSrc = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
     const searchSrc = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');

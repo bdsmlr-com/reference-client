@@ -200,9 +200,7 @@ export class ActivityGrid extends LitElement {
     baseStyles,
     css`
       :host {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 16px;
+        display: block;
         width: 100%;
         max-width: 1200px;
         margin: 0 auto;
@@ -210,44 +208,39 @@ export class ActivityGrid extends LitElement {
         box-sizing: border-box;
       }
 
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
+
       @media (min-width: 768px) {
-        :host {
+        .grid {
           grid-template-columns: repeat(4, 1fr);
         }
       }
 
       @media (min-width: 1024px) {
-        :host {
+        .grid {
           grid-template-columns: repeat(6, 1fr);
         }
       }
 
-      :host([mode='masonry']) {
-        display: block;
-        columns: 2;
-        column-gap: 16px;
+      .masonry-container {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
       }
 
-      @media (min-width: 768px) {
-        :host([mode='masonry']) {
-          columns: 4;
-        }
-      }
-
-      @media (min-width: 1024px) {
-        :host([mode='masonry']) {
-          columns: 6;
-        }
-      }
-
-      :host([mode='masonry']) activity-item {
-        break-inside: avoid;
-        margin-bottom: 16px;
+      .masonry-column {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-width: 0;
       }
 
       :host([compact]) {
-        grid-template-columns: repeat(4, 1fr);
-        gap: 4px;
         background: var(--bg-panel-alt);
         padding: 8px;
         border-radius: 8px;
@@ -255,8 +248,18 @@ export class ActivityGrid extends LitElement {
         max-width: none;
       }
 
+      :host([compact]) .grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+      }
+
+      :host([compact]) .masonry-container,
+      :host([compact]) .masonry-column {
+        gap: 4px;
+      }
+
       @media (max-width: 600px) {
-        :host([compact]) {
+        :host([compact]) .grid {
           grid-template-columns: repeat(3, 1fr);
         }
       }
@@ -267,11 +270,46 @@ export class ActivityGrid extends LitElement {
   @property({ type: Boolean, reflect: true }) compact = false;
   @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
 
+  private getMasonryColumnCount(): number {
+    if (typeof window === 'undefined') {
+      return 2;
+    }
+    if (window.innerWidth >= 1024) {
+      return 6;
+    }
+    if (window.innerWidth >= 768) {
+      return 4;
+    }
+    return 2;
+  }
+
   render() {
+    if (this.mode === 'masonry') {
+      const colCount = this.compact ? 4 : this.getMasonryColumnCount();
+      const columns: { post: ProcessedPost; type: any }[][] = Array.from({ length: colCount }, () => []);
+      this.items.forEach((item, i) => {
+        columns[i % colCount].push(item);
+      });
+
+      return html`
+        <section class="masonry-container" aria-label="Activity masonry">
+          ${columns.map((column) => html`
+            <div class="masonry-column">
+              ${column.map((item) => html`
+                <activity-item .post=${item.post} .interactionType=${item.type} mode="masonry"></activity-item>
+              `)}
+            </div>
+          `)}
+        </section>
+      `;
+    }
+
     return html`
-      ${this.items.map((item) => html`
-        <activity-item .post=${item.post} .interactionType=${item.type} .mode=${this.mode}></activity-item>
-      `)}
+      <section class="grid" aria-label="Activity grid">
+        ${this.items.map((item) => html`
+          <activity-item .post=${item.post} .interactionType=${item.type} mode="grid"></activity-item>
+        `)}
+      </section>
     `;
   }
 }
