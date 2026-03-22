@@ -64,6 +64,13 @@ export class ActivityItem extends LitElement {
         font-size: 11px;
         color: var(--text-muted);
       }
+      .blog-chip {
+        color: var(--accent);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 1px 6px;
+        font-weight: 600;
+      }
 
       .stats-line {
         display: flex;
@@ -161,6 +168,7 @@ export class ActivityItem extends LitElement {
     const isDeleted = Boolean(p.deletedAtUnix);
     const isOriginDeleted = Boolean(p.originDeletedAtUnix);
     const renderType = this.mode === 'masonry' ? 'gallery-masonry' : 'gallery-grid';
+    const showBlogChip = (this.interactionType === 'like' || this.interactionType === 'comment') && !!p.blogName;
 
     return html`
       <article class="card" @click=${this.handleClick}>
@@ -181,7 +189,7 @@ export class ActivityItem extends LitElement {
         <div class="card-info">
           <div class="meta-line">
             <span>${typeIcon}</span>
-            <span>${formatDate(p.createdAtUnix, 'date')}</span>
+            ${showBlogChip ? html`<span class="blog-chip">@${p.blogName}</span>` : html`<span>${formatDate(p.createdAtUnix, 'date')}</span>`}
           </div>
           <div class="stats-line">
             ${p.likesCount ? html`<div class="stat-item">❤️ ${p.likesCount}</div>` : ''}

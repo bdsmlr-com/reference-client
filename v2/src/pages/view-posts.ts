@@ -131,6 +131,10 @@ export class ViewPosts extends LitElement {
       if (parsed.length > 0) this.selectedVariants = parsed;
     }
     if (activity) this.activityKinds = normalizeActivityKinds(activity, DEFAULT_ACTIVITY_KINDS);
+    const hasInteractionKinds = this.activityKinds.includes('like') || this.activityKinds.includes('comment');
+    if (hasInteractionKinds && this.sortValue !== 'newest') {
+      this.sortValue = 'newest';
+    }
     
     const params: Record<string, string> = {
       sort: this.sortValue,
@@ -243,6 +247,9 @@ export class ViewPosts extends LitElement {
   }
 
   private handleSortChange(e: CustomEvent) {
+    if (this.activityKinds.includes('like') || this.activityKinds.includes('comment')) {
+      return;
+    }
     this.sortValue = normalizeSortValue(e.detail.value);
     this.loadPosts();
   }
@@ -259,11 +266,16 @@ export class ViewPosts extends LitElement {
 
   private handleActivityKindsChange(e: CustomEvent): void {
     this.activityKinds = normalizeActivityKinds((e.detail.kinds || []).join(','), DEFAULT_ACTIVITY_KINDS);
+    if (this.activityKinds.includes('like') || this.activityKinds.includes('comment')) {
+      this.sortValue = 'newest';
+    }
     setBlogActivityKindsPreference(this.activityKinds);
     setUrlParams({
+      sort: this.sortValue,
       activity: this.activityKinds.join(',') === DEFAULT_ACTIVITY_KINDS.join(',') ? '' : this.activityKinds.join(','),
       blog: this.blog,
     });
+    this.loadPosts();
   }
 
   render() {
@@ -273,7 +285,7 @@ export class ViewPosts extends LitElement {
 
         <filter-bar
           .sortValue=${this.sortValue}
-          .showSort=${true}
+          .showSort=${!(this.activityKinds.includes('like') || this.activityKinds.includes('comment'))}
           .selectedTypes=${this.selectedTypes}
           .selectedVariants=${this.selectedVariants}
           .showVariants=${true}

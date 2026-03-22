@@ -19,13 +19,16 @@ describe('activity route alias', () => {
     expect(navSrc).toContain("return buildPageUrl('activity', blogName);");
   });
 
-  it('activity view honors sort from URL and passes sort_field to API', () => {
+  it('activity view normalizes sort and forces newest for interaction kinds', () => {
     const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
 
     expect(postsSrc).toContain("const sort = getUrlParam('sort');");
     expect(postsSrc).toContain('this.sortValue = normalizeSortValue(sort);');
+    expect(postsSrc).toContain("const hasInteractionKinds = this.activityKinds.includes('like') || this.activityKinds.includes('comment');");
+    expect(postsSrc).toContain("if (hasInteractionKinds && this.sortValue !== 'newest')");
+    expect(postsSrc).toContain("this.sortValue = 'newest';");
     expect(postsSrc).toContain('sort_field: sortOption.field');
-    expect(postsSrc).toContain('.showSort=${true}');
+    expect(postsSrc).toContain(".showSort=${!(this.activityKinds.includes('like') || this.activityKinds.includes('comment'))}");
     expect(postsSrc).toContain('activity_kinds: this.activityKinds');
     expect(postsSrc).toContain('TYPE_ENUM_TO_NAME');
     expect(postsSrc).toContain('VARIANT_ENUM_TO_NAME');

@@ -29,4 +29,11 @@ describe('gallery mode wiring', () => {
     expect(archiveSrc).toContain("getGalleryMode()")
     expect(searchSrc).toContain("getGalleryMode()")
   });
+
+  it('activity cards show blog chip for like/comment interactions', () => {
+    const src = readFileSync(join(ROOT, 'components/activity-grid.ts'), 'utf8');
+
+    expect(src).toContain("const showBlogChip = (this.interactionType === 'like' || this.interactionType === 'comment') && !!p.blogName;");
+    expect(src).toContain("@${p.blogName}");
+  });
 });
