@@ -57,5 +57,32 @@
     "by_view": {},
     "by_role": {},
     "by_env": {}
+  },
+  "render": {
+    "pages": {
+      "archive": {
+        "slots": {
+          "main_stream": {
+            "cards": ["post_grid"],
+            "async": true,
+            "loading": { "cardType": "post_grid", "count": 12 }
+          }
+        }
+      }
+    },
+    "cards": {
+      "post_grid": {
+        "layout": "grid",
+        "elements": [],
+        "skeleton": {
+          "variant": "post-card",
+          "structure": ["header_ghost", "media_ghost", "stats_ghost"],
+          "count_policy": { "default": 12 },
+          "transition": "swap"
+        }
+      }
+    },
+    "elements": {},
+    "interactions": {}
   }
 }
