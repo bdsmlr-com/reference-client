@@ -17,9 +17,14 @@ import {
   setGalleryMode,
   PROFILE_EVENTS,
   type GalleryMode,
+  getArchiveSortPreference,
+  setArchiveSortPreference,
+  getSearchSortPreference,
+  setSearchSortPreference,
 } from '../services/profile.js';
 import { apiClient } from '../services/client.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
+import { SORT_OPTIONS, normalizeSortValue } from '../types/post.js';
 
 type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social' | 'posts';
 const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'final-fix-v6';
@@ -314,12 +319,15 @@ export class SharedNav extends LitElement {
   @state() private currentUsername: string | null = getCurrentUsername();
   @state() private galleryMode: GalleryMode = getGalleryMode();
   @state() private profileAvatarUrl: string | null = null;
+  @state() private archiveSortPreference = normalizeSortValue(getArchiveSortPreference() || 'newest');
+  @state() private searchSortPreference = normalizeSortValue(getSearchSortPreference() || 'newest');
 
   connectedCallback(): void {
     super.connectedCallback();
     document.addEventListener('click', this.handleDocumentClick);
     window.addEventListener(PROFILE_EVENTS.usernameChanged, this.handleProfileStateChange as EventListener);
     window.addEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleProfileStateChange as EventListener);
+    window.addEventListener(PROFILE_EVENTS.sortPreferencesChanged, this.handleProfileStateChange as EventListener);
     void this.refreshAvatar();
   }
 
@@ -328,6 +336,7 @@ export class SharedNav extends LitElement {
     document.removeEventListener('click', this.handleDocumentClick);
     window.removeEventListener(PROFILE_EVENTS.usernameChanged, this.handleProfileStateChange as EventListener);
     window.removeEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleProfileStateChange as EventListener);
+    window.removeEventListener(PROFILE_EVENTS.sortPreferencesChanged, this.handleProfileStateChange as EventListener);
   }
 
   private handleDocumentClick = (e: MouseEvent): void => {
@@ -341,6 +350,8 @@ export class SharedNav extends LitElement {
   private handleProfileStateChange = (): void => {
     this.currentUsername = getCurrentUsername();
     this.galleryMode = getGalleryMode();
+    this.archiveSortPreference = normalizeSortValue(getArchiveSortPreference() || 'newest');
+    this.searchSortPreference = normalizeSortValue(getSearchSortPreference() || 'newest');
     void this.refreshAvatar();
   };
 
@@ -468,6 +479,18 @@ export class SharedNav extends LitElement {
     this.galleryMode = mode;
   }
 
+  private handleArchiveSortPreferenceChange(e: Event): void {
+    const value = normalizeSortValue((e.target as HTMLSelectElement).value);
+    this.archiveSortPreference = value;
+    setArchiveSortPreference(value);
+  }
+
+  private handleSearchSortPreferenceChange(e: Event): void {
+    const value = normalizeSortValue((e.target as HTMLSelectElement).value);
+    this.searchSortPreference = value;
+    setSearchSortPreference(value);
+  }
+
   private renderProfileMenu() {
     const loggedIn = isLoggedIn();
 
@@ -488,6 +511,14 @@ export class SharedNav extends LitElement {
                   @click=${() => this.handleGalleryMode('masonry')}
                 >Masonry</button>
               </div>
+              <div class="menu-section-title">Archive default sort</div>
+              <select class="menu-button" .value=${this.archiveSortPreference} @change=${this.handleArchiveSortPreferenceChange}>
+                ${SORT_OPTIONS.map((opt) => html`<option value=${opt.value}>${opt.label}</option>`)}
+              </select>
+              <div class="menu-section-title">Search default sort</div>
+              <select class="menu-button" .value=${this.searchSortPreference} @change=${this.handleSearchSortPreferenceChange}>
+                ${SORT_OPTIONS.map((opt) => html`<option value=${opt.value}>${opt.label}</option>`)}
+              </select>
               <a class="menu-button" href=${this.getClearCacheUrl()}>Clear cache</a>
               <button class="menu-button" @click=${this.handleLogout}>Log out</button>
             `
@@ -537,7 +568,7 @@ export class SharedNav extends LitElement {
 
     const viewedBlog = getViewedBlogName();
     const showViewingIndicator = this.isViewingDifferentBlog();
-    const activePage = this.currentPage === 'following' ? 'posts' : (this.currentPage === 'timeline' ? 'posts' : this.currentPage);
+    const activePage = this.currentPage === 'following' ? '' : (this.currentPage === 'timeline' ? 'posts' : this.currentPage);
     const loggedIn = isLoggedIn();
     const profileToggleLabel = loggedIn ? '' : 'Log in';
     const profileInitial = (this.currentUsername || 'u').charAt(0).toUpperCase();

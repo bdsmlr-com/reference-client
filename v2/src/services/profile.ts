@@ -2,10 +2,13 @@ export type GalleryMode = 'grid' | 'masonry';
 
 const USERNAME_KEY = 'bdsmlr_profile_username';
 const GALLERY_MODE_KEY = 'bdsmlr_gallery_mode';
+const ARCHIVE_SORT_KEY = 'bdsmlr_archive_sort';
+const SEARCH_SORT_KEY = 'bdsmlr_search_sort';
 
 export const PROFILE_EVENTS = {
   galleryModeChanged: 'bdsmlr:gallery-mode-changed',
   usernameChanged: 'bdsmlr:username-changed',
+  sortPreferencesChanged: 'bdsmlr:sort-preferences-changed',
 } as const;
 
 function readStorage(key: string): string | null {
@@ -66,8 +69,11 @@ export function clearCurrentUsername(): void {
 export function clearProfileState(): void {
   removeStorage(USERNAME_KEY);
   removeStorage(GALLERY_MODE_KEY);
+  removeStorage(ARCHIVE_SORT_KEY);
+  removeStorage(SEARCH_SORT_KEY);
   emit(PROFILE_EVENTS.usernameChanged, { username: null });
   emit(PROFILE_EVENTS.galleryModeChanged, { mode: 'grid' });
+  emit(PROFILE_EVENTS.sortPreferencesChanged, { archiveSort: null, searchSort: null });
 }
 
 export function isLoggedIn(): boolean {
@@ -82,4 +88,28 @@ export function getGalleryMode(): GalleryMode {
 export function setGalleryMode(mode: GalleryMode): void {
   writeStorage(GALLERY_MODE_KEY, mode);
   emit(PROFILE_EVENTS.galleryModeChanged, { mode });
+}
+
+export function getArchiveSortPreference(): string | null {
+  return readStorage(ARCHIVE_SORT_KEY);
+}
+
+export function setArchiveSortPreference(sortValue: string): void {
+  writeStorage(ARCHIVE_SORT_KEY, sortValue);
+  emit(PROFILE_EVENTS.sortPreferencesChanged, {
+    archiveSort: sortValue,
+    searchSort: getSearchSortPreference(),
+  });
+}
+
+export function getSearchSortPreference(): string | null {
+  return readStorage(SEARCH_SORT_KEY);
+}
+
+export function setSearchSortPreference(sortValue: string): void {
+  writeStorage(SEARCH_SORT_KEY, sortValue);
+  emit(PROFILE_EVENTS.sortPreferencesChanged, {
+    archiveSort: getArchiveSortPreference(),
+    searchSort: sortValue,
+  });
 }

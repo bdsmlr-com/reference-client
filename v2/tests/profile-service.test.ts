@@ -7,6 +7,10 @@ import {
   isLoggedIn,
   getGalleryMode,
   setGalleryMode,
+  getArchiveSortPreference,
+  setArchiveSortPreference,
+  getSearchSortPreference,
+  setSearchSortPreference,
 } from '../src/services/profile.js';
 
 describe('profile service', () => {
@@ -54,5 +58,24 @@ describe('profile service', () => {
     clearProfileState();
     expect(removeItem).toHaveBeenCalledWith('bdsmlr_profile_username');
     expect(removeItem).toHaveBeenCalledWith('bdsmlr_gallery_mode');
+    expect(removeItem).toHaveBeenCalledWith('bdsmlr_archive_sort');
+    expect(removeItem).toHaveBeenCalledWith('bdsmlr_search_sort');
+  });
+
+  it('stores and reads archive/search sort preferences separately', () => {
+    setArchiveSortPreference('popular');
+    setSearchSortPreference('newest');
+
+    expect(setItem).toHaveBeenCalledWith('bdsmlr_archive_sort', 'popular');
+    expect(setItem).toHaveBeenCalledWith('bdsmlr_search_sort', 'newest');
+
+    getItem.mockImplementation((key: string) => {
+      if (key === 'bdsmlr_archive_sort') return 'popular';
+      if (key === 'bdsmlr_search_sort') return 'newest';
+      return null;
+    });
+
+    expect(getArchiveSortPreference()).toBe('popular');
+    expect(getSearchSortPreference()).toBe('newest');
   });
 });

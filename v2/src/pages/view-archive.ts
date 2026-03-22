@@ -13,7 +13,13 @@ import {
 } from '../services/storage.js';
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { Blog, PostType, PostSortField, Order, TimelineItem, PostVariant } from '../types/api.js';
-import { getGalleryMode, PROFILE_EVENTS, type GalleryMode } from '../services/profile.js';
+import {
+  getGalleryMode,
+  PROFILE_EVENTS,
+  type GalleryMode,
+  getArchiveSortPreference,
+  setArchiveSortPreference,
+} from '../services/profile.js';
 
 import '../components/filter-bar.js';
 import '../components/activity-grid.js';
@@ -122,7 +128,11 @@ export class ViewArchive extends LitElement {
     const types = getUrlParam('types');
     const variants = getUrlParam('variants');
 
-    this.sortValue = normalizeSortValue(sort);
+    const resolvedSort = normalizeSortValue(sort || getArchiveSortPreference());
+    this.sortValue = resolvedSort;
+    if (!sort) {
+      setArchiveSortPreference(resolvedSort);
+    }
     if (types) {
       this.selectedTypes = types.split(',').map((t) => parseInt(t, 10) as PostType);
     }
@@ -286,6 +296,7 @@ export class ViewArchive extends LitElement {
 
   private handleSortChange(e: CustomEvent): void {
     this.sortValue = e.detail.value;
+    setArchiveSortPreference(this.sortValue);
     this.loadPosts();
   }
 

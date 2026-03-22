@@ -12,7 +12,13 @@ import {
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { PostType, PostSortField, Order, PostVariant, TimelineItem } from '../types/api.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
-import { getGalleryMode, PROFILE_EVENTS, type GalleryMode } from '../services/profile.js';
+import {
+  getGalleryMode,
+  PROFILE_EVENTS,
+  type GalleryMode,
+  getSearchSortPreference,
+  setSearchSortPreference,
+} from '../services/profile.js';
 import '../components/filter-bar.js';
 import '../components/activity-grid.js';
 import '../components/load-footer.js';
@@ -206,7 +212,11 @@ export class ViewSearch extends LitElement {
     const variants = getUrlParam('variants');
 
     if (q) this.query = q;
-    this.sortValue = normalizeSortValue(sort);
+    const resolvedSort = normalizeSortValue(sort || getSearchSortPreference());
+    this.sortValue = resolvedSort;
+    if (!sort) {
+      setSearchSortPreference(resolvedSort);
+    }
     if (types) {
       this.selectedTypes = types.split(',').map((t) => parseInt(t, 10) as PostType);
     }
@@ -375,6 +385,7 @@ export class ViewSearch extends LitElement {
 
   private handleSortChange(e: CustomEvent): void {
     this.sortValue = e.detail.value;
+    setSearchSortPreference(this.sortValue);
     if (this.hasSearched) {
       this.search();
     }
