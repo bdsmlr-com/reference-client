@@ -89,7 +89,11 @@ export interface RenderElementConfig {
 }
 
 export interface RenderInteractionConfig {
-  type?: string;
+  type?: 'open_lightbox' | 'navigate' | 'emit_event' | 'toggle';
+  linkContext?: string;
+  eventName?: string;
+  stopPropagation?: boolean;
+  preventDefault?: boolean;
 }
 
 export interface RenderContractConfig {

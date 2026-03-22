@@ -77,6 +77,31 @@
             "loading": { "cardType": "post_grid", "count": 8 }
           }
         }
+      },
+      "feed": {
+        "slots": {
+          "main_stream": {
+            "cards": ["post_feed"],
+            "async": true,
+            "loading": { "cardType": "post_feed", "count": 4 }
+          }
+        }
+      },
+      "activity": {
+        "slots": {
+          "main_stream": {
+            "cards": ["post_feed"],
+            "async": true,
+            "loading": { "cardType": "post_feed", "count": 4 }
+          }
+        }
+      },
+      "lightbox": {
+        "slots": {
+          "main_stream": {
+            "cards": ["lightbox_post"]
+          }
+        }
       }
     },
     "cards": {
@@ -89,9 +114,31 @@
           "count_policy": { "default": 12 },
           "transition": "swap"
         }
+      },
+      "post_feed": {
+        "layout": "full",
+        "elements": [],
+        "skeleton": {
+          "variant": "post-feed",
+          "structure": ["media_ghost", "stats_ghost"],
+          "count_policy": { "default": 4 },
+          "transition": "swap"
+        }
+      },
+      "lightbox_post": {
+        "layout": "lightbox",
+        "elements": []
       }
     },
     "elements": {},
-    "interactions": {}
+    "interactions": {
+      "open_lightbox_post": {
+        "type": "open_lightbox"
+      },
+      "open_recommendation_post": {
+        "type": "navigate",
+        "linkContext": "recommendation_post"
+      }
+    }
   }
 }

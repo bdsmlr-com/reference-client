@@ -7,7 +7,8 @@ import { extractMedia, type ProcessedPost } from '../types/post.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { resolveMediaUrl } from '../services/media-resolver.js';
 import { buildLightboxMediaSources } from '../services/lightbox-media-sources.js';
-import { resolveLink } from '../services/link-resolver.js';
+import { buildInteractionHandler } from '../services/render-interactions.js';
+import { loadRenderContract } from '../services/render-contract.js';
 import './media-renderer.js';
 import './post-detail-content.js';
 
@@ -144,6 +145,9 @@ export class PostLightbox extends LitElement {
   @property({ type: Object }) post: ProcessedPost | null = null;
   @property({ type: Array }) posts: ProcessedPost[] = [];
   @property({ type: Number }) currentIndex = -1;
+  private readonly openRecommendationInteraction = buildInteractionHandler(
+    (loadRenderContract().interactions as any).open_recommendation_post
+  );
 
   connectedCallback() {
     super.connectedCallback();
@@ -272,8 +276,10 @@ export class PostLightbox extends LitElement {
   private handleNestedPostClick = (e: CustomEvent<{ post?: ProcessedPost }>) => {
     const postId = e.detail?.post?.id;
     if (!postId) return;
-    const link = resolveLink('recommendation_post', { postId });
-    window.location.href = link.href;
+    this.openRecommendationInteraction({
+      params: { postId },
+      host: this,
+    });
   };
 
   render() {

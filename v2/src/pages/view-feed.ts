@@ -13,14 +13,16 @@ import {
   setFollowingActivityKindsPreference,
   type ActivityKind,
 } from '../services/profile.js';
+import { getPageSlotConfig } from '../services/render-page.js';
+import type { RenderSlotConfig } from '../config.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import '../components/filter-bar.js';
 import '../components/activity-kind-pills.js';
 import '../components/timeline-stream.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
-import '../components/skeleton-loader.js';
 import '../components/error-state.js';
+import '../components/render-card.js';
 
 const PAGE_SIZE = 20;
 const MAX_BACKEND_FETCHES = 3;
@@ -161,6 +163,7 @@ export class ViewFeed extends LitElement {
   @state() private isRetryableError = false;
   @state() private activityKinds: ActivityKind[] = getFollowingActivityKindsPreference();
   @state() private blogData: Blog | null = null;
+  private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('feed', 'main_stream');
   private skipCacheOnNextResolve = false;
   private emptyFollowingAttempts = 0;
 
@@ -633,7 +636,13 @@ export class ViewFeed extends LitElement {
         ${this.statusMessage && !this.resolving ? html`<div class="status">${this.statusMessage}</div>` : ''}
 
         ${this.loading && this.timelineItems.length === 0 && !this.errorMessage && !this.resolving
-          ? html`<skeleton-loader variant="post-feed" count="4" trackTime></skeleton-loader>`
+          ? html`
+              <render-card
+                cardType=${this.mainSlotConfig.loading?.cardType || ''}
+                count=${this.mainSlotConfig.loading?.count}
+                loading
+              ></render-card>
+            `
           : ''}
 
         ${this.followingBlogIds.length > 0

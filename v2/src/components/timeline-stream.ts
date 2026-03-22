@@ -5,6 +5,8 @@ import { baseStyles } from '../styles/theme.js';
 import type { ProcessedPost } from '../types/post.js';
 import type { TimelineItem } from '../types/api.js';
 import type { ActivityKind } from '../services/profile.js';
+import { buildInteractionHandler } from '../services/render-interactions.js';
+import { loadRenderContract } from '../services/render-contract.js';
 import '../components/post-feed-item.js';
 import '../components/activity-grid.js';
 
@@ -75,6 +77,7 @@ export class TimelineStream extends LitElement {
   @property({ type: Boolean }) showActorInCluster = false;
   @state() private clusterVisibleCounts = new Map<string, number>();
   private readonly clusterPageSize = 12;
+  private readonly openLightboxInteraction = buildInteractionHandler((loadRenderContract().interactions as any).open_lightbox_post);
 
   private inferItemKind(item: TimelineItem): ActivityKind {
     if (item.type === 1 && item.post) {
@@ -106,11 +109,10 @@ export class TimelineStream extends LitElement {
   private handlePostClick(post: ProcessedPost): void {
     const posts = this.getAllPosts();
     const index = posts.findIndex((p) => p.id === post.id);
-    this.dispatchEvent(new CustomEvent('post-click', {
-      detail: { post, posts, index: index >= 0 ? index : 0 },
-      bubbles: true,
-      composed: true,
-    }));
+    this.openLightboxInteraction({
+      host: this,
+      payload: { post, posts, index: index >= 0 ? index : 0 },
+    });
   }
 
   private renderClusterLabel(item: TimelineItem, kind: ActivityKind): string {

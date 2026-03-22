@@ -15,6 +15,8 @@ import {
   setBlogActivityKindsPreference,
   type ActivityKind,
 } from '../services/profile.js';
+import { getPageSlotConfig } from '../services/render-page.js';
+import type { RenderSlotConfig } from '../config.js';
 import '../components/filter-bar.js';
 import '../components/activity-kind-pills.js';
 import '../components/timeline-stream.js';
@@ -22,6 +24,7 @@ import '../components/load-footer.js';
 import '../components/loading-spinner.js';
 import '../components/error-state.js';
 import '../components/blog-header.js';
+import '../components/render-card.js';
 
 const PAGE_SIZE = 15;
 const TYPE_NAME_TO_ENUM: Record<string, PostType> = {
@@ -66,6 +69,7 @@ export class ViewPosts extends LitElement {
   @state() private errorMessage = '';
   @state() private activityKinds: ActivityKind[] = getBlogActivityKindsPreference();
   @state() private blogData: Blog | null = null;
+  private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('activity', 'main_stream');
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
@@ -271,6 +275,15 @@ export class ViewPosts extends LitElement {
         ></activity-kind-pills>
 
         ${this.errorMessage ? html`<error-state message=${this.errorMessage}></error-state>` : ''}
+        ${this.loading && this.timelineItems.length === 0 && !this.errorMessage
+          ? html`
+              <render-card
+                cardType=${this.mainSlotConfig.loading?.cardType || ''}
+                count=${this.mainSlotConfig.loading?.count}
+                loading
+              ></render-card>
+            `
+          : ''}
 
         <div class="feed-container">
           <timeline-stream
