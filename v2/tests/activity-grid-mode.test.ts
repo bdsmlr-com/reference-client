@@ -35,5 +35,6 @@ describe('gallery mode wiring', () => {
 
     expect(src).toContain("const showBlogChip = (this.interactionType === 'like' || this.interactionType === 'comment') && !!p.blogName;");
     expect(src).toContain("@${p.blogName}");
+    expect(src).not.toContain('reblog-variant-badge');
   });
 });

@@ -101,21 +101,6 @@ export class ActivityItem extends LitElement {
         z-index: 3;
       }
 
-      .reblog-variant-badge {
-        position: absolute;
-        top: 6px;
-        right: 6px;
-        background: var(--accent);
-        color: white;
-        padding: 1px 5px;
-        border-radius: 4px;
-        font-size: 10px;
-        font-weight: bold;
-        backdrop-filter: blur(4px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        z-index: 2;
-      }
-
       .admin-label {
         position: absolute;
         top: 0;
@@ -156,7 +141,6 @@ export class ActivityItem extends LitElement {
     const p = this.post;
     const media = p._media;
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
-    const rbCount = p.reblog_variants?.length || 0;
 
     let typeIcon = POST_TYPE_ICONS[p.type as PostType] || '📄';
     if (this.interactionType === 'reblog') typeIcon = '♻️';
@@ -180,7 +164,6 @@ export class ActivityItem extends LitElement {
           ></media-renderer>
 
           ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge" title="Post contains ${p.content.files.length} items">1 / ${p.content.files.length}</div>` : ''}
-          ${rbCount > 0 ? html`<div class="reblog-variant-badge" title="Aggregated reblogs">+${rbCount}</div>` : ''}
           ${isAdmin && isDeleted ? html`<div class="admin-label">Deleted</div>` : nothing}
           ${isAdmin && isOriginDeleted ? html`<div class="admin-label origin-deleted">Origin Deleted</div>` : nothing}
           ${isAdmin && isTombstone ? html`<div class="admin-label tombstone">Tombstone</div>` : nothing}
