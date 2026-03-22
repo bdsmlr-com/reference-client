@@ -53,11 +53,58 @@ export interface PostRenderPolicyConfig {
   by_env?: Record<string, PostRenderPolicy>;
 }
 
+export type RenderLayout = 'grid' | 'masonry' | 'full' | 'cluster' | 'lightbox' | 'list';
+export type RenderSkeletonTransition = 'swap' | 'crossfade' | 'stagger';
+
+export interface RenderSlotLoadingConfig {
+  cardType: string;
+  count: number;
+}
+
+export interface RenderSlotConfig {
+  cards: string[];
+  async?: boolean;
+  loading?: RenderSlotLoadingConfig;
+}
+
+export interface RenderPageConfig {
+  slots: Record<string, RenderSlotConfig>;
+}
+
+export interface RenderSkeletonConfig {
+  variant: string;
+  structure: string[];
+  count_policy: { default: number };
+  transition: RenderSkeletonTransition;
+}
+
+export interface RenderCardConfig {
+  layout: RenderLayout;
+  elements: string[];
+  skeleton?: RenderSkeletonConfig;
+}
+
+export interface RenderElementConfig {
+  primitive?: string;
+}
+
+export interface RenderInteractionConfig {
+  type?: string;
+}
+
+export interface RenderContractConfig {
+  pages: Record<string, RenderPageConfig>;
+  cards: Record<string, RenderCardConfig>;
+  elements: Record<string, RenderElementConfig>;
+  interactions: Record<string, RenderInteractionConfig>;
+}
+
 export const MEDIA_PRESETS: Record<string, MediaPreset> = mediaConfig.presets as Record<string, MediaPreset>;
 
 export const ENV_CONFIGS: Record<string, AppConfig> = mediaConfig.environments as Record<string, AppConfig>;
 export const LINK_CONFIG: LinkConfig = (mediaConfig as any).links as LinkConfig;
 export const POST_RENDER_POLICY_CONFIG: PostRenderPolicyConfig = (mediaConfig as any).post_render_policy as PostRenderPolicyConfig;
+export const RENDER_CONTRACT_CONFIG: RenderContractConfig = (mediaConfig as any).render as RenderContractConfig;
 
 // CURRENT ACTIVE ENVIRONMENT
 export const ACTIVE_ENV = 'staging';
