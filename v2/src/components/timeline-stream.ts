@@ -20,6 +20,7 @@ type DateActivityBucket = {
   likeCount: number;
   commentCount: number;
   interactions: BucketInteraction[];
+  interactionIndex: Map<number, number>;
 };
 
 type RenderableItem =
@@ -160,13 +161,26 @@ export class TimelineStream extends LitElement {
               likeCount: 0,
               commentCount: 0,
               interactions: [],
+              interactionIndex: new Map<number, number>(),
             };
             buckets.set(key, bucket);
             renderable.push({ type: 'activity-bucket', bucket });
           }
           if (kind === 'like') bucket.likeCount += 1;
           if (kind === 'comment') bucket.commentCount += 1;
-          bucket.interactions.push({ post, type: kind });
+          if (!Number.isFinite(post.id)) {
+            bucket.interactions.push({ post, type: kind });
+            continue;
+          }
+          const postId = post.id;
+          const existingIndex = bucket.interactionIndex.get(postId);
+          if (existingIndex === undefined) {
+            bucket.interactionIndex.set(postId, bucket.interactions.length);
+            bucket.interactions.push({ post, type: kind });
+          } else if (kind === 'comment' && bucket.interactions[existingIndex].type === 'like') {
+            // If a post has both interactions, prefer comment icon on the single rendered tile.
+            bucket.interactions[existingIndex] = { post, type: 'comment' };
+          }
         }
       }
     }

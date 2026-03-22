@@ -59,6 +59,14 @@ describe('hybrid activity stream', () => {
     expect(streamSrc).toContain('clusterVisibleCounts.set(key, this.clusterPageSize)');
   });
 
+  it('deduplicates same post within a date bucket across like/comment clusters', () => {
+    const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
+
+    expect(streamSrc).toContain('interactionIndex: new Map<number, number>()');
+    expect(streamSrc).toContain('const existingIndex = bucket.interactionIndex.get(postId);');
+    expect(streamSrc).toContain("if (existingIndex === undefined)");
+  });
+
   it('classifies variant=2 timeline posts as reblogs', () => {
     const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
 
