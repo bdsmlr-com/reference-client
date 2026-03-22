@@ -6,8 +6,7 @@ import { extractMedia, type ProcessedPost } from '../types/post.js';
 import { getContextualErrorMessage } from '../services/api-error.js';
 import '../components/skeleton-loader.js';
 import '../components/post-feed-item.js';
-import '../components/post-recommendations.js';
-import '../components/post-engagement.js';
+import '../components/post-detail-content.js';
 
 @customElement('view-post')
 export class ViewPost extends LitElement {
@@ -130,11 +129,11 @@ export class ViewPost extends LitElement {
 
       <post-feed-item .post=${this.post} @post-click=${this.handlePostClick}></post-feed-item>
 
-      <post-engagement .post=${this.post} standalone></post-engagement>
-
-      <div class="separator">💕</div>
-
-      <post-recommendations .postId=${this.post.id} mode="grid"></post-recommendations>
+      <post-detail-content
+        .post=${this.post}
+        recommendationsMode="grid"
+        ?engagementStandalone=${true}
+      ></post-detail-content>
     `;
   }
 }

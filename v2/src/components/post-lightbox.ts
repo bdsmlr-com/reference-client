@@ -3,15 +3,12 @@ import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { EventNames, type LightboxNavigateDetail } from '../types/events.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { resolveMediaUrl } from '../services/media-resolver.js';
 import { buildLightboxMediaSources } from '../services/lightbox-media-sources.js';
-import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
 import './media-renderer.js';
-import './post-recommendations.js';
-import './post-engagement.js';
+import './post-detail-content.js';
 
 @customElement('post-lightbox')
 export class PostLightbox extends LitElement {
@@ -299,13 +296,7 @@ export class PostLightbox extends LitElement {
             ` : ''}
             ${this.renderAdminDebug()}
 
-            <div class="body-text" style="margin-bottom: 32px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 24px;">
-              ${unsafeHTML(sanitizeHtmlFragment(p.content?.html || p.body || ''))}
-            </div>
-
-            <post-engagement .post=${p}></post-engagement>
-
-            <post-recommendations .postId=${p.id} mode="list"></post-recommendations>
+            <post-detail-content .post=${p} recommendationsMode="list"></post-detail-content>
           </div>
         </div>
       </div>
