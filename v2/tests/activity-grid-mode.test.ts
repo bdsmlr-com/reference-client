@@ -5,6 +5,18 @@ import { join } from 'node:path';
 const ROOT = join(process.cwd(), 'src');
 
 describe('gallery mode wiring', () => {
+  it('media config contains layered post render policy blocks', () => {
+    const mediaConfigPath = join(process.cwd(), 'media-config.json');
+    const mediaConfig = JSON.parse(readFileSync(mediaConfigPath, 'utf8'));
+    const policy = mediaConfig.post_render_policy;
+
+    expect(policy).toBeDefined();
+    expect(policy.base).toBeDefined();
+    expect(policy.by_view).toBeDefined();
+    expect(policy.by_role).toBeDefined();
+    expect(policy.by_env).toBeDefined();
+  });
+
   it('activity-grid supports explicit grid/masonry mode', () => {
     const src = readFileSync(join(ROOT, 'components/activity-grid.ts'), 'utf8');
 

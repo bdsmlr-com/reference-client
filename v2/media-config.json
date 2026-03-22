@@ -47,5 +47,15 @@
         "target": "_blank"
       }
     }
+  },
+  "post_render_policy": {
+    "base": {
+      "showPermalink": true,
+      "showBlogChip": false,
+      "compactMetadata": false
+    },
+    "by_view": {},
+    "by_role": {},
+    "by_env": {}
   }
 }
