@@ -71,6 +71,17 @@ describe('Media Resolver', () => {
       expect(url).toContain('imgproxy.i.bdsmlr.com/unsafe/g:sm/rs:fill:300:300/plain/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
     });
 
+    it('should strip signature params for unsafe/imgproxy URLs', () => {
+      CONFIG.imgproxyMode = 'unsafe';
+      const src = 'https://ocdn012.bdsmlr.com/uploads/foo.jpg?e=123&t=abc&cb=999&x=1';
+      const url = resolveMediaUrl(src, 'gallery-grid');
+      expect(url).toContain('imgproxy.i.bdsmlr.com/unsafe/');
+      expect(url).toContain('x=1');
+      expect(url).not.toContain('e=123');
+      expect(url).not.toContain('t=abc');
+      expect(url).not.toContain('cb=999');
+    });
+
     it('should generate a fixed (ergonomic) URL in production mode', () => {
       CONFIG.imgproxyMode = 'fixed';
       CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';

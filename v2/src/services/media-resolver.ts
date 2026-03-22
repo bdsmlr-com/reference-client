@@ -116,7 +116,18 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
   }
 
   // Pattern: /imgproxy.i.bdsmlr.com/unsafe/<filters>/plain/s3://bucket/path?sig
-  return `${CONFIG.mediaProxyBase}/unsafe/${parts.join('/')}/plain/${s3Url}${queryString}`;
+  const unsafeQuery = stripSigningQueryParams(queryParams);
+  const unsafeQueryString = unsafeQuery ? `?${unsafeQuery}` : '';
+  return `${CONFIG.mediaProxyBase}/unsafe/${parts.join('/')}/plain/${s3Url}${unsafeQueryString}`;
+}
+
+function stripSigningQueryParams(queryParams: string): string {
+  if (!queryParams) return '';
+  const params = new URLSearchParams(queryParams);
+  params.delete('e');
+  params.delete('t');
+  params.delete('cb');
+  return params.toString();
 }
 
 export function isAnimation(url: string | undefined): boolean {
