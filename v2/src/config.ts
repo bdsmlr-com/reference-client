@@ -5,6 +5,7 @@ import mediaConfig from '../media-config.json';
  */
 
 export type ImgproxyMode = 'unsafe' | 'fixed';
+export type LinkMode = 'internal' | 'legacy' | 'external';
 
 export interface MediaPreset {
   width: number;
@@ -20,9 +21,29 @@ export interface AppConfig {
   imgproxyMode: ImgproxyMode;
 }
 
+export interface LinkContextConfig {
+  mode: LinkMode;
+  pattern: string;
+  target?: '_self' | '_blank';
+  rel?: string[];
+  track?: string;
+}
+
+export interface LinkDefaultsConfig {
+  internalTarget?: '_self' | '_blank';
+  externalTarget?: '_self' | '_blank';
+  externalRel?: string[];
+}
+
+export interface LinkConfig {
+  defaults?: LinkDefaultsConfig;
+  contexts: Record<string, LinkContextConfig>;
+}
+
 export const MEDIA_PRESETS: Record<string, MediaPreset> = mediaConfig.presets as Record<string, MediaPreset>;
 
 export const ENV_CONFIGS: Record<string, AppConfig> = mediaConfig.environments as Record<string, AppConfig>;
+export const LINK_CONFIG: LinkConfig = (mediaConfig as any).links as LinkConfig;
 
 // CURRENT ACTIVE ENVIRONMENT
 export const ACTIVE_ENV = 'staging';

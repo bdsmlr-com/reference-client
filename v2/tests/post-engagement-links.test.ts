@@ -1,10 +1,25 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { resolveLink } from '../src/services/link-resolver';
 
 const FILE = join(process.cwd(), 'src/components/post-engagement.ts');
 
 describe('post engagement links', () => {
+  it('resolves legacy link contexts with _blank target by default', () => {
+    const link = resolveLink('blog_header_external_blog', { blog: 'frenchdoctor' });
+    expect(link.href).toBe('https://frenchdoctor.bdsmlr.com');
+    expect(link.target).toBe('_blank');
+    expect(link.isExternal).toBe(true);
+  });
+
+  it('resolves internal link contexts with _self target by default', () => {
+    const link = resolveLink('post_permalink', { postId: '123' });
+    expect(link.href).toBe('/post/123');
+    expect(link.target).toBe('_self');
+    expect(link.isExternal).toBe(false);
+  });
+
   it('guards empty blog names and falls back to @unknown text', () => {
     const src = readFileSync(FILE, 'utf8');
 
