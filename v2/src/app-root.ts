@@ -79,9 +79,12 @@ export class AppRoot extends LitElement {
 
   private handlePostClick(e: CustomEvent) {
     const { post, posts, index } = e.detail;
-    this.lightboxPost = post;
-    this.lightboxPosts = posts;
-    this.lightboxIndex = index;
+    const safePost = post as ProcessedPost | null;
+    const safePosts = Array.isArray(posts) && posts.length > 0 ? posts : (safePost ? [safePost] : []);
+    const safeIndex = Number.isFinite(index) ? index : 0;
+    this.lightboxPost = safePost;
+    this.lightboxPosts = safePosts;
+    this.lightboxIndex = safeIndex;
     this.lightboxOpen = true;
   }
 
