@@ -15,6 +15,7 @@ import {
   mergeFollowEdges,
   countNewFollowEdges,
   shouldStopFollowPagination,
+  fingerprintFollowEdges,
 } from '../services/follow-pagination.js';
 import type { FollowEdge, Blog } from '../types/api.js';
 import '../components/blog-list.js';
@@ -130,6 +131,8 @@ export class ViewSocial extends LitElement {
 
   private followersPaginationKey = '';
   private followingPaginationKey = '';
+  private lastFollowersPageFingerprint: string | null = null;
+  private lastFollowingPageFingerprint: string | null = null;
 
   protected updated(changedProperties: PropertyValues): void {
     if (changedProperties.has('blog')) {
@@ -175,6 +178,8 @@ export class ViewSocial extends LitElement {
   };
 
   private async loadFromUrl(): Promise<void> {
+    this.lastFollowersPageFingerprint = null;
+    this.lastFollowingPageFingerprint = null;
     const tab = getUrlParam('tab') as Tab;
     if (tab === 'followers' || tab === 'following') {
       this.activeTab = tab;
@@ -309,13 +314,17 @@ export class ViewSocial extends LitElement {
 
       if (this.activeTab === 'followers') {
         const items = resp.followers || [];
+        const pageFingerprint = fingerprintFollowEdges(items);
+        const repeatedPage = !!cursor && this.lastFollowersPageFingerprint === pageFingerprint;
         const newlyAddedCount = countNewFollowEdges(this.followers, items);
         this.followers = mergeFollowEdges(this.followers, items);
+        this.lastFollowersPageFingerprint = pageFingerprint;
         const shouldStop = shouldStopFollowPagination({
           previousCursor: cursor,
           nextCursor: nextPageTokenFromApi,
           incomingCount: items.length,
           newlyAddedCount,
+          repeatedPage,
           totalCount: this.followersCount,
           loadedCount: this.followers.length,
         });
@@ -342,13 +351,17 @@ export class ViewSocial extends LitElement {
         }
       } else {
         const items = resp.following || [];
+        const pageFingerprint = fingerprintFollowEdges(items);
+        const repeatedPage = !!cursor && this.lastFollowingPageFingerprint === pageFingerprint;
         const newlyAddedCount = countNewFollowEdges(this.following, items);
         this.following = mergeFollowEdges(this.following, items);
+        this.lastFollowingPageFingerprint = pageFingerprint;
         const shouldStop = shouldStopFollowPagination({
           previousCursor: cursor,
           nextCursor: nextPageTokenFromApi,
           incomingCount: items.length,
           newlyAddedCount,
+          repeatedPage,
           totalCount: this.followingCount,
           loadedCount: this.following.length,
         });

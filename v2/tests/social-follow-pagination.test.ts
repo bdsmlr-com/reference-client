@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { mergeFollowEdges, shouldStopFollowPagination } from '../src/services/follow-pagination';
+import {
+  mergeFollowEdges,
+  shouldStopFollowPagination,
+  fingerprintFollowEdges,
+} from '../src/services/follow-pagination';
 import type { FollowEdge } from '../src/types/api';
 
 describe('social follow pagination safeguards', () => {
@@ -71,5 +75,27 @@ describe('social follow pagination safeguards', () => {
     const merged = mergeFollowEdges(existing, incoming);
     const ids = merged.map((e: any) => e.blogId ?? e.blog_id);
     expect(ids).toEqual([100, 101]);
+  });
+
+  it('deduplicates structurally identical edges without stable ids', () => {
+    const existing = [{ avatar: '/a.png', label: 'mystery' }] as unknown as FollowEdge[];
+    const incoming = [{ avatar: '/a.png', label: 'mystery' }] as unknown as FollowEdge[];
+    const merged = mergeFollowEdges(existing, incoming);
+    expect(merged.length).toBe(1);
+  });
+
+  it('stops when page fingerprint repeats', () => {
+    const page = [{ blog_id: 77, blog_name: 'same' }] as unknown as FollowEdge[];
+    const fp = fingerprintFollowEdges(page);
+    expect(fp.length).toBeGreaterThan(0);
+    expect(
+      shouldStopFollowPagination({
+        previousCursor: 'abc',
+        nextCursor: 'def',
+        incomingCount: 1,
+        newlyAddedCount: 1,
+        repeatedPage: true,
+      })
+    ).toBe(true);
   });
 });

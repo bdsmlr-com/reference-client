@@ -1,5 +1,13 @@
 import type { FollowEdge } from '../types/api';
 
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((v) => stableStringify(v)).join(',')}]`;
+  const obj = value as Record<string, unknown>;
+  const keys = Object.keys(obj).sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(',')}}`;
+}
+
 function edgeKey(edge: FollowEdge): string | null {
   const raw = edge as unknown as {
     blogId?: number;
@@ -15,7 +23,7 @@ function edgeKey(edge: FollowEdge): string | null {
   if (blogName) return `name:${blogName.toLowerCase()}`;
   const userId = raw.userId ?? raw.user_id;
   if (userId !== undefined && userId !== null) return `user:${userId}`;
-  return null;
+  return `obj:${stableStringify(raw)}`;
 }
 
 export function mergeFollowEdges(existing: FollowEdge[], incoming: FollowEdge[]): FollowEdge[] {
@@ -67,13 +75,20 @@ export function shouldStopFollowPagination(args: {
   nextCursor: string | null;
   incomingCount: number;
   newlyAddedCount: number;
+  repeatedPage?: boolean;
   totalCount?: number;
   loadedCount?: number;
 }): boolean {
   if (args.incomingCount === 0) return true;
   if (!args.nextCursor) return true;
+  if (args.repeatedPage) return true;
   if (args.previousCursor && args.previousCursor === args.nextCursor) return true;
   if (args.previousCursor && args.newlyAddedCount === 0) return true;
   if ((args.totalCount || 0) > 0 && (args.loadedCount || 0) >= (args.totalCount || 0)) return true;
   return false;
+}
+
+export function fingerprintFollowEdges(items: FollowEdge[]): string {
+  if (items.length === 0) return '[]';
+  return items.map((edge) => edgeKey(edge) || 'unknown').join('|');
 }
