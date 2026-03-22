@@ -395,7 +395,12 @@ export class SharedNav extends LitElement {
 
   private getPageUrl(page: string): string {
     const primaryBlog = getPrimaryBlogName();
+    const blogName = primaryBlog;
     const blogPages = ['archive', 'posts', 'feed', 'social'];
+    if (page === 'posts') {
+      if (blogName) return buildPageUrl('activity', blogName);
+      return buildPageUrl('activity');
+    }
 
     if (blogPages.includes(page) && primaryBlog) {
       return buildPageUrl(page, primaryBlog);

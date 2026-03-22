@@ -54,6 +54,7 @@ export class AppRoot extends LitElement {
     { path: '/discover*', render: () => html`<view-discover></view-discover>` },
     { path: '/post/:postId', render: ({ postId }) => html`<view-post .postId=${postId}></view-post>` },
     { path: '/clear-cache*', render: () => html`<view-clear-cache></view-clear-cache>` },
+    { path: '/:blog/activity', render: ({ blog }) => html`<view-posts .blog=${blog}></view-posts>` },
     { path: '/:blog/posts', render: ({ blog }) => html`<view-posts .blog=${blog}></view-posts>` },
     { path: '/:blog/feed', render: ({ blog }) => html`<view-feed .blog=${blog}></view-feed>` },
     { path: '/:blog/archive', render: ({ blog }) => html`<view-archive .blog=${blog}></view-archive>` },
@@ -98,7 +99,7 @@ export class AppRoot extends LitElement {
     const pathname = window.location.pathname;
     const isAdmin = isAdminMode();
     let currentPage: any = 'home';
-    if (pathname.includes('/posts')) currentPage = 'timeline';
+    if (pathname.includes('/activity') || pathname.includes('/posts')) currentPage = 'timeline';
     else if (pathname.includes('/feed')) currentPage = 'following';
     else if (pathname.includes('/archive')) currentPage = 'archive';
     else if (pathname.includes('/search')) currentPage = 'search';
