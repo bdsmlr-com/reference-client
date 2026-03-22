@@ -5,6 +5,8 @@ import {
   fingerprintFollowEdges,
 } from '../src/services/follow-pagination';
 import type { FollowEdge } from '../src/types/api';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 describe('social follow pagination safeguards', () => {
   it('deduplicates follow edges by blogId while preserving order', () => {
@@ -104,5 +106,12 @@ describe('social follow pagination safeguards', () => {
         repeatedPage: true,
       })
     ).toBe(true);
+  });
+
+  it('view-social guards against repeated cursor fetch loops', () => {
+    const src = readFileSync(join(process.cwd(), 'src/pages/view-social.ts'), 'utf8');
+    expect(src).toContain("const cursorKey = cursor || '__first_page__';");
+    expect(src).toContain('seenFollowingCursors');
+    expect(src).toContain('maxPageAttempts = 32');
   });
 });

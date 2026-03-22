@@ -133,6 +133,11 @@ export class ViewSocial extends LitElement {
   private followingPaginationKey = '';
   private lastFollowersPageFingerprint: string | null = null;
   private lastFollowingPageFingerprint: string | null = null;
+  private seenFollowersCursors = new Set<string>();
+  private seenFollowingCursors = new Set<string>();
+  private followersPageAttempts = 0;
+  private followingPageAttempts = 0;
+  private readonly maxPageAttempts = 32;
 
   protected updated(changedProperties: PropertyValues): void {
     if (changedProperties.has('blog')) {
@@ -180,6 +185,10 @@ export class ViewSocial extends LitElement {
   private async loadFromUrl(): Promise<void> {
     this.lastFollowersPageFingerprint = null;
     this.lastFollowingPageFingerprint = null;
+    this.seenFollowersCursors.clear();
+    this.seenFollowingCursors.clear();
+    this.followersPageAttempts = 0;
+    this.followingPageAttempts = 0;
     const tab = getUrlParam('tab') as Tab;
     if (tab === 'followers' || tab === 'following') {
       this.activeTab = tab;
@@ -289,6 +298,31 @@ export class ViewSocial extends LitElement {
     try {
       const direction = this.activeTab === 'followers' ? 'followers' : 'following';
       const cursor = this.activeTab === 'followers' ? this.followersCursor : this.followingCursor;
+      const cursorKey = cursor || '__first_page__';
+
+      if (this.activeTab === 'followers') {
+        if (this.seenFollowersCursors.has(cursorKey)) {
+          this.followersExhausted = true;
+          return;
+        }
+        if (this.followersPageAttempts >= this.maxPageAttempts) {
+          this.followersExhausted = true;
+          return;
+        }
+        this.seenFollowersCursors.add(cursorKey);
+        this.followersPageAttempts += 1;
+      } else {
+        if (this.seenFollowingCursors.has(cursorKey)) {
+          this.followingExhausted = true;
+          return;
+        }
+        if (this.followingPageAttempts >= this.maxPageAttempts) {
+          this.followingExhausted = true;
+          return;
+        }
+        this.seenFollowingCursors.add(cursorKey);
+        this.followingPageAttempts += 1;
+      }
 
       const shouldSkipCache = this.skipCacheOnNextFetch;
       this.skipCacheOnNextFetch = false;
@@ -329,6 +363,13 @@ export class ViewSocial extends LitElement {
           loadedCount: this.followers.length,
         });
         this.followersCursor = shouldStop ? null : nextPageTokenFromApi;
+        if (this.followersCount > 0) {
+          const expectedPages = Math.ceil(this.followersCount / PAGE_SIZE) + 1;
+          if (this.followersPageAttempts >= expectedPages) {
+            this.followersCursor = null;
+            this.followersExhausted = true;
+          }
+        }
 
         if (this.followersCount === 0 && this.followers.length > 0) {
           this.followersCount = this.followers.length;
@@ -366,6 +407,13 @@ export class ViewSocial extends LitElement {
           loadedCount: this.following.length,
         });
         this.followingCursor = shouldStop ? null : nextPageTokenFromApi;
+        if (this.followingCount > 0) {
+          const expectedPages = Math.ceil(this.followingCount / PAGE_SIZE) + 1;
+          if (this.followingPageAttempts >= expectedPages) {
+            this.followingCursor = null;
+            this.followingExhausted = true;
+          }
+        }
 
         if (this.followingCount === 0 && this.following.length > 0) {
           this.followingCount = this.following.length;
