@@ -18,4 +18,13 @@ describe('activity route alias', () => {
     expect(navSrc).toContain("if (page === 'posts')");
     expect(navSrc).toContain("return buildPageUrl('activity', blogName);");
   });
+
+  it('activity view honors sort from URL and passes sort_field to API', () => {
+    const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
+
+    expect(postsSrc).toContain("const sort = getUrlParam('sort');");
+    expect(postsSrc).toContain('this.sortValue = normalizeSortValue(sort);');
+    expect(postsSrc).toContain('sort_field: sortOption.field');
+    expect(postsSrc).toContain('.showSort=${true}');
+  });
 });

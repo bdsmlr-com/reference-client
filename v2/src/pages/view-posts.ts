@@ -6,8 +6,8 @@ import { getContextualErrorMessage } from '../services/api-error.js';
 import { getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
-import { extractMedia, type ProcessedPost } from '../types/post.js';
-import type { PostType, Blog, TimelineItem, PostVariant } from '../types/api.js';
+import { extractMedia, normalizeSortValue, SORT_OPTIONS, type ProcessedPost } from '../types/post.js';
+import type { PostType, Blog, TimelineItem, PostVariant, PostSortField, Order } from '../types/api.js';
 import {
   DEFAULT_ACTIVITY_KINDS,
   getBlogActivityKindsPreference,
@@ -39,6 +39,7 @@ export class ViewPosts extends LitElement {
   @property({ type: String }) blog = '';
 
   @state() private blogId: number | null = null;
+  @state() private sortValue = 'newest';
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
   @state() private selectedVariants: PostVariant[] = [];
   @state() private timelineItems: TimelineItem[] = [];
@@ -84,12 +85,15 @@ export class ViewPosts extends LitElement {
     this.resetState();
     const types = getUrlParam('types');
     const variants = getUrlParam('variants');
+    const sort = getUrlParam('sort');
     const activity = getUrlParam('activity');
+    this.sortValue = normalizeSortValue(sort);
     if (types) this.selectedTypes = types.split(',').map(t => parseInt(t, 10) as PostType);
     if (variants) this.selectedVariants = variants.split(',').map(v => parseInt(v, 10) as PostVariant);
     if (activity) this.activityKinds = normalizeActivityKinds(activity, DEFAULT_ACTIVITY_KINDS);
     
     setUrlParams({ 
+      sort: this.sortValue,
       types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','), 
       variants: this.selectedVariants.length > 0 ? this.selectedVariants.join(',') : '',
       activity: this.activityKinds.join(',') === DEFAULT_ACTIVITY_KINDS.join(',') ? '' : this.activityKinds.join(','),
@@ -122,10 +126,11 @@ export class ViewPosts extends LitElement {
     if (!this.blogId || this.loading) return;
     this.loading = true;
     try {
+      const sortOption = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
       const resp = await apiClient.posts.list({
         blog_id: this.blogId,
-        sort_field: 1, 
-        order: 2,
+        sort_field: sortOption.field as PostSortField,
+        order: sortOption.order as Order,
         post_types: this.selectedTypes,
         variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
         page: { page_size: PAGE_SIZE, page_token: this.backendCursor || undefined }
@@ -189,6 +194,11 @@ export class ViewPosts extends LitElement {
     this.loadPosts();
   }
 
+  private handleSortChange(e: CustomEvent) {
+    this.sortValue = normalizeSortValue(e.detail.value);
+    this.loadPosts();
+  }
+
   private handleVariantChange(e: CustomEvent) {
     this.selectedVariants = e.detail.variants || [];
     this.loadPosts();
@@ -214,10 +224,13 @@ export class ViewPosts extends LitElement {
         <blog-header page="posts" .blogName=${this.blog} .blogTitle=${this.blogData?.title || ''}></blog-header>
 
         <filter-bar
+          .sortValue=${this.sortValue}
+          .showSort=${true}
           .selectedTypes=${this.selectedTypes}
           .selectedVariants=${this.selectedVariants}
           .showVariants=${true}
           .loading=${this.loading}
+          @sort-change=${this.handleSortChange}
           @types-change=${this.handleTypesChange}
           @variant-change=${this.handleVariantChange}
         ></filter-bar>
