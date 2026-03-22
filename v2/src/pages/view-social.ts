@@ -316,6 +316,8 @@ export class ViewSocial extends LitElement {
           nextCursor: nextPageTokenFromApi,
           incomingCount: items.length,
           newlyAddedCount,
+          totalCount: this.followersCount,
+          loadedCount: this.followers.length,
         });
         this.followersCursor = shouldStop ? null : nextPageTokenFromApi;
 
@@ -347,6 +349,8 @@ export class ViewSocial extends LitElement {
           nextCursor: nextPageTokenFromApi,
           incomingCount: items.length,
           newlyAddedCount,
+          totalCount: this.followingCount,
+          loadedCount: this.following.length,
         });
         this.followingCursor = shouldStop ? null : nextPageTokenFromApi;
 

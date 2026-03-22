@@ -46,7 +46,30 @@ describe('social follow pagination safeguards', () => {
         nextCursor: 'def',
         incomingCount: 100,
         newlyAddedCount: 42,
+        totalCount: 0,
+        loadedCount: 42,
       })
     ).toBe(false);
+  });
+
+  it('stops when loaded items reach known total count', () => {
+    expect(
+      shouldStopFollowPagination({
+        previousCursor: 'abc',
+        nextCursor: 'def',
+        incomingCount: 10,
+        newlyAddedCount: 10,
+        totalCount: 197,
+        loadedCount: 197,
+      })
+    ).toBe(true);
+  });
+
+  it('deduplicates correctly when incoming edges use snake_case blog_id', () => {
+    const existing = [{ blog_id: 100 } as unknown as FollowEdge];
+    const incoming = [{ blog_id: 100 }, { blog_id: 101 }] as unknown as FollowEdge[];
+    const merged = mergeFollowEdges(existing, incoming);
+    const ids = merged.map((e: any) => e.blogId ?? e.blog_id);
+    expect(ids).toEqual([100, 101]);
   });
 });
