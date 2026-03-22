@@ -18,6 +18,7 @@ import {
   PROFILE_EVENTS,
   type GalleryMode,
 } from '../services/profile.js';
+import { apiClient } from '../services/client.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 
 type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social' | 'posts';
@@ -114,6 +115,33 @@ export class SharedNav extends LitElement {
       .theme-toggle {
         font-size: 16px;
         min-width: 36px;
+      }
+
+      .profile-toggle {
+        min-width: 36px;
+        gap: 6px;
+      }
+
+      .profile-avatar {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        object-fit: cover;
+        display: block;
+      }
+
+      .profile-avatar-fallback {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--accent);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
       }
 
       .theme-toggle:hover,
@@ -285,12 +313,14 @@ export class SharedNav extends LitElement {
   @state() private usernameInput = '';
   @state() private currentUsername: string | null = getCurrentUsername();
   @state() private galleryMode: GalleryMode = getGalleryMode();
+  @state() private profileAvatarUrl: string | null = null;
 
   connectedCallback(): void {
     super.connectedCallback();
     document.addEventListener('click', this.handleDocumentClick);
     window.addEventListener(PROFILE_EVENTS.usernameChanged, this.handleProfileStateChange as EventListener);
     window.addEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleProfileStateChange as EventListener);
+    void this.refreshAvatar();
   }
 
   disconnectedCallback(): void {
@@ -311,7 +341,41 @@ export class SharedNav extends LitElement {
   private handleProfileStateChange = (): void => {
     this.currentUsername = getCurrentUsername();
     this.galleryMode = getGalleryMode();
+    void this.refreshAvatar();
   };
+
+  private normalizeAvatarUrl(avatarUrl: string | null | undefined): string | null {
+    if (!avatarUrl) return null;
+
+    let normalized = avatarUrl;
+    if (normalized.includes('ocdn012.bdsmlr.com')) {
+      normalized = normalized.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
+    }
+
+    if (normalized.startsWith('http')) return normalized;
+    const path = normalized.startsWith('/') ? normalized.slice(1) : normalized;
+    return `https://cdn012.bdsmlr.com/${path}`;
+  }
+
+  private async refreshAvatar(): Promise<void> {
+    const username = this.currentUsername;
+    if (!username) {
+      this.profileAvatarUrl = null;
+      return;
+    }
+
+    try {
+      const response = await apiClient.blogs.get({ blog_name: username });
+      if (this.currentUsername !== username) {
+        return;
+      }
+      this.profileAvatarUrl = this.normalizeAvatarUrl(response.blog?.avatarUrl);
+    } catch {
+      if (this.currentUsername === username) {
+        this.profileAvatarUrl = null;
+      }
+    }
+  }
 
   private toggleTheme(): void {
     this.theme = this.theme === 'dark' ? 'light' : 'dark';
@@ -395,6 +459,7 @@ export class SharedNav extends LitElement {
   private handleLogout(): void {
     clearCurrentUsername();
     this.currentUsername = null;
+    this.profileAvatarUrl = null;
     this.menuOpen = false;
   }
 
@@ -410,7 +475,7 @@ export class SharedNav extends LitElement {
       <div class="profile-menu" role="menu" aria-label="Profile and settings menu">
         ${loggedIn
           ? html`
-              <div class="menu-section-title">Profile & Settings</div>
+              <div class="menu-section-title">Settings</div>
               <div class="current-user">@${this.currentUsername}</div>
               <div class="menu-section-title">Gallery view</div>
               <div class="gallery-row" aria-label="Gallery view">
@@ -427,7 +492,7 @@ export class SharedNav extends LitElement {
               <button class="menu-button" @click=${this.handleLogout}>Log out</button>
             `
           : html`
-              <div class="menu-section-title">Profile & Settings</div>
+              <div class="menu-section-title">Settings</div>
               <button class="menu-button" @click=${this.openLoginModal}>Log in</button>
               <a class="menu-button" href=${this.getClearCacheUrl()}>Clear cache</a>
             `}
@@ -473,6 +538,9 @@ export class SharedNav extends LitElement {
     const viewedBlog = getViewedBlogName();
     const showViewingIndicator = this.isViewingDifferentBlog();
     const activePage = this.currentPage === 'following' ? 'posts' : (this.currentPage === 'timeline' ? 'posts' : this.currentPage);
+    const loggedIn = isLoggedIn();
+    const profileToggleLabel = loggedIn ? '' : 'Log in';
+    const profileInitial = (this.currentUsername || 'u').charAt(0).toUpperCase();
 
     return html`
       <header class="nav-container">
@@ -517,7 +585,17 @@ export class SharedNav extends LitElement {
           >
             <span aria-hidden="true">${this.theme === 'dark' ? '☀️' : '🌙'}</span>
           </button>
-          <button class="profile-toggle" @click=${this.toggleProfileMenu}>Profile &amp; Settings</button>
+          <button
+            class="profile-toggle"
+            @click=${this.toggleProfileMenu}
+            aria-label=${loggedIn ? `Open profile and settings for @${this.currentUsername}` : 'Log in'}
+          >
+            ${loggedIn
+              ? this.profileAvatarUrl
+                ? html`<img class="profile-avatar" src=${this.profileAvatarUrl} alt=${`@${this.currentUsername} avatar`} />`
+                : html`<span class="profile-avatar-fallback" aria-hidden="true">${profileInitial}</span>`
+              : profileToggleLabel}
+          </button>
           ${this.menuOpen ? this.renderProfileMenu() : ''}
         </div>
       </header>
