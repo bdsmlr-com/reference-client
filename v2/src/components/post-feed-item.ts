@@ -203,12 +203,12 @@ export class PostFeedItem extends LitElement {
         <header class="card-header">
           <div class="blog-info">
             ${isReblog ? html`
-              <a href="/${originBlogName}/posts" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${originBlogName}</a>
+              <a href="/${originBlogName}/activity" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${originBlogName}</a>
               <span class="reblog-indicator">
-                ♻️ via <a href="/${blogName}/posts" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
+                ♻️ via <a href="/${blogName}/activity" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
               </span>
             ` : html`
-              <a href="/${blogName}/posts" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
+              <a href="/${blogName}/activity" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
             `}
           </div>
           <time class="post-date" title=${getTooltipDate(post.createdAtUnix)}>${formatDateShort(post.createdAtUnix)}</time>

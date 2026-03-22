@@ -138,7 +138,7 @@ export class PostEngagement extends LitElement {
     if (!normalized) {
       return html`<span>${label}</span>`;
     }
-    return html`<a href="/${normalized}/posts">${label}</a>`;
+    return html`<a href="/${normalized}/activity">${label}</a>`;
   }
 
   private renderEngagementDetail() {

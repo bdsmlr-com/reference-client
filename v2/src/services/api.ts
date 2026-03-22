@@ -114,7 +114,7 @@ const ENDPOINT_TIMEOUTS: Record<string, number> = {
   '/v2/public-read-api-v2/sign-url': 5000,
 
   // Medium endpoints (15s) - standard list queries
-  '/v2/public-read-api-v2/list-blog-posts': 15000,
+  '/v2/public-read-api-v2/list-blog-activity': 15000,
   '/v2/public-read-api-v2/list-post-likes': 15000,
   '/v2/public-read-api-v2/list-post-comments': 15000,
   '/v2/public-read-api-v2/list-post-reblogs': 15000,
@@ -816,7 +816,7 @@ export async function listBlogPostsSWR(
   }
 ): Promise<SWRResult<ListBlogPostsResponse>> {
   return apiRequestWithSWR<ListBlogPostsResponse>(
-    '/v2/public-read-api-v2/list-blog-posts',
+    '/v2/public-read-api-v2/list-blog-activity',
     req,
     options
   );
@@ -988,7 +988,7 @@ export async function listBlogPosts(
   req: ListBlogPostsRequest
 ): Promise<ListBlogPostsResponse> {
   return apiRequest<ListBlogPostsResponse>(
-    '/v2/public-read-api-v2/list-blog-posts',
+    '/v2/public-read-api-v2/list-blog-activity',
     req
   );
 }
@@ -1548,7 +1548,7 @@ export async function listBlogPostsWithFallback(
   req: ListBlogPostsRequest
 ): Promise<StaleDataResult<ListBlogPostsResponse>> {
   return apiRequestWithStaleFallback<ListBlogPostsResponse>(
-    '/v2/public-read-api-v2/list-blog-posts',
+    '/v2/public-read-api-v2/list-blog-activity',
     req
   );
 }
@@ -1887,7 +1887,7 @@ async function readResponseWithPartialRecovery(
  * These endpoints return array data that can be partially extracted.
  */
 const PARTIAL_RECOVERY_ENDPOINTS: Record<string, string> = {
-  '/v2/public-read-api-v2/list-blog-posts': 'posts',
+  '/v2/public-read-api-v2/list-blog-activity': 'posts',
   '/v2/public-read-api-v2/search-posts-by-tag': 'posts',
   '/v2/public-read-api-v2/blog-follow-graph': 'followers', // Also handles 'following'
   '/v2/public-read-api-v2/list-blogs-recent-activity': 'posts',
@@ -2052,7 +2052,7 @@ export async function listBlogPostsWithPartialRecovery(
   req: ListBlogPostsRequest
 ): Promise<PartialResponseResult<ListBlogPostsResponse>> {
   return apiRequestWithPartialRecovery<ListBlogPostsResponse>(
-    '/v2/public-read-api-v2/list-blog-posts',
+    '/v2/public-read-api-v2/list-blog-activity',
     req
   );
 }

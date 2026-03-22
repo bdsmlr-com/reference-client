@@ -5,11 +5,11 @@ import { join } from 'node:path';
 const ROOT = join(process.cwd(), 'src');
 
 describe('activity route alias', () => {
-  it('app router supports both /:blog/activity and /:blog/posts', () => {
+  it('app router uses only /:blog/activity', () => {
     const appRootSrc = readFileSync(join(ROOT, 'app-root.ts'), 'utf8');
 
     expect(appRootSrc).toContain("{ path: '/:blog/activity'");
-    expect(appRootSrc).toContain("{ path: '/:blog/posts'");
+    expect(appRootSrc).not.toContain("{ path: '/:blog/posts'");
   });
 
   it('shared nav targets activity path for the activity tab', () => {
