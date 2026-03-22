@@ -5,6 +5,18 @@ import { join } from 'node:path';
 const ROOT = join(process.cwd(), 'src');
 
 describe('activity route alias', () => {
+  it('media config defines explicit link contexts', () => {
+    const mediaConfigPath = join(process.cwd(), 'media-config.json');
+    const mediaConfig = JSON.parse(readFileSync(mediaConfigPath, 'utf8'));
+    const links = mediaConfig.links;
+
+    expect(links).toBeDefined();
+    expect(links.contexts).toBeDefined();
+    expect(links.contexts.post_permalink).toBeDefined();
+    expect(links.contexts.post_origin_blog).toBeDefined();
+    expect(links.contexts.post_via_blog).toBeDefined();
+  });
+
   it('app router uses only /:blog/activity', () => {
     const appRootSrc = readFileSync(join(ROOT, 'app-root.ts'), 'utf8');
 

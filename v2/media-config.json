@@ -23,5 +23,29 @@
       "mediaProxyBase": "https://media.bdsmlr.com",
       "imgproxyMode": "fixed"
     }
+  },
+  "links": {
+    "defaults": {
+      "internalTarget": "_self",
+      "externalTarget": "_blank",
+      "externalRel": ["noopener", "noreferrer"]
+    },
+    "contexts": {
+      "nav_logo": { "mode": "internal", "pattern": "/" },
+      "nav_activity": { "mode": "internal", "pattern": "/{blog}/activity" },
+      "nav_following": { "mode": "internal", "pattern": "/following" },
+      "post_permalink": { "mode": "internal", "pattern": "/post/{postId}" },
+      "post_origin_blog": { "mode": "internal", "pattern": "/{blog}/activity" },
+      "post_via_blog": { "mode": "internal", "pattern": "/{blog}/activity" },
+      "activity_actor_blog": { "mode": "internal", "pattern": "/{blog}/activity" },
+      "activity_target_post": { "mode": "internal", "pattern": "/post/{postId}" },
+      "recommendation_post": { "mode": "internal", "pattern": "/post/{postId}" },
+      "search_tag": { "mode": "internal", "pattern": "/search?q={tag}" },
+      "blog_header_external_blog": {
+        "mode": "legacy",
+        "pattern": "https://{blog}.bdsmlr.com",
+        "target": "_blank"
+      }
+    }
   }
 }
