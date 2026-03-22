@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildLightboxMediaSources } from '../src/services/lightbox-media-sources.js';
 import type { ProcessedPost } from '../src/types/post.js';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 function makePost(overrides: Partial<ProcessedPost> = {}): ProcessedPost {
   return {
@@ -13,6 +15,12 @@ function makePost(overrides: Partial<ProcessedPost> = {}): ProcessedPost {
 }
 
 describe('buildLightboxMediaSources', () => {
+  it('post-card dispatches both legacy and new click events for compatibility', () => {
+    const src = readFileSync(join(process.cwd(), 'src/components/post-card.ts'), 'utf8');
+    expect(src).toContain('EventNames.POST_SELECT');
+    expect(src).toContain("new CustomEvent('post-click'");
+  });
+
   it('falls back to preview URL for deleted posts with dead file URLs', () => {
     // Pathological case: @ropebunnyinlace / 644805038 via @Tyrant-Den / 644970242
     const post = makePost({

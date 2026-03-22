@@ -199,9 +199,18 @@ export class PostCard extends LitElement {
   @property({ type: Object }) post!: ProcessedPost;
 
   private handleClick(): void {
+    const detail = { post: this.post };
     this.dispatchEvent(
       new CustomEvent<PostSelectDetail>(EventNames.POST_SELECT, {
-        detail: { post: this.post },
+        detail,
+        bubbles: true,
+        composed: true
+      })
+    );
+    // Compatibility while consumers migrate to a single click contract.
+    this.dispatchEvent(
+      new CustomEvent('post-click', {
+        detail,
         bubbles: true,
         composed: true
       })

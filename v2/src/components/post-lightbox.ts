@@ -7,6 +7,7 @@ import { extractMedia, type ProcessedPost } from '../types/post.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { resolveMediaUrl } from '../services/media-resolver.js';
 import { buildLightboxMediaSources } from '../services/lightbox-media-sources.js';
+import { resolveLink } from '../services/link-resolver.js';
 import './media-renderer.js';
 import './post-detail-content.js';
 
@@ -268,6 +269,13 @@ export class PostLightbox extends LitElement {
     `;
   }
 
+  private handleNestedPostClick = (e: CustomEvent<{ post?: ProcessedPost }>) => {
+    const postId = e.detail?.post?.id;
+    if (!postId) return;
+    const link = resolveLink('recommendation_post', { postId });
+    window.location.href = link.href;
+  };
+
   render() {
     if (!this.open || !this.post) return nothing;
     const p = this.post;
@@ -281,7 +289,7 @@ export class PostLightbox extends LitElement {
       <button class="main-nav-btn next" ?disabled=${this.currentIndex >= this.posts.length - 1} @click=${this.navigateNext}>›</button>
 
       <div class="lightbox-backdrop" @click=${(e: Event) => this.close(e)}>
-        <div class="lightbox-content" @click=${(e: Event) => e.stopPropagation()}>
+        <div class="lightbox-content" @click=${(e: Event) => e.stopPropagation()} @post-click=${this.handleNestedPostClick}>
           <div class="media-container" style="background:transparent; box-shadow:none;">
             ${this.renderMedia()}
           </div>
