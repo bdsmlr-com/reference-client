@@ -3,6 +3,7 @@ import {
   getCurrentUsername,
   setCurrentUsername,
   clearCurrentUsername,
+  clearProfileState,
   isLoggedIn,
   getGalleryMode,
   setGalleryMode,
@@ -47,5 +48,11 @@ describe('profile service', () => {
 
     getItem.mockReturnValueOnce('unexpected');
     expect(getGalleryMode()).toBe('grid');
+  });
+
+  it('clears profile username and gallery mode together', () => {
+    clearProfileState();
+    expect(removeItem).toHaveBeenCalledWith('bdsmlr_profile_username');
+    expect(removeItem).toHaveBeenCalledWith('bdsmlr_gallery_mode');
   });
 });

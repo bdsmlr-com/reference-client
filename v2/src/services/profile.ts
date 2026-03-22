@@ -63,6 +63,13 @@ export function clearCurrentUsername(): void {
   emit(PROFILE_EVENTS.usernameChanged, { username: null });
 }
 
+export function clearProfileState(): void {
+  removeStorage(USERNAME_KEY);
+  removeStorage(GALLERY_MODE_KEY);
+  emit(PROFILE_EVENTS.usernameChanged, { username: null });
+  emit(PROFILE_EVENTS.galleryModeChanged, { mode: 'grid' });
+}
+
 export function isLoggedIn(): boolean {
   return Boolean(getCurrentUsername());
 }

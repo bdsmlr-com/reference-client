@@ -18,7 +18,8 @@ import {
 } from '../services/storage.js';
 import { clearPostCache } from '../services/post-cache.js';
 import { clearBlogTheme } from '../services/blog-theme.js';
-import { isDevMode } from '../services/blog-resolver.js';
+import { clearStoredBlogName, isDevMode } from '../services/blog-resolver.js';
+import { clearProfileState } from '../services/profile.js';
 
 @customElement('view-clear-cache')
 export class ViewClearCache extends LitElement {
@@ -93,6 +94,8 @@ export class ViewClearCache extends LitElement {
     clearHttpCache();
     clearPostCache();
     clearBlogTheme();
+    clearProfileState();
+    clearStoredBlogName();
   }
 
   private handleBack() {
