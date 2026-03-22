@@ -43,6 +43,22 @@ describe('hybrid activity stream', () => {
     expect(streamSrc).toContain('showActorInCluster');
   });
 
+  it('groups like/comment interactions into local-date activity cards', () => {
+    const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
+
+    expect(streamSrc).toContain("format(new Date(post.createdAtUnix * 1000), 'yyyy-MM-dd')");
+    expect(streamSrc).toContain('Activity on ${bucket.dateKey} : ❤️ ${bucket.likeCount} . 💬 ${bucket.commentCount}');
+    expect(streamSrc).toContain("if (kind !== 'like' && kind !== 'comment')");
+  });
+
+  it('supports per-card load more for date-grouped activity cards', () => {
+    const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
+
+    expect(streamSrc).toContain('clusterVisibleCounts = new Map<string, number>()');
+    expect(streamSrc).toContain('Load more (${remaining})');
+    expect(streamSrc).toContain('clusterVisibleCounts.set(key, this.clusterPageSize)');
+  });
+
   it('classifies variant=2 timeline posts as reblogs', () => {
     const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
 
