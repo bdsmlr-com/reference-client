@@ -31,7 +31,18 @@ describe('activity route alias', () => {
     expect(postsSrc).toContain(".showSort=${!(this.activityKinds.includes('like') || this.activityKinds.includes('comment'))}");
     expect(postsSrc).toContain('activity_kinds: this.activityKinds');
     expect(postsSrc).toContain('TYPE_ENUM_TO_NAME');
-    expect(postsSrc).toContain('VARIANT_ENUM_TO_NAME');
+    expect(postsSrc).not.toContain('VARIANT_ENUM_TO_NAME');
+    expect(postsSrc).toContain('.showVariants=${false}');
+    expect(postsSrc).not.toContain('@variant-change=${this.handleVariantChange}');
     expect(postsSrc).toContain('if (!isBlogInPath())');
+  });
+
+  it('activity kind pills include all + posts/reblogs/likes/comments in one row', () => {
+    const pillsSrc = readFileSync(join(ROOT, 'components/activity-kind-pills.ts'), 'utf8');
+    expect(pillsSrc).toContain('>All</button>');
+    expect(pillsSrc).toContain("label: 'Posts'");
+    expect(pillsSrc).toContain("label: 'Reblogs'");
+    expect(pillsSrc).toContain("label: 'Likes'");
+    expect(pillsSrc).toContain("label: 'Comments'");
   });
 });

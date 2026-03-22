@@ -7,7 +7,7 @@ import { getUrlParam, setUrlParams, isDefaultTypes, isBlogInPath } from '../serv
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { extractMedia, normalizeSortValue, SORT_OPTIONS, type ProcessedPost } from '../types/post.js';
-import type { PostType, Blog, TimelineItem, PostVariant, PostSortField, Order } from '../types/api.js';
+import type { PostType, Blog, TimelineItem, PostSortField, Order } from '../types/api.js';
 import {
   DEFAULT_ACTIVITY_KINDS,
   getBlogActivityKindsPreference,
@@ -42,14 +42,6 @@ const TYPE_ENUM_TO_NAME: Record<number, string> = {
   6: 'chat',
   7: 'quote',
 };
-const VARIANT_NAME_TO_ENUM: Record<string, PostVariant> = {
-  original: 1,
-  reblog: 2,
-};
-const VARIANT_ENUM_TO_NAME: Record<number, string> = {
-  1: 'original',
-  2: 'reblog',
-};
 
 @customElement('view-posts')
 export class ViewPosts extends LitElement {
@@ -67,7 +59,6 @@ export class ViewPosts extends LitElement {
   @state() private blogId: number | null = null;
   @state() private sortValue = 'newest';
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
-  @state() private selectedVariants: PostVariant[] = [];
   @state() private timelineItems: TimelineItem[] = [];
   @state() private loading = false;
   @state() private exhausted = false;
@@ -110,7 +101,6 @@ export class ViewPosts extends LitElement {
     if (!this.blogId) return;
     this.resetState();
     const types = getUrlParam('types');
-    const variants = getUrlParam('variants');
     const sort = getUrlParam('sort');
     const activity = getUrlParam('activity');
     this.sortValue = normalizeSortValue(sort);
@@ -121,14 +111,6 @@ export class ViewPosts extends LitElement {
         .map((t) => TYPE_NAME_TO_ENUM[t] ?? (parseInt(t, 10) as PostType))
         .filter((t) => Number.isFinite(t));
       if (parsed.length > 0) this.selectedTypes = parsed;
-    }
-    if (variants) {
-      const parsed = variants
-        .split(',')
-        .map((v) => v.trim().toLowerCase())
-        .map((v) => VARIANT_NAME_TO_ENUM[v] ?? (parseInt(v, 10) as PostVariant))
-        .filter((v) => Number.isFinite(v));
-      if (parsed.length > 0) this.selectedVariants = parsed;
     }
     if (activity) this.activityKinds = normalizeActivityKinds(activity, DEFAULT_ACTIVITY_KINDS);
     const hasInteractionKinds = this.activityKinds.includes('like') || this.activityKinds.includes('comment');
@@ -141,9 +123,6 @@ export class ViewPosts extends LitElement {
       types: isDefaultTypes(this.selectedTypes)
         ? ''
         : this.selectedTypes.map((t) => TYPE_ENUM_TO_NAME[t] || String(t)).join(','),
-      variants: this.selectedVariants.length > 0
-        ? this.selectedVariants.map((v) => VARIANT_ENUM_TO_NAME[v] || String(v)).join(',')
-        : '',
       activity: this.activityKinds.join(',') === DEFAULT_ACTIVITY_KINDS.join(',') ? '' : this.activityKinds.join(','),
     };
     if (!isBlogInPath()) {
@@ -183,7 +162,6 @@ export class ViewPosts extends LitElement {
         sort_field: sortOption.field as PostSortField,
         order: sortOption.order as Order,
         post_types: this.selectedTypes,
-        variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
         activity_kinds: this.activityKinds,
         page: { page_size: PAGE_SIZE, page_token: this.backendCursor || undefined }
       });
@@ -254,11 +232,6 @@ export class ViewPosts extends LitElement {
     this.loadPosts();
   }
 
-  private handleVariantChange(e: CustomEvent) {
-    this.selectedVariants = e.detail.variants || [];
-    this.loadPosts();
-  }
-
   private handleInfiniteToggle(e: CustomEvent) {
     this.infiniteScroll = e.detail.enabled;
     if (this.infiniteScroll) this.observeSentinel();
@@ -287,12 +260,10 @@ export class ViewPosts extends LitElement {
           .sortValue=${this.sortValue}
           .showSort=${!(this.activityKinds.includes('like') || this.activityKinds.includes('comment'))}
           .selectedTypes=${this.selectedTypes}
-          .selectedVariants=${this.selectedVariants}
-          .showVariants=${true}
+          .showVariants=${false}
           .loading=${this.loading}
           @sort-change=${this.handleSortChange}
           @types-change=${this.handleTypesChange}
-          @variant-change=${this.handleVariantChange}
         ></filter-bar>
         <activity-kind-pills
           .selected=${this.activityKinds}

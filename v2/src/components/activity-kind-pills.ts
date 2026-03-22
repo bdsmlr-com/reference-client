@@ -3,6 +3,7 @@ import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import type { ActivityKind } from '../services/profile.js';
 
+const ALL_KINDS: ActivityKind[] = ['post', 'reblog', 'like', 'comment'];
 const OPTIONS: Array<{ key: ActivityKind; label: string; icon: string }> = [
   { key: 'post', label: 'Posts', icon: '📝' },
   { key: 'reblog', label: 'Reblogs', icon: '♻️' },
@@ -38,18 +39,32 @@ export class ActivityKindPills extends LitElement {
     `,
   ];
 
-  @property({ type: Array }) selected: ActivityKind[] = ['post', 'reblog', 'like', 'comment'];
+  @property({ type: Array }) selected: ActivityKind[] = [...ALL_KINDS];
 
   private toggle(kind: ActivityKind): void {
+    if (this.selected.length === ALL_KINDS.length && this.selected.every((k) => ALL_KINDS.includes(k))) {
+      // Start from empty set to make toggling from "All" intuitive.
+      this.selected = [];
+    }
     const next = this.selected.includes(kind)
       ? this.selected.filter((k) => k !== kind)
       : [...this.selected, kind];
     this.dispatchEvent(new CustomEvent('activity-kinds-change', { detail: { kinds: next } }));
   }
 
+  private selectAll(): void {
+    this.dispatchEvent(new CustomEvent('activity-kinds-change', { detail: { kinds: [...ALL_KINDS] } }));
+  }
+
   render() {
+    const isAllSelected = this.selected.length === ALL_KINDS.length && this.selected.every((k) => ALL_KINDS.includes(k));
     return html`
       <div class="pill-group" role="group" aria-label="Filter activity types">
+        <button
+          class="pill ${isAllSelected ? 'active' : ''}"
+          @click=${this.selectAll}
+          aria-pressed=${isAllSelected ? 'true' : 'false'}
+        >All</button>
         ${OPTIONS.map((opt) => html`
           <button
             class="pill ${this.selected.includes(opt.key) ? 'active' : ''}"
