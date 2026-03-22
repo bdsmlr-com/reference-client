@@ -74,6 +74,13 @@ describe('hybrid activity stream', () => {
     expect(streamSrc).toContain("renderable.push({ type: 'post', post });");
   });
 
+  it('sorts mixed reblog cards and interaction buckets by newest timestamp', () => {
+    const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
+
+    expect(streamSrc).toContain('latestInteractionUnix');
+    expect(streamSrc).toContain('renderable.sort((a, b) => this.getRenderableTimestamp(b) - this.getRenderableTimestamp(a));');
+  });
+
   it('classifies variant=2 timeline posts as reblogs', () => {
     const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
 

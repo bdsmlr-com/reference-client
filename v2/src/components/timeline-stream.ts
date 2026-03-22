@@ -19,6 +19,7 @@ type DateActivityBucket = {
   actor: string;
   likeCount: number;
   commentCount: number;
+  latestInteractionUnix: number;
   interactions: BucketInteraction[];
   interactionIndex: Map<number, number>;
 };
@@ -167,11 +168,15 @@ export class TimelineStream extends LitElement {
               actor,
               likeCount: 0,
               commentCount: 0,
+              latestInteractionUnix: 0,
               interactions: [],
               interactionIndex: new Map<number, number>(),
             };
             buckets.set(key, bucket);
             renderable.push({ type: 'activity-bucket', bucket });
+          }
+          if (post.createdAtUnix && post.createdAtUnix > bucket.latestInteractionUnix) {
+            bucket.latestInteractionUnix = post.createdAtUnix;
           }
           if (kind === 'like') bucket.likeCount += 1;
           if (kind === 'comment') bucket.commentCount += 1;
@@ -192,7 +197,19 @@ export class TimelineStream extends LitElement {
       }
     }
 
+    renderable.sort((a, b) => this.getRenderableTimestamp(b) - this.getRenderableTimestamp(a));
     return renderable;
+  }
+
+  private getRenderableTimestamp(item: RenderableItem): number {
+    if (item.type === 'post') {
+      return item.post.createdAtUnix || 0;
+    }
+    if (item.type === 'activity-bucket') {
+      return item.bucket.latestInteractionUnix || 0;
+    }
+    const first = item.interactions[0];
+    return first?.createdAtUnix || 0;
   }
 
   private getVisibleCount(key: string, total: number): number {
