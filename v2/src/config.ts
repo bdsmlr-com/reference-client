@@ -40,10 +40,24 @@ export interface LinkConfig {
   contexts: Record<string, LinkContextConfig>;
 }
 
+export interface PostRenderPolicy {
+  showPermalink?: boolean;
+  showBlogChip?: boolean;
+  compactMetadata?: boolean;
+}
+
+export interface PostRenderPolicyConfig {
+  base: PostRenderPolicy;
+  by_view?: Record<string, PostRenderPolicy>;
+  by_role?: Record<string, PostRenderPolicy>;
+  by_env?: Record<string, PostRenderPolicy>;
+}
+
 export const MEDIA_PRESETS: Record<string, MediaPreset> = mediaConfig.presets as Record<string, MediaPreset>;
 
 export const ENV_CONFIGS: Record<string, AppConfig> = mediaConfig.environments as Record<string, AppConfig>;
 export const LINK_CONFIG: LinkConfig = (mediaConfig as any).links as LinkConfig;
+export const POST_RENDER_POLICY_CONFIG: PostRenderPolicyConfig = (mediaConfig as any).post_render_policy as PostRenderPolicyConfig;
 
 // CURRENT ACTIVE ENVIRONMENT
 export const ACTIVE_ENV = 'staging';

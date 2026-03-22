@@ -1,10 +1,22 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { resolvePostRenderPolicy } from '../src/services/post-render-policy';
 
 const ROOT = join(process.cwd(), 'src');
 
 describe('hybrid activity stream', () => {
+  it('resolves post render policy with layered precedence', () => {
+    const resolved = resolvePostRenderPolicy({
+      view: 'activity',
+      role: 'admin',
+      env: 'staging',
+    });
+
+    expect(resolved).toBeDefined();
+    expect(typeof resolved.showPermalink).toBe('boolean');
+  });
+
   it('adds activity kind preferences for following and blog activity streams', () => {
     const src = readFileSync(join(ROOT, 'services/profile.ts'), 'utf8');
 
