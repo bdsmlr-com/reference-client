@@ -26,5 +26,9 @@ describe('activity route alias', () => {
     expect(postsSrc).toContain('this.sortValue = normalizeSortValue(sort);');
     expect(postsSrc).toContain('sort_field: sortOption.field');
     expect(postsSrc).toContain('.showSort=${true}');
+    expect(postsSrc).toContain('activity_kinds: this.activityKinds');
+    expect(postsSrc).toContain('TYPE_ENUM_TO_NAME');
+    expect(postsSrc).toContain('VARIANT_ENUM_TO_NAME');
+    expect(postsSrc).toContain('if (!isBlogInPath())');
   });
 });

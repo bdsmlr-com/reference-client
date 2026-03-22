@@ -156,6 +156,7 @@ export interface ListBlogPostsRequest {
   order?: Order;
   post_types?: PostType[];
   variants?: PostVariant[];
+  activity_kinds?: Array<'post' | 'reblog' | 'like' | 'comment'>;
 }
 
 export interface ListBlogActivityRequest {

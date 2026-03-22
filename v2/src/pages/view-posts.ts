@@ -3,7 +3,7 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage } from '../services/api-error.js';
-import { getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';
+import { getUrlParam, setUrlParams, isDefaultTypes, isBlogInPath } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { extractMedia, normalizeSortValue, SORT_OPTIONS, type ProcessedPost } from '../types/post.js';
@@ -24,6 +24,32 @@ import '../components/error-state.js';
 import '../components/blog-header.js';
 
 const PAGE_SIZE = 15;
+const TYPE_NAME_TO_ENUM: Record<string, PostType> = {
+  text: 1,
+  image: 2,
+  video: 3,
+  audio: 4,
+  link: 5,
+  chat: 6,
+  quote: 7,
+};
+const TYPE_ENUM_TO_NAME: Record<number, string> = {
+  1: 'text',
+  2: 'image',
+  3: 'video',
+  4: 'audio',
+  5: 'link',
+  6: 'chat',
+  7: 'quote',
+};
+const VARIANT_NAME_TO_ENUM: Record<string, PostVariant> = {
+  original: 1,
+  reblog: 2,
+};
+const VARIANT_ENUM_TO_NAME: Record<number, string> = {
+  1: 'original',
+  2: 'reblog',
+};
 
 @customElement('view-posts')
 export class ViewPosts extends LitElement {
@@ -88,17 +114,38 @@ export class ViewPosts extends LitElement {
     const sort = getUrlParam('sort');
     const activity = getUrlParam('activity');
     this.sortValue = normalizeSortValue(sort);
-    if (types) this.selectedTypes = types.split(',').map(t => parseInt(t, 10) as PostType);
-    if (variants) this.selectedVariants = variants.split(',').map(v => parseInt(v, 10) as PostVariant);
+    if (types) {
+      const parsed = types
+        .split(',')
+        .map((t) => t.trim().toLowerCase())
+        .map((t) => TYPE_NAME_TO_ENUM[t] ?? (parseInt(t, 10) as PostType))
+        .filter((t) => Number.isFinite(t));
+      if (parsed.length > 0) this.selectedTypes = parsed;
+    }
+    if (variants) {
+      const parsed = variants
+        .split(',')
+        .map((v) => v.trim().toLowerCase())
+        .map((v) => VARIANT_NAME_TO_ENUM[v] ?? (parseInt(v, 10) as PostVariant))
+        .filter((v) => Number.isFinite(v));
+      if (parsed.length > 0) this.selectedVariants = parsed;
+    }
     if (activity) this.activityKinds = normalizeActivityKinds(activity, DEFAULT_ACTIVITY_KINDS);
     
-    setUrlParams({ 
+    const params: Record<string, string> = {
       sort: this.sortValue,
-      types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','), 
-      variants: this.selectedVariants.length > 0 ? this.selectedVariants.join(',') : '',
+      types: isDefaultTypes(this.selectedTypes)
+        ? ''
+        : this.selectedTypes.map((t) => TYPE_ENUM_TO_NAME[t] || String(t)).join(','),
+      variants: this.selectedVariants.length > 0
+        ? this.selectedVariants.map((v) => VARIANT_ENUM_TO_NAME[v] || String(v)).join(',')
+        : '',
       activity: this.activityKinds.join(',') === DEFAULT_ACTIVITY_KINDS.join(',') ? '' : this.activityKinds.join(','),
-      blog: this.blog 
-    });
+    };
+    if (!isBlogInPath()) {
+      params.blog = this.blog;
+    }
+    setUrlParams(params);
     await this.fillPage();
     this.observeSentinel();
   }
@@ -133,6 +180,7 @@ export class ViewPosts extends LitElement {
         order: sortOption.order as Order,
         post_types: this.selectedTypes,
         variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
+        activity_kinds: this.activityKinds,
         page: { page_size: PAGE_SIZE, page_token: this.backendCursor || undefined }
       });
 
