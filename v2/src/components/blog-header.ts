@@ -6,6 +6,7 @@ import {
   buildPageUrl,
 } from '../services/blog-resolver.js';
 import { BREAKPOINTS, SPACING } from '../types/ui-constants.js';
+import { resolveLink } from '../services/link-resolver.js';
 
 type PageName = 'archive' | 'timeline' | 'social' | 'following';
 
@@ -302,8 +303,8 @@ export class BlogHeader extends LitElement {
   /**
    * Build external blog URL.
    */
-  private get externalBlogUrl(): string {
-    return `https://${this.blogName}.bdsmlr.com`;
+  private get externalBlogLink() {
+    return resolveLink('blog_header_external_blog', { blog: this.blogName });
   }
 
   /**
@@ -470,9 +471,9 @@ export class BlogHeader extends LitElement {
                 <!-- External link -->
                 <a
                   class="external-link"
-                  href=${this.externalBlogUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href=${this.externalBlogLink.href}
+                  target=${this.externalBlogLink.target}
+                  rel=${this.externalBlogLink.rel}
                   aria-label="Visit ${this.blogName}'s blog on BDSMLR (opens in new tab)"
                 >
                   Visit &rarr;

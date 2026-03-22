@@ -25,6 +25,7 @@ import {
 import { apiClient } from '../services/client.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import { SORT_OPTIONS, normalizeSortValue } from '../types/post.js';
+import { resolveLink } from '../services/link-resolver.js';
 
 type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social' | 'posts';
 const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'final-fix-v6';
@@ -398,7 +399,7 @@ export class SharedNav extends LitElement {
     const blogName = primaryBlog;
     const blogPages = ['archive', 'posts', 'feed', 'social'];
     if (page === 'posts') {
-      if (blogName) return buildPageUrl('activity', blogName);
+      if (blogName) return resolveLink('nav_activity', { blog: blogName }).href;
       return buildPageUrl('activity');
     }
 
@@ -411,7 +412,7 @@ export class SharedNav extends LitElement {
   private getLogoUrl(): string {
     const primaryBlog = getPrimaryBlogName() || getCurrentUsername();
     if (primaryBlog) {
-      return buildPageUrl('feed', primaryBlog);
+      return resolveLink('nav_logo', { blog: primaryBlog }).href;
     }
     return this.getHomeUrl();
   }

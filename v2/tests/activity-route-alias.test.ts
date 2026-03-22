@@ -26,9 +26,14 @@ describe('activity route alias', () => {
 
   it('shared nav targets activity path for the activity tab', () => {
     const navSrc = readFileSync(join(ROOT, 'components/shared-nav.ts'), 'utf8');
+    const headerSrc = readFileSync(join(ROOT, 'components/blog-header.ts'), 'utf8');
 
     expect(navSrc).toContain("if (page === 'posts')");
-    expect(navSrc).toContain("return buildPageUrl('activity', blogName);");
+    expect(navSrc).toContain("return resolveLink('nav_activity', { blog: blogName }).href;");
+    expect(navSrc).toContain("import { resolveLink } from '../services/link-resolver.js';");
+    expect(navSrc).toContain("resolveLink('nav_logo'");
+    expect(headerSrc).toContain("import { resolveLink } from '../services/link-resolver.js';");
+    expect(headerSrc).toContain("resolveLink('blog_header_external_blog'");
   });
 
   it('activity view normalizes sort and forces newest for interaction kinds', () => {
