@@ -119,28 +119,42 @@ export class PostEngagement extends LitElement {
 
     if (isReblog) {
       return html`
-        ${typeIcon} <a href="/${p.originBlogName}/posts">@${p.originBlogName}</a> /
+        ${typeIcon} ${this.renderBlogIdentity(p.originBlogName)} /
         <a class="post-id-link" href="/post/${p.originPostId}">${p.originPostId}<span class="post-id-outlink">↗</span></a>
-        via ♻️ <a href="/${p.blogName}/posts">@${p.blogName}</a> / ${p.id}
+        via ♻️ ${this.renderBlogIdentity(p.blogName)} / ${p.id}
       `;
     }
-    return html`${typeIcon} <a href="/${p.blogName}/posts">@${p.blogName}</a> / ${p.id}`;
+    return html`${typeIcon} ${this.renderBlogIdentity(p.blogName)} / ${p.id}`;
+  }
+
+  private normalizeBlogName(blogName: string | null | undefined): string | null {
+    const normalized = (blogName || '').trim();
+    return normalized || null;
+  }
+
+  private renderBlogIdentity(blogName: string | null | undefined) {
+    const normalized = this.normalizeBlogName(blogName);
+    const label = normalized ? `@${normalized}` : '@unknown';
+    if (!normalized) {
+      return html`<span>${label}</span>`;
+    }
+    return html`<a href="/${normalized}/posts">${label}</a>`;
   }
 
   private renderEngagementDetail() {
     if (this.loadingDetails) return html`<loading-spinner message="Fetching details..."></loading-spinner>`;
     
     if (this.activeTab === 'likes' && this.likes) {
-      return html`<div class="detail-list">${this.likes.map(l => html`<div class="detail-item"><span>❤️ by <a href="/${l.blogName}/posts">@${l.blogName}</a></span><span class="ts">${formatDate(l.createdAtUnix, 'friendly')}</span></div>`)}</div>`;
+      return html`<div class="detail-list">${this.likes.map(l => html`<div class="detail-item"><span>❤️ by ${this.renderBlogIdentity(l.blogName)}</span><span class="ts">${formatDate(l.createdAtUnix, 'friendly')}</span></div>`)}</div>`;
     }
     if (this.activeTab === 'reblogs' && this.reblogs) {
       return html`<div class="detail-list">${this.reblogs.map(r => {
         const targetPostId = r.postId || (r as any).id;
-        return html`<div class="detail-item"><span>♻️ by <a href="/${r.blogName}/posts">@${r.blogName}</a></span><span><a href="/post/${targetPostId}">post:${targetPostId}</a></span></div>`;
+        return html`<div class="detail-item"><span>♻️ by ${this.renderBlogIdentity(r.blogName)}</span><span><a href="/post/${targetPostId}">post:${targetPostId}</a></span></div>`;
       })}</div>`;
     }
     if (this.activeTab === 'comments' && this.comments) {
-      return html`<div class="detail-list">${this.comments.map(c => html`<div class="detail-item"><span>💬 <b>@${c.blogName}</b>: ${c.body}</span><span class="ts">${formatDate(c.createdAtUnix, 'friendly')}</span></div>`)}</div>`;
+      return html`<div class="detail-list">${this.comments.map(c => html`<div class="detail-item"><span>💬 <b>${this.normalizeBlogName(c.blogName) ? `@${this.normalizeBlogName(c.blogName)}` : '@unknown'}</b>: ${c.body}</span><span class="ts">${formatDate(c.createdAtUnix, 'friendly')}</span></div>`)}</div>`;
     }
     return nothing;
   }
