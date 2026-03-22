@@ -17,13 +17,15 @@ import {
   shouldStopFollowPagination,
   fingerprintFollowEdges,
 } from '../services/follow-pagination.js';
+import { getPageSlotConfig } from '../services/render-page.js';
+import type { RenderSlotConfig } from '../config.js';
 import type { FollowEdge, Blog } from '../types/api.js';
 import '../components/blog-list.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
-import '../components/skeleton-loader.js';
 import '../components/error-state.js';
 import '../components/blog-header.js';
+import '../components/render-card.js';
 
 const PAGE_SIZE = 100;
 type Tab = 'followers' | 'following';
@@ -126,6 +128,7 @@ export class ViewSocial extends LitElement {
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
   @state() private blogData: Blog | null = null;
+  private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('social', 'main_stream');
   /** SOC-019: Bypass cached follow graph on next fetch after mismatch */
   private skipCacheOnNextFetch = false;
 
@@ -566,7 +569,13 @@ export class ViewSocial extends LitElement {
           : ''}
 
         ${this.loading && this.currentList.length === 0
-          ? html`<skeleton-loader variant="blog-list" count="8" trackTime></skeleton-loader>`
+          ? html`
+              <render-card
+                cardType=${this.mainSlotConfig.loading?.cardType || ''}
+                count=${this.mainSlotConfig.loading?.count}
+                loading
+              ></render-card>
+            `
           : ''}
 
         <div id="scroll-sentinel" style="height:1px;"></div>

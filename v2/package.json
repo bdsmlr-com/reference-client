@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "export VITE_BUILD_ENV=$(grep 'export const ACTIVE_ENV' src/config.ts | cut -d\"'\" -f2) && export VITE_BUILD_SHA=${VITE_BUILD_ENV}@$(git rev-parse --short HEAD) && tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:render-contract": "node scripts/check-render-contract-usage.mjs"
   },
   "dependencies": {
     "@lit-labs/router": "^0.1.4",

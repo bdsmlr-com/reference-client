@@ -6,6 +6,7 @@ import { apiClient } from '../services/client.js';
 import { getCachedAvatarUrl, setCachedAvatarUrl } from '../services/storage.js';
 import { buildBlogPageUrl } from '../services/blog-resolver.js';
 import { BREAKPOINTS, SPACING, CONTAINER_SPACING } from '../types/ui-constants.js';
+import { loadRenderContract } from '../services/render-contract.js';
 
 /**
  * Extended type to handle both camelCase and snake_case API responses.
@@ -162,6 +163,7 @@ export class BlogList extends LitElement {
   // Avatar state (SOC-016)
   @state() private avatarUrls: Map<number, string | null> = new Map();
   @state() private fetchingAvatars: Set<number> = new Set();
+  private readonly socialBlogCard = (loadRenderContract().cards as any).social_blog;
 
   private pendingResolve: number[] = [];
   private resolveTimeout: number | null = null;
@@ -430,6 +432,10 @@ export class BlogList extends LitElement {
   }
 
   render() {
+    if (!this.socialBlogCard) {
+      throw new Error('Render contract missing required card: social_blog');
+    }
+
     if (this.items.length === 0) {
       return html`<section class="empty" role="status">No items to display</section>`;
     }

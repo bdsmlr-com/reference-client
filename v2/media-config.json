@@ -102,6 +102,15 @@
             "cards": ["lightbox_post"]
           }
         }
+      },
+      "social": {
+        "slots": {
+          "main_stream": {
+            "cards": ["social_blog_list"],
+            "async": true,
+            "loading": { "cardType": "social_blog_list", "count": 8 }
+          }
+        }
       }
     },
     "cards": {
@@ -127,6 +136,20 @@
       },
       "lightbox_post": {
         "layout": "lightbox",
+        "elements": []
+      },
+      "social_blog_list": {
+        "layout": "list",
+        "elements": ["social_blog"],
+        "skeleton": {
+          "variant": "blog-list",
+          "structure": ["row_ghost"],
+          "count_policy": { "default": 8 },
+          "transition": "swap"
+        }
+      },
+      "social_blog": {
+        "layout": "list",
         "elements": []
       }
     },
