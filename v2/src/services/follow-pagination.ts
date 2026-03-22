@@ -17,10 +17,10 @@ function edgeKey(edge: FollowEdge): string | null {
     userId?: number;
     user_id?: number;
   };
-  const blogId = raw.blogId ?? raw.blog_id;
-  if (blogId !== undefined && blogId !== null) return `blog:${blogId}`;
   const blogName = raw.blogName ?? raw.blog_name;
   if (blogName) return `name:${blogName.toLowerCase()}`;
+  const blogId = raw.blogId ?? raw.blog_id;
+  if (blogId !== undefined && blogId !== null) return `blog:${blogId}`;
   const userId = raw.userId ?? raw.user_id;
   if (userId !== undefined && userId !== null) return `user:${userId}`;
   return `obj:${stableStringify(raw)}`;

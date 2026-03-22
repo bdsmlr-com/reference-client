@@ -84,6 +84,13 @@ describe('social follow pagination safeguards', () => {
     expect(merged.length).toBe(1);
   });
 
+  it('deduplicates same blogName even when ids differ across pages', () => {
+    const existing = [{ blog_id: 100, blog_name: 'RepeatMe' }] as unknown as FollowEdge[];
+    const incoming = [{ blog_id: 200, blog_name: 'repeatme' }] as unknown as FollowEdge[];
+    const merged = mergeFollowEdges(existing, incoming);
+    expect(merged.length).toBe(1);
+  });
+
   it('stops when page fingerprint repeats', () => {
     const page = [{ blog_id: 77, blog_name: 'same' }] as unknown as FollowEdge[];
     const fp = fingerprintFollowEdges(page);
