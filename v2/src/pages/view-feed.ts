@@ -6,15 +6,17 @@ import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from
 import { setUrlParams, isBlogInPath, isAdminMode } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
-import {
-  generatePaginationCursorKey,
-  setCachedPaginationCursor,
-} from '../services/storage.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
-import type { PostType, PostVariant, Blog } from '../types/api.js';
+import type { PostType, PostVariant, Blog, TimelineItem } from '../types/api.js';
+import {
+  getFollowingActivityKindsPreference,
+  setFollowingActivityKindsPreference,
+  type ActivityKind,
+} from '../services/profile.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import '../components/filter-bar.js';
-import '../components/post-feed.js';
+import '../components/activity-kind-pills.js';
+import '../components/timeline-stream.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
@@ -22,6 +24,7 @@ import '../components/error-state.js';
 
 const PAGE_SIZE = 20;
 const MAX_BACKEND_FETCHES = 3;
+const MAX_CLUSTER_FETCH_BLOGS = 6;
 
 @customElement('view-feed')
 export class ViewFeed extends LitElement {
@@ -146,7 +149,7 @@ export class ViewFeed extends LitElement {
   @state() private resolving = false;
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
   @state() private selectedVariants: PostVariant[] = [];
-  @state() private posts: ProcessedPost[] = [];
+  @state() private timelineItems: TimelineItem[] = [];
   @state() private loading = false;
   @state() private exhausted = false;
   @state() private loadingCurrent = 0;
@@ -156,6 +159,7 @@ export class ViewFeed extends LitElement {
   @state() private retrying = false;
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
+  @state() private activityKinds: ActivityKind[] = getFollowingActivityKindsPreference();
   @state() private blogData: Blog | null = null;
   private skipCacheOnNextResolve = false;
   private emptyFollowingAttempts = 0;
@@ -163,7 +167,8 @@ export class ViewFeed extends LitElement {
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
   private seenUrls = new Set<string>();
-  private paginationKey = '';
+  private seenClusterKeys = new Set<string>();
+  private blogTimelineCursors = new Map<number, string | null>();
 
   protected updated(changedProperties: PropertyValues): void {
     if (changedProperties.has('blog')) {
@@ -191,15 +196,7 @@ export class ViewFeed extends LitElement {
   }
 
   private savePaginationState = (): void => {
-    if (this.paginationKey && this.posts.length > 0) {
-      setCachedPaginationCursor(
-        this.paginationKey,
-        this.backendCursor,
-        window.scrollY,
-        this.posts.length,
-        this.exhausted
-      );
-    }
+    // Following feed currently uses multi-source cursors; skip cursor persistence for now.
   };
 
   private observeSentinel(): void {
@@ -220,7 +217,9 @@ export class ViewFeed extends LitElement {
     this.exhausted = false;
     this.seenIds.clear();
     this.seenUrls.clear();
-    this.posts = [];
+    this.seenClusterKeys.clear();
+    this.blogTimelineCursors.clear();
+    this.timelineItems = [];
     this.statusMessage = '';
   }
 
@@ -343,12 +342,6 @@ export class ViewFeed extends LitElement {
 
     this.resetState();
 
-    this.paginationKey = generatePaginationCursorKey('following', {
-      blog: this.resolvedBlogName,
-      types: this.selectedTypes.join(','),
-      variants: this.selectedVariants.join(','),
-    });
-
     try {
       await this.fillPage();
     } catch (e) {
@@ -363,7 +356,7 @@ export class ViewFeed extends LitElement {
   private async fillPage(): Promise<void> {
     if (this.followingBlogIds.length === 0) return;
 
-    const buffer: ProcessedPost[] = [];
+    const postBuffer: ProcessedPost[] = [];
     let backendFetches = 0;
     this.loading = true;
     this.loadingCurrent = 0;
@@ -371,7 +364,7 @@ export class ViewFeed extends LitElement {
     const isAdmin = isAdminMode();
 
     try {
-      while (buffer.length < PAGE_SIZE && !this.exhausted && backendFetches < MAX_BACKEND_FETCHES) {
+      while (postBuffer.length < PAGE_SIZE && !this.exhausted && backendFetches < MAX_BACKEND_FETCHES) {
         backendFetches++;
 
         // Use server-side merge with globalMerge=true
@@ -429,23 +422,102 @@ export class ViewFeed extends LitElement {
             _media: media,
           };
 
-          buffer.push(processedPost);
-          this.loadingCurrent = buffer.length;
+          postBuffer.push(processedPost);
+          this.loadingCurrent = postBuffer.length;
 
-          if (buffer.length >= PAGE_SIZE) break;
+          if (postBuffer.length >= PAGE_SIZE) break;
         }
 
-        if (buffer.length >= PAGE_SIZE) break;
+        if (postBuffer.length >= PAGE_SIZE) break;
       }
 
-      if (buffer.length > 0) {
-        this.posts = [...this.posts, ...buffer];
-      } else if (this.posts.length === 0 && this.exhausted) {
+      const feedItems: TimelineItem[] = postBuffer.map((post) => ({ type: 1, post }));
+      const activeBlogIds = [...new Set(postBuffer.map((p) => p.blogId).filter((id): id is number => Boolean(id)))];
+      const clusterItems = await this.fetchInteractionClusters(activeBlogIds.slice(0, MAX_CLUSTER_FETCH_BLOGS));
+      const merged = [...feedItems, ...clusterItems].sort((a, b) => this.itemTimestamp(b) - this.itemTimestamp(a));
+
+      if (merged.length > 0) {
+        this.timelineItems = [...this.timelineItems, ...merged];
+      } else if (this.timelineItems.length === 0 && this.exhausted) {
         this.statusMessage = 'No posts found';
       }
     } finally {
       this.loading = false;
     }
+  }
+
+  private itemTimestamp(item: TimelineItem): number {
+    if (item.type === 1 && item.post) {
+      return item.post.createdAtUnix || 0;
+    }
+    if (item.type === 2 && item.cluster?.interactions?.length) {
+      return Math.max(...item.cluster.interactions.map((p) => p.createdAtUnix || 0));
+    }
+    return 0;
+  }
+
+  private inferClusterKind(item: TimelineItem): ActivityKind {
+    const label = (item.cluster?.label || '').toLowerCase();
+    if (label.includes('comment')) return 'comment';
+    return 'like';
+  }
+
+  private async fetchInteractionClusters(blogIds: number[]): Promise<TimelineItem[]> {
+    if (blogIds.length === 0) return [];
+    const isAdmin = isAdminMode();
+    const clusters: TimelineItem[] = [];
+
+    await Promise.all(
+      blogIds.map(async (blogId) => {
+        const pageToken = this.blogTimelineCursors.get(blogId) || undefined;
+        const resp = await apiClient.posts.list({
+          blog_id: blogId,
+          sort_field: 1,
+          order: 2,
+          post_types: this.selectedTypes,
+          variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
+          page: { page_size: 12, page_token: pageToken },
+        });
+
+        this.blogTimelineCursors.set(blogId, resp.page?.nextPageToken || null);
+
+        (resp.timelineItems || []).forEach((item) => {
+          if (item.type !== 2 || !item.cluster?.interactions?.length) return;
+          const key = item.cluster.interactions.map((p) => p.id).sort((a, b) => a - b).join(',');
+          if (!key || this.seenClusterKeys.has(key)) return;
+
+          const interactions: ProcessedPost[] = [];
+          item.cluster.interactions.forEach((post) => {
+            if (this.seenIds.has(post.id)) return;
+            const media = extractMedia(post);
+            const mediaUrl = media.videoUrl || media.audioUrl || media.url;
+            if (mediaUrl) {
+              const normalizedUrl = mediaUrl.split('?')[0];
+              if (this.seenUrls.has(normalizedUrl) && !isAdmin) return;
+              this.seenUrls.add(normalizedUrl);
+            }
+            this.seenIds.add(post.id);
+            interactions.push({ ...post, _media: media });
+          });
+
+          if (interactions.length === 0) return;
+
+          this.seenClusterKeys.add(key);
+          const kind = this.inferClusterKind(item);
+          if (!this.activityKinds.includes(kind)) return;
+
+          clusters.push({
+            type: 2,
+            cluster: {
+              label: item.cluster.label || (kind === 'comment' ? 'Comments' : 'Likes'),
+              interactions,
+            },
+          });
+        });
+      })
+    );
+
+    return clusters;
   }
 
   private async loadMore(): Promise<void> {
@@ -470,7 +542,9 @@ export class ViewFeed extends LitElement {
   private handlePostClick(e: CustomEvent): void {
     const post = e.detail.post as ProcessedPost;
     this.dispatchEvent(new CustomEvent('post-click', {
-      detail: { post, posts: this.posts, index: this.posts.findIndex(p => p.id === post.id) },
+      detail: e.detail?.posts
+        ? e.detail
+        : { post, posts: this.timelineItems.flatMap((it) => it.type === 1 && it.post ? [it.post as ProcessedPost] : ((it.cluster?.interactions as ProcessedPost[]) || [])), index: 0 },
       bubbles: true,
       composed: true
     }));
@@ -486,6 +560,14 @@ export class ViewFeed extends LitElement {
   private handleKeyPress(e: KeyboardEvent): void {
     if (e.key === 'Enter') {
       this.resolveBlog();
+    }
+  }
+
+  private handleActivityKindsChange(e: CustomEvent): void {
+    this.activityKinds = e.detail.kinds || ['post', 'reblog', 'like', 'comment'];
+    setFollowingActivityKindsPreference(this.activityKinds);
+    if (this.followingBlogIds.length > 0) {
+      this.loadPosts();
     }
   }
 
@@ -550,14 +632,28 @@ export class ViewFeed extends LitElement {
 
         ${this.statusMessage && !this.resolving ? html`<div class="status">${this.statusMessage}</div>` : ''}
 
-        ${this.loading && this.posts.length === 0 && !this.errorMessage && !this.resolving
+        ${this.loading && this.timelineItems.length === 0 && !this.errorMessage && !this.resolving
           ? html`<skeleton-loader variant="post-feed" count="4" trackTime></skeleton-loader>`
           : ''}
 
-        ${this.posts.length > 0
+        ${this.followingBlogIds.length > 0
+          ? html`
+              <activity-kind-pills
+                .selected=${this.activityKinds}
+                @activity-kinds-change=${this.handleActivityKindsChange}
+              ></activity-kind-pills>
+            `
+          : ''}
+
+        ${this.timelineItems.length > 0
           ? html`
               <div class="feed-container">
-                <post-feed .posts=${this.posts} @post-click=${this.handlePostClick}></post-feed>
+                <timeline-stream
+                  .items=${this.timelineItems}
+                  .activityKinds=${this.activityKinds}
+                  .showActorInCluster=${true}
+                  @post-click=${this.handlePostClick}
+                ></timeline-stream>
               </div>
 
               <load-footer

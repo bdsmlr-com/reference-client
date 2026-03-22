@@ -8,9 +8,14 @@ import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
 import type { PostType, Blog, TimelineItem, PostVariant } from '../types/api.js';
+import {
+  getBlogActivityKindsPreference,
+  setBlogActivityKindsPreference,
+  type ActivityKind,
+} from '../services/profile.js';
 import '../components/filter-bar.js';
-import '../components/post-feed-item.js';
-import '../components/activity-grid.js';
+import '../components/activity-kind-pills.js';
+import '../components/timeline-stream.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
 import '../components/error-state.js';
@@ -26,15 +31,6 @@ export class ViewPosts extends LitElement {
       :host { display: block; min-height: 100vh; background: var(--bg-primary); }
       .content { padding: 20px 0; }
       .feed-container { margin-bottom: 20px; }
-      .interaction-cluster { 
-        max-width: 600px; 
-        margin: 0 auto 20px auto; 
-        background: var(--bg-panel-alt);
-        padding: 12px;
-        border-radius: 8px;
-        border: 1px solid var(--border);
-      }
-      .cluster-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
     `,
   ];
 
@@ -48,6 +44,7 @@ export class ViewPosts extends LitElement {
   @state() private exhausted = false;
   @state() private infiniteScroll = false;
   @state() private errorMessage = '';
+  @state() private activityKinds: ActivityKind[] = getBlogActivityKindsPreference();
   @state() private blogData: Blog | null = null;
 
   private backendCursor: string | null = null;
@@ -197,6 +194,11 @@ export class ViewPosts extends LitElement {
     if (this.infiniteScroll) this.observeSentinel();
   }
 
+  private handleActivityKindsChange(e: CustomEvent): void {
+    this.activityKinds = e.detail.kinds || ['post', 'reblog', 'like', 'comment'];
+    setBlogActivityKindsPreference(this.activityKinds);
+  }
+
   render() {
     return html`
       <div class="content">
@@ -210,23 +212,20 @@ export class ViewPosts extends LitElement {
           @types-change=${this.handleTypesChange}
           @variant-change=${this.handleVariantChange}
         ></filter-bar>
+        <activity-kind-pills
+          .selected=${this.activityKinds}
+          @activity-kinds-change=${this.handleActivityKindsChange}
+        ></activity-kind-pills>
 
         ${this.errorMessage ? html`<error-state message=${this.errorMessage}></error-state>` : ''}
 
         <div class="feed-container">
-          ${this.timelineItems.map(entry => {
-            if (entry.type === 1 && entry.post) { // POST
-              return html`<post-feed-item .post=${entry.post} @post-select=${this.handlePostClick}></post-feed-item>`;
-            } else if (entry.type === 2 && entry.cluster) { // CLUSTER
-              return html`
-                <div class="interaction-cluster">
-                  <div class="cluster-label">${entry.cluster.label}</div>
-                  <activity-grid compact .items=${(entry.cluster.interactions || []).map(p => ({ post: p, type: 'like' }))} @activity-click=${this.handlePostClick}></activity-grid>
-                </div>
-              `;
-            }
-            return '';
-          })}
+          <timeline-stream
+            .items=${this.timelineItems}
+            .activityKinds=${this.activityKinds}
+            .showActorInCluster=${false}
+            @post-click=${this.handlePostClick}
+          ></timeline-stream>
         </div>
 
         <load-footer
