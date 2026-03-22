@@ -10,7 +10,7 @@ describe('shared-nav profile/settings behavior', () => {
 
     expect(src).not.toContain("{ name: 'feed', label: 'Feed'");
     expect(src).toContain('private getLogoUrl()');
-    expect(src).toContain("return buildPageUrl('feed', primaryBlog);");
+    expect(src).toContain("return resolveLink('nav_logo', { blog: primaryBlog }).href;");
   });
 
   it('contains profile and settings menu with login + logout + gallery mode controls', () => {
