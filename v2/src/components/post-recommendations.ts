@@ -7,6 +7,7 @@ import { extractMedia, type ProcessedPost } from '../types/post.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { isAdminMode } from '../services/blog-resolver.js';
+import { resolveLink } from '../services/link-resolver.js';
 import './media-renderer.js';
 import './load-footer.js';
 import './loading-spinner.js';
@@ -209,7 +210,12 @@ export class PostRecommendations extends LitElement {
   private navigateToRelated(rec: RecResult) {
     const id = rec.post_id;
     if (id) {
-      window.location.href = `/post/${id}`;
+      const link = resolveLink('recommendation_post', { postId: id });
+      if (link.target === '_blank') {
+        window.open(link.href, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      window.location.href = link.href;
     }
   }
 

@@ -5,6 +5,7 @@ import { apiClient } from '../services/client.js';
 import { formatDate } from '../services/date-formatter.js';
 import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import type { Like, Comment, Reblog, PostType } from '../types/api.js';
+import { resolveLink } from '../services/link-resolver.js';
 import './loading-spinner.js';
 
 @customElement('post-engagement')
@@ -118,9 +119,10 @@ export class PostEngagement extends LitElement {
     const isReblog = p.originPostId && p.originPostId !== p.id;
 
     if (isReblog) {
+      const originPostLink = resolveLink('post_permalink', { postId: p.originPostId as number });
       return html`
-        ${typeIcon} ${this.renderBlogIdentity(p.originBlogName)} /
-        <a class="post-id-link" href="/post/${p.originPostId}">${p.originPostId}<span class="post-id-outlink">↗</span></a>
+        ${typeIcon} ${this.renderBlogIdentity(p.originBlogName, 'post_origin_blog')} /
+        <a class="post-id-link" href=${originPostLink.href} target=${originPostLink.target} rel=${originPostLink.rel || nothing}>${p.originPostId}<span class="post-id-outlink">↗</span></a>
         via ♻️ ${this.renderBlogIdentity(p.blogName)} / ${p.id}
       `;
     }
@@ -132,13 +134,14 @@ export class PostEngagement extends LitElement {
     return normalized || null;
   }
 
-  private renderBlogIdentity(blogName: string | null | undefined) {
+  private renderBlogIdentity(blogName: string | null | undefined, contextId: 'post_origin_blog' | 'post_via_blog' = 'post_via_blog') {
     const normalized = this.normalizeBlogName(blogName);
     const label = normalized ? `@${normalized}` : '@unknown';
     if (!normalized) {
       return html`<span>${label}</span>`;
     }
-    return html`<a href="/${normalized}/activity">${label}</a>`;
+    const link = resolveLink(contextId, { blog: normalized });
+    return html`<a href=${link.href} target=${link.target} rel=${link.rel || nothing}>${label}</a>`;
   }
 
   private renderEngagementDetail() {
@@ -150,7 +153,8 @@ export class PostEngagement extends LitElement {
     if (this.activeTab === 'reblogs' && this.reblogs) {
       return html`<div class="detail-list">${this.reblogs.map(r => {
         const targetPostId = r.postId || (r as any).id;
-        return html`<div class="detail-item"><span>♻️ by ${this.renderBlogIdentity(r.blogName)}</span><span><a href="/post/${targetPostId}">post:${targetPostId}</a></span></div>`;
+        const targetLink = resolveLink('post_permalink', { postId: targetPostId });
+        return html`<div class="detail-item"><span>♻️ by ${this.renderBlogIdentity(r.blogName, 'post_via_blog')}</span><span><a href=${targetLink.href} target=${targetLink.target} rel=${targetLink.rel || nothing}>post:${targetPostId}</a></span></div>`;
       })}</div>`;
     }
     if (this.activeTab === 'comments' && this.comments) {

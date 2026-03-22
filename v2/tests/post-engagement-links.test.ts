@@ -23,8 +23,12 @@ describe('post engagement links', () => {
   it('guards empty blog names and falls back to @unknown text', () => {
     const src = readFileSync(FILE, 'utf8');
 
+    expect(src).toContain("import { resolveLink } from '../services/link-resolver.js';");
     expect(src).toContain('private normalizeBlogName');
     expect(src).toContain('private renderBlogIdentity');
+    expect(src).toContain("resolveLink('post_permalink'");
+    expect(src).toContain("'post_origin_blog' | 'post_via_blog'");
+    expect(src).toContain("'post_via_blog'");
     expect(src).toContain("const normalized = (blogName || '').trim();");
     expect(src).toContain("const label = normalized ? `@${normalized}` : '@unknown';");
     expect(src).not.toContain('href="/${p.originBlogName}/posts"');

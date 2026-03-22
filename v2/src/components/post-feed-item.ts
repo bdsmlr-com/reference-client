@@ -1,10 +1,11 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
 import { formatDateShort, getTooltipDate } from '../services/date-formatter.js';
 import { MAX_VISIBLE_TAGS } from '../types/ui-constants.js';
+import { resolveLink } from '../services/link-resolver.js';
 import './media-renderer.js';
 
 /**
@@ -185,6 +186,8 @@ export class PostFeedItem extends LitElement {
     const isReblog = post.originPostId && post.originPostId !== post.id;
     const blogName = post.blogName || 'unknown';
     const originBlogName = post.originBlogName || 'unknown';
+    const blogLink = resolveLink('post_via_blog', { blog: blogName });
+    const originBlogLink = resolveLink('post_origin_blog', { blog: originBlogName });
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
 
     let mediaHtml;
@@ -203,12 +206,12 @@ export class PostFeedItem extends LitElement {
         <header class="card-header">
           <div class="blog-info">
             ${isReblog ? html`
-              <a href="/${originBlogName}/activity" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${originBlogName}</a>
+              <a href=${originBlogLink.href} target=${originBlogLink.target} rel=${originBlogLink.rel || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${originBlogName}</a>
               <span class="reblog-indicator">
-                ♻️ via <a href="/${blogName}/activity" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
+                ♻️ via <a href=${blogLink.href} target=${blogLink.target} rel=${blogLink.rel || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
               </span>
             ` : html`
-              <a href="/${blogName}/activity" class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
+              <a href=${blogLink.href} target=${blogLink.target} rel=${blogLink.rel || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
             `}
           </div>
           <time class="post-date" title=${getTooltipDate(post.createdAtUnix)}>${formatDateShort(post.createdAtUnix)}</time>
@@ -221,7 +224,7 @@ export class PostFeedItem extends LitElement {
         ${post.tags && post.tags.length > 0 ? html`
           <div class="card-tags">
             ${post.tags.slice(0, MAX_VISIBLE_TAGS).map(tag => html`
-              <a href="/search?q=${encodeURIComponent(tag)}" class="tag-link" @click=${(e: Event) => e.stopPropagation()}>#${tag}</a>
+              <a href=${resolveLink('search_tag', { tag }).href} class="tag-link" @click=${(e: Event) => e.stopPropagation()}>#${tag}</a>
             `)}
           </div>
         ` : ''}
