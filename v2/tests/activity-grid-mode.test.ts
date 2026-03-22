@@ -1,10 +1,22 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { toPresentationModel } from '../src/services/post-presentation';
 
 const ROOT = join(process.cwd(), 'src');
 
 describe('gallery mode wiring', () => {
+  it('maps posts into presentation model with permalink action', () => {
+    const model = toPresentationModel(
+      { id: 42, blogName: 'demo', type: 2 } as any,
+      { view: 'archive' },
+    );
+
+    expect(model.showPermalink).toBe(true);
+    expect(model.actions.some((a) => a.kind === 'permalink')).toBe(true);
+    expect(model.linkContexts.permalink).toBe('post_permalink');
+  });
+
   it('media config contains layered post render policy blocks', () => {
     const mediaConfigPath = join(process.cwd(), 'media-config.json');
     const mediaConfig = JSON.parse(readFileSync(mediaConfigPath, 'utf8'));

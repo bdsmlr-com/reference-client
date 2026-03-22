@@ -57,6 +57,26 @@ export interface ProcessedPost extends Post {
   _reblog_variants?: { id: number; blogName?: string }[];
 }
 
+export type PresentationActionKind = 'permalink';
+
+export interface PresentationAction {
+  kind: PresentationActionKind;
+  label: string;
+  contextId: string;
+}
+
+export interface PostPresentationModel {
+  showPermalink: boolean;
+  showBlogChip: boolean;
+  compactMetadata: boolean;
+  actions: PresentationAction[];
+  linkContexts: {
+    permalink: string;
+    originBlog: string;
+    viaBlog: string;
+  };
+}
+
 export interface ViewStats {
   found: number;
   deleted: number;
