@@ -8,6 +8,7 @@ import { extractMedia, type ProcessedPost } from '../types/post.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { resolveMediaUrl } from '../services/media-resolver.js';
 import { buildLightboxMediaSources } from '../services/lightbox-media-sources.js';
+import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
 import './media-renderer.js';
 import './post-recommendations.js';
 import './post-engagement.js';
@@ -299,7 +300,7 @@ export class PostLightbox extends LitElement {
             ${this.renderAdminDebug()}
 
             <div class="body-text" style="margin-bottom: 32px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 24px;">
-              ${unsafeHTML(p.content?.html || p.body || '')}
+              ${unsafeHTML(sanitizeHtmlFragment(p.content?.html || p.body || ''))}
             </div>
 
             <post-engagement .post=${p}></post-engagement>

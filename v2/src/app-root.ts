@@ -16,7 +16,7 @@ import './components/offline-banner.js';
 import './components/post-lightbox.js';
 import { initTheme, injectGlobalStyles, baseStyles } from './styles/theme.js';
 import type { ProcessedPost } from './types/post.js';
-import { isAdminMode } from './services/blog-resolver.js';
+import { isAdminMode, syncAdminModeFromUrl } from './services/blog-resolver.js';
 
 @customElement('app-root')
 export class AppRoot extends LitElement {
@@ -73,6 +73,7 @@ export class AppRoot extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    syncAdminModeFromUrl();
     this.addEventListener('post-click', this.handlePostClick as any);
   }
 

@@ -12,8 +12,7 @@ export const BUCKET_LIST = [
   'ocdn012.bdsmlr.com',
   'cdn101.bdsmlr.com',
   'ocdn011.bdsmlr.com',
-  'cdn013.bdsmlr.com',
-  'cdn002.reblogme.com'
+  'cdn013.bdsmlr.com'
 ];
 
 /**

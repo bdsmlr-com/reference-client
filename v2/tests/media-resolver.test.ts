@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { toS3Scheme, resolveMediaUrl, isAnimation, toOriginFallbackUrl, probeNextBucket } from '../src/services/media-resolver.js';
 import { CONFIG } from '../src/config.js';
+import { BUCKET_LIST } from '../src/services/media-resolver.js';
 
 describe('Media Resolver', () => {
   class MockImageElement {
@@ -102,9 +103,13 @@ describe('Media Resolver', () => {
       // Mock URL search params
       const spy = vi.spyOn(URLSearchParams.prototype, 'get');
       spy.mockImplementation((key: string) => {
-        if (key === 'admin') return 'true';
         if (key === 'media_mode') return 'origin';
         return null;
+      });
+      vi.stubGlobal('localStorage', {
+        getItem: vi.fn(() => 'true'),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
       });
 
       const url = resolveMediaUrl('https://cdn101.bdsmlr.com/uploads/foo.jpg', 'feed');
@@ -140,6 +145,10 @@ describe('Media Resolver', () => {
   });
 
   describe('probeNextBucket', () => {
+    it('should not include reblogme bucket in failover list', () => {
+      expect(BUCKET_LIST).not.toContain('cdn002.reblogme.com');
+    });
+
     it('should fail over ergonomic s3 URLs while preserving alias and query params', () => {
       const img = new MockImageElement();
       img.src = 'https://media.i.bdsmlr.com/gutter/s3://ocdn012.bdsmlr.com/uploads/photos/2023/08/11289205/bdsmlr-11289205-s3pdSudIvT.gif?e=1774206957&t=hqHlN9H94QRTWcWH9XdFxd9tKxsKGaTjW6m6WYjTPzY&cb=1774120557';
@@ -154,12 +163,12 @@ describe('Media Resolver', () => {
 
     it('should return false when already at last bucket', () => {
       const img = new MockImageElement();
-      img.src = 'https://media.i.bdsmlr.com/gutter/s3://cdn002.reblogme.com/uploads/photos/2023/08/11289205/bdsmlr-11289205-s3pdSudIvT.gif?e=1&t=2';
+      img.src = 'https://media.i.bdsmlr.com/gutter/s3://cdn013.bdsmlr.com/uploads/photos/2023/08/11289205/bdsmlr-11289205-s3pdSudIvT.gif?e=1&t=2';
 
       const didProbe = probeNextBucket(img as any);
 
       expect(didProbe).toBe(false);
-      expect(img.src).toContain('cdn002.reblogme.com');
+      expect(img.src).toContain('cdn013.bdsmlr.com');
     });
   });
 });

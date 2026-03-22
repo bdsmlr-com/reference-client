@@ -36,23 +36,28 @@ const RESERVED_PAGE_ROUTES = [
 ];
 
 /**
- * Check if the current user is in admin mode.
- * Set via ?admin=true query param or localStorage 'bdsmlr_admin' flag.
+ * Synchronize admin mode localStorage state from URL param.
+ * Call this on app init / route changes; keep isAdminMode() read-only.
  */
-export function isAdminMode(): boolean {
+export function syncAdminModeFromUrl(): void {
   const params = new URLSearchParams(window.location.search);
   const adminParam = params.get('admin');
-  
+
   if (adminParam === 'true') {
     localStorage.setItem('bdsmlr_admin', 'true');
-    return true;
-  }
-  
-  if (adminParam === 'false') {
-    localStorage.removeItem('bdsmlr_admin');
-    return false;
+    return;
   }
 
+  if (adminParam === 'false') {
+    localStorage.removeItem('bdsmlr_admin');
+    return;
+  }
+}
+
+/**
+ * Check if the current user is in admin mode.
+ */
+export function isAdminMode(): boolean {
   return localStorage.getItem('bdsmlr_admin') === 'true';
 }
 

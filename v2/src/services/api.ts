@@ -40,7 +40,7 @@ import {
   setHttpCachedResponse,
   refreshHttpCacheTimestamp,
 } from './storage.js';
-import { isAdminMode } from './blog-resolver.js';
+import { isAdminMode, syncAdminModeFromUrl } from './blog-resolver.js';
 import {
   getCachedPosts,
   setCachedPosts,
@@ -367,6 +367,8 @@ async function apiRequest<T>(
   retryOnAuth = true,
   retryAttempt = 0
 ): Promise<T> {
+  syncAdminModeFromUrl();
+
   // Normalize endpoint path for new layered architecture
   let normalizedEndpoint = endpoint;
   if (normalizedEndpoint.includes('/v2/public-read-api-v2/')) {
