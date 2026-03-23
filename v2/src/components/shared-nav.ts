@@ -344,9 +344,10 @@ export class SharedNav extends LitElement {
   private handleDocumentClick = (e: MouseEvent): void => {
     if (!this.menuOpen) return;
     const path = e.composedPath();
-    if (!path.includes(this)) {
-      this.menuOpen = false;
-    }
+    if (path.includes(this)) return;
+    const activeEl = (this.shadowRoot?.activeElement || document.activeElement) as HTMLElement | null;
+    if (activeEl && activeEl.tagName === 'SELECT') return;
+    this.menuOpen = false;
   };
 
   private handleProfileStateChange = (): void => {
@@ -513,7 +514,7 @@ export class SharedNav extends LitElement {
     const loggedIn = isLoggedIn();
 
     return html`
-      <div class="profile-menu" role="menu" aria-label="Profile and settings menu">
+      <div class="profile-menu" role="menu" aria-label="Profile and settings menu" @click=${(e: Event) => e.stopPropagation()}>
         ${loggedIn
           ? html`
               <div class="menu-section-title">Settings</div>
@@ -530,11 +531,11 @@ export class SharedNav extends LitElement {
                 >Masonry</button>
               </div>
               <div class="menu-section-title">Archive default sort</div>
-              <select class="menu-button" .value=${this.archiveSortPreference} @change=${this.handleArchiveSortPreferenceChange}>
+              <select class="menu-button" .value=${this.archiveSortPreference} @change=${this.handleArchiveSortPreferenceChange} @input=${this.handleArchiveSortPreferenceChange}>
                 ${SORT_OPTIONS.map((opt) => html`<option value=${opt.value}>${opt.label}</option>`)}
               </select>
               <div class="menu-section-title">Search default sort</div>
-              <select class="menu-button" .value=${this.searchSortPreference} @change=${this.handleSearchSortPreferenceChange}>
+              <select class="menu-button" .value=${this.searchSortPreference} @change=${this.handleSearchSortPreferenceChange} @input=${this.handleSearchSortPreferenceChange}>
                 ${SORT_OPTIONS.map((opt) => html`<option value=${opt.value}>${opt.label}</option>`)}
               </select>
               <a class="menu-button" href=${this.getClearCacheUrl()}>Clear cache</a>

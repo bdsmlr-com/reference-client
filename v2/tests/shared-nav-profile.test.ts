@@ -51,4 +51,13 @@ describe('shared-nav profile/settings behavior', () => {
     expect(src).toContain('if (target.pathname === window.location.pathname)');
     expect(src).toContain("window.scrollTo({ top: 0, behavior: 'smooth' });");
   });
+
+  it('keeps settings menu open while interacting with sort select controls', () => {
+    const src = readFileSync(NAV_FILE, 'utf8');
+
+    expect(src).toContain("if (activeEl && activeEl.tagName === 'SELECT') return;");
+    expect(src).toContain('@click=${(e: Event) => e.stopPropagation()}');
+    expect(src).toContain('@input=${this.handleArchiveSortPreferenceChange}');
+    expect(src).toContain('@input=${this.handleSearchSortPreferenceChange}');
+  });
 });
