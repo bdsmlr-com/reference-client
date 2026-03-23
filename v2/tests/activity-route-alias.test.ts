@@ -36,13 +36,10 @@ describe('activity route alias', () => {
     expect(headerSrc).toContain("resolveLink('blog_header_external_blog'");
   });
 
-  it('activity view normalizes sort and forces newest for interaction kinds', () => {
+  it('activity view treats newest as canonical and keeps URLs minimal', () => {
     const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
 
-    expect(postsSrc).toContain("const sort = getUrlParam('sort');");
-    expect(postsSrc).toContain('this.sortValue = normalizeSortValue(sort);');
-    expect(postsSrc).toContain("const hasInteractionKinds = this.activityKinds.includes('like') || this.activityKinds.includes('comment');");
-    expect(postsSrc).toContain("if (hasInteractionKinds && this.sortValue !== 'newest')");
+    expect(postsSrc).not.toContain("const sort = getUrlParam('sort');");
     expect(postsSrc).toContain("this.sortValue = 'newest';");
     expect(postsSrc).toContain('sort_field: sortOption.field');
     expect(postsSrc).toContain('<activity-kind-pills');
@@ -50,7 +47,9 @@ describe('activity route alias', () => {
     expect(postsSrc).toContain('activity_kinds: this.activityKinds');
     expect(postsSrc).toContain('TYPE_ENUM_TO_NAME');
     expect(postsSrc).not.toContain('VARIANT_ENUM_TO_NAME');
-    expect(postsSrc).toContain('if (!isBlogInPath())');
+    expect(postsSrc).toContain('setUrlParams({');
+    expect(postsSrc).not.toContain('sort: this.sortValue');
+    expect(postsSrc).not.toContain('blog: this.blog');
   });
 
   it('activity kind pills include all + posts/reblogs/likes/comments in one row', () => {

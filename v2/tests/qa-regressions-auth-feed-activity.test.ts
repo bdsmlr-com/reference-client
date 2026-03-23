@@ -29,18 +29,29 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(config).toContain('/{blog}/social?tab=following');
   });
 
-  it('does not force blog query params when activity route already includes blog path', () => {
+  it('keeps activity URLs focused on activity filters only', () => {
     const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
 
-    expect(postsSrc).toContain('if (!isBlogInPath()) {');
-    expect(postsSrc).not.toContain('setUrlParams({\n      sort: this.sortValue,\n      activity: this.activityKinds.join(\',\') === DEFAULT_ACTIVITY_KINDS.join(\',\') ? \'\' : this.activityKinds.join(\',\'),\n      blog: this.blog,');
+    expect(postsSrc).not.toContain('sort: this.sortValue');
+    expect(postsSrc).not.toContain('blog: this.blog');
+    expect(postsSrc).toContain('activity: this.activityKinds.join(\',\') === DEFAULT_ACTIVITY_KINDS.join(\',\') ? \'\' : this.activityKinds.join(\',\')');
   });
 
-  it('filters self-like same-day interactions and preserves origin chip for reblog activity cards', () => {
+  it('guards activity timeline state against stale async responses', () => {
+    const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
+
+    expect(postsSrc).toContain('private activeRequestToken = 0;');
+    expect(postsSrc).toContain('const requestToken = ++this.activeRequestToken;');
+    expect(postsSrc).toContain('if (requestToken !== this.activeRequestToken) return;');
+  });
+
+  it('hides self-like/comment actor chips in activity matrices and preserves reblog origin chips', () => {
     const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
     const gridSrc = readFileSync(join(ROOT, 'components/activity-grid.ts'), 'utf8');
 
     expect(streamSrc).toContain('shouldSuppressSelfSameDayLike');
+    expect(gridSrc).toContain('const shouldHideSelfInteractionChip =');
+    expect(gridSrc).toContain("this.interactionType === 'like' || this.interactionType === 'comment'");
     expect(gridSrc).toContain('const chipBlogName =');
     expect(gridSrc).toContain('p.originBlogName');
   });

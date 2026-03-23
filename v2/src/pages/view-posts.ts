@@ -3,10 +3,10 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage } from '../services/api-error.js';
-import { getUrlParam, setUrlParams, isDefaultTypes, isBlogInPath } from '../services/blog-resolver.js';
+import { getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
-import { extractMedia, normalizeSortValue, SORT_OPTIONS, type ProcessedPost } from '../types/post.js';
+import { extractMedia, SORT_OPTIONS, type ProcessedPost } from '../types/post.js';
 import type { PostType, Blog, TimelineItem, PostSortField, Order } from '../types/api.js';
 import {
   DEFAULT_ACTIVITY_KINDS,
@@ -72,6 +72,7 @@ export class ViewPosts extends LitElement {
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
+  private activeRequestToken = 0;
 
   protected updated(changedProperties: PropertyValues): void {
     if (changedProperties.has('blog')) {
@@ -103,10 +104,10 @@ export class ViewPosts extends LitElement {
   private async loadPosts(): Promise<void> {
     if (!this.blogId) return;
     this.resetState();
+    const requestToken = ++this.activeRequestToken;
     const types = getUrlParam('types');
-    const sort = getUrlParam('sort');
     const activity = getUrlParam('activity');
-    this.sortValue = normalizeSortValue(sort);
+    this.sortValue = 'newest';
     if (types) {
       const parsed = types
         .split(',')
@@ -116,23 +117,15 @@ export class ViewPosts extends LitElement {
       if (parsed.length > 0) this.selectedTypes = parsed;
     }
     if (activity) this.activityKinds = normalizeActivityKinds(activity, DEFAULT_ACTIVITY_KINDS);
-    const hasInteractionKinds = this.activityKinds.includes('like') || this.activityKinds.includes('comment');
-    if (hasInteractionKinds && this.sortValue !== 'newest') {
-      this.sortValue = 'newest';
-    }
     
-    const params: Record<string, string> = {
-      sort: this.sortValue,
+    setUrlParams({
       types: isDefaultTypes(this.selectedTypes)
         ? ''
         : this.selectedTypes.map((t) => TYPE_ENUM_TO_NAME[t] || String(t)).join(','),
       activity: this.activityKinds.join(',') === DEFAULT_ACTIVITY_KINDS.join(',') ? '' : this.activityKinds.join(','),
-    };
-    if (!isBlogInPath()) {
-      params.blog = this.blog;
-    }
-    setUrlParams(params);
-    await this.fillPage();
+    });
+    await this.fillPage(requestToken);
+    if (requestToken !== this.activeRequestToken) return;
     this.observeSentinel();
   }
 
@@ -155,7 +148,7 @@ export class ViewPosts extends LitElement {
     });
   }
 
-  private async fillPage(): Promise<void> {
+  private async fillPage(requestToken: number = this.activeRequestToken): Promise<void> {
     if (!this.blogId || this.loading) return;
     this.loading = true;
     try {
@@ -168,6 +161,7 @@ export class ViewPosts extends LitElement {
         activity_kinds: this.activityKinds,
         page: { page_size: PAGE_SIZE, page_token: this.backendCursor || undefined }
       });
+      if (requestToken !== this.activeRequestToken) return;
 
       this.backendCursor = resp.page?.nextPageToken || null;
       if (!this.backendCursor) this.exhausted = true;
@@ -189,13 +183,15 @@ export class ViewPosts extends LitElement {
       this.timelineItems = [...this.timelineItems, ...newItems];
       if (newItems.length === 0) this.exhausted = true;
     } finally {
-      this.loading = false;
+      if (requestToken === this.activeRequestToken) {
+        this.loading = false;
+      }
     }
   }
 
   private async loadMore() {
     if (this.loading || this.exhausted) return;
-    await this.fillPage();
+    await this.fillPage(this.activeRequestToken);
   }
 
   private handlePostClick(e: CustomEvent) {
@@ -229,18 +225,11 @@ export class ViewPosts extends LitElement {
 
   private handleActivityKindsChange(e: CustomEvent): void {
     this.activityKinds = normalizeActivityKinds((e.detail.kinds || []).join(','), DEFAULT_ACTIVITY_KINDS);
-    if (this.activityKinds.includes('like') || this.activityKinds.includes('comment')) {
-      this.sortValue = 'newest';
-    }
+    this.sortValue = 'newest';
     setBlogActivityKindsPreference(this.activityKinds);
-    const params: Record<string, string> = {
-      sort: this.sortValue,
+    setUrlParams({
       activity: this.activityKinds.join(',') === DEFAULT_ACTIVITY_KINDS.join(',') ? '' : this.activityKinds.join(','),
-    };
-    if (!isBlogInPath()) {
-      params.blog = this.blog;
-    }
-    setUrlParams(params);
+    });
     this.loadPosts();
   }
 

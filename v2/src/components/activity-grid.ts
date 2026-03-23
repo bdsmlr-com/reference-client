@@ -4,7 +4,7 @@ import { baseStyles } from '../styles/theme.js';
 import { POST_TYPE_ICONS, extractRenderableTags, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
 import { formatDate } from '../services/date-formatter.js';
-import { isAdminMode } from '../services/blog-resolver.js';
+import { getBlogNameFromPath, isAdminMode } from '../services/blog-resolver.js';
 import './media-renderer.js';
 
 @customElement('activity-item')
@@ -140,6 +140,10 @@ export class ActivityItem extends LitElement {
     }));
   }
 
+  private normalizeBlogName(name: string | undefined): string {
+    return (name || '').trim().toLowerCase();
+  }
+
   render() {
     const p = this.post;
     const media = p._media;
@@ -159,8 +163,15 @@ export class ActivityItem extends LitElement {
     const chipBlogName = this.interactionType === 'reblog'
       ? (p.originBlogName || p.blogName || '')
       : (p.variant === 2 ? (p.originBlogName || p.blogName || '') : (p.blogName || ''));
+    const viewedBlog = this.normalizeBlogName(getBlogNameFromPath());
+    const chipBlog = this.normalizeBlogName(chipBlogName);
+    const shouldHideSelfInteractionChip =
+      (this.interactionType === 'like' || this.interactionType === 'comment')
+      && !!viewedBlog
+      && chipBlog === viewedBlog;
     const showBlogChip = this.showBlogChip
       && (this.interactionType === 'like' || this.interactionType === 'comment' || this.interactionType === 'reblog')
+      && !shouldHideSelfInteractionChip
       && !!chipBlogName;
 
     return html`
