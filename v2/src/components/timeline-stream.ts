@@ -123,8 +123,13 @@ export class TimelineStream extends LitElement {
   }
 
   private getDateKey(post: ProcessedPost): string {
-    if (!post.createdAtUnix) return 'unknown-date';
-    return format(new Date(post.createdAtUnix * 1000), 'yyyy-MM-dd');
+    const ts = this.getInteractionUnix(post);
+    if (!ts) return 'unknown-date';
+    return format(new Date(ts * 1000), 'yyyy-MM-dd');
+  }
+
+  private getInteractionUnix(post: ProcessedPost): number {
+    return post._activityCreatedAtUnix || post.updatedAtUnix || post.createdAtUnix || 0;
   }
 
   private getViewedBlogFromPath(): string {
@@ -137,7 +142,7 @@ export class TimelineStream extends LitElement {
     return (name || '').trim().toLowerCase();
   }
 
-  private shouldSuppressSelfSameDayLike(post: ProcessedPost, kind: ActivityKind, dateKey: string): boolean {
+  private shouldSuppressSelfSameDayLike(post: ProcessedPost, kind: ActivityKind): boolean {
     if (kind !== 'like' || this.showActorInCluster) return false;
     if (post.variant === 2 || (post.originPostId && post.originPostId !== post.id)) return false;
 
@@ -147,8 +152,9 @@ export class TimelineStream extends LitElement {
     const ownerBlog = this.normalizeBlogName(post.blogName);
     if (!ownerBlog || ownerBlog !== viewedBlog) return false;
 
-    // We only have one timestamp on interaction cards; use date-key matching as same-day heuristic.
-    return this.getDateKey(post) === dateKey;
+    const postDateKey = post.createdAtUnix ? format(new Date(post.createdAtUnix * 1000), 'yyyy-MM-dd') : '';
+    const interactionDateKey = this.getDateKey(post);
+    return Boolean(postDateKey) && postDateKey === interactionDateKey;
   }
 
   private getRenderableItems(): RenderableItem[] {
@@ -167,7 +173,13 @@ export class TimelineStream extends LitElement {
         if (kind === 'reblog') {
           for (const raw of (item.cluster.interactions || [])) {
             const post = raw as ProcessedPost;
-            renderable.push({ type: 'post', post });
+            renderable.push({
+              type: 'post',
+              post: {
+                ...post,
+                _activityCreatedAtUnix: this.getInteractionUnix(post),
+              },
+            });
           }
           continue;
         }
@@ -184,7 +196,7 @@ export class TimelineStream extends LitElement {
         for (const raw of (item.cluster.interactions || [])) {
           const post = raw as ProcessedPost;
           const dateKey = this.getDateKey(post);
-          if (this.shouldSuppressSelfSameDayLike(post, kind, dateKey)) {
+          if (this.shouldSuppressSelfSameDayLike(post, kind)) {
             continue;
           }
           const actor = this.showActorInCluster ? (post.blogName || '') : '';
@@ -204,8 +216,9 @@ export class TimelineStream extends LitElement {
             buckets.set(key, bucket);
             renderable.push({ type: 'activity-bucket', bucket });
           }
-          if (post.createdAtUnix && post.createdAtUnix > bucket.latestInteractionUnix) {
-            bucket.latestInteractionUnix = post.createdAtUnix;
+          const interactionUnix = this.getInteractionUnix(post);
+          if (interactionUnix > bucket.latestInteractionUnix) {
+            bucket.latestInteractionUnix = interactionUnix;
           }
           if (kind === 'like') bucket.likeCount += 1;
           if (kind === 'comment') bucket.commentCount += 1;
@@ -232,7 +245,7 @@ export class TimelineStream extends LitElement {
 
   private getRenderableTimestamp(item: RenderableItem): number {
     if (item.type === 'post') {
-      return item.post.createdAtUnix || 0;
+      return item.post._activityCreatedAtUnix || item.post.createdAtUnix || 0;
     }
     if (item.type === 'activity-bucket') {
       return item.bucket.latestInteractionUnix || 0;

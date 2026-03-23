@@ -60,7 +60,8 @@ describe('hybrid activity stream', () => {
   it('groups like/comment interactions into local-date activity cards', () => {
     const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
 
-    expect(streamSrc).toContain("format(new Date(post.createdAtUnix * 1000), 'yyyy-MM-dd')");
+    expect(streamSrc).toContain('getInteractionUnix(post)');
+    expect(streamSrc).toContain('post.updatedAtUnix');
     expect(streamSrc).toContain('Activity on ${bucket.dateKey} : ❤️ ${bucket.likeCount} . 💬 ${bucket.commentCount}');
     expect(streamSrc).toContain("if (kind !== 'like' && kind !== 'comment')");
   });
@@ -85,13 +86,15 @@ describe('hybrid activity stream', () => {
     const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
 
     expect(streamSrc).toContain("if (kind === 'reblog')");
-    expect(streamSrc).toContain("renderable.push({ type: 'post', post });");
+    expect(streamSrc).toContain('_activityCreatedAtUnix');
+    expect(streamSrc).toContain("type: 'post'");
   });
 
   it('sorts mixed reblog cards and interaction buckets by newest timestamp', () => {
     const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
 
     expect(streamSrc).toContain('latestInteractionUnix');
+    expect(streamSrc).toContain('item.post._activityCreatedAtUnix || item.post.createdAtUnix || 0');
     expect(streamSrc).toContain('renderable.sort((a, b) => this.getRenderableTimestamp(b) - this.getRenderableTimestamp(a));');
   });
 

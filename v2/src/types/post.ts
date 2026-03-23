@@ -55,6 +55,7 @@ export function extractMedia(post: Post): MediaInfo {
 export interface ProcessedPost extends Post {
   _media: MediaInfo;
   _reblog_variants?: { id: number; blogName?: string }[];
+  _activityCreatedAtUnix?: number;
 }
 
 export type PresentationActionKind = 'permalink';
