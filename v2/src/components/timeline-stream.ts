@@ -127,6 +127,30 @@ export class TimelineStream extends LitElement {
     return format(new Date(post.createdAtUnix * 1000), 'yyyy-MM-dd');
   }
 
+  private getViewedBlogFromPath(): string {
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    if (parts.length === 0) return '';
+    return parts[0].toLowerCase();
+  }
+
+  private normalizeBlogName(name: string | undefined): string {
+    return (name || '').trim().toLowerCase();
+  }
+
+  private shouldSuppressSelfSameDayLike(post: ProcessedPost, kind: ActivityKind, dateKey: string): boolean {
+    if (kind !== 'like' || this.showActorInCluster) return false;
+    if (post.variant === 2 || (post.originPostId && post.originPostId !== post.id)) return false;
+
+    const viewedBlog = this.getViewedBlogFromPath();
+    if (!viewedBlog) return false;
+
+    const ownerBlog = this.normalizeBlogName(post.blogName);
+    if (!ownerBlog || ownerBlog !== viewedBlog) return false;
+
+    // We only have one timestamp on interaction cards; use date-key matching as same-day heuristic.
+    return this.getDateKey(post) === dateKey;
+  }
+
   private getRenderableItems(): RenderableItem[] {
     const renderable: RenderableItem[] = [];
     const buckets = new Map<string, DateActivityBucket>();
@@ -160,6 +184,9 @@ export class TimelineStream extends LitElement {
         for (const raw of (item.cluster.interactions || [])) {
           const post = raw as ProcessedPost;
           const dateKey = this.getDateKey(post);
+          if (this.shouldSuppressSelfSameDayLike(post, kind, dateKey)) {
+            continue;
+          }
           const actor = this.showActorInCluster ? (post.blogName || '') : '';
           const key = actor ? `${dateKey}::${actor}` : dateKey;
           let bucket = buckets.get(key);

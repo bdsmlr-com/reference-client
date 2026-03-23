@@ -45,12 +45,11 @@ describe('activity route alias', () => {
     expect(postsSrc).toContain("if (hasInteractionKinds && this.sortValue !== 'newest')");
     expect(postsSrc).toContain("this.sortValue = 'newest';");
     expect(postsSrc).toContain('sort_field: sortOption.field');
-    expect(postsSrc).toContain(".showSort=${!(this.activityKinds.includes('like') || this.activityKinds.includes('comment'))}");
+    expect(postsSrc).toContain('<activity-kind-pills');
+    expect(postsSrc).not.toContain('<filter-bar');
     expect(postsSrc).toContain('activity_kinds: this.activityKinds');
     expect(postsSrc).toContain('TYPE_ENUM_TO_NAME');
     expect(postsSrc).not.toContain('VARIANT_ENUM_TO_NAME');
-    expect(postsSrc).toContain('.showVariants=${false}');
-    expect(postsSrc).not.toContain('@variant-change=${this.handleVariantChange}');
     expect(postsSrc).toContain('if (!isBlogInPath())');
   });
 

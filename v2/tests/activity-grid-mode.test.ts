@@ -54,11 +54,12 @@ describe('gallery mode wiring', () => {
     expect(searchSrc).toContain("getGalleryMode()")
   });
 
-  it('activity cards show blog chip for like/comment interactions', () => {
+  it('activity cards use origin-aware blog chip logic for like/comment/reblog interactions', () => {
     const src = readFileSync(join(ROOT, 'components/activity-grid.ts'), 'utf8');
 
-    expect(src).toContain("const showBlogChip = (this.interactionType === 'like' || this.interactionType === 'comment') && !!p.blogName;");
-    expect(src).toContain("@${p.blogName}");
+    expect(src).toContain('const chipBlogName =');
+    expect(src).toContain('p.originBlogName');
+    expect(src).toContain("this.interactionType === 'reblog'");
     expect(src).not.toContain('reblog-variant-badge');
   });
 });

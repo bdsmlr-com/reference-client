@@ -233,11 +233,14 @@ export class ViewPosts extends LitElement {
       this.sortValue = 'newest';
     }
     setBlogActivityKindsPreference(this.activityKinds);
-    setUrlParams({
+    const params: Record<string, string> = {
       sort: this.sortValue,
       activity: this.activityKinds.join(',') === DEFAULT_ACTIVITY_KINDS.join(',') ? '' : this.activityKinds.join(','),
-      blog: this.blog,
-    });
+    };
+    if (!isBlogInPath()) {
+      params.blog = this.blog;
+    }
+    setUrlParams(params);
     this.loadPosts();
   }
 

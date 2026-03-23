@@ -153,7 +153,12 @@ export class ActivityItem extends LitElement {
     const isDeleted = Boolean(p.deletedAtUnix);
     const isOriginDeleted = Boolean(p.originDeletedAtUnix);
     const renderType = this.mode === 'masonry' ? 'gallery-masonry' : 'gallery-grid';
-    const showBlogChip = this.showBlogChip && (this.interactionType === 'like' || this.interactionType === 'comment') && !!p.blogName;
+    const chipBlogName = this.interactionType === 'reblog'
+      ? (p.originBlogName || p.blogName || '')
+      : (p.variant === 2 ? (p.originBlogName || p.blogName || '') : (p.blogName || ''));
+    const showBlogChip = this.showBlogChip
+      && (this.interactionType === 'like' || this.interactionType === 'comment' || this.interactionType === 'reblog')
+      && !!chipBlogName;
 
     return html`
       <article class="card" @click=${this.handleClick}>
@@ -173,7 +178,7 @@ export class ActivityItem extends LitElement {
         <div class="card-info">
           <div class="meta-line">
             <span>${typeIcon}</span>
-            ${showBlogChip ? html`<span class="blog-chip">@${p.blogName}</span>` : html`<span>${formatDate(p.createdAtUnix, 'date')}</span>`}
+            ${showBlogChip ? html`<span class="blog-chip">@${chipBlogName}</span>` : html`<span>${formatDate(p.createdAtUnix, 'date')}</span>`}
           </div>
           <div class="stats-line">
             ${p.likesCount ? html`<div class="stat-item">❤️ ${p.likesCount}</div>` : ''}

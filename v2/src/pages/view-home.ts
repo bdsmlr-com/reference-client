@@ -2,6 +2,7 @@ import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { setStoredBlogName, getStoredBlogName, buildPageUrl, buildBlogPageUrl, isReservedPageRoute } from '../services/blog-resolver.js';
+import { getCurrentUsername, setCurrentUsername } from '../services/profile.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import '../components/shared-nav.js';
 import '../components/offline-banner.js';
@@ -276,16 +277,24 @@ export class ViewHome extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
-    // Priority: URL param (override) > localStorage > default
+    // Priority: URL param (override) > logged-in profile username > localStorage
     const params = new URLSearchParams(window.location.search);
     const urlBlog = params.get('blog');
+    const profileUsername = getCurrentUsername();
 
     if (urlBlog && !isReservedPageRoute(urlBlog)) {
       this.blogName = urlBlog;
       setStoredBlogName(urlBlog);
+      setCurrentUsername(urlBlog);
     } else {
       const storedBlog = getStoredBlogName();
-      this.blogName = (storedBlog && !isReservedPageRoute(storedBlog)) ? storedBlog : 'nonnudecuties';
+      if (profileUsername && !isReservedPageRoute(profileUsername)) {
+        this.blogName = profileUsername;
+      } else if (storedBlog && !isReservedPageRoute(storedBlog)) {
+        this.blogName = storedBlog;
+      } else {
+        this.blogName = '';
+      }
     }
   }
 
@@ -311,6 +320,7 @@ export class ViewHome extends LitElement {
     if (this.blogName.trim()) {
       const blogName = this.blogName.trim();
       setStoredBlogName(blogName);
+      setCurrentUsername(blogName);
       // Use router navigation in SPA. For now, window.location is fine if buildBlogPageUrl returns correct SPA path.
       window.location.href = buildBlogPageUrl(blogName, 'feed');
     }

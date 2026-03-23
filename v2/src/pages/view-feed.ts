@@ -16,6 +16,7 @@ import {
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
+import { resolveLink } from '../services/link-resolver.js';
 import '../components/activity-kind-pills.js';
 import '../components/timeline-stream.js';
 import '../components/load-footer.js';
@@ -106,6 +107,26 @@ export class ViewFeed extends LitElement {
       .blog-info .name {
         color: var(--accent);
         font-weight: 600;
+      }
+
+      .blog-info a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .blog-info a:hover {
+        text-decoration: underline;
+      }
+
+      .name-copy {
+        font-family: monospace;
+        font-size: 12px;
+        border: 1px solid var(--border);
+        background: var(--bg-panel-alt);
+        color: var(--text-muted);
+        border-radius: 6px;
+        padding: 2px 8px;
+        margin-left: 6px;
       }
 
       .filters-container {
@@ -238,6 +259,10 @@ export class ViewFeed extends LitElement {
 
     this.resolving = true;
     this.statusMessage = `Resolving @${name}...`;
+    this.followingBlogIds = [];
+    this.followingCount = 0;
+    this.timelineItems = [];
+    this.resetState();
 
     try {
       this.blogData = await initBlogTheme(name);
@@ -271,6 +296,8 @@ export class ViewFeed extends LitElement {
       this.followingCount = followGraph.followingCount || this.followingBlogIds.length;
 
       if (this.followingBlogIds.length === 0) {
+        this.timelineItems = [];
+        this.resetState();
         if (following.length === 0 && this.followingCount === 0) {
           if (this.emptyFollowingAttempts === 0) {
             this.statusMessage = '';
@@ -551,6 +578,15 @@ export class ViewFeed extends LitElement {
     }
   }
 
+  private async copyResolvedBlogName(): Promise<void> {
+    if (!this.resolvedBlogName) return;
+    try {
+      await navigator.clipboard.writeText(this.resolvedBlogName);
+    } catch {
+      // Ignore clipboard failures.
+    }
+  }
+
   private handleActivityKindsChange(e: CustomEvent): void {
     this.activityKinds = e.detail.kinds || ['post', 'reblog', 'like', 'comment'];
     setFollowingActivityKindsPreference(this.activityKinds);
@@ -562,6 +598,11 @@ export class ViewFeed extends LitElement {
   render() {
     return html`
       <div class="content">
+        ${(() => {
+          const followingLink = this.resolvedBlogName
+            ? resolveLink('feed_following_list', { blog: this.resolvedBlogName })
+            : null;
+          return html`
         <div class="blog-input-section">
           <h2>View posts from blogs followed by:</h2>
           <div class="input-row">
@@ -581,12 +622,18 @@ export class ViewFeed extends LitElement {
             ? html`
                 <div class="blog-info">
                   ${this.blogData?.title ? html`<div style="margin-bottom: 4px;">${this.blogData.title}</div>` : ''}
-                  Showing posts from ${this.followingCount} blogs followed by
-                  <span class="name">@${this.resolvedBlogName}</span>
+                  Showing posts from
+                  ${followingLink
+                    ? html`<a href=${followingLink.href} target=${followingLink.target} rel=${followingLink.rel || ''}>${this.followingCount} blogs followed</a>`
+                    : html`${this.followingCount} blogs followed`}
+                  by
+                  <button class="name-copy" type="button" @click=${this.copyResolvedBlogName}>${this.resolvedBlogName}</button>
                 </div>
               `
             : ''}
         </div>
+      `;
+        })()}
 
         ${this.resolving && !this.errorMessage
           ? html`<loading-spinner message="Loading..." trackTime></loading-spinner>`

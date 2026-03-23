@@ -4,6 +4,7 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { baseStyles } from '../styles/theme.js';
 import type { ProcessedPost } from '../types/post.js';
 import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
+import { resolveLink } from '../services/link-resolver.js';
 import './post-engagement.js';
 import './post-recommendations.js';
 
@@ -17,6 +18,26 @@ export class PostDetailContent extends LitElement {
         margin-bottom: 32px;
         border-bottom: 1px solid var(--border-subtle);
         padding-bottom: 24px;
+      }
+
+      .post-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+      }
+
+      .tag-chip {
+        font-size: 12px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 3px 9px;
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .tag-chip:hover {
+        border-color: var(--accent);
       }
     `,
   ];
@@ -33,6 +54,15 @@ export class PostDetailContent extends LitElement {
       <div class="body-text">
         ${unsafeHTML(sanitizeHtmlFragment(p.content?.html || p.body || ''))}
       </div>
+
+      ${p.tags && p.tags.length > 0 ? html`
+        <div class="post-tags">
+          ${p.tags.map((tag) => {
+            const link = resolveLink('search_tag', { tag });
+            return html`<a class="tag-chip" href=${link.href} target=${link.target} rel=${link.rel || ''}>#${tag}</a>`;
+          })}
+        </div>
+      ` : nothing}
 
       <post-engagement .post=${p} ?standalone=${this.engagementStandalone}></post-engagement>
 

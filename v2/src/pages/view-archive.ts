@@ -390,6 +390,14 @@ ${this.timelineItems.length > 0
                 post: entry.post as ProcessedPost, 
                 type: (entry.post.originPostId && entry.post.originPostId !== entry.post.id) ? 'reblog' : 'post' 
               }];
+            } else if (entry.type === 2 && entry.cluster) {
+              return (entry.cluster.interactions || []).map((post: any) => {
+                const p = post as ProcessedPost;
+                return {
+                  post: p,
+                  type: (p.originPostId && p.originPostId !== p.id) || p.variant === 2 ? 'reblog' : 'post',
+                };
+              });
             }
 
             return [];
