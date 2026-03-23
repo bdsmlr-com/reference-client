@@ -25,5 +25,11 @@ describe('cruft cleanup guardrails', () => {
     expect(apiSrc).not.toContain('async listFollowing(');
     expect(apiSrc).not.toContain('export async function listBlogFollowers(');
     expect(apiSrc).not.toContain('export async function listBlogFollowing(');
+    expect(apiSrc).not.toContain('TECH-010f: Remove legacy function exports');
+  });
+
+  it('timeline stream does not keep unreachable legacy-cluster rendering path', () => {
+    const streamSrc = readFileSync(join(ROOT, 'src/components/timeline-stream.ts'), 'utf8');
+    expect(streamSrc).not.toContain('legacy-cluster');
   });
 });

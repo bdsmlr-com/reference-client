@@ -28,7 +28,6 @@ type DateActivityBucket = {
 
 type RenderableItem =
   | { type: 'post'; post: ProcessedPost }
-  | { type: 'legacy-cluster'; label: string; kind: ActivityKind; interactions: ProcessedPost[] }
   | { type: 'activity-bucket'; bucket: DateActivityBucket };
 
 @customElement('timeline-stream')
@@ -116,13 +115,6 @@ export class TimelineStream extends LitElement {
     });
   }
 
-  private renderClusterLabel(item: TimelineItem, kind: ActivityKind): string {
-    const base = item.cluster?.label || (kind === 'comment' ? 'Comments' : 'Likes');
-    if (!this.showActorInCluster) return base;
-    const actor = (item.cluster?.interactions?.[0] as ProcessedPost | undefined)?.blogName || '';
-    return actor ? `${base} by @${actor}` : base;
-  }
-
   private getDateKey(post: ProcessedPost): string {
     const ts = this.getInteractionUnix(post);
     if (!ts) return 'unknown-date';
@@ -184,15 +176,7 @@ export class TimelineStream extends LitElement {
           }
           continue;
         }
-        if (kind !== 'like' && kind !== 'comment') {
-          renderable.push({
-            type: 'legacy-cluster',
-            label: this.renderClusterLabel(item, kind),
-            kind,
-            interactions: (item.cluster.interactions || []) as ProcessedPost[],
-          });
-          continue;
-        }
+        if (kind !== 'like' && kind !== 'comment') continue;
 
         for (const raw of (item.cluster.interactions || [])) {
           const post = raw as ProcessedPost;
@@ -251,8 +235,7 @@ export class TimelineStream extends LitElement {
     if (item.type === 'activity-bucket') {
       return item.bucket.latestInteractionUnix || 0;
     }
-    const first = item.interactions[0];
-    return first?.createdAtUnix || 0;
+    return 0;
   }
 
   private getVisibleCount(key: string, total: number): number {
@@ -304,19 +287,6 @@ export class TimelineStream extends LitElement {
                 @post-click=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}
                 @click=${() => this.handlePostClick(item.post)}
               ></post-feed-item>
-            `;
-          }
-          if (item.type === 'legacy-cluster') {
-            return html`
-              <div class="interaction-cluster">
-                <div class="cluster-label">${item.label}</div>
-                <activity-grid
-                  compact
-                  .items=${item.interactions.map((p) => ({ post: p, type: item.kind }))}
-                  .showBlogChip=${!this.showActorInCluster}
-                  @activity-click=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}
-                ></activity-grid>
-              </div>
             `;
           }
           return this.renderActivityBucket(item.bucket);

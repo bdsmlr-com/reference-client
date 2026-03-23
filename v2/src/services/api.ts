@@ -2286,7 +2286,7 @@ function partialToUnifiedResult<T>(result: PartialResponseResult<T>): UnifiedCac
 // - TECH-010c: Unify caching strategy with configurable options ✅ Done
 // - TECH-010d: Update page scripts to use ApiClient instance
 // - TECH-010e: Update components to use shared client
-// - TECH-010f: Remove legacy function exports
+// - TECH-010f: Remove legacy compatibility paths
 // - TECH-010g: Add JSDoc documentation
 
 // ============================================
@@ -2720,7 +2720,7 @@ export class BlogsApi {
  * Follow Graph API namespace.
  *
  * Provides methods for retrieving follower/following relationships for blogs.
- * This is the recommended API for follower data (replaces legacy BlogsApi.listFollowers/listFollowing).
+ * This is the recommended API for follower data.
  *
  * The follow graph can retrieve:
  * - **Followers** (direction: 2): Blogs that follow the specified blog
