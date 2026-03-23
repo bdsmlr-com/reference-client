@@ -60,6 +60,8 @@ describe('gallery mode wiring', () => {
     expect(src).toContain('const chipBlogName =');
     expect(src).toContain('p.originBlogName');
     expect(src).toContain("this.interactionType === 'reblog'");
+    expect(src).toContain('white-space: nowrap;');
+    expect(src).toContain('text-overflow: ellipsis;');
     expect(src).not.toContain('reblog-variant-badge');
   });
 });

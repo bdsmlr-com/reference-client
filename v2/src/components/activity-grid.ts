@@ -72,6 +72,10 @@ export class ActivityItem extends LitElement {
         border-radius: 999px;
         padding: 1px 6px;
         font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
       }
 
       .stats-line {
