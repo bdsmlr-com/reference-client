@@ -256,7 +256,13 @@ export class TimelineStream extends LitElement {
       <div class="stream">
         ${renderable.map((item) => {
           if (item.type === 'post') {
-            return html`<post-feed-item .post=${item.post} @post-click=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}></post-feed-item>`;
+            return html`
+              <post-feed-item
+                .post=${item.post}
+                @post-click=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}
+                @click=${() => this.handlePostClick(item.post)}
+              ></post-feed-item>
+            `;
           }
           if (item.type === 'legacy-cluster') {
             return html`

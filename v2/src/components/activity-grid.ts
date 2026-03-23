@@ -128,6 +128,7 @@ export class ActivityItem extends LitElement {
   @property({ type: Object }) post!: ProcessedPost;
   @property({ type: String }) interactionType: 'post' | 'reblog' | 'like' | 'comment' = 'post';
   @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
+  @property({ type: Boolean }) showBlogChip = true;
 
   private handleClick() {
     this.dispatchEvent(new CustomEvent('activity-click', {
@@ -152,7 +153,7 @@ export class ActivityItem extends LitElement {
     const isDeleted = Boolean(p.deletedAtUnix);
     const isOriginDeleted = Boolean(p.originDeletedAtUnix);
     const renderType = this.mode === 'masonry' ? 'gallery-masonry' : 'gallery-grid';
-    const showBlogChip = (this.interactionType === 'like' || this.interactionType === 'comment') && !!p.blogName;
+    const showBlogChip = this.showBlogChip && (this.interactionType === 'like' || this.interactionType === 'comment') && !!p.blogName;
 
     return html`
       <article class="card" @click=${this.handleClick}>
@@ -260,6 +261,7 @@ export class ActivityGrid extends LitElement {
   @property({ type: Array }) items: { post: ProcessedPost; type: any }[] = [];
   @property({ type: Boolean, reflect: true }) compact = false;
   @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
+  @property({ type: Boolean }) showBlogChip = true;
 
   private getMasonryColumnCount(): number {
     if (typeof window === 'undefined') {
@@ -287,7 +289,7 @@ export class ActivityGrid extends LitElement {
           ${columns.map((column) => html`
             <div class="masonry-column">
               ${column.map((item) => html`
-                <activity-item .post=${item.post} .interactionType=${item.type} mode="masonry"></activity-item>
+                <activity-item .post=${item.post} .interactionType=${item.type} .showBlogChip=${this.showBlogChip} mode="masonry"></activity-item>
               `)}
             </div>
           `)}
@@ -298,7 +300,7 @@ export class ActivityGrid extends LitElement {
     return html`
       <section class="grid" aria-label="Activity grid">
         ${this.items.map((item) => html`
-          <activity-item .post=${item.post} .interactionType=${item.type} mode="grid"></activity-item>
+          <activity-item .post=${item.post} .interactionType=${item.type} .showBlogChip=${this.showBlogChip} mode="grid"></activity-item>
         `)}
       </section>
     `;

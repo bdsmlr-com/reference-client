@@ -34,6 +34,28 @@ export class PostRecommendations extends LitElement {
         cursor: pointer;
         border: 1px solid var(--border);
         transition: transform 0.2s, border-color 0.2s;
+        display: flex;
+        flex-direction: column;
+      }
+      .rec-media {
+        flex: 1;
+        min-height: 0;
+      }
+      .rec-meta {
+        font-size: 11px;
+        color: var(--text-muted);
+        background: var(--bg-panel);
+        border-top: 1px solid var(--border);
+        padding: 6px 8px;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .rec-blog {
+        color: var(--accent);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .gutter-item:hover {
         transform: scale(1.02);
@@ -239,7 +261,13 @@ export class PostRecommendations extends LitElement {
           const raw = h._media?.url || h._media?.videoUrl || h.content?.thumbnail;
           return html`
             <div class="gutter-item" @click=${() => this.navigateToRelated(r)}>
-              <media-renderer .src=${raw} .type=${'gutter'}></media-renderer>
+              <div class="rec-media">
+                <media-renderer .src=${raw} .type=${'gutter'}></media-renderer>
+              </div>
+              <div class="rec-meta">
+                <span class="rec-blog">@${h.blogName || 'unknown'}</span>
+                <span>${h.id}</span>
+              </div>
             </div>
           `;
         })}

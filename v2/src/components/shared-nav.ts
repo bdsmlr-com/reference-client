@@ -396,7 +396,8 @@ export class SharedNav extends LitElement {
 
   private getPageUrl(page: string): string {
     const primaryBlog = getPrimaryBlogName();
-    const blogName = primaryBlog;
+    const viewedBlog = getViewedBlogName();
+    const blogName = primaryBlog || viewedBlog;
     const blogPages = ['archive', 'posts', 'feed', 'social'];
     if (page === 'posts') {
       if (blogName) return resolveLink('nav_activity', { blog: blogName }).href;
@@ -407,6 +408,16 @@ export class SharedNav extends LitElement {
       return buildPageUrl(page, primaryBlog);
     }
     return buildPageUrl(page);
+  }
+
+  private handleNavLinkClick(e: Event, href: string): void {
+    const current = `${window.location.pathname}${window.location.search}`;
+    const target = new URL(href, window.location.origin);
+    const targetPath = `${target.pathname}${target.search}`;
+    if (current === targetPath) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }
 
   private getLogoUrl(): string {
@@ -584,16 +595,20 @@ export class SharedNav extends LitElement {
         <a href=${this.getLogoUrl()} class="logo" title="Go to feed" aria-label="BDSMLR feed">BDSMLR</a>
         <nav aria-label="Main navigation">
           ${pages.map(
-            (page) => html`
+            (page) => {
+              const href = this.getPageUrl(page.name);
+              return html`
               <a
-                href=${this.getPageUrl(page.name)}
+                href=${href}
                 class="nav-link ${activePage === page.name ? 'active' : ''}"
                 title=${page.description}
                 aria-current=${activePage === page.name ? 'page' : 'false'}
+                @click=${(e: Event) => this.handleNavLinkClick(e, href)}
               >
                 ${page.label}
               </a>
-            `
+            `;
+            }
           )}
         </nav>
         ${showViewingIndicator

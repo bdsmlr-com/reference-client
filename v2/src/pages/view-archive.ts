@@ -383,6 +383,7 @@ ${this.timelineItems.length > 0
       <div class="grid-container">
         <activity-grid 
           .mode=${this.galleryMode}
+          .showBlogChip=${false}
           .items=${this.timelineItems.flatMap(entry => {
             if (entry.type === 1 && entry.post) {
               return [{ 

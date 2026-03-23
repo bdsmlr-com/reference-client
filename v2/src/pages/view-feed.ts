@@ -16,7 +16,6 @@ import {
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
-import '../components/filter-bar.js';
 import '../components/activity-kind-pills.js';
 import '../components/timeline-stream.js';
 import '../components/load-footer.js';
@@ -528,20 +527,6 @@ export class ViewFeed extends LitElement {
     await this.fillPage();
   }
 
-  private handleTypesChange(e: CustomEvent): void {
-    this.selectedTypes = e.detail.types;
-    if (this.followingBlogIds.length > 0) {
-      this.loadPosts();
-    }
-  }
-
-  private handleVariantChange(e: CustomEvent): void {
-    this.selectedVariants = e.detail.variants || [];
-    if (this.followingBlogIds.length > 0) {
-      this.loadPosts();
-    }
-  }
-
   private handlePostClick(e: CustomEvent): void {
     const post = e.detail.post as ProcessedPost;
     this.dispatchEvent(new CustomEvent('post-click', {
@@ -602,19 +587,6 @@ export class ViewFeed extends LitElement {
               `
             : ''}
         </div>
-
-        ${this.followingBlogIds.length > 0
-          ? html`
-              <filter-bar
-                .selectedTypes=${this.selectedTypes}
-                .selectedVariants=${this.selectedVariants}
-                .showVariants=${true}
-                .loading=${this.loading}
-                @types-change=${this.handleTypesChange}
-                @variant-change=${this.handleVariantChange}
-              ></filter-bar>
-            `
-          : ''}
 
         ${this.resolving && !this.errorMessage
           ? html`<loading-spinner message="Loading..." trackTime></loading-spinner>`
