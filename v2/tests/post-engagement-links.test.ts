@@ -34,4 +34,13 @@ describe('post engagement links', () => {
     expect(src).not.toContain('href="/${p.originBlogName}/posts"');
     expect(src).not.toContain('href="/${p.blogName}/posts"');
   });
+
+  it('links both origin and via post ids in reblog lightbox details', () => {
+    const src = readFileSync(FILE, 'utf8');
+
+    expect(src).toContain("const originPostLink = resolveLink('post_permalink', { postId: p.originPostId as number });");
+    expect(src).toContain("const viaPostLink = resolveLink('post_permalink', { postId: p.id });");
+    expect(src).toContain('via ♻️ ${this.renderBlogIdentity(p.blogName)} /');
+    expect(src).toContain('href=${viaPostLink.href}');
+  });
 });

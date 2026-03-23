@@ -233,6 +233,7 @@ export class ViewArchive extends LitElement {
         order: sortOpt.order as Order,
         post_types: this.selectedTypes,
         variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
+        activity_kinds: ['post', 'reblog'],
         page: {
           page_size: 48,
           page_token: this.backendCursor || undefined,

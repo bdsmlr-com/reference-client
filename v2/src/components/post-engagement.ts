@@ -120,10 +120,12 @@ export class PostEngagement extends LitElement {
 
     if (isReblog) {
       const originPostLink = resolveLink('post_permalink', { postId: p.originPostId as number });
+      const viaPostLink = resolveLink('post_permalink', { postId: p.id });
       return html`
         ${typeIcon} ${this.renderBlogIdentity(p.originBlogName, 'post_origin_blog')} /
         <a class="post-id-link" href=${originPostLink.href} target=${originPostLink.target} rel=${originPostLink.rel || nothing}>${p.originPostId}<span class="post-id-outlink">↗</span></a>
-        via ♻️ ${this.renderBlogIdentity(p.blogName)} / ${p.id}
+        via ♻️ ${this.renderBlogIdentity(p.blogName)} /
+        <a class="post-id-link" href=${viaPostLink.href} target=${viaPostLink.target} rel=${viaPostLink.rel || nothing}>${p.id}<span class="post-id-outlink">↗</span></a>
       `;
     }
     return html`${typeIcon} ${this.renderBlogIdentity(p.blogName)} / ${p.id}`;

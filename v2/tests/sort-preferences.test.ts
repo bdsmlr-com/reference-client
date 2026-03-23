@@ -24,6 +24,7 @@ describe('sort preference persistence', () => {
     expect(searchSrc).toContain('const resolvedSort = normalizeSortValue(sort || getSearchSortPreference());');
     expect(archiveSrc).toContain('setArchiveSortPreference(this.sortValue);');
     expect(searchSrc).toContain('setSearchSortPreference(this.sortValue);');
+    expect(archiveSrc).toContain("activity_kinds: ['post', 'reblog']");
   });
 
   it('settings menu exposes archive and search default sort controls', () => {
