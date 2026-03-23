@@ -26,6 +26,31 @@ describe('render contract strict fail', () => {
     expect(result.errors.length).toBeGreaterThan(0);
   });
 
+  it('fails when card is missing required render regions', () => {
+    const result = validateRenderContract({
+      pages: {
+        archive: {
+          slots: {
+            main_stream: {
+              cards: ['post_grid'],
+            },
+          },
+        },
+      },
+      cards: {
+        post_grid: {
+          layout: 'grid',
+          elements: [],
+        },
+      },
+      elements: {},
+      interactions: {},
+    } as any);
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((e) => e.includes('missing regions'))).toBe(true);
+  });
+
   it('app-root contains strict contract error render path', () => {
     const src = readFileSync(join(process.cwd(), 'src/app-root.ts'), 'utf8');
     expect(src).toContain('contract-error-screen');

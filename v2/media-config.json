@@ -103,6 +103,13 @@
           }
         }
       },
+      "post": {
+        "slots": {
+          "main_stream": {
+            "cards": ["post_detail_card"]
+          }
+        }
+      },
       "social": {
         "slots": {
           "main_stream": {
@@ -117,6 +124,14 @@
       "post_grid": {
         "layout": "grid",
         "elements": [],
+        "regions": {
+          "media": ["media_primary"],
+          "meta": ["meta_minimal", "badge_tag_count"]
+        },
+        "mode_overrides": {
+          "regular": { "region_order": ["media", "meta"] },
+          "admin": { "region_order": ["header", "badges", "media", "meta", "actions"] }
+        },
         "skeleton": {
           "variant": "post-card",
           "structure": ["header_ghost", "media_ghost", "stats_ghost"],
@@ -127,6 +142,16 @@
       "post_feed": {
         "layout": "full",
         "elements": [],
+        "regions": {
+          "header": ["context_row"],
+          "media": ["media_primary"],
+          "meta": ["meta_compact", "badge_tag_count"],
+          "actions": ["action_permalink"]
+        },
+        "mode_overrides": {
+          "regular": { "region_order": ["media", "meta", "actions"] },
+          "admin": { "region_order": ["header", "badges", "media", "meta", "actions"] }
+        },
         "skeleton": {
           "variant": "post-feed",
           "structure": ["media_ghost", "stats_ghost"],
@@ -136,11 +161,29 @@
       },
       "lightbox_post": {
         "layout": "lightbox",
-        "elements": []
+        "elements": [],
+        "regions": {
+          "header": ["context_row"],
+          "media": ["media_primary"],
+          "meta": ["meta_rich", "tags_expanded"],
+          "badges": ["badge_system_deleted", "badge_system_tombstone"],
+          "actions": ["action_permalink", "action_context_reblogger", "action_context_origin"]
+        },
+        "mode_overrides": {
+          "regular": { "region_order": ["media", "meta", "actions"] },
+          "admin": { "region_order": ["header", "badges", "media", "meta", "actions"] }
+        }
       },
       "social_blog_list": {
         "layout": "list",
         "elements": ["social_blog"],
+        "regions": {
+          "meta": ["social_identity"]
+        },
+        "mode_overrides": {
+          "regular": { "region_order": ["meta"] },
+          "admin": { "region_order": ["meta"] }
+        },
         "skeleton": {
           "variant": "blog-list",
           "structure": ["row_ghost"],
@@ -150,17 +193,121 @@
       },
       "social_blog": {
         "layout": "list",
-        "elements": []
+        "elements": [],
+        "regions": {
+          "meta": ["social_identity"]
+        },
+        "mode_overrides": {
+          "regular": { "region_order": ["meta"] },
+          "admin": { "region_order": ["meta"] }
+        }
+      },
+      "gallery_card": {
+        "layout": "grid",
+        "elements": [],
+        "regions": {
+          "media": ["media_primary"],
+          "meta": ["meta_minimal", "badge_tag_count"]
+        },
+        "mode_overrides": {
+          "regular": { "region_order": ["media", "meta"] },
+          "admin": { "region_order": ["header", "badges", "media", "meta"] }
+        }
+      },
+      "timeline_full_card": {
+        "layout": "full",
+        "elements": [],
+        "regions": {
+          "header": ["context_row"],
+          "media": ["media_primary"],
+          "meta": ["meta_compact"],
+          "actions": ["action_permalink"]
+        },
+        "mode_overrides": {
+          "regular": { "region_order": ["media", "meta", "actions"] },
+          "admin": { "region_order": ["header", "badges", "media", "meta", "actions"] }
+        }
+      },
+      "activity_matrix_card": {
+        "layout": "cluster",
+        "elements": [],
+        "regions": {
+          "header": ["activity_cluster_header"],
+          "media": ["activity_cluster_tiles"],
+          "actions": ["activity_cluster_load_more"]
+        },
+        "mode_overrides": {
+          "regular": { "region_order": ["header", "media", "actions"] },
+          "admin": { "region_order": ["header", "badges", "media", "actions"] }
+        }
+      },
+      "lightbox_card": {
+        "layout": "lightbox",
+        "elements": [],
+        "regions": {
+          "header": ["context_row"],
+          "media": ["media_primary"],
+          "meta": ["meta_rich", "tags_expanded"],
+          "actions": ["action_permalink"]
+        },
+        "mode_overrides": {
+          "regular": { "region_order": ["media", "meta", "actions"] },
+          "admin": { "region_order": ["header", "badges", "media", "meta", "actions"] }
+        }
+      },
+      "post_detail_card": {
+        "layout": "full",
+        "elements": [],
+        "regions": {
+          "header": ["context_row"],
+          "media": ["media_primary"],
+          "meta": ["meta_rich", "tags_expanded"],
+          "actions": ["action_permalink", "action_context_reblogger", "action_context_origin"]
+        },
+        "mode_overrides": {
+          "regular": { "region_order": ["header", "media", "meta", "actions"] },
+          "admin": { "region_order": ["header", "badges", "media", "meta", "actions"] }
+        }
+      },
+      "social_list_card": {
+        "layout": "list",
+        "elements": [],
+        "regions": {
+          "meta": ["social_identity"]
+        },
+        "mode_overrides": {
+          "regular": { "region_order": ["meta"] },
+          "admin": { "region_order": ["meta"] }
+        }
       }
     },
-    "elements": {},
+    "elements": {
+      "media_primary": { "primitive": "media", "visibility_rules": { "modes": ["regular", "admin"] } },
+      "meta_minimal": { "primitive": "group", "visibility_rules": { "modes": ["regular", "admin"] } },
+      "meta_compact": { "primitive": "group", "visibility_rules": { "modes": ["regular", "admin"] } },
+      "meta_rich": { "primitive": "group", "visibility_rules": { "modes": ["regular", "admin"] } },
+      "context_row": { "primitive": "group", "visibility_rules": { "modes": ["regular", "admin"] } },
+      "tags_expanded": { "primitive": "group", "visibility_rules": { "modes": ["regular", "admin"] } },
+      "badge_tag_count": { "primitive": "badge", "visibility_rules": { "modes": ["regular", "admin"] } },
+      "badge_system_deleted": { "primitive": "badge", "visibility_rules": { "requires_admin": true } },
+      "badge_system_tombstone": { "primitive": "badge", "visibility_rules": { "requires_admin": true } },
+      "activity_cluster_header": { "primitive": "group", "visibility_rules": { "modes": ["regular", "admin"] } },
+      "activity_cluster_tiles": { "primitive": "group", "visibility_rules": { "modes": ["regular", "admin"] } },
+      "activity_cluster_load_more": { "primitive": "group", "visibility_rules": { "modes": ["regular", "admin"] } },
+      "action_permalink": { "primitive": "link", "visibility_rules": { "modes": ["regular", "admin"] } },
+      "action_context_reblogger": { "primitive": "link", "visibility_rules": { "modes": ["regular", "admin"] } },
+      "action_context_origin": { "primitive": "link", "visibility_rules": { "modes": ["regular", "admin"] } },
+      "social_identity": { "primitive": "group", "visibility_rules": { "modes": ["regular", "admin"] } }
+    },
     "interactions": {
       "open_lightbox_post": {
-        "type": "open_lightbox"
+        "type": "open_lightbox",
+        "zone": "media"
       },
       "open_recommendation_post": {
         "type": "navigate",
-        "linkContext": "recommendation_post"
+        "linkContext": "recommendation_post",
+        "zone": "action"
       }
     }
   }

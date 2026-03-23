@@ -31,6 +31,9 @@ export function validateRenderContract(contract: RenderContractConfig): RenderCo
           errors.push(`page ${pageId} slot ${slotId} references missing card ${cardId}`);
           continue;
         }
+        if (!card.regions || Object.keys(card.regions).length === 0) {
+          errors.push(`card ${cardId} missing regions`);
+        }
         if (slot.async && !card.skeleton) {
           errors.push(`async slot ${pageId}.${slotId} card ${cardId} missing skeleton`);
         }
@@ -39,6 +42,18 @@ export function validateRenderContract(contract: RenderContractConfig): RenderCo
       if (slot.loading && !contract.cards[slot.loading.cardType]) {
         errors.push(`slot ${pageId}.${slotId} loading card missing: ${slot.loading.cardType}`);
       }
+    }
+  }
+
+  for (const [elementId, element] of Object.entries(contract.elements)) {
+    if (!element.visibility_rules) {
+      errors.push(`element ${elementId} missing visibility_rules`);
+    }
+  }
+
+  for (const [interactionId, interaction] of Object.entries(contract.interactions)) {
+    if (!interaction.zone) {
+      errors.push(`interaction ${interactionId} missing zone`);
     }
   }
 

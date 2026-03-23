@@ -81,11 +81,17 @@ export interface RenderSkeletonConfig {
 export interface RenderCardConfig {
   layout: RenderLayout;
   elements: string[];
+  regions?: Partial<Record<'header' | 'media' | 'meta' | 'badges' | 'actions', string[]>>;
+  mode_overrides?: Record<'regular' | 'admin', { region_order?: Array<'header' | 'media' | 'meta' | 'badges' | 'actions'> }>;
   skeleton?: RenderSkeletonConfig;
 }
 
 export interface RenderElementConfig {
   primitive?: string;
+  visibility_rules?: {
+    modes?: Array<'regular' | 'admin'>;
+    requires_admin?: boolean;
+  };
 }
 
 export interface RenderInteractionConfig {
@@ -94,6 +100,7 @@ export interface RenderInteractionConfig {
   eventName?: string;
   stopPropagation?: boolean;
   preventDefault?: boolean;
+  zone?: 'media' | 'metadata' | 'permalink' | 'tag_chip' | 'card_surface' | 'action';
 }
 
 export interface RenderContractConfig {
