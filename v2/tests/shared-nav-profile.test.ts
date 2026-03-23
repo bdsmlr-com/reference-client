@@ -7,10 +7,12 @@ const NAV_FILE = join(process.cwd(), 'src/components/shared-nav.ts');
 describe('shared-nav profile/settings behavior', () => {
   it('removes top nav Feed link and routes logo to feed context', () => {
     const src = readFileSync(NAV_FILE, 'utf8');
+    const config = readFileSync(join(process.cwd(), 'media-config.json'), 'utf8');
 
     expect(src).not.toContain("{ name: 'feed', label: 'Feed'");
     expect(src).toContain('private getLogoUrl()');
     expect(src).toContain("return resolveLink('nav_logo', { blog: primaryBlog }).href;");
+    expect(config).toContain('"nav_logo": { "mode": "internal", "pattern": "/{blog}/feed" }');
   });
 
   it('contains profile and settings menu with login + logout + gallery mode controls', () => {
@@ -28,5 +30,25 @@ describe('shared-nav profile/settings behavior', () => {
     expect(src).toContain("const profileToggleLabel = loggedIn ? '' : 'Log in';");
     expect(src).toContain('class="profile-avatar"');
     expect(src).toContain('aria-label=${loggedIn ?');
+  });
+
+  it('clears stored primary blog on logout and opens empty login modal input', () => {
+    const src = readFileSync(NAV_FILE, 'utf8');
+
+    expect(src).toContain('clearStoredBlogName();');
+    expect(src).toContain("this.usernameInput = '';");
+  });
+
+  it('normalizes avatar from either camelCase or snake_case API fields', () => {
+    const src = readFileSync(NAV_FILE, 'utf8');
+
+    expect(src).toContain('blog?.avatarUrl ?? blog?.avatar_url ?? null');
+  });
+
+  it('scrolls to top when clicking nav tabs on the same pathname', () => {
+    const src = readFileSync(NAV_FILE, 'utf8');
+
+    expect(src).toContain('if (target.pathname === window.location.pathname)');
+    expect(src).toContain("window.scrollTo({ top: 0, behavior: 'smooth' });");
   });
 });

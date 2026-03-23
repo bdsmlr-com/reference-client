@@ -516,11 +516,6 @@ export class ViewSearch extends LitElement {
                         post: entry.post as ProcessedPost, 
                         type: (entry.post.originPostId && entry.post.originPostId !== entry.post.id) ? 'reblog' : 'post' 
                       }];
-                    } else if (entry.type === 2 && entry.cluster) {
-                      return (entry.cluster.interactions || []).map((post: any) => ({ 
-                        post: post as ProcessedPost, 
-                        type: 'like' 
-                      }));
                     }
                     return [];
                   })} 

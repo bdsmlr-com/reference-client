@@ -191,19 +191,39 @@ export class PostRecommendations extends LitElement {
         .filter((pid): pid is number => !!pid && !this.seenIds.has(pid));
 
       if (postIds.length > 0) {
-        const batchResp = await apiClient.posts.batchGet({ post_ids: postIds });
-        if (fetchSignal?.aborted) return;
+        const hydratedMap = new Map<number, ProcessedPost>();
 
-        const hydratedMap = new Map(batchResp.posts?.map(p => [p.id, p]));
-        
-        recs.forEach(r => { 
-          if (r.post_id) {
-            const p = hydratedMap.get(r.post_id);
-            if (p) {
-              const processed = p as ProcessedPost;
-              processed._media = extractMedia(processed);
-              (r as any)._hydratedPost = processed;
+        try {
+          const batchResp = await apiClient.posts.batchGet({ post_ids: postIds });
+          if (fetchSignal?.aborted) return;
+          (batchResp.posts || []).forEach((p) => {
+            const processed = p as ProcessedPost;
+            processed._media = extractMedia(processed);
+            hydratedMap.set(processed.id, processed);
+          });
+        } catch {
+          const hydratedPosts = await Promise.allSettled(
+            postIds.map(async (postId) => {
+              const resp = await apiClient.posts.get(postId);
+              const post = resp.post as ProcessedPost | undefined;
+              if (!post) return null;
+              post._media = extractMedia(post);
+              return post;
+            })
+          );
+          if (fetchSignal?.aborted) return;
+          hydratedPosts.forEach((result) => {
+            if (result.status === 'fulfilled' && result.value) {
+              hydratedMap.set(result.value.id, result.value);
             }
+          });
+        }
+
+        recs.forEach((r) => {
+          if (!r.post_id) return;
+          const hydrated = hydratedMap.get(r.post_id);
+          if (hydrated) {
+            (r as any)._hydratedPost = hydrated;
           }
         });
       }

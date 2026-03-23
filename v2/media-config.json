@@ -31,7 +31,7 @@
       "externalRel": ["noopener", "noreferrer"]
     },
     "contexts": {
-      "nav_logo": { "mode": "internal", "pattern": "/" },
+      "nav_logo": { "mode": "internal", "pattern": "/{blog}/feed" },
       "nav_activity": { "mode": "internal", "pattern": "/{blog}/activity" },
       "nav_following": { "mode": "internal", "pattern": "/following" },
       "post_permalink": { "mode": "internal", "pattern": "/post/{postId}" },

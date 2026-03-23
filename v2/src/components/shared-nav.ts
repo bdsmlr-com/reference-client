@@ -7,6 +7,7 @@ import {
   buildPageUrl,
   isDevMode,
   setStoredBlogName,
+  clearStoredBlogName,
 } from '../services/blog-resolver.js';
 import {
   getCurrentUsername,
@@ -381,7 +382,8 @@ export class SharedNav extends LitElement {
       if (this.currentUsername !== username) {
         return;
       }
-      this.profileAvatarUrl = this.normalizeAvatarUrl(response.blog?.avatarUrl);
+      const blog = response.blog as { avatarUrl?: string; avatar_url?: string } | undefined;
+      this.profileAvatarUrl = this.normalizeAvatarUrl(blog?.avatarUrl ?? blog?.avatar_url ?? null);
     } catch {
       if (this.currentUsername === username) {
         this.profileAvatarUrl = null;
@@ -411,17 +413,15 @@ export class SharedNav extends LitElement {
   }
 
   private handleNavLinkClick(e: Event, href: string): void {
-    const current = `${window.location.pathname}${window.location.search}`;
     const target = new URL(href, window.location.origin);
-    const targetPath = `${target.pathname}${target.search}`;
-    if (current === targetPath) {
+    if (target.pathname === window.location.pathname) {
       e.preventDefault();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }
 
   private getLogoUrl(): string {
-    const primaryBlog = getPrimaryBlogName() || getCurrentUsername();
+    const primaryBlog = this.currentUsername || getCurrentUsername() || getPrimaryBlogName();
     if (primaryBlog) {
       return resolveLink('nav_logo', { blog: primaryBlog }).href;
     }
@@ -463,7 +463,7 @@ export class SharedNav extends LitElement {
   private openLoginModal(): void {
     this.menuOpen = false;
     this.loginModalOpen = true;
-    this.usernameInput = this.currentUsername || getPrimaryBlogName() || '';
+    this.usernameInput = '';
   }
 
   private closeLoginModal(): void {
@@ -486,6 +486,7 @@ export class SharedNav extends LitElement {
 
   private handleLogout(): void {
     clearCurrentUsername();
+    clearStoredBlogName();
     this.currentUsername = null;
     this.profileAvatarUrl = null;
     this.menuOpen = false;

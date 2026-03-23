@@ -17,7 +17,6 @@ import {
 } from '../services/profile.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
-import '../components/filter-bar.js';
 import '../components/activity-kind-pills.js';
 import '../components/timeline-stream.js';
 import '../components/load-footer.js';
@@ -223,19 +222,6 @@ export class ViewPosts extends LitElement {
     }));
   }
 
-  private handleTypesChange(e: CustomEvent) {
-    this.selectedTypes = e.detail.types;
-    this.loadPosts();
-  }
-
-  private handleSortChange(e: CustomEvent) {
-    if (this.activityKinds.includes('like') || this.activityKinds.includes('comment')) {
-      return;
-    }
-    this.sortValue = normalizeSortValue(e.detail.value);
-    this.loadPosts();
-  }
-
   private handleInfiniteToggle(e: CustomEvent) {
     this.infiniteScroll = e.detail.enabled;
     if (this.infiniteScroll) this.observeSentinel();
@@ -260,15 +246,6 @@ export class ViewPosts extends LitElement {
       <div class="content">
         <blog-header page="posts" .blogName=${this.blog} .blogTitle=${this.blogData?.title || ''}></blog-header>
 
-        <filter-bar
-          .sortValue=${this.sortValue}
-          .showSort=${!(this.activityKinds.includes('like') || this.activityKinds.includes('comment'))}
-          .selectedTypes=${this.selectedTypes}
-          .showVariants=${false}
-          .loading=${this.loading}
-          @sort-change=${this.handleSortChange}
-          @types-change=${this.handleTypesChange}
-        ></filter-bar>
         <activity-kind-pills
           .selected=${this.activityKinds}
           @activity-kinds-change=${this.handleActivityKindsChange}
