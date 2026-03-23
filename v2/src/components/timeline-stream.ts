@@ -82,6 +82,7 @@ export class TimelineStream extends LitElement {
   private inferItemKind(item: TimelineItem): ActivityKind {
     if (item.type === 1 && item.post) {
       const p = item.post as ProcessedPost;
+      if (p._activityKindOverride) return p._activityKindOverride;
       if (p.variant === 2) return 'reblog';
       return p.originPostId && p.originPostId !== p.id ? 'reblog' : 'post';
     }

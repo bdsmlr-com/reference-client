@@ -56,6 +56,7 @@ export interface ProcessedPost extends Post {
   _media: MediaInfo;
   _reblog_variants?: { id: number; blogName?: string }[];
   _activityCreatedAtUnix?: number;
+  _activityKindOverride?: 'post' | 'reblog' | 'like' | 'comment';
 }
 
 export function extractRenderableTags(post: Post): string[] {

@@ -67,7 +67,9 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(feedSrc).toContain('const isCanonicalPostCard = post.variant === 1 || post.variant === 2;');
     expect(feedSrc).toContain('post.blogId === blogId && isCanonicalPostCard');
     expect(feedSrc).toContain('_activityCreatedAtUnix: post.updatedAtUnix || post.createdAtUnix');
+    expect(feedSrc).toContain('_activityKindOverride: kind');
     expect(feedSrc).toContain("selfInteractionPosts.forEach((post) => clusters.push({ type: 1, post }));");
+    expect(readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8')).toContain('if (p._activityKindOverride) return p._activityKindOverride;');
   });
 
   it('renders tag chips in post detail pages/lightbox cards', () => {

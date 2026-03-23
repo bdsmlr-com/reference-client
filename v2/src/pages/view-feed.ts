@@ -532,6 +532,7 @@ export class ViewFeed extends LitElement {
                 ...post,
                 _media: media,
                 _activityCreatedAtUnix: post.updatedAtUnix || post.createdAtUnix,
+                _activityKindOverride: kind,
               };
               this.seenIds.add(post.id);
               selfInteractionPosts.set(post.id, promoted);
