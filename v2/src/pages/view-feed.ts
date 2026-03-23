@@ -514,11 +514,15 @@ export class ViewFeed extends LitElement {
 
         (resp.timelineItems || []).forEach((item) => {
           if (item.type !== 2 || !item.cluster?.interactions?.length) return;
+          const kind = this.inferClusterKind(item);
+          if (kind !== 'like' && kind !== 'comment') return;
+          if (!this.activityKinds.includes(kind)) return;
           const key = item.cluster.interactions.map((p) => p.id).sort((a, b) => a - b).join(',');
           if (!key || this.seenClusterKeys.has(key)) return;
 
           const interactions: ProcessedPost[] = [];
           item.cluster.interactions.forEach((post) => {
+            if ((kind === 'like' || kind === 'comment') && post.blogId === blogId) return;
             if (this.seenIds.has(post.id)) return;
             const media = extractMedia(post);
             const mediaUrl = media.videoUrl || media.audioUrl || media.url;
@@ -534,9 +538,6 @@ export class ViewFeed extends LitElement {
           if (interactions.length === 0) return;
 
           this.seenClusterKeys.add(key);
-          const kind = this.inferClusterKind(item);
-          if (kind !== 'like' && kind !== 'comment') return;
-          if (!this.activityKinds.includes(kind)) return;
 
           clusters.push({
             type: 2,

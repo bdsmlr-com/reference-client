@@ -63,6 +63,7 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(feedSrc).toContain("activity_kinds: ['like', 'comment']");
     expect(feedSrc).toContain("if (kind !== 'like' && kind !== 'comment') return;");
     expect(feedSrc).toContain("if (label.includes('reblog')) return 'reblog';");
+    expect(feedSrc).toContain("if ((kind === 'like' || kind === 'comment') && post.blogId === blogId) return;");
   });
 
   it('renders tag chips in post detail pages/lightbox cards', () => {
