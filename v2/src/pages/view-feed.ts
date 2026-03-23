@@ -477,7 +477,8 @@ export class ViewFeed extends LitElement {
 
   private itemTimestamp(item: TimelineItem): number {
     if (item.type === 1 && item.post) {
-      return item.post.createdAtUnix || 0;
+      const post = item.post as ProcessedPost;
+      return post._activityCreatedAtUnix || post.createdAtUnix || 0;
     }
     if (item.type === 2 && item.cluster?.interactions?.length) {
       return Math.max(...item.cluster.interactions.map((p) => p.createdAtUnix || 0));
@@ -496,6 +497,7 @@ export class ViewFeed extends LitElement {
     if (blogIds.length === 0) return [];
     const isAdmin = isAdminMode();
     const clusters: TimelineItem[] = [];
+    const selfInteractionPosts = new Map<number, ProcessedPost>();
 
     await Promise.all(
       blogIds.map(async (blogId) => {
@@ -522,7 +524,18 @@ export class ViewFeed extends LitElement {
 
           const interactions: ProcessedPost[] = [];
           item.cluster.interactions.forEach((post) => {
-            if ((kind === 'like' || kind === 'comment') && post.blogId === blogId) return;
+            if ((kind === 'like' || kind === 'comment') && post.blogId === blogId) {
+              if (this.seenIds.has(post.id)) return;
+              const media = extractMedia(post);
+              const promoted: ProcessedPost = {
+                ...post,
+                _media: media,
+                _activityCreatedAtUnix: post.updatedAtUnix || post.createdAtUnix,
+              };
+              this.seenIds.add(post.id);
+              selfInteractionPosts.set(post.id, promoted);
+              return;
+            }
             if (this.seenIds.has(post.id)) return;
             const media = extractMedia(post);
             const mediaUrl = media.videoUrl || media.audioUrl || media.url;
@@ -550,6 +563,7 @@ export class ViewFeed extends LitElement {
       })
     );
 
+    selfInteractionPosts.forEach((post) => clusters.push({ type: 1, post }));
     return clusters;
   }
 

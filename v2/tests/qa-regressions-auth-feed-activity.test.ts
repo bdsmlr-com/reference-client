@@ -57,13 +57,16 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(gridSrc).toContain('p.originBlogName');
   });
 
-  it('feed interaction clusters request only likes/comments and reject reblog clusters', () => {
+  it('feed interaction clusters request only likes/comments, reject reblogs, and promote self-interactions to full cards', () => {
     const feedSrc = readFileSync(join(ROOT, 'pages/view-feed.ts'), 'utf8');
 
     expect(feedSrc).toContain("activity_kinds: ['like', 'comment']");
     expect(feedSrc).toContain("if (kind !== 'like' && kind !== 'comment') return;");
     expect(feedSrc).toContain("if (label.includes('reblog')) return 'reblog';");
-    expect(feedSrc).toContain("if ((kind === 'like' || kind === 'comment') && post.blogId === blogId) return;");
+    expect(feedSrc).toContain('const selfInteractionPosts = new Map<number, ProcessedPost>();');
+    expect(feedSrc).toContain("if ((kind === 'like' || kind === 'comment') && post.blogId === blogId)");
+    expect(feedSrc).toContain('_activityCreatedAtUnix: post.updatedAtUnix || post.createdAtUnix');
+    expect(feedSrc).toContain("selfInteractionPosts.forEach((post) => clusters.push({ type: 1, post }));");
   });
 
   it('renders tag chips in post detail pages/lightbox cards', () => {
