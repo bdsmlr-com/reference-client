@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
+import { POST_TYPE_ICONS, extractRenderableTags, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
 import { formatDate } from '../services/date-formatter.js';
 import { isAdminMode } from '../services/blog-resolver.js';
@@ -155,6 +155,7 @@ export class ActivityItem extends LitElement {
     const isDeleted = Boolean(p.deletedAtUnix);
     const isOriginDeleted = Boolean(p.originDeletedAtUnix);
     const renderType = this.mode === 'masonry' ? 'gallery-masonry' : 'gallery-grid';
+    const tags = extractRenderableTags(p);
     const chipBlogName = this.interactionType === 'reblog'
       ? (p.originBlogName || p.blogName || '')
       : (p.variant === 2 ? (p.originBlogName || p.blogName || '') : (p.blogName || ''));
@@ -186,6 +187,7 @@ export class ActivityItem extends LitElement {
             ${p.likesCount ? html`<div class="stat-item">❤️ ${p.likesCount}</div>` : ''}
             ${p.reblogsCount ? html`<div class="stat-item">♻️ ${p.reblogsCount}</div>` : ''}
             ${p.commentsCount ? html`<div class="stat-item">💬 ${p.commentsCount}</div>` : ''}
+            ${tags.length > 0 ? html`<div class="stat-item">🏷️ ${tags.length}</div>` : ''}
           </div>
         </div>
       </article>

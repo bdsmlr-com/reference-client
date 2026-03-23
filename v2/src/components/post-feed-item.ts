@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
+import { POST_TYPE_ICONS, extractRenderableTags, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
 import { formatDateShort, getTooltipDate } from '../services/date-formatter.js';
 import { MAX_VISIBLE_TAGS } from '../types/ui-constants.js';
@@ -186,6 +186,7 @@ export class PostFeedItem extends LitElement {
     const isReblog = post.originPostId && post.originPostId !== post.id;
     const blogName = post.blogName || 'unknown';
     const originBlogName = post.originBlogName || 'unknown';
+    const tags = extractRenderableTags(post);
     const blogLink = resolveLink('post_via_blog', { blog: blogName });
     const originBlogLink = resolveLink('post_origin_blog', { blog: originBlogName });
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
@@ -221,9 +222,9 @@ export class PostFeedItem extends LitElement {
 
         ${post.body ? html`<div class="card-body">${post.body}</div>` : ''}
 
-        ${post.tags && post.tags.length > 0 ? html`
+        ${tags.length > 0 ? html`
           <div class="card-tags">
-            ${post.tags.slice(0, MAX_VISIBLE_TAGS).map(tag => html`
+            ${tags.slice(0, MAX_VISIBLE_TAGS).map(tag => html`
               <a href=${resolveLink('search_tag', { tag }).href} class="tag-link" @click=${(e: Event) => e.stopPropagation()}>#${tag}</a>
             `)}
           </div>

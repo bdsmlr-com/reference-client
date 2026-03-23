@@ -174,6 +174,8 @@ export class ViewSearch extends LitElement {
   private seenIds = new Set<number>();
   private renderedMediaKeys = new Set<string>(); // Authoritative uniqueness
   private paginationKey = '';
+  private activeSearchToken = 0;
+  private currentSearchSignature = '';
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -267,6 +269,8 @@ export class ViewSearch extends LitElement {
     this.searching = true;
     this.resetState();
     this.hasSearched = true;
+    const searchToken = ++this.activeSearchToken;
+    const normalizedQuery = this.query.trim();
 
     const params: Record<string, string> = {
       q: this.query,
@@ -277,22 +281,28 @@ export class ViewSearch extends LitElement {
     setUrlParams(params);
 
     this.paginationKey = generatePaginationCursorKey('search', {
-      q: this.query,
+      q: normalizedQuery,
       sort: this.sortValue,
       types: this.selectedTypes.join(','),
       variants: this.selectedVariants.join(','),
     });
+    this.currentSearchSignature = this.paginationKey;
 
     try {
-      await this.fillPage();
+      await this.fillPage(searchToken, this.currentSearchSignature);
     } catch (e) {
+      if (searchToken !== this.activeSearchToken) {
+        return;
+      }
       this.errorMessage = getContextualErrorMessage(e, 'search', { query: this.query });
       const apiError = isApiError(e) ? e : toApiError(e);
       this.isRetryableError = apiError.isRetryable;
     }
 
-    this.searching = false;
-    this.observeSentinel();
+    if (searchToken === this.activeSearchToken) {
+      this.searching = false;
+      this.observeSentinel();
+    }
   }
 
   private async handleRetry(e?: CustomEvent): Promise<void> {
@@ -313,7 +323,7 @@ export class ViewSearch extends LitElement {
     this.retrying = false;
   }
 
-  private async fillPage(): Promise<void> {
+  private async fillPage(searchToken: number = this.activeSearchToken, signature: string = this.currentSearchSignature): Promise<void> {
     this.loading = true;
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
 
@@ -329,6 +339,9 @@ export class ViewSearch extends LitElement {
           page_token: this.backendCursor || undefined,
         },
       });
+      if (searchToken !== this.activeSearchToken || signature !== this.currentSearchSignature) {
+        return;
+      }
 
       this.backendCursor = resp.page?.nextPageToken || null;
       if (!this.backendCursor) this.exhausted = true;
@@ -378,13 +391,15 @@ export class ViewSearch extends LitElement {
       this.timelineItems = [...this.timelineItems, ...newItems];
       if (newItems.length === 0) this.exhausted = true;
     } finally {
-      this.loading = false;
+      if (searchToken === this.activeSearchToken && signature === this.currentSearchSignature) {
+        this.loading = false;
+      }
     }
   }
 
   private async loadMore(): Promise<void> {
     if (this.loading || this.exhausted) return;
-    await this.fillPage();
+    await this.fillPage(this.activeSearchToken, this.currentSearchSignature);
   }
 
   private handleSortChange(e: CustomEvent): void {

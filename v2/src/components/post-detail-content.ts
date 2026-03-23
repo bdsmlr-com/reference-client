@@ -2,7 +2,7 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { baseStyles } from '../styles/theme.js';
-import type { ProcessedPost } from '../types/post.js';
+import { extractRenderableTags, type ProcessedPost } from '../types/post.js';
 import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
 import { resolveLink } from '../services/link-resolver.js';
 import './post-engagement.js';
@@ -49,15 +49,16 @@ export class PostDetailContent extends LitElement {
   render() {
     if (!this.post) return nothing;
     const p = this.post;
+    const tags = extractRenderableTags(p);
 
     return html`
       <div class="body-text">
         ${unsafeHTML(sanitizeHtmlFragment(p.content?.html || p.body || ''))}
       </div>
 
-      ${p.tags && p.tags.length > 0 ? html`
+      ${tags.length > 0 ? html`
         <div class="post-tags">
-          ${p.tags.map((tag) => {
+          ${tags.map((tag) => {
             const link = resolveLink('search_tag', { tag });
             return html`<a class="tag-chip" href=${link.href} target=${link.target} rel=${link.rel || ''}>#${tag}</a>`;
           })}

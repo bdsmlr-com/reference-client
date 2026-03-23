@@ -58,6 +58,23 @@ export interface ProcessedPost extends Post {
   _activityCreatedAtUnix?: number;
 }
 
+export function extractRenderableTags(post: Post): string[] {
+  if (post.tags && post.tags.length > 0) {
+    return [...new Set(post.tags.filter(Boolean))];
+  }
+
+  const raw = `${post.body || ''} ${post.content?.html || ''}`;
+  if (!raw.trim()) {
+    return [];
+  }
+
+  // Strip HTML tags for simple hashtag extraction fallback.
+  const text = raw.replace(/<[^>]*>/g, ' ');
+  const matches = text.match(/#([A-Za-z0-9][A-Za-z0-9_-]{0,63})/g) || [];
+  const tags = matches.map((m) => m.slice(1).toLowerCase());
+  return [...new Set(tags)];
+}
+
 export type PresentationActionKind = 'permalink';
 
 export interface PresentationAction {
