@@ -488,6 +488,7 @@ export class ViewFeed extends LitElement {
   private inferClusterKind(item: TimelineItem): ActivityKind {
     const label = (item.cluster?.label || '').toLowerCase();
     if (label.includes('comment')) return 'comment';
+    if (label.includes('reblog')) return 'reblog';
     return 'like';
   }
 
@@ -505,6 +506,7 @@ export class ViewFeed extends LitElement {
           order: 2,
           post_types: this.selectedTypes,
           variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
+          activity_kinds: ['like', 'comment'],
           page: { page_size: 12, page_token: pageToken },
         });
 
@@ -533,6 +535,7 @@ export class ViewFeed extends LitElement {
 
           this.seenClusterKeys.add(key);
           const kind = this.inferClusterKind(item);
+          if (kind !== 'like' && kind !== 'comment') return;
           if (!this.activityKinds.includes(kind)) return;
 
           clusters.push({

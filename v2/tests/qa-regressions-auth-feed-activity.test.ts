@@ -50,10 +50,19 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     const gridSrc = readFileSync(join(ROOT, 'components/activity-grid.ts'), 'utf8');
 
     expect(streamSrc).toContain('shouldSuppressSelfSameDayLike');
+    expect(streamSrc).toContain('.showBlogChip=${!this.showActorInCluster}');
     expect(gridSrc).toContain('const shouldHideSelfInteractionChip =');
     expect(gridSrc).toContain("this.interactionType === 'like' || this.interactionType === 'comment'");
     expect(gridSrc).toContain('const chipBlogName =');
     expect(gridSrc).toContain('p.originBlogName');
+  });
+
+  it('feed interaction clusters request only likes/comments and reject reblog clusters', () => {
+    const feedSrc = readFileSync(join(ROOT, 'pages/view-feed.ts'), 'utf8');
+
+    expect(feedSrc).toContain("activity_kinds: ['like', 'comment']");
+    expect(feedSrc).toContain("if (kind !== 'like' && kind !== 'comment') return;");
+    expect(feedSrc).toContain("if (label.includes('reblog')) return 'reblog';");
   });
 
   it('renders tag chips in post detail pages/lightbox cards', () => {

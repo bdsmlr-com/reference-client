@@ -279,6 +279,7 @@ export class TimelineStream extends LitElement {
         <activity-grid
           compact
           .items=${visibleItems}
+          .showBlogChip=${!this.showActorInCluster}
           @activity-click=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}
         ></activity-grid>
         ${remaining > 0 ? html`
@@ -311,6 +312,7 @@ export class TimelineStream extends LitElement {
                 <activity-grid
                   compact
                   .items=${item.interactions.map((p) => ({ post: p, type: item.kind }))}
+                  .showBlogChip=${!this.showActorInCluster}
                   @activity-click=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}
                 ></activity-grid>
               </div>
