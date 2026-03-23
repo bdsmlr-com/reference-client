@@ -29,7 +29,7 @@ import { SORT_OPTIONS, normalizeSortValue } from '../types/post.js';
 import { resolveLink } from '../services/link-resolver.js';
 
 type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social' | 'posts';
-const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'final-fix-v6';
+const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'staging@unknown/unknown';
 
 @customElement('shared-nav')
 export class SharedNav extends LitElement {
