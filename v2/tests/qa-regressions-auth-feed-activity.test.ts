@@ -64,7 +64,8 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(feedSrc).toContain("if (kind !== 'like' && kind !== 'comment') return;");
     expect(feedSrc).toContain("if (label.includes('reblog')) return 'reblog';");
     expect(feedSrc).toContain('const selfInteractionPosts = new Map<number, ProcessedPost>();');
-    expect(feedSrc).toContain("if ((kind === 'like' || kind === 'comment') && post.blogId === blogId)");
+    expect(feedSrc).toContain('const isCanonicalPostCard = post.variant === 1 || post.variant === 2;');
+    expect(feedSrc).toContain('post.blogId === blogId && isCanonicalPostCard');
     expect(feedSrc).toContain('_activityCreatedAtUnix: post.updatedAtUnix || post.createdAtUnix');
     expect(feedSrc).toContain("selfInteractionPosts.forEach((post) => clusters.push({ type: 1, post }));");
   });

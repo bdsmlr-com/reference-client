@@ -524,7 +524,8 @@ export class ViewFeed extends LitElement {
 
           const interactions: ProcessedPost[] = [];
           item.cluster.interactions.forEach((post) => {
-            if ((kind === 'like' || kind === 'comment') && post.blogId === blogId) {
+            const isCanonicalPostCard = post.variant === 1 || post.variant === 2;
+            if ((kind === 'like' || kind === 'comment') && post.blogId === blogId && isCanonicalPostCard) {
               if (this.seenIds.has(post.id)) return;
               const media = extractMedia(post);
               const promoted: ProcessedPost = {
