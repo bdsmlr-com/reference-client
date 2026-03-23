@@ -58,8 +58,6 @@ import type {
   SearchPostsByTagResponse,
   ListBlogPostsRequest,
   ListBlogPostsResponse,
-  ListBlogActivityRequest,
-  ListBlogActivityResponse,
   ResolveIdentifierRequest,
   ResolveIdentifierResponse,
   ListPostLikesResponse,
@@ -118,8 +116,6 @@ const ENDPOINT_TIMEOUTS: Record<string, number> = {
   '/v2/public-read-api-v2/list-post-likes': 15000,
   '/v2/public-read-api-v2/list-post-comments': 15000,
   '/v2/public-read-api-v2/list-post-reblogs': 15000,
-  '/v2/public-read-api-v2/list-blog-followers': 15000,
-  '/v2/public-read-api-v2/list-blog-following': 15000,
 
   // Slow endpoints (30s) - complex queries with large result sets
   '/v2/public-read-api-v2/search-posts-by-tag': 30000,
@@ -1056,24 +1052,6 @@ export {
   clearPostCache,
   getPostCacheStats,
 } from './post-cache.js';
-
-export async function listBlogFollowers(
-  req: ListBlogActivityRequest
-): Promise<ListBlogActivityResponse> {
-  return apiRequest<ListBlogActivityResponse>(
-    '/v2/public-read-api-v2/list-blog-followers',
-    req
-  );
-}
-
-export async function listBlogFollowing(
-  req: ListBlogActivityRequest
-): Promise<ListBlogActivityResponse> {
-  return apiRequest<ListBlogActivityResponse>(
-    '/v2/public-read-api-v2/list-blog-following',
-    req
-  );
-}
 
 export async function resolveIdentifier(
   req: ResolveIdentifierRequest
@@ -2649,32 +2627,6 @@ export class BlogsApi {
     return resolveBlogIdsToNames(blogIds);
   }
 
-  /**
-   * List followers of a blog.
-   *
-   * **Note:** This is a legacy endpoint. For full follower/following data,
-   * use {@link FollowGraphApi.get} with `direction: 2` (followers).
-   *
-   * @param req - Request parameters
-   * @param req.blog_id - ID of the blog whose followers to list
-   * @param req.page_token - Pagination cursor
-   * @param req.limit - Maximum results to return
-   *
-   * @returns Paginated list of follower blog IDs
-   *
-   * @deprecated Use {@link FollowGraphApi.get} for richer follower data
-   */
-  async listFollowers(req: ListBlogActivityRequest): Promise<ListBlogActivityResponse> {
-    return listBlogFollowers(req);
-  }
-
-  /**
-   * List blogs a blog is following (legacy endpoint).
-   */
-  async listFollowing(req: ListBlogActivityRequest): Promise<ListBlogActivityResponse> {
-    return listBlogFollowing(req);
-  }
-
   // ============================================
   // Unified Methods (TECH-010c)
   // ============================================
@@ -3281,8 +3233,7 @@ export class ApiClient {
   /**
    * Blogs API namespace.
    * Methods: search, searchCached, searchSWR, searchWithFallback, searchWithPartialRecovery,
-   *          get, getSWR, getWithFallback, resolveId, resolveName, resolveNames,
-   *          listFollowers, listFollowing
+   *          get, getSWR, getWithFallback, resolveId, resolveName, resolveNames
    */
   readonly blogs: BlogsApi;
 

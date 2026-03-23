@@ -99,17 +99,6 @@ export interface User {
   avatarUrl?: string;
 }
 
-export interface Activity {
-  id: number;
-  type?: string;
-  postId?: number;
-  blogId?: number;
-  blogName?: string;
-  userId?: number;
-  comment?: string;
-  createdAtUnix?: number;
-}
-
 export interface Like {
   id: number;
   postId?: number;
@@ -157,12 +146,6 @@ export interface ListBlogPostsRequest {
   post_types?: PostType[];
   variants?: PostVariant[];
   activity_kinds?: Array<'post' | 'reblog' | 'like' | 'comment'>;
-}
-
-export interface ListBlogActivityRequest {
-  blog_id: number;
-  page?: Pagination;
-  order?: Order;
 }
 
 export interface ResolveIdentifierRequest {
@@ -257,12 +240,6 @@ export interface ListBlogPostsResponse {
   posts?: Post[];
   page?: PageInfo;
   timelineItems?: TimelineItem[];
-  error?: string;
-}
-
-export interface ListBlogActivityResponse {
-  activity?: Activity[];
-  page?: PageInfo;
   error?: string;
 }
 

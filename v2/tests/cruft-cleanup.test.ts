@@ -18,4 +18,12 @@ describe('cruft cleanup guardrails', () => {
     const appRootSrc = readFileSync(join(ROOT, 'src/app-root.ts'), 'utf8');
     expect(appRootSrc).not.toContain("import './pages/view-activity.js';");
   });
+
+  it('api client does not keep deprecated followers/following wrappers', () => {
+    const apiSrc = readFileSync(join(ROOT, 'src/services/api.ts'), 'utf8');
+    expect(apiSrc).not.toContain('async listFollowers(');
+    expect(apiSrc).not.toContain('async listFollowing(');
+    expect(apiSrc).not.toContain('export async function listBlogFollowers(');
+    expect(apiSrc).not.toContain('export async function listBlogFollowing(');
+  });
 });
