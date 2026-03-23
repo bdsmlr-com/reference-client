@@ -119,6 +119,8 @@ export class ViewPosts extends LitElement {
     if (activity) this.activityKinds = normalizeActivityKinds(activity, DEFAULT_ACTIVITY_KINDS);
     
     setUrlParams({
+      sort: '',
+      blog: '',
       types: isDefaultTypes(this.selectedTypes)
         ? ''
         : this.selectedTypes.map((t) => TYPE_ENUM_TO_NAME[t] || String(t)).join(','),
@@ -228,6 +230,8 @@ export class ViewPosts extends LitElement {
     this.sortValue = 'newest';
     setBlogActivityKindsPreference(this.activityKinds);
     setUrlParams({
+      sort: '',
+      blog: '',
       activity: this.activityKinds.join(',') === DEFAULT_ACTIVITY_KINDS.join(',') ? '' : this.activityKinds.join(','),
     });
     this.loadPosts();
