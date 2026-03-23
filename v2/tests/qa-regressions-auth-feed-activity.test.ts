@@ -78,4 +78,14 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(detailSrc).toContain('class="post-tags"');
     expect(detailSrc).toContain("resolveLink('search_tag'");
   });
+
+  it('shows self-activity badge on promoted full cards', () => {
+    const feedCardSrc = readFileSync(join(ROOT, 'components/post-feed-item.ts'), 'utf8');
+
+    expect(feedCardSrc).toContain('self-activity-badge');
+    expect(feedCardSrc).toContain('❤️ Self-liked');
+    expect(feedCardSrc).toContain('💬 Self-commented');
+    expect(feedCardSrc).toContain("post._activityKindOverride === 'like'");
+    expect(feedCardSrc).toContain("post._activityKindOverride === 'comment'");
+  });
 });

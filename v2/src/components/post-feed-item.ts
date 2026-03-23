@@ -76,6 +76,15 @@ export class PostFeedItem extends LitElement {
         color: var(--text-muted);
       }
 
+      .self-activity-badge {
+        font-size: 11px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 2px 8px;
+        color: var(--text-muted);
+        background: var(--bg-panel-alt);
+      }
+
       .post-date {
         font-size: 12px;
         color: var(--text-muted);
@@ -190,6 +199,11 @@ export class PostFeedItem extends LitElement {
     const blogLink = resolveLink('post_via_blog', { blog: blogName });
     const originBlogLink = resolveLink('post_origin_blog', { blog: originBlogName });
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
+    const selfActivityBadge = post._activityKindOverride === 'like'
+      ? '❤️ Self-liked'
+      : post._activityKindOverride === 'comment'
+        ? '💬 Self-commented'
+        : '';
 
     let mediaHtml;
     if (media.type === 'image' || media.type === 'video') {
@@ -214,6 +228,7 @@ export class PostFeedItem extends LitElement {
             ` : html`
               <a href=${blogLink.href} target=${blogLink.target} rel=${blogLink.rel || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
             `}
+            ${selfActivityBadge ? html`<span class="self-activity-badge">${selfActivityBadge}</span>` : ''}
           </div>
           <time class="post-date" title=${getTooltipDate(post.createdAtUnix)}>${formatDateShort(post.createdAtUnix)}</time>
         </header>
