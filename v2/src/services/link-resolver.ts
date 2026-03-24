@@ -5,14 +5,17 @@ export interface ResolvedLink {
   target: '_self' | '_blank';
   rel?: string;
   isExternal: boolean;
+  icon?: string;
+  label?: string;
+  title?: string;
 }
 
-function renderPattern(pattern: string, params: Record<string, string | number>): string {
+function renderPattern(pattern: string, params: Record<string, string | number>, encode = true): string {
   return pattern.replace(/\{([^}]+)\}/g, (_match, rawKey: string) => {
     const key = rawKey.trim();
     const value = params[key];
     if (value === undefined || value === null) return '';
-    return encodeURIComponent(String(value));
+    return encode ? encodeURIComponent(String(value)) : String(value);
   });
 }
 
@@ -34,7 +37,7 @@ export function resolveLink(contextId: string, params: Record<string, string | n
     throw new Error(`Unknown link context: ${contextId}`);
   }
 
-  const href = renderPattern(context.pattern, params);
+  const href = renderPattern(context.pattern, params, true);
   const target = resolveTarget(context);
   const isExternal = isExternalMode(context.mode);
   const relTokens = context.rel || (isExternal ? LINK_CONFIG.defaults?.externalRel : undefined) || [];
@@ -44,5 +47,8 @@ export function resolveLink(contextId: string, params: Record<string, string | n
     target,
     rel: relTokens.length > 0 ? relTokens.join(' ') : undefined,
     isExternal,
+    icon: context.icon,
+    label: context.labelTemplate ? renderPattern(context.labelTemplate, params, false) : undefined,
+    title: context.titleTemplate ? renderPattern(context.titleTemplate, params, false) : undefined,
   };
 }

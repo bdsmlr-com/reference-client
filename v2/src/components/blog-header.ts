@@ -474,9 +474,9 @@ export class BlogHeader extends LitElement {
                   href=${this.externalBlogLink.href}
                   target=${this.externalBlogLink.target}
                   rel=${this.externalBlogLink.rel}
-                  aria-label="Visit ${this.blogName}'s blog on BDSMLR (opens in new tab)"
+                  aria-label=${this.externalBlogLink.title || `Visit ${this.blogName}'s blog on BDSMLR (opens in new tab)`}
                 >
-                  Visit &rarr;
+                  ${this.externalBlogLink.label || 'Visit'} ${this.externalBlogLink.icon || '→'}
                 </a>
               </div>
             `}

@@ -60,7 +60,7 @@ export class PostDetailContent extends LitElement {
         <div class="post-tags">
           ${tags.map((tag) => {
             const link = resolveLink('search_tag', { tag });
-            return html`<a class="tag-chip" href=${link.href} target=${link.target} rel=${link.rel || ''}>#${tag}</a>`;
+            return html`<a class="tag-chip" href=${link.href} target=${link.target} rel=${link.rel || ''} title=${link.title || ''}>${link.label || `#${tag}`}</a>`;
           })}
         </div>
       ` : nothing}

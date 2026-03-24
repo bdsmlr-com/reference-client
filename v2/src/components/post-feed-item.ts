@@ -198,6 +198,8 @@ export class PostFeedItem extends LitElement {
     const tags = extractRenderableTags(post);
     const blogLink = resolveLink('post_via_blog', { blog: blogName });
     const originBlogLink = resolveLink('post_origin_blog', { blog: originBlogName });
+    const blogLabel = blogLink.label || `@${blogName}`;
+    const originBlogLabel = originBlogLink.label || `@${originBlogName}`;
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
     const selfActivityBadge = post._activityKindOverride === 'like'
       ? '❤️ Self-liked'
@@ -221,12 +223,12 @@ export class PostFeedItem extends LitElement {
         <header class="card-header">
           <div class="blog-info">
             ${isReblog ? html`
-              <a href=${originBlogLink.href} target=${originBlogLink.target} rel=${originBlogLink.rel || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${originBlogName}</a>
+              <a href=${originBlogLink.href} target=${originBlogLink.target} rel=${originBlogLink.rel || nothing} title=${originBlogLink.title || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>${originBlogLabel}</a>
               <span class="reblog-indicator">
-                ♻️ via <a href=${blogLink.href} target=${blogLink.target} rel=${blogLink.rel || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
+                ♻️ via <a href=${blogLink.href} target=${blogLink.target} rel=${blogLink.rel || nothing} title=${blogLink.title || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>${blogLabel}</a>
               </span>
             ` : html`
-              <a href=${blogLink.href} target=${blogLink.target} rel=${blogLink.rel || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>@${blogName}</a>
+              <a href=${blogLink.href} target=${blogLink.target} rel=${blogLink.rel || nothing} title=${blogLink.title || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>${blogLabel}</a>
             `}
             ${selfActivityBadge ? html`<span class="self-activity-badge">${selfActivityBadge}</span>` : ''}
           </div>
@@ -240,7 +242,10 @@ export class PostFeedItem extends LitElement {
         ${tags.length > 0 ? html`
           <div class="card-tags">
             ${tags.slice(0, MAX_VISIBLE_TAGS).map(tag => html`
-              <a href=${resolveLink('search_tag', { tag }).href} class="tag-link" @click=${(e: Event) => e.stopPropagation()}>#${tag}</a>
+              ${(() => {
+                const tagLink = resolveLink('search_tag', { tag });
+                return html`<a href=${tagLink.href} title=${tagLink.title || nothing} class="tag-link" @click=${(e: Event) => e.stopPropagation()}>${tagLink.label || `#${tag}`}</a>`;
+              })()}
             `)}
           </div>
         ` : ''}

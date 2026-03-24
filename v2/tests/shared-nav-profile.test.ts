@@ -7,12 +7,14 @@ const NAV_FILE = join(process.cwd(), 'src/components/shared-nav.ts');
 describe('shared-nav profile/settings behavior', () => {
   it('removes top nav Feed link and routes logo to feed context', () => {
     const src = readFileSync(NAV_FILE, 'utf8');
-    const config = readFileSync(join(process.cwd(), 'media-config.json'), 'utf8');
+    const config = JSON.parse(readFileSync(join(process.cwd(), 'media-config.json'), 'utf8'));
 
     expect(src).not.toContain("{ name: 'feed', label: 'Feed'");
-    expect(src).toContain('private getLogoUrl()');
-    expect(src).toContain("return resolveLink('nav_logo', { blog: primaryBlog }).href;");
-    expect(config).toContain('"nav_logo": { "mode": "internal", "pattern": "/{blog}/feed" }');
+    expect(src).toContain('private getLogoLink()');
+    expect(src).toContain("const link = resolveLink('nav_logo', { blog: primaryBlog });");
+    expect(config.links.contexts.nav_logo.mode).toBe('internal');
+    expect(config.links.contexts.nav_logo.pattern).toBe('/{blog}/feed');
+    expect(config.links.contexts.nav_logo.labelTemplate).toBe('BDSMLR');
   });
 
   it('contains profile and settings menu with login + logout + gallery mode controls', () => {

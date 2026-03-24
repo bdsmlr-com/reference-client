@@ -1,4 +1,5 @@
 import { resolvePostRenderPolicy } from './post-render-policy';
+import { resolveLink } from './link-resolver';
 import type { PostPresentationModel, PresentationAction, ProcessedPost } from '../types/post';
 
 export interface PresentationContext {
@@ -18,7 +19,8 @@ export function toPresentationModel(post: ProcessedPost, ctx: PresentationContex
   const actions: PresentationAction[] = [];
   const showPermalink = policy.showPermalink !== false;
   if (showPermalink && Number.isFinite(post.id)) {
-    actions.push({ kind: 'permalink', label: '🔗', contextId: 'post_permalink' });
+    const permalinkLink = resolveLink('post_permalink', { postId: post.id });
+    actions.push({ kind: 'permalink', label: permalinkLink.icon || '🔗', contextId: 'post_permalink' });
   }
 
   const isInteraction = ctx.interactionKind === 'like' || ctx.interactionKind === 'comment';

@@ -31,21 +31,24 @@
       "externalRel": ["noopener", "noreferrer"]
     },
     "contexts": {
-      "nav_logo": { "mode": "internal", "pattern": "/{blog}/feed" },
-      "nav_activity": { "mode": "internal", "pattern": "/{blog}/activity" },
-      "nav_following": { "mode": "internal", "pattern": "/following" },
-      "feed_following_list": { "mode": "internal", "pattern": "/{blog}/social?tab=following" },
-      "post_permalink": { "mode": "internal", "pattern": "/post/{postId}" },
-      "post_origin_blog": { "mode": "internal", "pattern": "/{blog}/activity" },
-      "post_via_blog": { "mode": "internal", "pattern": "/{blog}/activity" },
-      "activity_actor_blog": { "mode": "internal", "pattern": "/{blog}/activity" },
-      "activity_target_post": { "mode": "internal", "pattern": "/post/{postId}" },
-      "recommendation_post": { "mode": "internal", "pattern": "/post/{postId}" },
-      "search_tag": { "mode": "internal", "pattern": "/search?q={tag}" },
+      "nav_logo": { "mode": "internal", "pattern": "/{blog}/feed", "labelTemplate": "BDSMLR", "titleTemplate": "Open @{blog} following feed" },
+      "nav_activity": { "mode": "internal", "pattern": "/{blog}/activity", "labelTemplate": "Activity", "titleTemplate": "Open @{blog} activity" },
+      "nav_following": { "mode": "internal", "pattern": "/following", "labelTemplate": "Following", "titleTemplate": "Open following timeline" },
+      "feed_following_list": { "mode": "internal", "pattern": "/{blog}/social?tab=following", "labelTemplate": "Following list", "titleTemplate": "Open @{blog} following list" },
+      "post_permalink": { "mode": "internal", "pattern": "/post/{postId}", "icon": "↗", "labelTemplate": "{postId}", "titleTemplate": "Open post {postId}" },
+      "post_origin_blog": { "mode": "internal", "pattern": "/{blog}/activity", "labelTemplate": "@{blog}", "titleTemplate": "Open @{blog} activity" },
+      "post_via_blog": { "mode": "internal", "pattern": "/{blog}/activity", "labelTemplate": "@{blog}", "titleTemplate": "Open @{blog} activity" },
+      "activity_actor_blog": { "mode": "internal", "pattern": "/{blog}/activity", "labelTemplate": "@{blog}", "titleTemplate": "Open @{blog} activity" },
+      "activity_target_post": { "mode": "internal", "pattern": "/post/{postId}", "icon": "↗", "labelTemplate": "{postId}", "titleTemplate": "Open post {postId}" },
+      "recommendation_post": { "mode": "internal", "pattern": "/post/{postId}", "icon": "↗", "labelTemplate": "{postId}", "titleTemplate": "Open recommended post {postId}" },
+      "search_tag": { "mode": "internal", "pattern": "/search?q={tag}", "labelTemplate": "#{tag}", "titleTemplate": "Search for #{tag}" },
       "blog_header_external_blog": {
         "mode": "legacy",
         "pattern": "https://{blog}.bdsmlr.com",
-        "target": "_blank"
+        "target": "_blank",
+        "icon": "↗",
+        "labelTemplate": "Visit",
+        "titleTemplate": "Visit @{blog} on legacy site"
       }
     }
   },

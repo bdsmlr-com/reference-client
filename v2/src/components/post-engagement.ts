@@ -121,11 +121,15 @@ export class PostEngagement extends LitElement {
     if (isReblog) {
       const originPostLink = resolveLink('post_permalink', { postId: p.originPostId as number });
       const viaPostLink = resolveLink('post_permalink', { postId: p.id });
+      const originPostLabel = originPostLink.label || String(p.originPostId);
+      const viaPostLabel = viaPostLink.label || String(p.id);
+      const originPostIcon = originPostLink.icon || '↗';
+      const viaPostIcon = viaPostLink.icon || '↗';
       return html`
         ${typeIcon} ${this.renderBlogIdentity(p.originBlogName, 'post_origin_blog')} /
-        <a class="post-id-link" href=${originPostLink.href} target=${originPostLink.target} rel=${originPostLink.rel || nothing}>${p.originPostId}<span class="post-id-outlink">↗</span></a>
+        <a class="post-id-link" href=${originPostLink.href} target=${originPostLink.target} rel=${originPostLink.rel || nothing} title=${originPostLink.title || nothing}>${originPostLabel}<span class="post-id-outlink">${originPostIcon}</span></a>
         via ♻️ ${this.renderBlogIdentity(p.blogName)} /
-        <a class="post-id-link" href=${viaPostLink.href} target=${viaPostLink.target} rel=${viaPostLink.rel || nothing}>${p.id}<span class="post-id-outlink">↗</span></a>
+        <a class="post-id-link" href=${viaPostLink.href} target=${viaPostLink.target} rel=${viaPostLink.rel || nothing} title=${viaPostLink.title || nothing}>${viaPostLabel}<span class="post-id-outlink">${viaPostIcon}</span></a>
       `;
     }
     return html`${typeIcon} ${this.renderBlogIdentity(p.blogName)} / ${p.id}`;
@@ -143,7 +147,7 @@ export class PostEngagement extends LitElement {
       return html`<span>${label}</span>`;
     }
     const link = resolveLink(contextId, { blog: normalized });
-    return html`<a href=${link.href} target=${link.target} rel=${link.rel || nothing}>${label}</a>`;
+    return html`<a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing}>${link.label || label}</a>`;
   }
 
   private renderEngagementDetail() {
@@ -156,7 +160,7 @@ export class PostEngagement extends LitElement {
       return html`<div class="detail-list">${this.reblogs.map(r => {
         const targetPostId = r.postId || (r as any).id;
         const targetLink = resolveLink('post_permalink', { postId: targetPostId });
-        return html`<div class="detail-item"><span>♻️ by ${this.renderBlogIdentity(r.blogName, 'post_via_blog')}</span><span><a href=${targetLink.href} target=${targetLink.target} rel=${targetLink.rel || nothing}>post:${targetPostId}</a></span></div>`;
+        return html`<div class="detail-item"><span>♻️ by ${this.renderBlogIdentity(r.blogName, 'post_via_blog')}</span><span><a href=${targetLink.href} target=${targetLink.target} rel=${targetLink.rel || nothing} title=${targetLink.title || nothing}>${targetLink.label || `post:${targetPostId}`}</a></span></div>`;
       })}</div>`;
     }
     if (this.activeTab === 'comments' && this.comments) {

@@ -421,12 +421,21 @@ export class SharedNav extends LitElement {
     }
   }
 
-  private getLogoUrl(): string {
+  private getLogoLink(): { href: string; label: string; title: string } {
     const primaryBlog = this.currentUsername || getCurrentUsername() || getPrimaryBlogName();
     if (primaryBlog) {
-      return resolveLink('nav_logo', { blog: primaryBlog }).href;
+      const link = resolveLink('nav_logo', { blog: primaryBlog });
+      return {
+        href: link.href,
+        label: link.label || 'BDSMLR',
+        title: link.title || 'Go to feed',
+      };
     }
-    return this.getHomeUrl();
+    return {
+      href: this.getHomeUrl(),
+      label: 'BDSMLR',
+      title: 'Go to feed',
+    };
   }
 
   private getHomeUrl(): string {
@@ -591,10 +600,11 @@ export class SharedNav extends LitElement {
     const loggedIn = isLoggedIn();
     const profileToggleLabel = loggedIn ? '' : 'Log in';
     const profileInitial = (this.currentUsername || 'u').charAt(0).toUpperCase();
+    const logoLink = this.getLogoLink();
 
     return html`
       <header class="nav-container">
-        <a href=${this.getLogoUrl()} class="logo" title="Go to feed" aria-label="BDSMLR feed">BDSMLR</a>
+        <a href=${logoLink.href} class="logo" title=${logoLink.title} aria-label=${logoLink.title}>${logoLink.label}</a>
         <nav aria-label="Main navigation">
           ${pages.map(
             (page) => {

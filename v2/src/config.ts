@@ -27,6 +27,9 @@ export interface LinkContextConfig {
   target?: '_self' | '_blank';
   rel?: string[];
   track?: string;
+  icon?: string;
+  labelTemplate?: string;
+  titleTemplate?: string;
 }
 
 export interface LinkDefaultsConfig {

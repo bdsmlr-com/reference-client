@@ -277,6 +277,7 @@ export class PostRecommendations extends LitElement {
         ${repeat(this.relatedPosts, r => r.post_id, r => {
           const h = (r as any)._hydratedPost;
           if (!h) return html`<div class="gutter-skeleton"></div>`;
+          const postLink = resolveLink('recommendation_post', { postId: h.id });
           
           const raw = h._media?.url || h._media?.videoUrl || h.content?.thumbnail;
           return html`
@@ -286,7 +287,7 @@ export class PostRecommendations extends LitElement {
               </div>
               <div class="rec-meta">
                 <span class="rec-blog">@${h.blogName || 'unknown'}</span>
-                <span>${h.id}</span>
+                <span title=${postLink.title || nothing}>${postLink.label || h.id}${postLink.icon ? ` ${postLink.icon}` : ''}</span>
               </div>
             </div>
           `;
