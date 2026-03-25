@@ -82,14 +82,30 @@ export class MediaRenderer extends LitElement {
   @state() private showPlaceholder = false;
   @state() private triedOriginal = false;
   @state() private hidePosterOverlay = false;
+  @state() private triedPosterOriginFallback = false;
 
   protected updated(changedProperties: Map<string, unknown>): void {
     if (changedProperties.has('src') || changedProperties.has('posterSrc')) {
       this.hidePosterOverlay = false;
+      this.triedPosterOriginFallback = false;
     }
   }
 
   private handleVideoPlay = (): void => {
+    this.hidePosterOverlay = true;
+  };
+
+  private handlePosterError = (e: Event): void => {
+    const img = e.target as HTMLImageElement | null;
+    if (!img) return;
+    if (!this.triedPosterOriginFallback) {
+      this.triedPosterOriginFallback = true;
+      const fallbackSrc = toOriginFallbackUrl(this.posterSrc || this.src || '');
+      if (fallbackSrc && fallbackSrc !== img.src) {
+        img.src = fallbackSrc;
+        return;
+      }
+    }
     this.hidePosterOverlay = true;
   };
 
@@ -196,7 +212,7 @@ export class MediaRenderer extends LitElement {
           >
             <source src=${resolvedUrl} type="video/mp4" @error=${this.handleError}>
           </video>
-          ${showPosterOverlay ? html`<img class="poster-overlay" src=${posterUrl} alt="" />` : nothing}
+          ${showPosterOverlay ? html`<img class="poster-overlay" src=${posterUrl} alt="" @error=${this.handlePosterError} />` : nothing}
         </div>
         ${this.renderDebug(resolvedUrl)}
       `;
