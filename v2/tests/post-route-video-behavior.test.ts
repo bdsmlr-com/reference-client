@@ -38,8 +38,8 @@ describe('post route media behavior', () => {
     expect(src).toContain('@loadeddata=${this.handleVideoReady}');
     expect(src).toContain('@play=${this.handleVideoReady}');
     expect(src).toContain("position: static;");
-    expect(src).toContain("const isVideoSource = isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');");
-    expect(src).not.toContain('const isVideoSource = isAnim || isNativeVideo(this.src);');
+    expect(src).toContain('const isAnim = isAnimation(this.src);');
+    expect(src).toContain("const isVideoSource = isAnim || isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');");
   });
 
   it('media-renderer keeps video as the only visible media surface (no overlay poster hack)', () => {
