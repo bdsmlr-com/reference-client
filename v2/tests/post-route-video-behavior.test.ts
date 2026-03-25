@@ -37,6 +37,7 @@ describe('post route media behavior', () => {
     expect(src).not.toContain('class="poster-frame ${this.showPosterFrame ? \'\' : \'hidden\'}"\n              src=${posterUrl}\n              alt=""\n              @error=${this.handleError}');
     expect(src).toContain('@loadeddata=${this.handleVideoReady}');
     expect(src).toContain('@play=${this.handleVideoReady}');
+    expect(src).toContain("position: static;");
   });
 
   it('media-renderer keeps video as the only visible media surface (no overlay poster hack)', () => {

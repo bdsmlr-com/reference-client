@@ -33,7 +33,6 @@ export class MediaRenderer extends LitElement {
       width: 100%;
       background-color: #000;
       position: relative;
-      min-height: 150px;
     }
     .poster-frame {
       display: block;
@@ -41,7 +40,7 @@ export class MediaRenderer extends LitElement {
       height: auto;
     }
     .poster-frame.hidden {
-      opacity: 0;
+      display: none;
       pointer-events: none;
     }
 
@@ -192,7 +191,9 @@ export class MediaRenderer extends LitElement {
       const effectiveControls = this.controlsVideo ?? defaultControls;
       const effectiveLoop = this.loopVideo ?? defaultLoop;
       const effectivePreload = effectiveAutoplay ? 'metadata' : 'none';
-      const nonFillVideoStyle = 'object-fit: contain; width: 100%; height: 100%; background: #000; position: absolute; inset: 0;';
+      const nonFillVideoStyle = this.showPosterFrame
+        ? 'object-fit: contain; width: 100%; height: 100%; background: #000; position: absolute; inset: 0;'
+        : 'object-fit: contain; width: 100%; height: auto; background: #000; position: static;';
       const videoStyle = fillMode ? mediaStyle : nonFillVideoStyle;
 
       if (!fillMode) {
