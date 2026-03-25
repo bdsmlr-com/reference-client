@@ -6,7 +6,7 @@
 import { CONFIG, MEDIA_PRESETS } from '../config.js';
 import { isAdminMode } from './blog-resolver.js';
 
-export type MediaRenderType = 'gallery-grid' | 'gallery-masonry' | 'feed' | 'lightbox' | 'gutter' | 'poster';
+export type MediaRenderType = 'gallery-grid' | 'gallery-masonry' | 'feed' | 'lightbox' | 'post-detail' | 'gutter' | 'poster';
 
 export const BUCKET_LIST = [
   'ocdn012.bdsmlr.com',

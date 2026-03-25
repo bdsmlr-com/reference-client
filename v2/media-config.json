@@ -4,6 +4,7 @@
     "gallery-masonry": { "width": 400, "height": 0, "gravity": "gravity:sm", "resize": "fit" },
     "feed": { "width": 600, "height": 0, "gravity": "gravity:sm", "resize": "fit" },
     "lightbox": { "width": 1200, "height": 0, "gravity": "gravity:sm", "resize": "fit" },
+    "post-detail": { "width": 1200, "height": 0, "gravity": "gravity:sm", "resize": "fit" },
     "poster": { "width": 600, "height": 0, "gravity": "gravity:sm", "resize": "fit", "format": "jpg" },
     "gutter": { "width": 150, "height": 150, "gravity": "gravity:sm", "resize": "fill" }
   },

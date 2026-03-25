@@ -60,6 +60,9 @@ export class MediaRenderer extends LitElement {
   @property({ type: String }) type: MediaRenderType = 'feed';
   @property({ type: String }) alt = '';
   @property({ type: Boolean }) loading = true;
+  @property({ type: Boolean }) autoplayVideo?: boolean;
+  @property({ type: Boolean }) controlsVideo?: boolean;
+  @property({ type: Boolean }) loopVideo?: boolean;
 
   @state() private showPlaceholder = false;
   @state() private triedOriginal = false;
@@ -140,10 +143,18 @@ export class MediaRenderer extends LitElement {
     }
 
     if (isVideoSource && this.type !== 'poster') {
+      const defaultAutoplay = this.type === 'lightbox';
+      const defaultControls = this.type === 'lightbox' || this.type === 'post-detail';
+      const defaultLoop = true;
+      const effectiveAutoplay = this.autoplayVideo ?? defaultAutoplay;
+      const effectiveControls = this.controlsVideo ?? defaultControls;
+      const effectiveLoop = this.loopVideo ?? defaultLoop;
+
       return html`
         <video 
-          autoplay 
-          loop 
+          ?autoplay=${effectiveAutoplay}
+          ?controls=${effectiveControls}
+          ?loop=${effectiveLoop}
           muted 
           playsinline 
           webkit-playsinline 

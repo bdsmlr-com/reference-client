@@ -88,19 +88,6 @@ export class ViewPost extends LitElement {
     }
   }
 
-  private handlePostClick(_e: CustomEvent) {
-    if (!this.post) return;
-    this.dispatchEvent(new CustomEvent('post-click', {
-      detail: { 
-        post: this.post,
-        posts: [this.post],
-        index: 0
-      },
-      bubbles: true,
-      composed: true
-    }));
-  }
-
   render() {
     if (this.loading) {
       return html`
@@ -127,7 +114,14 @@ export class ViewPost extends LitElement {
         <a href="/" class="back-link">← Back to Feed</a>
       </div>
 
-      <post-feed-item .post=${this.post} @post-click=${this.handlePostClick}></post-feed-item>
+      <post-feed-item
+        .post=${this.post}
+        .disableClick=${true}
+        mediaRenderType="post-detail"
+        .videoAutoplay=${false}
+        .videoControls=${true}
+        .videoLoop=${true}
+      ></post-feed-item>
 
       <post-detail-content
         .post=${this.post}

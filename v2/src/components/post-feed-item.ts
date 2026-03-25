@@ -42,6 +42,9 @@ export class PostFeedItem extends LitElement {
         border: 1px solid var(--border);
         margin-bottom: 16px;
       }
+      .card.non-interactive {
+        cursor: default;
+      }
 
       .card:hover {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -179,8 +182,14 @@ export class PostFeedItem extends LitElement {
   ];
 
   @property({ type: Object, hasChanged: postHasChanged }) post!: ProcessedPost;
+  @property({ type: Boolean }) disableClick = false;
+  @property({ type: String }) mediaRenderType: 'feed' | 'post-detail' = 'feed';
+  @property({ type: Boolean }) videoAutoplay = true;
+  @property({ type: Boolean }) videoControls = false;
+  @property({ type: Boolean }) videoLoop = true;
 
   private handlePostClick(): void {
+    if (this.disableClick) return;
     this.dispatchEvent(new CustomEvent('post-click', {
       detail: { post: this.post },
       bubbles: true,
@@ -212,14 +221,20 @@ export class PostFeedItem extends LitElement {
       if (rawUrl) {
         mediaHtml = html`
           <div class="media-container">
-            <media-renderer .src=${rawUrl} .type=${'feed'}></media-renderer>
+            <media-renderer
+              .src=${rawUrl}
+              .type=${this.mediaRenderType}
+              .autoplayVideo=${this.videoAutoplay}
+              .controlsVideo=${this.videoControls}
+              .loopVideo=${this.videoLoop}
+            ></media-renderer>
           </div>
         `;
       }
     }
 
     return html`
-      <article class="card" @click=${this.handlePostClick}>
+      <article class="card ${this.disableClick ? 'non-interactive' : ''}" @click=${this.handlePostClick}>
         <header class="card-header">
           <div class="blog-info">
             ${isReblog ? html`
