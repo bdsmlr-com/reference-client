@@ -1,6 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { resolveMediaUrl, isAnimation, probeNextBucket, toOriginFallbackUrl, type MediaRenderType } from '../services/media-resolver.js';
+import { resolveMediaUrl, isAnimation, isNativeVideo, probeNextBucket, toOriginFallbackUrl, type MediaRenderType } from '../services/media-resolver.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 
 /**
@@ -126,6 +126,7 @@ export class MediaRenderer extends LitElement {
     }
 
     const isAnim = isAnimation(this.src);
+    const isVideoSource = isAnim || isNativeVideo(this.src);
     const resolvedUrl = resolveMediaUrl(this.src, this.type);
     const posterUrl = resolveMediaUrl(this.src, 'poster');
 
@@ -138,7 +139,7 @@ export class MediaRenderer extends LitElement {
       `;
     }
 
-    if (isAnim && this.type !== 'poster') {
+    if (isVideoSource && this.type !== 'poster') {
       return html`
         <video 
           autoplay 

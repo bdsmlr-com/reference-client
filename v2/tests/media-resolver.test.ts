@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { toS3Scheme, resolveMediaUrl, isAnimation, toOriginFallbackUrl, probeNextBucket } from '../src/services/media-resolver.js';
+import { toS3Scheme, resolveMediaUrl, isAnimation, isNativeVideo, toOriginFallbackUrl, probeNextBucket } from '../src/services/media-resolver.js';
 import { CONFIG } from '../src/config.js';
 import { BUCKET_LIST } from '../src/services/media-resolver.js';
 
@@ -83,6 +83,14 @@ describe('Media Resolver', () => {
       expect(url).not.toContain('cb=999');
     });
 
+    it('should bypass imgproxy for native mp4 URLs in unsafe mode', () => {
+      CONFIG.imgproxyMode = 'unsafe';
+      const src = 'https://ocdn012.bdsmlr.com/uploads/videos/2019/03/11363/bdsmlr-11363-JigAQ6osU0.mp4?e=123&t=abc&cb=999';
+      const url = resolveMediaUrl(src, 'lightbox');
+      expect(url).toBe(src);
+      expect(url).not.toContain('imgproxy.i.bdsmlr.com/unsafe/');
+    });
+
     it('should generate a fixed (ergonomic) URL in production mode', () => {
       CONFIG.imgproxyMode = 'fixed';
       CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
@@ -132,6 +140,14 @@ describe('Media Resolver', () => {
     it('should unwrap and detect animations in proxied URLs', () => {
       const proxied = 'https://imgproxy.i.bdsmlr.com/unsafe/rs:fill:300:300/plain/s3://ocdn012.bdsmlr.com/foo.gif?e=123';
       expect(isAnimation(proxied)).toBe(true);
+    });
+  });
+
+  describe('isNativeVideo', () => {
+    it('should detect native video extensions', () => {
+      expect(isNativeVideo('/foo.mp4')).toBe(true);
+      expect(isNativeVideo('/foo.MOV')).toBe(true);
+      expect(isNativeVideo('/foo.webp')).toBe(false);
     });
   });
 
