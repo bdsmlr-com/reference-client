@@ -151,6 +151,7 @@ export class MediaRenderer extends LitElement {
       const effectiveAutoplay = this.autoplayVideo ?? defaultAutoplay;
       const effectiveControls = this.controlsVideo ?? defaultControls;
       const effectiveLoop = this.loopVideo ?? defaultLoop;
+      const effectivePreload = effectiveAutoplay ? 'metadata' : 'none';
 
       return html`
         <video 
@@ -160,7 +161,7 @@ export class MediaRenderer extends LitElement {
           muted 
           playsinline 
           webkit-playsinline 
-          preload="metadata" 
+          preload=${effectivePreload}
           poster=${posterUrl}
           style="object-fit: inherit;"
           @error=${this.handleError}
