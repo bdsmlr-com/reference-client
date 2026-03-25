@@ -32,9 +32,9 @@ describe('post route media behavior', () => {
     expect(src).toContain("const effectivePreload = effectiveAutoplay ? 'metadata' : 'none';");
     expect(src).toContain('src=${resolvedUrl}');
     expect(src).not.toContain('<source src=${resolvedUrl} type="video/mp4"');
-    expect(src).toContain('this.ensurePosterAspect(posterUrl);');
-    expect(src).toContain('background-image: url(');
-    expect(src).not.toContain('aspect-ratio: 16 / 9');
+    expect(src).toContain('class="poster-frame');
+    expect(src).toContain('@loadeddata=${this.handleVideoReady}');
+    expect(src).toContain('@play=${this.handleVideoReady}');
   });
 
   it('media-renderer keeps video as the only visible media surface (no overlay poster hack)', () => {

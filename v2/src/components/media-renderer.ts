@@ -32,6 +32,17 @@ export class MediaRenderer extends LitElement {
     .video-shell {
       width: 100%;
       background-color: #000;
+      position: relative;
+      min-height: 150px;
+    }
+    .poster-frame {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .poster-frame.hidden {
+      opacity: 0;
+      pointer-events: none;
     }
 
     .error-placeholder {
@@ -75,22 +86,17 @@ export class MediaRenderer extends LitElement {
 
   @state() private showPlaceholder = false;
   @state() private triedOriginal = false;
-  @state() private posterAspect = '';
+  @state() private showPosterFrame = true;
 
-  private measuredPosterUrl = '';
-
-  private ensurePosterAspect(posterUrl: string): void {
-    if (!posterUrl || posterUrl === this.measuredPosterUrl) return;
-    this.measuredPosterUrl = posterUrl;
-    const probe = new Image();
-    probe.onload = () => {
-      if (probe.naturalWidth > 0 && probe.naturalHeight > 0) {
-        this.posterAspect = `${probe.naturalWidth} / ${probe.naturalHeight}`;
-      }
-    };
-    probe.onerror = () => {};
-    probe.src = posterUrl;
+  protected updated(changed: Map<string, unknown>): void {
+    if (changed.has('src') || changed.has('posterSrc')) {
+      this.showPosterFrame = true;
+    }
   }
+
+  private handleVideoReady = (): void => {
+    this.showPosterFrame = false;
+  };
 
   private handleError(e: Event) {
     const el = e.target as HTMLElement;
@@ -181,17 +187,18 @@ export class MediaRenderer extends LitElement {
       const effectiveControls = this.controlsVideo ?? defaultControls;
       const effectiveLoop = this.loopVideo ?? defaultLoop;
       const effectivePreload = effectiveAutoplay ? 'metadata' : 'none';
-      const escapedPosterUrl = posterUrl.replace(/'/g, '\\\'');
-      this.ensurePosterAspect(posterUrl);
-      const nonFillContainerStyle = this.posterAspect
-        ? `object-fit: contain; width: 100%; height: auto; aspect-ratio: ${this.posterAspect}; background-image: url('${escapedPosterUrl}'); background-repeat: no-repeat; background-position: center; background-size: contain;`
-        : `object-fit: contain; width: 100%; height: auto; background-image: url('${escapedPosterUrl}'); background-repeat: no-repeat; background-position: center; background-size: contain;`;
-      const nonFillVideoStyle = 'object-fit: contain; width: 100%; height: 100%; background: transparent;';
+      const nonFillVideoStyle = 'object-fit: contain; width: 100%; height: 100%; background: #000; position: absolute; inset: 0;';
       const videoStyle = fillMode ? mediaStyle : nonFillVideoStyle;
 
       if (!fillMode) {
         return html`
-          <div class="video-shell" style=${nonFillContainerStyle}>
+          <div class="video-shell">
+            <img
+              class="poster-frame ${this.showPosterFrame ? '' : 'hidden'}"
+              src=${posterUrl}
+              alt=""
+              @error=${this.handleError}
+            />
             <video 
               src=${resolvedUrl}
               ?autoplay=${effectiveAutoplay}
@@ -204,6 +211,8 @@ export class MediaRenderer extends LitElement {
               poster=${posterUrl}
               style=${videoStyle}
               @error=${this.handleError}
+              @loadeddata=${this.handleVideoReady}
+              @play=${this.handleVideoReady}
             ></video>
           </div>
           ${this.renderDebug(resolvedUrl)}
@@ -223,6 +232,8 @@ export class MediaRenderer extends LitElement {
           poster=${posterUrl}
           style=${videoStyle}
           @error=${this.handleError}
+          @loadeddata=${this.handleVideoReady}
+          @play=${this.handleVideoReady}
         ></video>
         ${this.renderDebug(resolvedUrl)}
       `;
