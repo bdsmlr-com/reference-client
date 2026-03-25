@@ -209,7 +209,9 @@ export class PostFeedItem extends LitElement {
     const originBlogLink = resolveLink('post_origin_blog', { blog: originBlogName });
     const blogLabel = blogLink.label || `@${blogName}`;
     const originBlogLabel = originBlogLink.label || `@${originBlogName}`;
-    const rawUrl = media.url || media.videoUrl || media.audioUrl;
+    const rawUrl = media.type === 'video'
+      ? (media.videoUrl || media.url)
+      : (media.url || media.videoUrl || media.audioUrl);
     const selfActivityBadge = post._activityKindOverride === 'like'
       ? '❤️ Self-liked'
       : post._activityKindOverride === 'comment'

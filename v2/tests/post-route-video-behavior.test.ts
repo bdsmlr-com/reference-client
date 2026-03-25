@@ -17,6 +17,8 @@ describe('post route media behavior', () => {
     expect(src).toContain('.controlsVideo=${this.videoControls}');
     expect(src).toContain('.loopVideo=${this.videoLoop}');
     expect(src).toContain(".type=${this.mediaRenderType}");
+    expect(src).toContain("const rawUrl = media.type === 'video'");
+    expect(src).toContain('? (media.videoUrl || media.url)');
   });
 
   it('media-renderer supports post-detail video mode defaults', () => {
