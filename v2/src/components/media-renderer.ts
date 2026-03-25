@@ -29,6 +29,10 @@ export class MediaRenderer extends LitElement {
       display: block;
       object-fit: inherit;
     }
+    .video-shell {
+      width: 100%;
+      background-color: #000;
+    }
 
     .error-placeholder {
       width: 100%;
@@ -179,10 +183,32 @@ export class MediaRenderer extends LitElement {
       const effectivePreload = effectiveAutoplay ? 'metadata' : 'none';
       const escapedPosterUrl = posterUrl.replace(/'/g, '\\\'');
       this.ensurePosterAspect(posterUrl);
-      const nonFillVideoStyle = this.posterAspect
+      const nonFillContainerStyle = this.posterAspect
         ? `object-fit: contain; width: 100%; height: auto; aspect-ratio: ${this.posterAspect}; background-image: url('${escapedPosterUrl}'); background-repeat: no-repeat; background-position: center; background-size: contain;`
         : `object-fit: contain; width: 100%; height: auto; background-image: url('${escapedPosterUrl}'); background-repeat: no-repeat; background-position: center; background-size: contain;`;
+      const nonFillVideoStyle = 'object-fit: contain; width: 100%; height: 100%; background: transparent;';
       const videoStyle = fillMode ? mediaStyle : nonFillVideoStyle;
+
+      if (!fillMode) {
+        return html`
+          <div class="video-shell" style=${nonFillContainerStyle}>
+            <video 
+              src=${resolvedUrl}
+              ?autoplay=${effectiveAutoplay}
+              ?controls=${effectiveControls}
+              ?loop=${effectiveLoop}
+              muted 
+              playsinline 
+              webkit-playsinline 
+              preload=${effectivePreload}
+              poster=${posterUrl}
+              style=${videoStyle}
+              @error=${this.handleError}
+            ></video>
+          </div>
+          ${this.renderDebug(resolvedUrl)}
+        `;
+      }
 
       return html`
         <video 
