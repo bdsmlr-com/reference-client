@@ -7,7 +7,7 @@ describe('build tag format', () => {
     const pkg = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8'));
     const build = pkg?.scripts?.build || '';
 
-    expect(build).toContain("VITE_BUILD_ENV=${VITE_BUILD_ENV:-${APP_ENV:-$(grep '^APP_ENV=' ../../.env 2>/dev/null | cut -d= -f2-)}}");
+    expect(build).toContain("VITE_BUILD_ENV=${VITE_BUILD_ENV:-${APP_ENV:-$(grep '^APP_ENV=' ../../../.env 2>/dev/null | cut -d= -f2-)}}");
     expect(build).toContain('VITE_BUILD_ENV=${VITE_BUILD_ENV:-staging}');
     expect(build).toContain('VITE_FE_SHA=');
     expect(build).toContain('VITE_BE_SHA=');
