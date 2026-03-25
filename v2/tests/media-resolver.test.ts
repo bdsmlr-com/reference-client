@@ -35,6 +35,13 @@ describe('Media Resolver', () => {
     CONFIG.mediaProxyBase = 'https://imgproxy.i.bdsmlr.com';
   });
 
+  it('supports staging fixed host media.i for alias URLs', () => {
+    CONFIG.imgproxyMode = 'fixed';
+    CONFIG.mediaProxyBase = 'https://media.i.bdsmlr.com';
+    const url = resolveMediaUrl('/uploads/foo.jpg', 'feed');
+    expect(url).toContain('media.i.bdsmlr.com/feed/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
+  });
+
   describe('toS3Scheme', () => {
     it('should map a standard CDN URL to s3 scheme', () => {
       const [s3Url] = toS3Scheme('https://cdn101.bdsmlr.com/uploads/foo.jpg');

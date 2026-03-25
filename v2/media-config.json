@@ -16,7 +16,7 @@
     },
     "staging": {
       "name": "Staging",
-      "mediaProxyBase": "https://media.bdsmlr.com",
+      "mediaProxyBase": "https://media.i.bdsmlr.com",
       "imgproxyMode": "fixed"
     },
     "prod": {
