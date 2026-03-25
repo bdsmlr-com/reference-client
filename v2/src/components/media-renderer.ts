@@ -160,7 +160,7 @@ export class MediaRenderer extends LitElement {
       const effectiveAutoplay = this.autoplayVideo ?? defaultAutoplay;
       const effectiveControls = this.controlsVideo ?? defaultControls;
       const effectiveLoop = this.loopVideo ?? defaultLoop;
-      const effectivePreload = effectiveAutoplay ? 'metadata' : 'none';
+      const effectivePreload = (effectiveAutoplay || this.type === 'post-detail') ? 'metadata' : 'none';
 
       return html`
         <video 

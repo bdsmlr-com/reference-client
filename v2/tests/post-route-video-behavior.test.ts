@@ -29,6 +29,7 @@ describe('post route media behavior', () => {
     expect(src).toContain('autoplay=${effectiveAutoplay}');
     expect(src).toContain('loop=${effectiveLoop}');
     expect(src).toContain('@property({ type: String }) posterSrc');
+    expect(src).toContain("const effectivePreload = (effectiveAutoplay || this.type === 'post-detail') ? 'metadata' : 'none';");
   });
 
   it('media-renderer keeps video as the only visible media surface (no overlay poster hack)', () => {
