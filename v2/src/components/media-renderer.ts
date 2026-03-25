@@ -71,6 +71,22 @@ export class MediaRenderer extends LitElement {
 
   @state() private showPlaceholder = false;
   @state() private triedOriginal = false;
+  @state() private posterAspect = '';
+
+  private measuredPosterUrl = '';
+
+  private ensurePosterAspect(posterUrl: string): void {
+    if (!posterUrl || posterUrl === this.measuredPosterUrl) return;
+    this.measuredPosterUrl = posterUrl;
+    const probe = new Image();
+    probe.onload = () => {
+      if (probe.naturalWidth > 0 && probe.naturalHeight > 0) {
+        this.posterAspect = `${probe.naturalWidth} / ${probe.naturalHeight}`;
+      }
+    };
+    probe.onerror = () => {};
+    probe.src = posterUrl;
+  }
 
   private handleError(e: Event) {
     const el = e.target as HTMLElement;
@@ -161,6 +177,12 @@ export class MediaRenderer extends LitElement {
       const effectiveControls = this.controlsVideo ?? defaultControls;
       const effectiveLoop = this.loopVideo ?? defaultLoop;
       const effectivePreload = effectiveAutoplay ? 'metadata' : 'none';
+      const escapedPosterUrl = posterUrl.replace(/'/g, '\\\'');
+      this.ensurePosterAspect(posterUrl);
+      const nonFillVideoStyle = this.posterAspect
+        ? `object-fit: contain; width: 100%; height: auto; aspect-ratio: ${this.posterAspect}; background-image: url('${escapedPosterUrl}'); background-repeat: no-repeat; background-position: center; background-size: contain;`
+        : `object-fit: contain; width: 100%; height: auto; background-image: url('${escapedPosterUrl}'); background-repeat: no-repeat; background-position: center; background-size: contain;`;
+      const videoStyle = fillMode ? mediaStyle : nonFillVideoStyle;
 
       return html`
         <video 
@@ -173,7 +195,7 @@ export class MediaRenderer extends LitElement {
           webkit-playsinline 
           preload=${effectivePreload}
           poster=${posterUrl}
-          style=${mediaStyle}
+          style=${videoStyle}
           @error=${this.handleError}
         ></video>
         ${this.renderDebug(resolvedUrl)}
