@@ -40,6 +40,7 @@ describe('post route media behavior', () => {
     expect(src).toContain("position: static;");
     expect(src).toContain('const isAnim = isAnimation(this.src);');
     expect(src).toContain("const isVideoSource = isAnim || isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');");
+    expect(src).toContain("const defaultAutoplay = this.type === 'lightbox' || this.type === 'gallery-grid' || this.type === 'gallery-masonry' || this.type === 'gutter';");
   });
 
   it('media-renderer keeps video as the only visible media surface (no overlay poster hack)', () => {

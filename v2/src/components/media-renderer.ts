@@ -184,7 +184,7 @@ export class MediaRenderer extends LitElement {
     }
 
     if (isVideoSource && this.type !== 'poster') {
-      const defaultAutoplay = this.type === 'lightbox';
+      const defaultAutoplay = this.type === 'lightbox' || this.type === 'gallery-grid' || this.type === 'gallery-masonry' || this.type === 'gutter';
       const defaultControls = this.type === 'lightbox' || this.type === 'post-detail';
       const defaultLoop = true;
       const effectiveAutoplay = this.autoplayVideo ?? defaultAutoplay;
