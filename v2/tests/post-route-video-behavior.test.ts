@@ -19,6 +19,7 @@ describe('post route media behavior', () => {
     expect(src).toContain(".type=${this.mediaRenderType}");
     expect(src).toContain("const rawUrl = media.type === 'video'");
     expect(src).toContain('? (media.videoUrl || media.url)');
+    expect(src).toContain('.posterSrc=${posterSrc}');
   });
 
   it('media-renderer supports post-detail video mode defaults', () => {
@@ -27,5 +28,11 @@ describe('post route media behavior', () => {
     expect(src).toContain('controls=${effectiveControls}');
     expect(src).toContain('autoplay=${effectiveAutoplay}');
     expect(src).toContain('loop=${effectiveLoop}');
+    expect(src).toContain('@property({ type: String }) posterSrc');
+  });
+
+  it('lightbox forwards video poster source to media-renderer', () => {
+    const src = readFileSync(join(process.cwd(), 'src/components/post-lightbox.ts'), 'utf8');
+    expect(src).toContain(".posterSrc=${media.type === 'video' ? media.url : undefined}");
   });
 });

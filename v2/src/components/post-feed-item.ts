@@ -212,6 +212,7 @@ export class PostFeedItem extends LitElement {
     const rawUrl = media.type === 'video'
       ? (media.videoUrl || media.url)
       : (media.url || media.videoUrl || media.audioUrl);
+    const posterSrc = media.type === 'video' && media.url && media.url !== rawUrl ? media.url : undefined;
     const selfActivityBadge = post._activityKindOverride === 'like'
       ? '❤️ Self-liked'
       : post._activityKindOverride === 'comment'
@@ -225,6 +226,7 @@ export class PostFeedItem extends LitElement {
           <div class="media-container">
             <media-renderer
               .src=${rawUrl}
+              .posterSrc=${posterSrc}
               .type=${this.mediaRenderType}
               .autoplayVideo=${this.videoAutoplay}
               .controlsVideo=${this.videoControls}

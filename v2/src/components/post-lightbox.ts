@@ -255,7 +255,11 @@ export class PostLightbox extends LitElement {
       <div class="media-stack">
         ${mediaSources.map(src => html`
           <div class="media-container">
-            <media-renderer .src=${src} .type=${'lightbox'}></media-renderer>
+            <media-renderer
+              .src=${src}
+              .posterSrc=${media.type === 'video' ? media.url : undefined}
+              .type=${'lightbox'}
+            ></media-renderer>
           </div>
         `)}
       </div>

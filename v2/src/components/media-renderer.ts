@@ -57,6 +57,7 @@ export class MediaRenderer extends LitElement {
   `;
 
   @property({ type: String }) src: string | undefined = '';
+  @property({ type: String }) posterSrc: string | undefined = '';
   @property({ type: String }) type: MediaRenderType = 'feed';
   @property({ type: String }) alt = '';
   @property({ type: Boolean }) loading = true;
@@ -131,7 +132,8 @@ export class MediaRenderer extends LitElement {
     const isAnim = isAnimation(this.src);
     const isVideoSource = isAnim || isNativeVideo(this.src);
     const resolvedUrl = resolveMediaUrl(this.src, this.type);
-    const posterUrl = resolveMediaUrl(this.src, 'poster');
+    const posterSource = this.posterSrc || this.src;
+    const posterUrl = resolveMediaUrl(posterSource, 'poster');
 
     if (!resolvedUrl) {
       return html`
