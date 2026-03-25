@@ -98,6 +98,11 @@ export class MediaRenderer extends LitElement {
     this.showPosterFrame = false;
   };
 
+  private handlePosterFrameError = (): void => {
+    // Poster is best-effort only. Do not fail the whole media renderer.
+    this.showPosterFrame = false;
+  };
+
   private handleError(e: Event) {
     const el = e.target as HTMLElement;
     
@@ -197,7 +202,7 @@ export class MediaRenderer extends LitElement {
               class="poster-frame ${this.showPosterFrame ? '' : 'hidden'}"
               src=${posterUrl}
               alt=""
-              @error=${this.handleError}
+              @error=${this.handlePosterFrameError}
             />
             <video 
               src=${resolvedUrl}

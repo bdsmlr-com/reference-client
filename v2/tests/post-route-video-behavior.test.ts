@@ -33,6 +33,8 @@ describe('post route media behavior', () => {
     expect(src).toContain('src=${resolvedUrl}');
     expect(src).not.toContain('<source src=${resolvedUrl} type="video/mp4"');
     expect(src).toContain('class="poster-frame');
+    expect(src).toContain('@error=${this.handlePosterFrameError}');
+    expect(src).not.toContain('class="poster-frame ${this.showPosterFrame ? \'\' : \'hidden\'}"\n              src=${posterUrl}\n              alt=""\n              @error=${this.handleError}');
     expect(src).toContain('@loadeddata=${this.handleVideoReady}');
     expect(src).toContain('@play=${this.handleVideoReady}');
   });
