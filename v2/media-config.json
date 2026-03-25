@@ -16,8 +16,8 @@
     },
     "staging": {
       "name": "Staging",
-      "mediaProxyBase": "https://imgproxy.i.bdsmlr.com",
-      "imgproxyMode": "unsafe"
+      "mediaProxyBase": "https://media.bdsmlr.com",
+      "imgproxyMode": "fixed"
     },
     "prod": {
       "name": "Production",
