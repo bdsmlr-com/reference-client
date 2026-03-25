@@ -25,6 +25,20 @@ export class MediaRenderer extends LitElement {
       display: block;
       object-fit: inherit;
     }
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    .poster-overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: inherit;
+      pointer-events: none;
+      z-index: 2;
+    }
 
     .error-placeholder {
       width: 100%;
@@ -67,6 +81,17 @@ export class MediaRenderer extends LitElement {
 
   @state() private showPlaceholder = false;
   @state() private triedOriginal = false;
+  @state() private hidePosterOverlay = false;
+
+  protected updated(changedProperties: Map<string, unknown>): void {
+    if (changedProperties.has('src') || changedProperties.has('posterSrc')) {
+      this.hidePosterOverlay = false;
+    }
+  }
+
+  private handleVideoPlay = (): void => {
+    this.hidePosterOverlay = true;
+  };
 
   private handleError(e: Event) {
     const el = e.target as HTMLElement;
@@ -152,22 +177,27 @@ export class MediaRenderer extends LitElement {
       const effectiveControls = this.controlsVideo ?? defaultControls;
       const effectiveLoop = this.loopVideo ?? defaultLoop;
       const effectivePreload = effectiveAutoplay ? 'metadata' : 'none';
+      const showPosterOverlay = !effectiveAutoplay && !!posterUrl && !this.hidePosterOverlay;
 
       return html`
-        <video 
-          ?autoplay=${effectiveAutoplay}
-          ?controls=${effectiveControls}
-          ?loop=${effectiveLoop}
-          muted 
-          playsinline 
-          webkit-playsinline 
-          preload=${effectivePreload}
-          poster=${posterUrl}
-          style="object-fit: inherit;"
-          @error=${this.handleError}
-        >
-          <source src=${resolvedUrl} type="video/mp4" @error=${this.handleError}>
-        </video>
+        <div class="video-wrap">
+          <video 
+            ?autoplay=${effectiveAutoplay}
+            ?controls=${effectiveControls}
+            ?loop=${effectiveLoop}
+            muted 
+            playsinline 
+            webkit-playsinline 
+            preload=${effectivePreload}
+            poster=${posterUrl}
+            style="object-fit: inherit;"
+            @play=${this.handleVideoPlay}
+            @error=${this.handleError}
+          >
+            <source src=${resolvedUrl} type="video/mp4" @error=${this.handleError}>
+          </video>
+          ${showPosterOverlay ? html`<img class="poster-overlay" src=${posterUrl} alt="" />` : nothing}
+        </div>
         ${this.renderDebug(resolvedUrl)}
       `;
     }
