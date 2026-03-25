@@ -160,10 +160,11 @@ export class MediaRenderer extends LitElement {
       const effectiveAutoplay = this.autoplayVideo ?? defaultAutoplay;
       const effectiveControls = this.controlsVideo ?? defaultControls;
       const effectiveLoop = this.loopVideo ?? defaultLoop;
-      const effectivePreload = (effectiveAutoplay || this.type === 'post-detail') ? 'metadata' : 'none';
+      const effectivePreload = effectiveAutoplay ? 'metadata' : 'none';
 
       return html`
         <video 
+          src=${resolvedUrl}
           ?autoplay=${effectiveAutoplay}
           ?controls=${effectiveControls}
           ?loop=${effectiveLoop}
@@ -174,9 +175,7 @@ export class MediaRenderer extends LitElement {
           poster=${posterUrl}
           style=${mediaStyle}
           @error=${this.handleError}
-        >
-          <source src=${resolvedUrl} type="video/mp4" @error=${this.handleError}>
-        </video>
+        ></video>
         ${this.renderDebug(resolvedUrl)}
       `;
     }
