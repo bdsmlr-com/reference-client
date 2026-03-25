@@ -13,10 +13,14 @@ export class MediaRenderer extends LitElement {
     :host {
       display: block;
       width: 100%;
-      height: 100%;
+      height: auto;
       position: relative;
       background: #000;
       overflow: hidden;
+    }
+
+    :host([fill-mode]) {
+      height: 100%;
     }
 
     img, video {
@@ -24,20 +28,6 @@ export class MediaRenderer extends LitElement {
       height: 100%;
       display: block;
       object-fit: inherit;
-    }
-    .video-wrap {
-      position: relative;
-      width: 100%;
-      height: 100%;
-    }
-    .poster-overlay {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: inherit;
-      pointer-events: none;
-      z-index: 2;
     }
 
     .error-placeholder {
@@ -81,33 +71,6 @@ export class MediaRenderer extends LitElement {
 
   @state() private showPlaceholder = false;
   @state() private triedOriginal = false;
-  @state() private hidePosterOverlay = false;
-  @state() private triedPosterOriginFallback = false;
-
-  protected updated(changedProperties: Map<string, unknown>): void {
-    if (changedProperties.has('src') || changedProperties.has('posterSrc')) {
-      this.hidePosterOverlay = false;
-      this.triedPosterOriginFallback = false;
-    }
-  }
-
-  private handleVideoPlay = (): void => {
-    this.hidePosterOverlay = true;
-  };
-
-  private handlePosterError = (e: Event): void => {
-    const img = e.target as HTMLImageElement | null;
-    if (!img) return;
-    if (!this.triedPosterOriginFallback) {
-      this.triedPosterOriginFallback = true;
-      const fallbackSrc = toOriginFallbackUrl(this.posterSrc || this.src || '');
-      if (fallbackSrc && fallbackSrc !== img.src) {
-        img.src = fallbackSrc;
-        return;
-      }
-    }
-    this.hidePosterOverlay = true;
-  };
 
   private handleError(e: Event) {
     const el = e.target as HTMLElement;
@@ -175,6 +138,11 @@ export class MediaRenderer extends LitElement {
     const resolvedUrl = resolveMediaUrl(this.src, this.type);
     const posterSource = this.posterSrc || this.src;
     const posterUrl = resolveMediaUrl(posterSource, 'poster');
+    const fillMode = this.type === 'gallery-grid' || this.type === 'gallery-masonry' || this.type === 'gutter' || this.type === 'lightbox';
+    this.toggleAttribute('fill-mode', fillMode);
+    const mediaStyle = fillMode
+      ? 'object-fit: inherit; width: 100%; height: 100%;'
+      : 'object-fit: contain; width: 100%; height: auto;';
 
     if (!resolvedUrl) {
       return html`
@@ -193,27 +161,22 @@ export class MediaRenderer extends LitElement {
       const effectiveControls = this.controlsVideo ?? defaultControls;
       const effectiveLoop = this.loopVideo ?? defaultLoop;
       const effectivePreload = effectiveAutoplay ? 'metadata' : 'none';
-      const showPosterOverlay = !effectiveAutoplay && !!posterUrl && !this.hidePosterOverlay;
 
       return html`
-        <div class="video-wrap">
-          <video 
-            ?autoplay=${effectiveAutoplay}
-            ?controls=${effectiveControls}
-            ?loop=${effectiveLoop}
-            muted 
-            playsinline 
-            webkit-playsinline 
-            preload=${effectivePreload}
-            poster=${posterUrl}
-            style="object-fit: inherit;"
-            @play=${this.handleVideoPlay}
-            @error=${this.handleError}
-          >
-            <source src=${resolvedUrl} type="video/mp4" @error=${this.handleError}>
-          </video>
-          ${showPosterOverlay ? html`<img class="poster-overlay" src=${posterUrl} alt="" @error=${this.handlePosterError} />` : nothing}
-        </div>
+        <video 
+          ?autoplay=${effectiveAutoplay}
+          ?controls=${effectiveControls}
+          ?loop=${effectiveLoop}
+          muted 
+          playsinline 
+          webkit-playsinline 
+          preload=${effectivePreload}
+          poster=${posterUrl}
+          style=${mediaStyle}
+          @error=${this.handleError}
+        >
+          <source src=${resolvedUrl} type="video/mp4" @error=${this.handleError}>
+        </video>
         ${this.renderDebug(resolvedUrl)}
       `;
     }
@@ -223,7 +186,7 @@ export class MediaRenderer extends LitElement {
         src=${resolvedUrl} 
         alt=${this.alt} 
         loading="lazy" 
-        style="object-fit: inherit;"
+        style=${mediaStyle}
         @error=${this.handleError} 
       />
       ${this.renderDebug(resolvedUrl)}

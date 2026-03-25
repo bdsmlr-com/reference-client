@@ -31,6 +31,12 @@ describe('post route media behavior', () => {
     expect(src).toContain('@property({ type: String }) posterSrc');
   });
 
+  it('media-renderer keeps video as the only visible media surface (no overlay poster hack)', () => {
+    const src = readFileSync(join(process.cwd(), 'src/components/media-renderer.ts'), 'utf8');
+    expect(src).not.toContain('poster-overlay');
+    expect(src).not.toContain('video-wrap');
+  });
+
   it('lightbox forwards video poster source to media-renderer', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/post-lightbox.ts'), 'utf8');
     expect(src).toContain(".posterSrc=${media.type === 'video' ? media.url : undefined}");
