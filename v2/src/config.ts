@@ -15,6 +15,13 @@ export interface MediaPreset {
   format?: 'webp' | 'mp4' | 'jpg';
 }
 
+export interface MediaBehavior {
+  autoplay: boolean;
+  controls: boolean;
+  loop: boolean;
+  preload?: 'none' | 'metadata' | 'auto';
+}
+
 export interface AppConfig {
   name: string;
   mediaProxyBase: string;
@@ -114,6 +121,7 @@ export interface RenderContractConfig {
 }
 
 export const MEDIA_PRESETS: Record<string, MediaPreset> = mediaConfig.presets as Record<string, MediaPreset>;
+export const MEDIA_BEHAVIOR: Record<string, MediaBehavior> = (mediaConfig as any).media_behavior as Record<string, MediaBehavior>;
 
 export const ENV_CONFIGS: Record<string, AppConfig> = mediaConfig.environments as Record<string, AppConfig>;
 export const LINK_CONFIG: LinkConfig = (mediaConfig as any).links as LinkConfig;

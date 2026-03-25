@@ -2,6 +2,7 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { resolveMediaUrl, isAnimation, isNativeVideo, probeNextBucket, toOriginFallbackUrl, type MediaRenderType } from '../services/media-resolver.js';
 import { isAdminMode } from '../services/blog-resolver.js';
+import { getMediaBehavior } from '../services/media-behavior.js';
 
 /**
  * Universal Media Renderer
@@ -184,13 +185,14 @@ export class MediaRenderer extends LitElement {
     }
 
     if (isVideoSource && this.type !== 'poster') {
-      const defaultAutoplay = this.type === 'lightbox' || this.type === 'gallery-grid' || this.type === 'gallery-masonry' || this.type === 'gutter';
-      const defaultControls = this.type === 'lightbox' || this.type === 'post-detail';
-      const defaultLoop = true;
-      const effectiveAutoplay = this.autoplayVideo ?? defaultAutoplay;
-      const effectiveControls = this.controlsVideo ?? defaultControls;
-      const effectiveLoop = this.loopVideo ?? defaultLoop;
-      const effectivePreload = effectiveAutoplay ? 'metadata' : 'none';
+      const behavior = getMediaBehavior(this.type);
+      const effectiveAutoplay = this.autoplayVideo ?? behavior.autoplay;
+      const effectiveControls = this.controlsVideo ?? behavior.controls;
+      const effectiveLoop = this.loopVideo ?? behavior.loop;
+      const defaultPreload = behavior.preload ?? 'none';
+      const effectivePreload = effectiveAutoplay && defaultPreload === 'none'
+        ? 'metadata'
+        : defaultPreload;
       const nonFillVideoStyle = this.showPosterFrame
         ? 'object-fit: contain; width: 100%; height: 100%; background: #000; position: absolute; inset: 0;'
         : 'object-fit: contain; width: 100%; height: auto; background: #000; position: static;';

@@ -25,6 +25,16 @@
       "imgproxyMode": "fixed"
     }
   },
+  "media_behavior": {
+    "default": { "autoplay": false, "controls": false, "loop": true, "preload": "none" },
+    "gallery-grid": { "autoplay": true, "controls": false, "loop": true, "preload": "metadata" },
+    "gallery-masonry": { "autoplay": true, "controls": false, "loop": true, "preload": "metadata" },
+    "feed": { "autoplay": false, "controls": false, "loop": true, "preload": "none" },
+    "lightbox": { "autoplay": true, "controls": true, "loop": true, "preload": "metadata" },
+    "post-detail": { "autoplay": false, "controls": true, "loop": true, "preload": "none" },
+    "gutter": { "autoplay": true, "controls": false, "loop": true, "preload": "metadata" },
+    "poster": { "autoplay": false, "controls": false, "loop": true, "preload": "none" }
+  },
   "links": {
     "defaults": {
       "internalTarget": "_self",

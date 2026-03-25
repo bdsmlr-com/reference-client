@@ -13,6 +13,9 @@ describe('post route media behavior', () => {
   it('post-feed-item forwards post-detail video flags to media-renderer', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/post-feed-item.ts'), 'utf8');
     expect(src).toContain('@property({ type: Boolean }) disableClick = false;');
+    expect(src).toContain('@property({ type: Boolean }) videoAutoplay?: boolean;');
+    expect(src).toContain('@property({ type: Boolean }) videoControls?: boolean;');
+    expect(src).toContain('@property({ type: Boolean }) videoLoop?: boolean;');
     expect(src).toContain('.autoplayVideo=${this.videoAutoplay}');
     expect(src).toContain('.controlsVideo=${this.videoControls}');
     expect(src).toContain('.loopVideo=${this.videoLoop}');
@@ -24,12 +27,11 @@ describe('post route media behavior', () => {
 
   it('media-renderer supports post-detail video mode defaults', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/media-renderer.ts'), 'utf8');
-    expect(src).toContain("this.type === 'post-detail'");
     expect(src).toContain('controls=${effectiveControls}');
     expect(src).toContain('autoplay=${effectiveAutoplay}');
     expect(src).toContain('loop=${effectiveLoop}');
     expect(src).toContain('@property({ type: String }) posterSrc');
-    expect(src).toContain("const effectivePreload = effectiveAutoplay ? 'metadata' : 'none';");
+    expect(src).toContain("const effectivePreload = effectiveAutoplay && defaultPreload === 'none'");
     expect(src).toContain('src=${resolvedUrl}');
     expect(src).not.toContain('<source src=${resolvedUrl} type="video/mp4"');
     expect(src).toContain('class="poster-frame');
@@ -40,7 +42,9 @@ describe('post route media behavior', () => {
     expect(src).toContain("position: static;");
     expect(src).toContain('const isAnim = isAnimation(this.src);');
     expect(src).toContain("const isVideoSource = isAnim || isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');");
-    expect(src).toContain("const defaultAutoplay = this.type === 'lightbox' || this.type === 'gallery-grid' || this.type === 'gallery-masonry' || this.type === 'gutter';");
+    expect(src).toContain('const behavior = getMediaBehavior(this.type);');
+    expect(src).toContain('const effectiveAutoplay = this.autoplayVideo ?? behavior.autoplay;');
+    expect(src).toContain("const defaultPreload = behavior.preload ?? 'none';");
   });
 
   it('media-renderer keeps video as the only visible media surface (no overlay poster hack)', () => {

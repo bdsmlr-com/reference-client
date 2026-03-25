@@ -184,9 +184,9 @@ export class PostFeedItem extends LitElement {
   @property({ type: Object, hasChanged: postHasChanged }) post!: ProcessedPost;
   @property({ type: Boolean }) disableClick = false;
   @property({ type: String }) mediaRenderType: 'feed' | 'post-detail' = 'feed';
-  @property({ type: Boolean }) videoAutoplay = true;
-  @property({ type: Boolean }) videoControls = false;
-  @property({ type: Boolean }) videoLoop = true;
+  @property({ type: Boolean }) videoAutoplay?: boolean;
+  @property({ type: Boolean }) videoControls?: boolean;
+  @property({ type: Boolean }) videoLoop?: boolean;
 
   private handlePostClick(): void {
     if (this.disableClick) return;
