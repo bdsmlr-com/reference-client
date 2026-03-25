@@ -7,6 +7,7 @@ describe('build tag format', () => {
     const pkg = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8'));
     const build = pkg?.scripts?.build || '';
 
+    expect(build).toContain('VITE_BUILD_ENV=${VITE_BUILD_ENV:-staging}');
     expect(build).toContain('VITE_FE_SHA=');
     expect(build).toContain('VITE_BE_SHA=');
     expect(build).toContain('${VITE_BUILD_ENV}@${VITE_FE_SHA}/${VITE_BE_SHA}');
@@ -17,4 +18,3 @@ describe('build tag format', () => {
     expect(src).toContain("|| 'staging@unknown/unknown'");
   });
 });
-

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "export VITE_BUILD_ENV=$(grep 'export const ACTIVE_ENV' src/config.ts | cut -d\"'\" -f2) && export VITE_FE_SHA=$(git rev-parse --short HEAD) && export VITE_BE_SHA=${VITE_BE_SHA:-$(git -C ../../.. rev-parse --short HEAD 2>/dev/null || echo unknown)} && export VITE_BUILD_SHA=${VITE_BUILD_ENV}@${VITE_FE_SHA}/${VITE_BE_SHA} && tsc && vite build",
+    "build": "export VITE_BUILD_ENV=${VITE_BUILD_ENV:-staging} && export VITE_FE_SHA=$(git rev-parse --short HEAD) && export VITE_BE_SHA=${VITE_BE_SHA:-$(git -C ../../.. rev-parse --short HEAD 2>/dev/null || echo unknown)} && export VITE_BUILD_SHA=${VITE_BUILD_ENV}@${VITE_FE_SHA}/${VITE_BE_SHA} && tsc && vite build",
     "preview": "vite preview",
     "check:render-contract": "node scripts/check-render-contract-usage.mjs"
   },

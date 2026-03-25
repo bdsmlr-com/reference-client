@@ -128,7 +128,7 @@ export const LINK_CONFIG: LinkConfig = (mediaConfig as any).links as LinkConfig;
 export const POST_RENDER_POLICY_CONFIG: PostRenderPolicyConfig = (mediaConfig as any).post_render_policy as PostRenderPolicyConfig;
 export const RENDER_CONTRACT_CONFIG: RenderContractConfig = (mediaConfig as any).render as RenderContractConfig;
 
-// CURRENT ACTIVE ENVIRONMENT
-export const ACTIVE_ENV = 'staging';
+// Build/runtime environment selection with safe fallback.
+export const ACTIVE_ENV = ((import.meta as any).env?.VITE_BUILD_ENV || 'staging') as string;
 
-export const CONFIG = ENV_CONFIGS[ACTIVE_ENV];
+export const CONFIG = ENV_CONFIGS[ACTIVE_ENV] || ENV_CONFIGS.staging || ENV_CONFIGS.dev;
