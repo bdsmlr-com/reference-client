@@ -170,7 +170,8 @@ export class MediaRenderer extends LitElement {
     const isVideoSource = isAnim || isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');
     const posterSource = this.posterSrc || this.src;
     const posterUrl = resolveMediaUrl(posterSource, 'poster');
-    const effectivePoster = posterUrl || resolvedUrl;
+    const posterFallback = toOriginFallbackUrl(this.src);
+    const effectivePoster = posterUrl || posterFallback;
     const fillMode = this.type === 'gallery-grid' || this.type === 'gallery-masonry' || this.type === 'gutter' || this.type === 'lightbox';
     this.toggleAttribute('fill-mode', fillMode);
     const mediaStyle = fillMode
