@@ -1,6 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { resolveMediaUrl, isAnimation, isNativeVideo, probeNextBucket, toOriginFallbackUrl, type MediaRenderType } from '../services/media-resolver.js';
+import { resolveMediaUrl, isNativeVideo, probeNextBucket, toOriginFallbackUrl, type MediaRenderType } from '../services/media-resolver.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { getMediaBehavior } from '../services/media-behavior.js';
 
@@ -164,9 +164,10 @@ export class MediaRenderer extends LitElement {
       `;
     }
 
-    const isAnim = isAnimation(this.src);
     const resolvedUrl = resolveMediaUrl(this.src, this.type);
-    const isVideoSource = isAnim || isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');
+    // Only treat as video if the resolved URL is an actual video (mp4/webm/etc) or explicitly requests format:mp4.
+    // Raw GIF/WEBP should stay as <img>; rendering them in <video> causes black boxes/poster issues.
+    const isVideoSource = isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');
     const posterSource = this.posterSrc || this.src;
     const posterUrl = resolveMediaUrl(posterSource, 'poster');
     const fillMode = this.type === 'gallery-grid' || this.type === 'gallery-masonry' || this.type === 'gutter' || this.type === 'lightbox';
