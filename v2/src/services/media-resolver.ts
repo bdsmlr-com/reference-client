@@ -8,12 +8,9 @@ import { isAdminMode } from './blog-resolver.js';
 
 export type MediaRenderType = 'gallery-grid' | 'gallery-masonry' | 'feed' | 'lightbox' | 'post-detail' | 'gutter' | 'poster';
 
-export const BUCKET_LIST = [
-  'ocdn012.bdsmlr.com',
-  'cdn101.bdsmlr.com',
-  'ocdn011.bdsmlr.com',
-  'cdn013.bdsmlr.com'
-];
+// Consolidated media now lives on a single bucket; keep list to one to avoid
+// unnecessary failover/probing.
+export const BUCKET_LIST = ['ocdn012.bdsmlr.com'];
 
 function mediaPathForDetection(url: string | undefined): string {
   if (!url) return '';
