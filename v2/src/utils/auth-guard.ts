@@ -13,11 +13,8 @@ const buildLoginUrl = (base: string, current: string) => {
 
 export function runAuthGuard() {
   const env = (import.meta as any).env || {};
-  const buildEnv = env.VITE_BUILD_ENV || env.APP_ENV || env.MODE || env.NODE_ENV;
   const loginBase = env.VITE_LOGIN_URL || 'https://bdsmlr.com/login';
-  const isProd = String(buildEnv || '').toLowerCase() === 'prod';
 
-  if (!isProd) return;
   if (hasCookie('bdsmlr7_session')) return;
 
   const target = buildLoginUrl(loginBase, window.location.href);
