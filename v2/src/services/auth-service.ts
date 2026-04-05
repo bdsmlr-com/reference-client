@@ -1,4 +1,4 @@
-const DEFAULT_BASE = 'https://bdsmlr.com/auth';
+const DEFAULT_BASE = '';
 const DEFAULT_TIMEOUT_MS = 4000;
 
 const resolveBase = () => {
@@ -11,11 +11,12 @@ const fetchJson = async <T>(path: string, init: RequestInit, timeoutMs: number):
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   let resp: Response;
+  const env = (import.meta as any).env || {};
   try {
     resp = await fetch(`${resolveBase()}${path}`, {
       credentials: 'include',
       cache: 'no-store',
-      mode: 'cors',
+      mode: env.VITE_AUTH_BASE ? 'cors' : 'same-origin',
       redirect: 'follow',
       signal: controller.signal,
       ...init
