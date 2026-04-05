@@ -445,8 +445,8 @@ export class SharedNav extends LitElement {
   private getPageUrl(page: string): string {
     const activeBlog = this.currentUsername || getPrimaryBlogName() || getViewedBlogName();
     const blogPages = ['archive', 'posts', 'feed', 'social'];
-    if (page === 'posts') {
-      if (activeBlog) return resolveLink('nav_activity', { blog: activeBlog }).href;
+    if (page === 'activity') {
+      if (activeBlog) return buildPageUrl('activity', activeBlog);
       return buildPageUrl('activity');
     }
 
@@ -698,7 +698,7 @@ export class SharedNav extends LitElement {
 
   render() {
     const pages = [
-      { name: 'posts', label: 'Activity', description: "A blog's full timeline including reblogs, likes, and comments" },
+      { name: 'activity', label: 'Activity', description: "A blog's full timeline including reblogs, likes, and comments" },
       { name: 'archive', label: 'Archive', description: 'High-density matrix of all blog interactions' },
       { name: 'social', label: 'Connections', description: 'View who follows a blog and who they follow' },
       { name: 'blogs', label: 'Discover', description: 'Discover blogs by name or description' },
@@ -707,7 +707,7 @@ export class SharedNav extends LitElement {
 
     const viewedBlog = getViewedBlogName();
     const showViewingIndicator = this.isViewingDifferentBlog();
-    const activePage = this.currentPage === 'following' ? '' : (this.currentPage === 'timeline' ? 'posts' : this.currentPage);
+    const activePage = this.currentPage === 'following' ? '' : (this.currentPage === 'timeline' ? 'activity' : this.currentPage);
     const loggedIn = isLoggedIn();
     const profileToggleLabel = loggedIn ? '' : 'Log in';
     const profileInitial = (this.currentUsername || 'u').charAt(0).toUpperCase();
