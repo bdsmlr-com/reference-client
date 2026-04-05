@@ -287,35 +287,10 @@ function warnLoginFieldMismatch(data: LoginResponse): void {
 }
 
 async function login(): Promise<string> {
-  const resp = await fetch(`${API_BASE}/v2/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'ngrok-skip-browser-warning': 'true',
-    },
-    body: JSON.stringify({ email: AUTH_EMAIL, password: AUTH_PASSWORD }),
-  });
-
-  const data: LoginResponse = await resp.json();
-
-  warnLoginFieldMismatch(data);
-
-  const accessToken = data.access_token ?? (data as { accessToken?: string }).accessToken;
-
-  if (data.error) {
-    throw new Error(data.error);
-  }
-
-  if (!accessToken) {
-    throw new Error(
-      'Auth parsing failed: login response missing access_token/accessToken. API calls are blocked until this is fixed.'
-    );
-  }
-
-  const expiresIn = data.expires_in ?? (data as { expiresIn?: number }).expiresIn ?? 3600;
-  setToken(accessToken, expiresIn);
-  currentToken = accessToken;
-  return accessToken;
+  // Token-based login is disabled; cookie/session auth is used.
+  currentToken = null;
+  clearToken();
+  return '';
 }
 
 /**
