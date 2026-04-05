@@ -22,6 +22,8 @@ import { loadRenderContract } from './services/render-contract.js';
 import { validateRenderContract } from './services/render-contract-validator.js';
 import { getStatus } from './services/auth-service.js';
 import { setAuthUser, clearAuthUser } from './state/auth-state.js';
+import { setCurrentUsername } from './services/profile.js';
+import { setStoredBlogName } from './services/blog-resolver.js';
 import './components/auth-gate.js';
 
 @customElement('app-root')
@@ -98,6 +100,15 @@ export class AppRoot extends LitElement {
     try {
       const status = await getStatus();
       setAuthUser({ userId: status.user_id, blogId: status.blog_id });
+      if (status.username) {
+        setCurrentUsername(status.username);
+      }
+      if (status.blog_name) {
+        setStoredBlogName(status.blog_name);
+        if (!status.username) {
+          setCurrentUsername(status.blog_name);
+        }
+      }
       this.authenticated = true;
     } catch (err: any) {
       this.authError = 'Login required';

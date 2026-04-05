@@ -39,7 +39,7 @@ const fetchJson = async <T>(path: string, init: RequestInit, timeoutMs: number):
   throw new Error('auth status payload invalid');
 };
 
-export type AuthStatus = { user_id: number; blog_id: number };
+export type AuthStatus = { user_id: number; blog_id: number; blog_name?: string; username?: string };
 export type AuthLoginResponse = { user_id: number; blog_id: number; blog_name?: string; username?: string };
 
 export const getStatus = () => {
