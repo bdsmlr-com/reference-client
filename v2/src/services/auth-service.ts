@@ -33,14 +33,15 @@ const fetchJson = async <T>(path: string, init: RequestInit, timeoutMs: number):
     throw new Error('auth status returned non-JSON');
   }
   const data = (await resp.json()) as any;
-  if (data && typeof data.user_id === 'number' && typeof data.blog_id === 'number') {
+  if (data && typeof data.user_id === 'number') {
     return data as T;
   }
   throw new Error('auth status payload invalid');
 };
 
-export type AuthStatus = { user_id: number; blog_id: number; blog_name?: string; username?: string };
-export type AuthLoginResponse = { user_id: number; blog_id: number; blog_name?: string; username?: string };
+export type AuthBlog = { id: number; name: string };
+export type AuthStatus = { user_id: number; blog_id: number | null; blog_name?: string | null; username?: string | null; blogs?: AuthBlog[]; primary_blog_id?: number | null };
+export type AuthLoginResponse = AuthStatus;
 
 export const getStatus = () => {
   const env = (import.meta as any).env || {};

@@ -24,6 +24,7 @@ import { getStatus } from './services/auth-service.js';
 import { setAuthUser, clearAuthUser } from './state/auth-state.js';
 import { setCurrentUsername } from './services/profile.js';
 import { setStoredBlogName } from './services/blog-resolver.js';
+import { getStoredActiveBlog, setStoredActiveBlog } from './utils/storage.js';
 import './components/auth-gate.js';
 
 @customElement('app-root')
@@ -99,17 +100,41 @@ export class AppRoot extends LitElement {
     this.authError = null;
     try {
       const status = await getStatus();
-      setAuthUser({ userId: status.user_id, blogId: status.blog_id });
-      if (status.username) {
+      const blogs = status.blogs || [];
+      const storedActive = getStoredActiveBlog(status.user_id);
+      const primaryId = status.primary_blog_id || (blogs[0]?.id ?? status.blog_id ?? null);
+      const activeBlogId = blogs.find((b) => b.id === storedActive)?.id || primaryId || status.blog_id || null;
+      const activeBlogName =
+        blogs.find((b) => b.id === activeBlogId)?.name ||
+        status.blog_name ||
+        blogs[0]?.name ||
+        null;
+
+      if (activeBlogId && status.user_id) {
+        setStoredActiveBlog(status.user_id, activeBlogId);
+      }
+      if (activeBlogName) {
+        setStoredBlogName(activeBlogName);
+        setCurrentUsername(activeBlogName);
+      } else if (status.username) {
         setCurrentUsername(status.username);
       }
-      if (status.blog_name) {
-        setStoredBlogName(status.blog_name);
-        if (!status.username) {
-          setCurrentUsername(status.blog_name);
-        }
-      }
+
+      setAuthUser({
+        userId: status.user_id,
+        blogId: activeBlogId,
+        blogName: activeBlogName,
+        username: status.username || null,
+        blogs,
+        primaryBlogId: primaryId,
+        activeBlogId,
+        activeBlogName,
+      });
       this.authenticated = true;
+
+      if (window.location.pathname === '/' && activeBlogName) {
+        window.location.replace(`/${activeBlogName}/activity`);
+      }
     } catch (err: any) {
       this.authError = 'Login required';
       clearAuthUser();

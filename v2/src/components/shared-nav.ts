@@ -24,6 +24,8 @@ import {
   setSearchSortPreference,
 } from '../services/profile.js';
 import { apiClient } from '../services/client.js';
+import { getAuthUser, updateActiveBlog } from '../state/auth-state.js';
+import { setStoredActiveBlog, clearStoredActiveBlog } from '../utils/storage.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import { SORT_OPTIONS, normalizeSortValue } from '../types/post.js';
 import { resolveLink } from '../services/link-resolver.js';
@@ -326,6 +328,8 @@ export class SharedNav extends LitElement {
   @state() private archiveSortPreference = normalizeSortValue(getArchiveSortPreference() || 'newest');
   @state() private searchSortPreference = normalizeSortValue(getSearchSortPreference() || 'newest');
   @state() private loginError: string | null = null;
+  @state() private blogs: { id: number; name: string }[] = [];
+  @state() private activeBlogId: number | null = null;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -333,6 +337,8 @@ export class SharedNav extends LitElement {
     window.addEventListener(PROFILE_EVENTS.usernameChanged, this.handleProfileStateChange as EventListener);
     window.addEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleProfileStateChange as EventListener);
     window.addEventListener(PROFILE_EVENTS.sortPreferencesChanged, this.handleProfileStateChange as EventListener);
+    window.addEventListener('auth-user-changed', this.handleAuthChanged as EventListener);
+    this.syncFromAuth();
     void this.refreshAvatar();
   }
 
@@ -342,6 +348,7 @@ export class SharedNav extends LitElement {
     window.removeEventListener(PROFILE_EVENTS.usernameChanged, this.handleProfileStateChange as EventListener);
     window.removeEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleProfileStateChange as EventListener);
     window.removeEventListener(PROFILE_EVENTS.sortPreferencesChanged, this.handleProfileStateChange as EventListener);
+    window.removeEventListener('auth-user-changed', this.handleAuthChanged as EventListener);
   }
 
   private handleDocumentClick = (e: MouseEvent): void => {
@@ -358,6 +365,41 @@ export class SharedNav extends LitElement {
     this.galleryMode = getGalleryMode();
     this.archiveSortPreference = normalizeSortValue(getArchiveSortPreference() || 'newest');
     this.searchSortPreference = normalizeSortValue(getSearchSortPreference() || 'newest');
+    void this.refreshAvatar();
+  };
+
+  private handleAuthChanged = (e: CustomEvent): void => {
+    const user = e.detail;
+    this.applyAuthUser(user);
+  };
+
+  private syncFromAuth(): void {
+    this.applyAuthUser(getAuthUser());
+  }
+
+  private applyAuthUser(user: any): void {
+    if (user) {
+      this.blogs = user.blogs || [];
+      this.activeBlogId = user.activeBlogId || user.blogId || null;
+      let activeName =
+        user.activeBlogName ||
+        (this.blogs.find((b) => b.id === this.activeBlogId)?.name) ||
+        user.blogName ||
+        null;
+      if (!activeName && this.blogs.length > 0) {
+        activeName = this.blogs[0].name;
+        this.activeBlogId = this.blogs[0].id;
+      }
+      if (activeName) {
+        setCurrentUsername(activeName);
+        setStoredBlogName(activeName);
+        this.currentUsername = activeName;
+      }
+    } else {
+      this.blogs = [];
+      this.activeBlogId = null;
+      this.currentUsername = null;
+    }
     void this.refreshAvatar();
   };
 
@@ -401,17 +443,15 @@ export class SharedNav extends LitElement {
   }
 
   private getPageUrl(page: string): string {
-    const primaryBlog = getPrimaryBlogName();
-    const viewedBlog = getViewedBlogName();
-    const blogName = primaryBlog || viewedBlog;
+    const activeBlog = this.currentUsername || getPrimaryBlogName() || getViewedBlogName();
     const blogPages = ['archive', 'posts', 'feed', 'social'];
     if (page === 'posts') {
-      if (blogName) return resolveLink('nav_activity', { blog: blogName }).href;
+      if (activeBlog) return resolveLink('nav_activity', { blog: activeBlog }).href;
       return buildPageUrl('activity');
     }
 
-    if (blogPages.includes(page) && primaryBlog) {
-      return buildPageUrl(page, primaryBlog);
+    if (blogPages.includes(page) && activeBlog) {
+      return buildPageUrl(page, activeBlog);
     }
     return buildPageUrl(page);
   }
@@ -496,12 +536,18 @@ export class SharedNav extends LitElement {
     this.loginError = null;
     try {
       const resp = await legacyLogin(normalized, password, true);
-      if (resp && typeof resp.blog_id === 'number') {
-        setCurrentUsername(resp.username || normalized);
-        setStoredBlogName(resp.blog_name || normalized);
-        this.currentUsername = resp.username || normalized;
+      if (resp && typeof resp.user_id === 'number') {
+        const blogs = resp.blogs || [];
+        const primary = resp.primary_blog_id || blogs[0]?.id || resp.blog_id || null;
+        const activeId = primary;
+        const activeName = blogs.find((b: any) => b.id === activeId)?.name || resp.blog_name || normalized;
+        setStoredActiveBlog(resp.user_id, activeId || 0);
+        setCurrentUsername(activeName);
+        setStoredBlogName(activeName);
+        updateActiveBlog(activeId || resp.blog_id || 0, activeName);
+        this.currentUsername = activeName;
         this.loginModalOpen = false;
-        window.location.reload();
+        window.location.href = `/${activeName}/activity`;
       } else {
         this.loginError = 'Login failed';
       }
@@ -513,6 +559,10 @@ export class SharedNav extends LitElement {
   private handleLogout(): void {
     this.menuOpen = false;
     void legacyLogout().finally(() => {
+      const user = getAuthUser();
+      if (user) {
+        clearStoredActiveBlog(user.userId);
+      }
       clearCurrentUsername();
       clearStoredBlogName();
       this.currentUsername = null;
@@ -538,6 +588,27 @@ export class SharedNav extends LitElement {
     setSearchSortPreference(value);
   }
 
+  private handleBlogSwitch(e: Event): void {
+    const user = getAuthUser();
+    if (!user) return;
+    const selected = parseInt((e.target as HTMLSelectElement).value, 10);
+    if (!Number.isFinite(selected)) return;
+    const selectedBlog = (user.blogs || []).find((b) => b.id === selected);
+    if (!selectedBlog) return;
+    setStoredActiveBlog(user.userId, selectedBlog.id);
+    updateActiveBlog(selectedBlog.id, selectedBlog.name);
+    setCurrentUsername(selectedBlog.name);
+    setStoredBlogName(selectedBlog.name);
+    this.currentUsername = selectedBlog.name;
+    this.activeBlogId = selectedBlog.id;
+    void this.refreshAvatar();
+    // Rebuild URLs for current page
+    const currentPath = window.location.pathname;
+    if (currentPath === '/' || currentPath === '') {
+      window.location.href = `/${selectedBlog.name}/activity`;
+    }
+  }
+
   private renderProfileMenu() {
     const loggedIn = isLoggedIn();
 
@@ -546,7 +617,20 @@ export class SharedNav extends LitElement {
         ${loggedIn
           ? html`
               <div class="menu-section-title">Settings</div>
-              <div class="current-user">@${this.currentUsername}</div>
+              <div class="current-user">@${this.currentUsername ?? '—'}</div>
+              ${this.blogs && this.blogs.length > 1
+                ? html`
+                    <label class="menu-section-title" for="blog-switcher">Active blog</label>
+                    <select
+                      id="blog-switcher"
+                      class="menu-button"
+                      .value=${String(this.activeBlogId ?? '')}
+                      @change=${(e: Event) => this.handleBlogSwitch(e)}
+                    >
+                      ${this.blogs.map((b) => html`<option value=${b.id}>@${b.name}</option>`)}
+                    </select>
+                  `
+                : ''}
               <div class="menu-section-title">Gallery view</div>
               <div class="gallery-row" aria-label="Gallery view">
                 <button
