@@ -1408,21 +1408,13 @@ export async function getBlog(
 }
 
 // Cached version of resolveIdentifier
-const negativeBlogIdBypass = new Set<string>();
 export async function resolveIdentifierCached(
   blogName: string
 ): Promise<number | null> {
-  // Check cache first
+  // Check cache first (only honor positive hits; always retry API on negatives)
   const cached = getCachedBlogId(blogName);
-  if (cached !== undefined) {
-    if (cached !== null) {
-      return cached;
-    }
-    const cacheKey = blogName.toLowerCase();
-    if (negativeBlogIdBypass.has(cacheKey)) {
-      return cached;
-    }
-    negativeBlogIdBypass.add(cacheKey);
+  if (cached !== undefined && cached !== null) {
+    return cached;
   }
 
   // Cache miss - call API
@@ -1437,7 +1429,7 @@ export async function resolveIdentifierCached(
     }
     return blogId;
   } catch {
-    setCachedBlogId(blogName, null);
+    // Do not cache negative results to allow recovery when data appears
     return null;
   }
 }
