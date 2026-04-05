@@ -27,6 +27,7 @@ import { apiClient } from '../services/client.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import { SORT_OPTIONS, normalizeSortValue } from '../types/post.js';
 import { resolveLink } from '../services/link-resolver.js';
+import { logout as legacyLogout, login as legacyLogin } from '../services/auth-service.js';
 
 type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social' | 'posts';
 const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'staging@unknown/unknown';
@@ -318,11 +319,13 @@ export class SharedNav extends LitElement {
   @state() private menuOpen = false;
   @state() private loginModalOpen = false;
   @state() private usernameInput = '';
+  @state() private passwordInput = '';
   @state() private currentUsername: string | null = getCurrentUsername();
   @state() private galleryMode: GalleryMode = getGalleryMode();
   @state() private profileAvatarUrl: string | null = null;
   @state() private archiveSortPreference = normalizeSortValue(getArchiveSortPreference() || 'newest');
   @state() private searchSortPreference = normalizeSortValue(getSearchSortPreference() || 'newest');
+  @state() private loginError: string | null = null;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -474,6 +477,8 @@ export class SharedNav extends LitElement {
     this.menuOpen = false;
     this.loginModalOpen = true;
     this.usernameInput = '';
+    this.passwordInput = '';
+    this.loginError = null;
   }
 
   private closeLoginModal(): void {
@@ -481,25 +486,39 @@ export class SharedNav extends LitElement {
     this.usernameInput = '';
   }
 
-  private submitLogin(): void {
+  private async submitLogin(): Promise<void> {
     const normalized = this.usernameInput.trim().replace(/^@/, '');
-    if (!normalized) {
+    const password = this.passwordInput;
+    if (!normalized || !password) {
+      this.loginError = 'Enter username and password';
       return;
     }
-
-    setCurrentUsername(normalized);
-    setStoredBlogName(normalized);
-    this.currentUsername = normalized;
-    this.loginModalOpen = false;
-    window.location.href = buildPageUrl('feed', normalized);
+    this.loginError = null;
+    try {
+      const resp = await legacyLogin(normalized, password, true);
+      if (resp && typeof resp.blog_id === 'number') {
+        setCurrentUsername(resp.username || normalized);
+        setStoredBlogName(resp.blog_name || normalized);
+        this.currentUsername = resp.username || normalized;
+        this.loginModalOpen = false;
+        window.location.reload();
+      } else {
+        this.loginError = 'Login failed';
+      }
+    } catch (err: any) {
+      this.loginError = 'Login failed';
+    }
   }
 
   private handleLogout(): void {
-    clearCurrentUsername();
-    clearStoredBlogName();
-    this.currentUsername = null;
-    this.profileAvatarUrl = null;
     this.menuOpen = false;
+    void legacyLogout().finally(() => {
+      clearCurrentUsername();
+      clearStoredBlogName();
+      this.currentUsername = null;
+      this.profileAvatarUrl = null;
+      window.location.href = '/';
+    });
   }
 
   private handleGalleryMode(mode: GalleryMode): void {
@@ -568,7 +587,7 @@ export class SharedNav extends LitElement {
       <div class="modal-backdrop" @click=${this.closeLoginModal}>
         <section class="modal" role="dialog" aria-label="Login" @click=${(e: Event) => e.stopPropagation()}>
           <h3>Log in</h3>
-          <p>Enter your blog username. This is local-only for now.</p>
+          <p>Enter your blog username and password (checked against bdsmlr.com).</p>
           <input
             type="text"
             placeholder="username"
@@ -576,6 +595,14 @@ export class SharedNav extends LitElement {
             @input=${(e: Event) => (this.usernameInput = (e.target as HTMLInputElement).value)}
             @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.submitLogin()}
           />
+          <input
+            type="password"
+            placeholder="password"
+            .value=${this.passwordInput}
+            @input=${(e: Event) => (this.passwordInput = (e.target as HTMLInputElement).value)}
+            @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.submitLogin()}
+          />
+          ${this.loginError ? html`<div class="error">${this.loginError}</div>` : ''}
           <div class="modal-actions">
             <button class="menu-button" @click=${this.closeLoginModal}>Cancel</button>
             <button class="menu-button" @click=${this.submitLogin}>Log in</button>

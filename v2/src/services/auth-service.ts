@@ -1,12 +1,6 @@
 const DEFAULT_BASE = 'https://bdsmlr.com/auth';
 const DEFAULT_TIMEOUT_MS = 4000;
 
-const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  return promise.finally(() => clearTimeout(timer)) as Promise<T>;
-};
-
 const resolveBase = () => {
   const env = (import.meta as any).env || {};
   const apiBase = env.VITE_AUTH_BASE || DEFAULT_BASE;
@@ -14,24 +8,38 @@ const resolveBase = () => {
 };
 
 const fetchJson = async <T>(path: string, init: RequestInit, timeoutMs: number): Promise<T> => {
-  const resp = await withTimeout(
-    fetch(`${resolveBase()}${path}`, {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let resp: Response;
+  try {
+    resp = await fetch(`${resolveBase()}${path}`, {
       credentials: 'include',
       cache: 'no-store',
       mode: 'cors',
+      redirect: 'follow',
+      signal: controller.signal,
       ...init
-    }),
-    timeoutMs
-  );
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 
-  if (!resp.ok) {
+  if (!resp.ok || resp.status !== 200) {
     throw new Error(`auth request failed: ${resp.status}`);
   }
-  if (resp.status === 204) return undefined as unknown as T;
-  return (await resp.json()) as T;
+  const ct = resp.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) {
+    throw new Error('auth status returned non-JSON');
+  }
+  const data = (await resp.json()) as any;
+  if (data && typeof data.user_id === 'number' && typeof data.blog_id === 'number') {
+    return data as T;
+  }
+  throw new Error('auth status payload invalid');
 };
 
 export type AuthStatus = { user_id: number; blog_id: number };
+export type AuthLoginResponse = { user_id: number; blog_id: number; blog_name?: string; username?: string };
 
 export const getStatus = () => {
   const env = (import.meta as any).env || {};
@@ -43,4 +51,19 @@ export const logout = () => {
   const env = (import.meta as any).env || {};
   const timeoutMs = Number(env.VITE_AUTH_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
   return fetchJson<void>('/logout', { method: 'POST' }, timeoutMs).catch(() => {});
+};
+
+export const login = (login: string, password: string, remember = false) => {
+  const env = (import.meta as any).env || {};
+  const timeoutMs = Number(env.VITE_AUTH_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
+  const body = JSON.stringify({ login, password, remember });
+  return fetchJson<AuthLoginResponse>(
+    '/login',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    },
+    timeoutMs
+  );
 };
