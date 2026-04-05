@@ -20,6 +20,7 @@ import type { ProcessedPost } from './types/post.js';
 import { isAdminMode, syncAdminModeFromUrl } from './services/blog-resolver.js';
 import { loadRenderContract } from './services/render-contract.js';
 import { validateRenderContract } from './services/render-contract-validator.js';
+import { runAuthGuard } from './utils/auth-guard.js';
 
 @customElement('app-root')
 export class AppRoot extends LitElement {
@@ -71,6 +72,7 @@ export class AppRoot extends LitElement {
 
   constructor() {
     super();
+    runAuthGuard();
     injectGlobalStyles();
     initTheme();
     const validation = validateRenderContract(loadRenderContract());
