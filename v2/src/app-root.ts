@@ -73,6 +73,7 @@ export class AppRoot extends LitElement {
   @state() private contractErrors: string[] = [];
   @state() private authError: string | null = null;
   @state() private authenticated = false;
+  @state() private checkingAuth = true;
 
   constructor() {
     super();
@@ -92,7 +93,7 @@ export class AppRoot extends LitElement {
   }
 
   private async checkAuth() {
-    this.authenticated = false;
+    this.checkingAuth = true;
     this.authError = null;
     try {
       const status = await getStatus();
@@ -101,6 +102,9 @@ export class AppRoot extends LitElement {
     } catch (err: any) {
       this.authError = 'Login required';
       clearAuthUser();
+      this.authenticated = false;
+    } finally {
+      this.checkingAuth = false;
     }
   }
 
@@ -129,6 +133,10 @@ export class AppRoot extends LitElement {
   }
 
   render() {
+    if (this.checkingAuth) {
+      return html``;
+    }
+
     if (!this.authenticated) {
       const env = (import.meta as any).env || {};
       const loginUrl = env.VITE_LOGIN_URL || 'https://bdsmlr.com/login';
