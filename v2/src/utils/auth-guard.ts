@@ -1,22 +1,15 @@
-const hasCookie = (name: string) => document.cookie.split(';').some(c => c.trim().startsWith(`${name}=`));
-
-const buildLoginUrl = (base: string, current: string) => {
-  try {
-    const url = new URL(base);
-    url.searchParams.set('next', current);
-    return url.toString();
-  } catch {
-    // fall back if base isn't a valid URL
-    return `${base}?next=${encodeURIComponent(current)}`;
-  }
+const hasCookie = (name: string) => {
+  return document.cookie.split(';').some((c) => c.trim().startsWith(`${name}=`));
 };
 
 export function runAuthGuard() {
+  // Skip guard in test environments where document isn't available (SSR/build)
+  if (typeof document === 'undefined') return;
+
   const env = (import.meta as any).env || {};
   const loginBase = env.VITE_LOGIN_URL || 'https://bdsmlr.com/login';
 
   if (hasCookie('bdsmlr7_session')) return;
 
-  const target = buildLoginUrl(loginBase, window.location.href);
-  window.location.replace(target);
+  window.location.replace(loginBase);
 }
