@@ -20,7 +20,9 @@ import type { ProcessedPost } from './types/post.js';
 import { isAdminMode, syncAdminModeFromUrl } from './services/blog-resolver.js';
 import { loadRenderContract } from './services/render-contract.js';
 import { validateRenderContract } from './services/render-contract-validator.js';
-import { runAuthGuard } from './utils/auth-guard.js';
+import { getStatus } from './services/auth-service.js';
+import { setAuthUser, clearAuthUser } from './state/auth-state.js';
+import './components/auth-gate.js';
 
 @customElement('app-root')
 export class AppRoot extends LitElement {
@@ -69,12 +71,14 @@ export class AppRoot extends LitElement {
   @state() private lightboxPosts: ProcessedPost[] = [];
   @state() private lightboxIndex = -1;
   @state() private contractErrors: string[] = [];
+  @state() private authError: string | null = null;
+  @state() private authenticated = false;
 
   constructor() {
     super();
-    runAuthGuard();
     injectGlobalStyles();
     initTheme();
+    this.checkAuth();
     const validation = validateRenderContract(loadRenderContract());
     if (!validation.ok) {
       this.contractErrors = validation.errors;
@@ -85,6 +89,24 @@ export class AppRoot extends LitElement {
     super.connectedCallback();
     syncAdminModeFromUrl();
     this.addEventListener('post-click', this.handlePostClick as any);
+  }
+
+  private async checkAuth() {
+    this.authenticated = false;
+    this.authError = null;
+    try {
+      const status = await getStatus();
+      setAuthUser({ userId: status.user_id, blogId: status.blog_id });
+      this.authenticated = true;
+    } catch (err: any) {
+      this.authError = 'Login required';
+      clearAuthUser();
+    }
+  }
+
+  private async handleRetryAuth() {
+    await this.checkAuth();
+    if (!this.authenticated) this.requestUpdate();
   }
 
   private handlePostClick(e: CustomEvent) {
@@ -107,6 +129,12 @@ export class AppRoot extends LitElement {
   }
 
   render() {
+    if (!this.authenticated) {
+      const env = (import.meta as any).env || {};
+      const loginUrl = env.VITE_LOGIN_URL || 'https://bdsmlr.com/login';
+      return html`<auth-gate .message=${this.authError} .loginUrl=${loginUrl} @auth-retry=${this.handleRetryAuth}></auth-gate>`;
+    }
+
     if (this.contractErrors.length > 0) {
       return html`<contract-error-screen .errors=${this.contractErrors}></contract-error-screen>`;
     }
