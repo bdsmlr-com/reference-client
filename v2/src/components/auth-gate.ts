@@ -5,7 +5,6 @@ import { login } from '../services/auth-service.js';
 @customElement('auth-gate')
 export class AuthGate extends LitElement {
   @property({ type: String }) message: string | null = null;
-  @property({ type: String }) loginUrl: string = 'https://bdsmlr.com/login';
   @state() private username = '';
   @state() private password = '';
   @state() private busy = false;
@@ -89,7 +88,7 @@ export class AuthGate extends LitElement {
     return html`
       <div class="card">
         <h1>Login required</h1>
-        <p>Log in below or use the legacy login link. After logging in, click retry.</p>
+        <p>Log in below. After logging in, click retry.</p>
         ${this.message ? html`<div class="error">${this.message}</div>` : ''}
         <form @submit=${this.handleLoginSubmit} style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;">
           <input class="input" type="text" placeholder="username or email" .value=${this.username} @input=${(e: Event) => this.username = (e.target as HTMLInputElement).value} />
@@ -97,7 +96,6 @@ export class AuthGate extends LitElement {
           <button class="primary" type="submit" ?disabled=${this.busy}>Log in</button>
         </form>
         <div class="actions">
-          <a class="button secondary" href=${this.loginUrl} @click=${() => window.location.replace(this.loginUrl)}>Legacy login</a>
           <button class="secondary" @click=${this.handleRetry}>Retry status</button>
         </div>
       </div>
