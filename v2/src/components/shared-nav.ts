@@ -447,7 +447,8 @@ export class SharedNav extends LitElement {
     const blogPages = ['archive', 'posts', 'feed', 'social'];
     if (page === 'activity') {
       if (activeBlog) return buildPageUrl('activity', activeBlog);
-      return buildPageUrl('activity');
+      // Never emit bare /activity (invalid route). Fall back to home.
+      return this.getHomeUrl();
     }
 
     if (blogPages.includes(page) && activeBlog) {
@@ -474,10 +475,11 @@ export class SharedNav extends LitElement {
         title: link.title || 'Go to feed',
       };
     }
+    // If no blog yet (unauthenticated), keep users on home.
     return {
       href: this.getHomeUrl(),
       label: 'BDSMLR',
-      title: 'Go to feed',
+      title: 'Go to home',
     };
   }
 
