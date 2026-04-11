@@ -5,6 +5,7 @@ import type { Blog } from '../types/api.js';
 import { EventNames, type BlogClickDetail } from '../types/events.js';
 import { getCachedAvatarUrl, setCachedAvatarUrl } from '../services/storage.js';
 import { apiClient } from '../services/client.js';
+import { handleAvatarImageError, normalizeAvatarUrl } from '../services/avatar-url.js';
 
 @customElement('blog-card')
 export class BlogCard extends LitElement {
@@ -180,53 +181,11 @@ export class BlogCard extends LitElement {
     );
   }
 
-  private handleImageError(e: Event): void {
-    const img = e.target as HTMLImageElement;
-    const src = img.src;
-
-    // Try CDN fallback first (ocdn012 -> cdn012)
-    if (src.includes('ocdn012.bdsmlr.com') && !img.dataset.triedFallback) {
-      img.dataset.triedFallback = 'true';
-      img.src = src.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
-      return;
-    }
-
-    // If fallback also fails or not applicable, show placeholder
-    if (!img.dataset.showedPlaceholder) {
-      img.dataset.showedPlaceholder = 'true';
-      img.style.display = 'none';
-      const placeholder = img.nextElementSibling;
-      if (placeholder) {
-        (placeholder as HTMLElement).style.display = 'flex';
-      }
-    }
-  }
-
-  /**
-   * Normalize avatar URL to add CDN prefix if needed and fix broken TLS on ocdn012.
-   */
-  private normalizeAvatarUrl(avatarUrl: string | null | undefined): string | null {
-    if (!avatarUrl) return null;
-
-    let normalized = avatarUrl;
-    // Fix broken TLS on ocdn012
-    if (normalized.includes('ocdn012.bdsmlr.com')) {
-      normalized = normalized.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
-    }
-
-    // If already a full URL, return
-    if (normalized.startsWith('http')) return normalized;
-
-    // Add CDN prefix for relative paths
-    const path = normalized.startsWith('/') ? normalized.slice(1) : normalized;
-    return `https://cdn012.bdsmlr.com/${path}`;
-  }
-
   render() {
     const blog = this.blog;
     // Use fetched avatar URL (from cache or API) instead of blog.avatarUrl directly (BLOG-004)
     const rawAvatarUrl = this.fetchedAvatarUrl ?? blog.avatarUrl;
-    const avatarUrl = this.normalizeAvatarUrl(rawAvatarUrl);
+    const avatarUrl = normalizeAvatarUrl(rawAvatarUrl);
 
     const initial = (blog.name || 'B').charAt(0).toUpperCase();
     const blogName = blog.name || 'unknown';
@@ -264,7 +223,7 @@ export class BlogCard extends LitElement {
                 class="avatar"
                 src=${avatarUrl}
                 alt="Avatar for ${blogName}"
-                @error=${this.handleImageError}
+                @error=${handleAvatarImageError}
               />
               <div class="avatar-placeholder" style="display: none;" aria-hidden="true">${initial}</div>
             `

@@ -89,10 +89,6 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
     return url;
   }
 
-  if (isNativeVideo(url) || isNativeAudio(url)) {
-    return toOriginFallbackUrl(url);
-  }
-
   const queryString = queryParams ? `?${queryParams}` : '';
   const currentMode = modeOverride || CONFIG.imgproxyMode;
 

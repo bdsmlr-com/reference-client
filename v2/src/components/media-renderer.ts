@@ -1,6 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { resolveMediaUrl, isAnimation, isNativeVideo, probeNextBucket, toOriginFallbackUrl, type MediaRenderType } from '../services/media-resolver.js';
+import { resolveMediaUrl, isAnimation, isNativeVideo, probeNextBucket, type MediaRenderType } from '../services/media-resolver.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { getMediaBehavior } from '../services/media-behavior.js';
 
@@ -85,7 +85,6 @@ export class MediaRenderer extends LitElement {
   @property({ type: Boolean }) loopVideo?: boolean;
 
   @state() private showPlaceholder = false;
-  @state() private triedOriginal = false;
   @state() private showPosterFrame = true;
 
   protected updated(changed: Map<string, unknown>): void {
@@ -106,30 +105,8 @@ export class MediaRenderer extends LitElement {
   private handleError(e: Event) {
     const el = e.target as HTMLElement;
     
-    // 1. Try Authoritative Bucket Probing
+    // Only retry within the media gateway path. Do not fall back to direct CDN URLs.
     if (probeNextBucket(el)) return;
-
-    // 2. Try Raw Backend URL (Final Fallback)
-    if (!this.triedOriginal) {
-      this.triedOriginal = true;
-      if (this.src) {
-        const fallbackSrc = toOriginFallbackUrl(this.src);
-        if (el instanceof HTMLImageElement) {
-          el.src = fallbackSrc;
-          return;
-        } else if (el instanceof HTMLSourceElement || el instanceof HTMLVideoElement) {
-          // If video fails, maybe try the original src directly (though it's a gif)
-          const video = el instanceof HTMLVideoElement ? el : (el.parentElement as HTMLVideoElement);
-          if (video) {
-            video.src = fallbackSrc;
-            video.load();
-            return;
-          }
-        }
-      }
-    }
-
-    // 3. All fail -> Show placeholder
     this.showPlaceholder = true;
   }
 
@@ -170,8 +147,7 @@ export class MediaRenderer extends LitElement {
     const isVideoSource = isAnim || isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');
     const posterSource = this.posterSrc || this.src;
     const posterUrl = resolveMediaUrl(posterSource, 'poster');
-    const posterIsVideo = posterUrl.includes('.mp4') || posterUrl.includes('format:mp4');
-    const effectivePoster = posterIsVideo ? toOriginFallbackUrl(this.src) : (posterUrl || resolvedUrl);
+    const effectivePoster = posterUrl || resolvedUrl;
     const fillMode = this.type === 'gallery-grid' || this.type === 'gallery-masonry' || this.type === 'gutter' || this.type === 'lightbox';
     this.toggleAttribute('fill-mode', fillMode);
     const mediaStyle = fillMode

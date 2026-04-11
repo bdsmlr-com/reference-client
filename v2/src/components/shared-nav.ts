@@ -30,6 +30,7 @@ import { BREAKPOINTS } from '../types/ui-constants.js';
 import { SORT_OPTIONS, normalizeSortValue } from '../types/post.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { logout as legacyLogout, login as legacyLogin } from '../services/auth-service.js';
+import { normalizeAvatarUrl } from '../services/avatar-url.js';
 
 type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social' | 'posts';
 const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'staging@unknown/unknown';
@@ -403,19 +404,6 @@ export class SharedNav extends LitElement {
     void this.refreshAvatar();
   };
 
-  private normalizeAvatarUrl(avatarUrl: string | null | undefined): string | null {
-    if (!avatarUrl) return null;
-
-    let normalized = avatarUrl;
-    if (normalized.includes('ocdn012.bdsmlr.com')) {
-      normalized = normalized.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
-    }
-
-    if (normalized.startsWith('http')) return normalized;
-    const path = normalized.startsWith('/') ? normalized.slice(1) : normalized;
-    return `https://cdn012.bdsmlr.com/${path}`;
-  }
-
   private async refreshAvatar(): Promise<void> {
     const username = this.currentUsername;
     if (!username) {
@@ -429,7 +417,7 @@ export class SharedNav extends LitElement {
         return;
       }
       const blog = response.blog as { avatarUrl?: string; avatar_url?: string } | undefined;
-      this.profileAvatarUrl = this.normalizeAvatarUrl(blog?.avatarUrl ?? blog?.avatar_url ?? null);
+      this.profileAvatarUrl = normalizeAvatarUrl(blog?.avatarUrl ?? blog?.avatar_url ?? null);
     } catch {
       if (this.currentUsername === username) {
         this.profileAvatarUrl = null;

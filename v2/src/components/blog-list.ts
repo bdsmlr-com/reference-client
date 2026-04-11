@@ -7,6 +7,7 @@ import { getCachedAvatarUrl, setCachedAvatarUrl } from '../services/storage.js';
 import { buildBlogPageUrl } from '../services/blog-resolver.js';
 import { BREAKPOINTS, SPACING, CONTAINER_SPACING } from '../types/ui-constants.js';
 import { loadRenderContract } from '../services/render-contract.js';
+import { handleAvatarImageError, normalizeAvatarUrl } from '../services/avatar-url.js';
 
 /**
  * Extended type to handle both camelCase and snake_case API responses.
@@ -300,46 +301,6 @@ export class BlogList extends LitElement {
     this.fetchingAvatars = newFetching;
   }
 
-  /**
-   * Normalize avatar URL to include CDN prefix if needed.
-   */
-  private normalizeAvatarUrl(avatarUrl: string | null): string | null {
-    if (!avatarUrl) return null;
-
-    // If already a full URL, return as-is
-    if (avatarUrl.startsWith('http')) return avatarUrl;
-
-    // Add CDN prefix for relative paths
-    const path = avatarUrl.startsWith('/') ? avatarUrl.slice(1) : avatarUrl;
-    return `https://cdn02.bdsmlr.com/${path}`;
-  }
-
-  /**
-   * Handle image error: try CDN fallback, then show placeholder.
-   * Same pattern as blog-card.ts for consistency.
-   */
-  private handleImageError(e: Event): void {
-    const img = e.target as HTMLImageElement;
-    const src = img.src;
-
-    // Try CDN fallback first (ocdn012 -> cdn012)
-    if (src.includes('ocdn012.bdsmlr.com') && !img.dataset.triedFallback) {
-      img.dataset.triedFallback = 'true';
-      img.src = src.replace('ocdn012.bdsmlr.com', 'cdn012.bdsmlr.com');
-      return;
-    }
-
-    // If fallback also fails, show placeholder
-    if (!img.dataset.showedPlaceholder) {
-      img.dataset.showedPlaceholder = 'true';
-      img.style.display = 'none';
-      const placeholder = img.nextElementSibling;
-      if (placeholder) {
-        (placeholder as HTMLElement).style.display = 'flex';
-      }
-    }
-  }
-
   private async doBatchResolve(): Promise<void> {
     const idsToResolve = [...new Set(this.pendingResolve)];
     this.pendingResolve = [];
@@ -450,7 +411,7 @@ export class BlogList extends LitElement {
           const canNavigate = hasName || !!normalized.blogId;
           // Avatar logic (SOC-016)
           const rawAvatarUrl = normalized.blogId ? this.avatarUrls.get(normalized.blogId) : null;
-          const avatarUrl = this.normalizeAvatarUrl(rawAvatarUrl ?? null);
+          const avatarUrl = normalizeAvatarUrl(rawAvatarUrl ?? null);
           const initial = (name || 'B').charAt(0).toUpperCase();
 
           return html`
@@ -469,7 +430,7 @@ export class BlogList extends LitElement {
                         class="avatar"
                         src=${avatarUrl}
                         alt=""
-                        @error=${this.handleImageError}
+                        @error=${handleAvatarImageError}
                       />
                       <div class="avatar-placeholder" style="display: none;" aria-hidden="true">${initial}</div>
                     `
