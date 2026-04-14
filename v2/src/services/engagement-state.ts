@@ -2,20 +2,31 @@ import { getAuthUser } from '../state/auth-state.js';
 import type {
   BatchGetLikeStatesRequest,
   BatchGetLikeStatesResponse,
+  BatchGetReblogStatesRequest,
+  BatchGetReblogStatesResponse,
   LikePostRequest,
   LikePostResponse,
+  ReblogPostRequest,
+  ReblogPostResponse,
   UnlikePostRequest,
   UnlikePostResponse,
 } from '../types/api.js';
 
 type EngagementApi = {
   batchGetLikeStates(req: BatchGetLikeStatesRequest): Promise<BatchGetLikeStatesResponse>;
+  batchGetReblogStates(req: BatchGetReblogStatesRequest): Promise<BatchGetReblogStatesResponse>;
   likePost(req: LikePostRequest): Promise<LikePostResponse>;
   unlikePost(req: UnlikePostRequest): Promise<UnlikePostResponse>;
+  reblogPost(req: ReblogPostRequest): Promise<ReblogPostResponse>;
 };
 
 export interface LikeStateSnapshot {
   liked: boolean;
+  source: 'server' | 'optimistic';
+}
+
+export interface ReblogStateSnapshot {
+  count: number;
   source: 'server' | 'optimistic';
 }
 
@@ -25,13 +36,18 @@ export interface EngagementStateDependencies {
 }
 
 export function buildLikeStateCacheKey(postId: number, actingBlogId: number): string {
-  return `${postId}:${actingBlogId}`;
+  return `like:${postId}:${actingBlogId}`;
+}
+
+export function buildReblogStateCacheKey(postId: number, actingBlogId: number): string {
+  return `reblog:${postId}:${actingBlogId}`;
 }
 
 export class EngagementStateController {
   private readonly engagementApi: EngagementApi;
   private readonly getAuthUserFn: typeof getAuthUser;
   private readonly likeStateCache = new Map<string, LikeStateSnapshot>();
+  private readonly reblogStateCache = new Map<string, ReblogStateSnapshot>();
   private readonly requestVersions = new Map<string, number>();
   private readonly listeners = new Set<() => void>();
   private actorEpoch = 0;
@@ -61,6 +77,7 @@ export class EngagementStateController {
 
   clear(): void {
     this.likeStateCache.clear();
+    this.reblogStateCache.clear();
     this.requestVersions.clear();
     this.actorEpoch += 1;
     this.notifyListeners();
@@ -87,6 +104,14 @@ export class EngagementStateController {
     this.notifyListeners();
   }
 
+  private applyReblogSnapshot(postId: number, actingBlogId: number, count: number, source: ReblogStateSnapshot['source']) {
+    this.reblogStateCache.set(buildReblogStateCacheKey(postId, actingBlogId), {
+      count,
+      source,
+    });
+    this.notifyListeners();
+  }
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => {
@@ -105,7 +130,14 @@ export class EngagementStateController {
   }
 
   private beginRequest(postId: number, actingBlogId: number): { epoch: number; version: number; key: string } {
-    const key = buildLikeStateCacheKey(postId, actingBlogId);
+    return this.beginRequestForKey(buildLikeStateCacheKey(postId, actingBlogId));
+  }
+
+  private beginReblogRequest(postId: number, actingBlogId: number): { epoch: number; version: number; key: string } {
+    return this.beginRequestForKey(buildReblogStateCacheKey(postId, actingBlogId));
+  }
+
+  private beginRequestForKey(key: string): { epoch: number; version: number; key: string } {
     const version = (this.requestVersions.get(key) ?? 0) + 1;
     this.requestVersions.set(key, version);
     return {
@@ -125,6 +157,14 @@ export class EngagementStateController {
       return undefined;
     }
     return this.likeStateCache.get(buildLikeStateCacheKey(postId, actorBlogId))?.liked;
+  }
+
+  getReblogCount(postId: number): number | undefined {
+    const actorBlogId = this.getCurrentActorBlogId();
+    if (!actorBlogId) {
+      return undefined;
+    }
+    return this.reblogStateCache.get(buildReblogStateCacheKey(postId, actorBlogId))?.count;
   }
 
   async hydrateLikeStates(postIds: number[]): Promise<Map<number, boolean>> {
@@ -170,6 +210,55 @@ export class EngagementStateController {
       const liked = this.getLikeState(postId);
       if (liked !== undefined) {
         result.set(postId, liked);
+      }
+    }
+
+    return result;
+  }
+
+  async hydrateReblogStates(postIds: number[]): Promise<Map<number, number>> {
+    const actorBlogId = this.getCurrentActorBlogId();
+    const result = new Map<number, number>();
+    if (!actorBlogId || postIds.length === 0) {
+      return result;
+    }
+
+    const uniquePostIds = [...new Set(postIds)];
+    const missingPostIds = uniquePostIds.filter(
+      (postId) => !this.reblogStateCache.has(buildReblogStateCacheKey(postId, actorBlogId))
+    );
+    const requestSnapshots = new Map<number, { epoch: number; version: number; key: string }>();
+    for (const postId of missingPostIds) {
+      requestSnapshots.set(postId, this.beginReblogRequest(postId, actorBlogId));
+    }
+
+    if (missingPostIds.length > 0) {
+      const response = await this.engagementApi.batchGetReblogStates({
+        postIds: missingPostIds,
+        actingBlogId: actorBlogId,
+      });
+      const returned = new Map<number, number>();
+
+      for (const state of response.states ?? []) {
+        returned.set(state.postId, state.actorReblogCount);
+        const snapshot = requestSnapshots.get(state.postId);
+        if (snapshot && this.isCurrentRequest(snapshot)) {
+          this.applyReblogSnapshot(state.postId, actorBlogId, state.actorReblogCount, 'server');
+        }
+      }
+
+      for (const postId of missingPostIds) {
+        const snapshot = requestSnapshots.get(postId);
+        if (!returned.has(postId) && snapshot && this.isCurrentRequest(snapshot)) {
+          this.applyReblogSnapshot(postId, actorBlogId, 0, 'server');
+        }
+      }
+    }
+
+    for (const postId of uniquePostIds) {
+      const count = this.getReblogCount(postId);
+      if (count !== undefined) {
+        result.set(postId, count);
       }
     }
 
@@ -231,6 +320,38 @@ export class EngagementStateController {
           this.likeStateCache.set(cacheKey, previous);
         } else {
           this.likeStateCache.delete(cacheKey);
+        }
+        this.notifyListeners();
+      }
+      throw error;
+    }
+  }
+
+  async reblogPost(postId: number): Promise<ReblogPostResponse> {
+    const actorBlogId = this.requireCurrentActorBlogId();
+    const cacheKey = buildReblogStateCacheKey(postId, actorBlogId);
+    const previous = this.reblogStateCache.get(cacheKey);
+    const currentCount = previous?.count ?? 0;
+    const optimisticCount = currentCount + 1;
+    const requestSnapshot = this.beginReblogRequest(postId, actorBlogId);
+
+    this.applyReblogSnapshot(postId, actorBlogId, optimisticCount, 'optimistic');
+
+    try {
+      const response = await this.engagementApi.reblogPost({
+        postId,
+        actingBlogId: actorBlogId,
+      });
+      if (this.isCurrentRequest(requestSnapshot)) {
+        this.applyReblogSnapshot(postId, actorBlogId, optimisticCount, 'server');
+      }
+      return response;
+    } catch (error) {
+      if (this.isCurrentRequest(requestSnapshot)) {
+        if (previous) {
+          this.reblogStateCache.set(cacheKey, previous);
+        } else {
+          this.reblogStateCache.delete(cacheKey);
         }
         this.notifyListeners();
       }

@@ -18,7 +18,12 @@ describe('post actions strip', () => {
     expect(src).toContain('reblogsCount');
     expect(src).toContain('commentsCount');
     expect(src).toContain('likeState');
+    expect(src).toContain('reblogCount');
     expect(src).toContain('toggleLike');
+    expect(src).toContain('triggerReblog');
+    expect(src).toContain('hydrateReblogStates');
+    expect(src).toContain('getReblogCount');
+    expect(src).toContain('reblogPost');
     expect(src).toContain('stopPropagation()');
     expect(src).toContain('preventDefault()');
   });

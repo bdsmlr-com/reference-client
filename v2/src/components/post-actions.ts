@@ -90,6 +90,35 @@ export class PostActions extends LitElement {
         cursor: default;
         opacity: 0.7;
       }
+
+      .buttons {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .reblog-btn {
+        border: 1px solid var(--border);
+        background: var(--bg-panel-alt);
+        color: var(--text);
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+        flex-shrink: 0;
+      }
+
+      .reblog-btn:hover {
+        border-color: var(--accent);
+        transform: translateY(-1px);
+      }
     `,
   ];
 
@@ -97,18 +126,20 @@ export class PostActions extends LitElement {
   @property({ type: String }) variant: 'card' | 'detail' = 'card';
 
   @state() private likeState: boolean | undefined = undefined;
+  @state() private reblogCount: number | undefined = undefined;
   @state() private syncing = false;
+  @state() private reblogging = false;
   private syncRequestId = 0;
   private unsubscribeLikeState: (() => void) | null = null;
 
   private readonly handleSharedStateChanged = () => {
-    void this.syncLikeState();
+    void this.syncActorState();
   };
 
   connectedCallback(): void {
     super.connectedCallback();
     this.unsubscribeLikeState = engagementState.subscribe(this.handleSharedStateChanged);
-    void this.syncLikeState();
+    void this.syncActorState();
   }
 
   disconnectedCallback(): void {
@@ -119,7 +150,7 @@ export class PostActions extends LitElement {
 
   updated(changedProperties: Map<string, unknown>): void {
     if (changedProperties.has('post') || changedProperties.has('variant')) {
-      void this.syncLikeState();
+      void this.syncActorState();
     }
   }
 
@@ -129,11 +160,12 @@ export class PostActions extends LitElement {
     return `${label} ${count}`;
   }
 
-  private async syncLikeState(): Promise<void> {
+  private async syncActorState(): Promise<void> {
     const post = this.post;
     const actor = getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId ?? null;
     if (!post || !actor) {
       this.likeState = undefined;
+      this.reblogCount = undefined;
       this.syncing = false;
       return;
     }
@@ -143,6 +175,7 @@ export class PostActions extends LitElement {
     const currentPostId = post.id;
     try {
       await engagementState.hydrateLikeStates([currentPostId]);
+      await engagementState.hydrateReblogStates([currentPostId]);
       if (requestId !== this.syncRequestId || !this.post || this.post.id !== currentPostId) {
         return;
       }
@@ -150,6 +183,7 @@ export class PostActions extends LitElement {
       if (this.likeState === undefined) {
         this.likeState = false;
       }
+      this.reblogCount = engagementState.getReblogCount(currentPostId) ?? 0;
     } finally {
       if (requestId === this.syncRequestId) {
         this.syncing = false;
@@ -179,6 +213,27 @@ export class PostActions extends LitElement {
     }
   }
 
+  private async triggerReblog(event: Event): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const post = this.post;
+    if (!post) return;
+
+    const previousReblogCount = this.reblogCount ?? 0;
+    this.reblogging = true;
+    this.reblogCount = previousReblogCount + 1;
+    try {
+      await engagementState.reblogPost(post.id);
+      this.reblogCount = engagementState.getReblogCount(post.id) ?? previousReblogCount + 1;
+    } catch (error) {
+      console.error('Failed to reblog post', error);
+      this.reblogCount = engagementState.getReblogCount(post.id) ?? previousReblogCount;
+    } finally {
+      this.reblogging = false;
+    }
+  }
+
   private renderCounts() {
     const post = this.post;
     if (!post) return nothing;
@@ -197,20 +252,32 @@ export class PostActions extends LitElement {
 
     const isDetail = this.variant === 'detail';
     const liked = Boolean(this.likeState);
+    const reblogCount = this.reblogCount ?? 0;
     const actorAvailable = Boolean(getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId);
 
     return html`
       <div class="actions ${isDetail ? 'detail' : 'card'}">
         ${this.renderCounts()}
-        <button
-          class="like-btn ${liked ? 'liked' : ''}"
-          type="button"
-          aria-pressed=${liked ? 'true' : 'false'}
-          ?disabled=${!actorAvailable || this.syncing}
-          @click=${this.toggleLike}
-        >
-          ${liked ? '❤️ Unlike' : '🤍 Like'}
-        </button>
+        <div class="buttons">
+          ${reblogCount > 0 ? html`<span class="count-chip">You reblogged ${reblogCount}x</span>` : nothing}
+          <button
+            class="reblog-btn"
+            type="button"
+            ?disabled=${!actorAvailable}
+            @click=${this.triggerReblog}
+          >
+            ${this.reblogging ? '♻️ Reblogging…' : '♻️ Reblog'}
+          </button>
+          <button
+            class="like-btn ${liked ? 'liked' : ''}"
+            type="button"
+            aria-pressed=${liked ? 'true' : 'false'}
+            ?disabled=${!actorAvailable || this.syncing}
+            @click=${this.toggleLike}
+          >
+            ${liked ? '❤️ Unlike' : '🤍 Like'}
+          </button>
+        </div>
       </div>
     `;
   }

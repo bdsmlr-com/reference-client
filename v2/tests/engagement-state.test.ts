@@ -4,8 +4,10 @@ import { EngagementStateController } from '../src/services/engagement-state.js';
 
 type LikeApi = {
   batchGetLikeStates: ReturnType<typeof vi.fn>;
+  batchGetReblogStates: ReturnType<typeof vi.fn>;
   likePost: ReturnType<typeof vi.fn>;
   unlikePost: ReturnType<typeof vi.fn>;
+  reblogPost: ReturnType<typeof vi.fn>;
 };
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -25,8 +27,10 @@ let currentController: EngagementStateController | null = null;
 function createController(api?: Partial<LikeApi>) {
   const engagementApi = {
     batchGetLikeStates: vi.fn().mockResolvedValue({ states: [] }),
+    batchGetReblogStates: vi.fn().mockResolvedValue({ states: [] }),
     likePost: vi.fn().mockResolvedValue({ ok: true, action: 'like', postId: 1, actingBlogId: 11, state: { liked: true } }),
     unlikePost: vi.fn().mockResolvedValue({ ok: true, action: 'unlike', postId: 1, actingBlogId: 11, state: { liked: false } }),
+    reblogPost: vi.fn().mockResolvedValue({ ok: true, action: 'reblog', postId: 1, actingBlogId: 11, createdReblogPostId: 99 }),
     ...api,
   };
 
@@ -78,6 +82,38 @@ describe('engagement-state controller', () => {
     expect(engagementApi.batchGetLikeStates).toHaveBeenCalledTimes(2);
     expect(engagementApi.batchGetLikeStates.mock.calls[0][0]).toEqual({ postIds: [1], actingBlogId: 11 });
     expect(engagementApi.batchGetLikeStates.mock.calls[1][0]).toEqual({ postIds: [1], actingBlogId: 22 });
+  });
+
+  it('keys cached reblog counts by post id and acting blog id', async () => {
+    const { controller, engagementApi } = createController({
+      batchGetReblogStates: vi.fn().mockImplementation(async ({ postIds, actingBlogId }) => ({
+        states: postIds.map((postId: number) => ({
+          postId,
+          actorReblogCount: actingBlogId === 11 && postId === 1 ? 2 : 0,
+        })),
+      })),
+    });
+
+    setAuthUser({
+      userId: 7,
+      blogId: 11,
+      activeBlogId: 11,
+      blogs: [
+        { id: 11, name: 'alpha' },
+        { id: 22, name: 'beta' },
+      ],
+    });
+
+    await controller.hydrateReblogStates([1]);
+    expect(controller.getReblogCount(1)).toBe(2);
+
+    updateActiveBlog(22, 'beta');
+    await controller.hydrateReblogStates([1]);
+    expect(controller.getReblogCount(1)).toBe(0);
+
+    expect(engagementApi.batchGetReblogStates).toHaveBeenCalledTimes(2);
+    expect(engagementApi.batchGetReblogStates.mock.calls[0][0]).toEqual({ postIds: [1], actingBlogId: 11 });
+    expect(engagementApi.batchGetReblogStates.mock.calls[1][0]).toEqual({ postIds: [1], actingBlogId: 22 });
   });
 
   it('drops cached actor state when auth-user-changed updates the active blog', async () => {
@@ -144,8 +180,38 @@ describe('engagement-state controller', () => {
     await unlikePending;
     expect(controller.getLikeState(5)).toBe(false);
 
-    expect(engagementApi.likePost).toHaveBeenCalledWith({ postId: 5 });
-    expect(engagementApi.unlikePost).toHaveBeenCalledWith({ postId: 5 });
+    expect(engagementApi.likePost).toHaveBeenCalledWith({ postId: 5, actingBlogId: 11 });
+    expect(engagementApi.unlikePost).toHaveBeenCalledWith({ postId: 5, actingBlogId: 11 });
+  });
+
+  it('applies an optimistic reblog count increment before the network responds', async () => {
+    let resolveReblog!: (value: unknown) => void;
+    const reblogPromise = new Promise((resolve) => {
+      resolveReblog = resolve;
+    });
+
+    const { controller, engagementApi } = createController({
+      batchGetReblogStates: vi.fn().mockResolvedValue({ states: [{ postId: 5, actorReblogCount: 1 }] }),
+      reblogPost: vi.fn().mockReturnValue(reblogPromise),
+    });
+
+    setAuthUser({
+      userId: 7,
+      blogId: 11,
+      activeBlogId: 11,
+      blogs: [{ id: 11, name: 'alpha' }],
+    });
+
+    await controller.hydrateReblogStates([5]);
+    expect(controller.getReblogCount(5)).toBe(1);
+
+    const pending = controller.reblogPost(5);
+    expect(controller.getReblogCount(5)).toBe(2);
+
+    resolveReblog({ ok: true, action: 'reblog', postId: 5, actingBlogId: 11, createdReblogPostId: 44 });
+    await pending;
+    expect(controller.getReblogCount(5)).toBe(2);
+    expect(engagementApi.reblogPost).toHaveBeenCalledWith({ postId: 5, actingBlogId: 11 });
   });
 
   it('notifies subscribers when shared like state changes and stops after unsubscribe', async () => {
@@ -359,6 +425,33 @@ describe('engagement-state api helpers', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       'https://api.example.test/base/v2/internal-write/unlike',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it('keeps reblog helpers on the configured API base', async () => {
+    vi.resetModules();
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true }),
+      headers: { get: () => null },
+    } as unknown as Response);
+
+    const { batchGetReblogStates, reblogPost } = await import('../src/services/api.js');
+
+    await batchGetReblogStates({ postIds: [1], actingBlogId: 11 });
+    await reblogPost({ postId: 1, actingBlogId: 11 });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'https://api.example.test/base/v2/batch-get-reblog-states',
+      expect.objectContaining({ method: 'POST' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://api.example.test/base/v2/internal-write/reblog',
       expect.objectContaining({ method: 'POST' })
     );
   });

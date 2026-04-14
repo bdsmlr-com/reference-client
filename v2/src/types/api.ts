@@ -118,6 +118,11 @@ export interface PostLikeState {
   liked: boolean;
 }
 
+export interface PostReblogState {
+  postId: number;
+  actorReblogCount: number;
+}
+
 export interface SignedActorAssertion {
   token: string;
 }
@@ -154,6 +159,24 @@ export interface UnlikePostResponse {
   postId?: number;
   actingBlogId?: number;
   state?: LikeState;
+  error?: WriteError;
+}
+
+export interface ReblogPostRequest {
+  actor?: SignedActorAssertion;
+  actingBlogId?: number;
+  postId: number;
+  comment?: string;
+  keepComments?: boolean;
+  tags?: string[];
+}
+
+export interface ReblogPostResponse {
+  ok?: boolean;
+  action?: string;
+  postId?: number;
+  actingBlogId?: number;
+  createdReblogPostId?: number;
   error?: WriteError;
 }
 
@@ -218,6 +241,15 @@ export interface BatchGetLikeStatesRequest {
 
 export interface BatchGetLikeStatesResponse {
   states?: PostLikeState[];
+}
+
+export interface BatchGetReblogStatesRequest {
+  postIds: number[];
+  actingBlogId: number;
+}
+
+export interface BatchGetReblogStatesResponse {
+  states?: PostReblogState[];
 }
 
 export interface ListPostCommentsRequest {

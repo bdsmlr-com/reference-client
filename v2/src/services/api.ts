@@ -65,8 +65,12 @@ import type {
   ListPostReblogsResponse,
   BatchGetLikeStatesRequest,
   BatchGetLikeStatesResponse,
+  BatchGetReblogStatesRequest,
+  BatchGetReblogStatesResponse,
   LikePostRequest,
   LikePostResponse,
+  ReblogPostRequest,
+  ReblogPostResponse,
   UnlikePostRequest,
   UnlikePostResponse,
   LoginResponse,
@@ -122,6 +126,7 @@ const ENDPOINT_TIMEOUTS: Record<string, number> = {
   '/v2/public-read-api-v2/list-post-likes': 15000,
   '/v2/public-read-api-v2/list-post-comments': 15000,
   '/v2/public-read-api-v2/list-post-reblogs': 15000,
+  '/v2/public-read-api-v2/batch-get-reblog-states': 15000,
 
   // Slow endpoints (30s) - complex queries with large result sets
   '/v2/public-read-api-v2/search-posts-by-tag': 30000,
@@ -1080,6 +1085,15 @@ export async function batchGetLikeStates(
   );
 }
 
+export async function batchGetReblogStates(
+  req: BatchGetReblogStatesRequest
+): Promise<BatchGetReblogStatesResponse> {
+  return apiRequest<BatchGetReblogStatesResponse>(
+    '/v2/public-read-api-v2/batch-get-reblog-states',
+    req
+  );
+}
+
 export async function likePost(
   req: LikePostRequest
 ): Promise<LikePostResponse> {
@@ -1094,6 +1108,15 @@ export async function unlikePost(
 ): Promise<UnlikePostResponse> {
   return apiRequest<UnlikePostResponse>(
     '/v2/internal-write/unlike',
+    req
+  );
+}
+
+export async function reblogPost(
+  req: ReblogPostRequest
+): Promise<ReblogPostResponse> {
+  return apiRequest<ReblogPostResponse>(
+    '/v2/internal-write/reblog',
     req
   );
 }
@@ -3095,6 +3118,15 @@ export class EngagementApi {
   }
 
   /**
+   * Get actor-specific reblog counts for a batch of posts.
+   */
+  async batchGetReblogStates(
+    req: BatchGetReblogStatesRequest
+  ): Promise<BatchGetReblogStatesResponse> {
+    return batchGetReblogStates(req);
+  }
+
+  /**
    * Like a post for the current actor.
    */
   async likePost(req: LikePostRequest): Promise<LikePostResponse> {
@@ -3106,6 +3138,13 @@ export class EngagementApi {
    */
   async unlikePost(req: UnlikePostRequest): Promise<UnlikePostResponse> {
     return unlikePost(req);
+  }
+
+  /**
+   * Reblog a post for the current actor.
+   */
+  async reblogPost(req: ReblogPostRequest): Promise<ReblogPostResponse> {
+    return reblogPost(req);
   }
 
   /**
