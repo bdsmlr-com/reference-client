@@ -4,6 +4,8 @@ import type {
   BatchGetLikeStatesResponse,
   BatchGetReblogStatesRequest,
   BatchGetReblogStatesResponse,
+  CommentPostRequest,
+  CommentPostResponse,
   LikePostRequest,
   LikePostResponse,
   ReblogPostRequest,
@@ -18,6 +20,7 @@ type EngagementApi = {
   likePost(req: LikePostRequest): Promise<LikePostResponse>;
   unlikePost(req: UnlikePostRequest): Promise<UnlikePostResponse>;
   reblogPost(req: ReblogPostRequest): Promise<ReblogPostResponse>;
+  commentPost(req: CommentPostRequest): Promise<CommentPostResponse>;
 };
 
 export interface LikeStateSnapshot {
@@ -43,11 +46,21 @@ export function buildReblogStateCacheKey(postId: number, actingBlogId: number): 
   return `reblog:${postId}:${actingBlogId}`;
 }
 
+export function buildCommentStateCacheKey(postId: number): string {
+  return `comment:${postId}`;
+}
+
+interface CommentStateSnapshot {
+  count: number;
+  source: 'server' | 'optimistic';
+}
+
 export class EngagementStateController {
   private readonly engagementApi: EngagementApi;
   private readonly getAuthUserFn: typeof getAuthUser;
   private readonly likeStateCache = new Map<string, LikeStateSnapshot>();
   private readonly reblogStateCache = new Map<string, ReblogStateSnapshot>();
+  private readonly commentCountCache = new Map<string, CommentStateSnapshot>();
   private readonly requestVersions = new Map<string, number>();
   private readonly listeners = new Set<() => void>();
   private actorEpoch = 0;
@@ -78,6 +91,7 @@ export class EngagementStateController {
   clear(): void {
     this.likeStateCache.clear();
     this.reblogStateCache.clear();
+    this.commentCountCache.clear();
     this.requestVersions.clear();
     this.actorEpoch += 1;
     this.notifyListeners();
@@ -112,6 +126,14 @@ export class EngagementStateController {
     this.notifyListeners();
   }
 
+  private applyCommentSnapshot(postId: number, count: number, source: CommentStateSnapshot['source']) {
+    this.commentCountCache.set(buildCommentStateCacheKey(postId), {
+      count,
+      source,
+    });
+    this.notifyListeners();
+  }
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => {
@@ -135,6 +157,10 @@ export class EngagementStateController {
 
   private beginReblogRequest(postId: number, actingBlogId: number): { epoch: number; version: number; key: string } {
     return this.beginRequestForKey(buildReblogStateCacheKey(postId, actingBlogId));
+  }
+
+  private beginCommentRequest(postId: number): { epoch: number; version: number; key: string } {
+    return this.beginRequestForKey(buildCommentStateCacheKey(postId));
   }
 
   private beginRequestForKey(key: string): { epoch: number; version: number; key: string } {
@@ -165,6 +191,10 @@ export class EngagementStateController {
       return undefined;
     }
     return this.reblogStateCache.get(buildReblogStateCacheKey(postId, actorBlogId))?.count;
+  }
+
+  getCommentCount(postId: number): number | undefined {
+    return this.commentCountCache.get(buildCommentStateCacheKey(postId))?.count;
   }
 
   async hydrateLikeStates(postIds: number[]): Promise<Map<number, boolean>> {
@@ -352,6 +382,39 @@ export class EngagementStateController {
           this.reblogStateCache.set(cacheKey, previous);
         } else {
           this.reblogStateCache.delete(cacheKey);
+        }
+        this.notifyListeners();
+      }
+      throw error;
+    }
+  }
+
+  async commentPost(postId: number, comment: string): Promise<CommentPostResponse> {
+    const actorBlogId = this.requireCurrentActorBlogId();
+    const cacheKey = buildCommentStateCacheKey(postId);
+    const previous = this.commentCountCache.get(cacheKey);
+    const currentCount = previous?.count ?? 0;
+    const optimisticCount = currentCount + 1;
+    const requestSnapshot = this.beginCommentRequest(postId);
+
+    this.applyCommentSnapshot(postId, optimisticCount, 'optimistic');
+
+    try {
+      const response = await this.engagementApi.commentPost({
+        postId,
+        comment,
+        actingBlogId: actorBlogId,
+      });
+      if (this.isCurrentRequest(requestSnapshot)) {
+        this.applyCommentSnapshot(postId, optimisticCount, 'server');
+      }
+      return response;
+    } catch (error) {
+      if (this.isCurrentRequest(requestSnapshot)) {
+        if (previous) {
+          this.commentCountCache.set(cacheKey, previous);
+        } else {
+          this.commentCountCache.delete(cacheKey);
         }
         this.notifyListeners();
       }

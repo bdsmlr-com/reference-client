@@ -8,6 +8,7 @@ type LikeApi = {
   likePost: ReturnType<typeof vi.fn>;
   unlikePost: ReturnType<typeof vi.fn>;
   reblogPost: ReturnType<typeof vi.fn>;
+  commentPost: ReturnType<typeof vi.fn>;
 };
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -31,6 +32,7 @@ function createController(api?: Partial<LikeApi>) {
     likePost: vi.fn().mockResolvedValue({ ok: true, action: 'like', postId: 1, actingBlogId: 11, state: { liked: true } }),
     unlikePost: vi.fn().mockResolvedValue({ ok: true, action: 'unlike', postId: 1, actingBlogId: 11, state: { liked: false } }),
     reblogPost: vi.fn().mockResolvedValue({ ok: true, action: 'reblog', postId: 1, actingBlogId: 11, createdReblogPostId: 99 }),
+    commentPost: vi.fn().mockResolvedValue({ ok: true, action: 'comment', postId: 1, actingBlogId: 11 }),
     ...api,
   };
 
@@ -212,6 +214,33 @@ describe('engagement-state controller', () => {
     await pending;
     expect(controller.getReblogCount(5)).toBe(2);
     expect(engagementApi.reblogPost).toHaveBeenCalledWith({ postId: 5, actingBlogId: 11 });
+  });
+
+  it('submits comments with the active blog and applies an optimistic comment count', async () => {
+    let resolveComment!: (value: unknown) => void;
+    const commentPromise = new Promise((resolve) => {
+      resolveComment = resolve;
+    });
+
+    const { controller, engagementApi } = createController({
+      commentPost: vi.fn().mockReturnValue(commentPromise),
+    });
+
+    setAuthUser({
+      userId: 7,
+      blogId: 11,
+      activeBlogId: 11,
+      blogs: [{ id: 11, name: 'alpha' }],
+    });
+
+    const pending = (controller as any).commentPost(12, 'Hello from QA');
+    expect(engagementApi.commentPost).toHaveBeenCalledWith({ postId: 12, comment: 'Hello from QA', actingBlogId: 11 });
+    expect((controller as any).getCommentCount(12)).toBe(1);
+
+    resolveComment({ ok: true, action: 'comment', postId: 12, actingBlogId: 11 });
+    await pending;
+
+    expect((controller as any).getCommentCount(12)).toBe(1);
   });
 
   it('notifies subscribers when shared like state changes and stops after unsubscribe', async () => {

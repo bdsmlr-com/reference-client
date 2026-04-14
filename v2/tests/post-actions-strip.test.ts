@@ -19,13 +19,20 @@ describe('post actions strip', () => {
     expect(src).toContain('commentsCount');
     expect(src).toContain('likeState');
     expect(src).toContain('reblogCount');
+    expect(src).toContain('commentCount');
     expect(src).toContain('toggleLike');
     expect(src).toContain('triggerReblog');
+    expect(src).toContain('openCommentModal');
+    expect(src).toContain('submitComment');
     expect(src).toContain('hydrateReblogStates');
     expect(src).toContain('getReblogCount');
     expect(src).toContain('reblogPost');
+    expect(src).toContain('commentPost');
     expect(src).toContain('stopPropagation()');
     expect(src).toContain('preventDefault()');
+    expect(src).toContain('textarea');
+    expect(src).toContain('modal-backdrop');
+    expect(src).toContain('commenting');
   });
 
   it('cards compose the shared action strip in card mode without changing the surrounding layout', () => {
@@ -48,5 +55,15 @@ describe('post actions strip', () => {
     expect(src).toContain("toggleTab('reblogs')");
     expect(src).toContain("toggleTab('comments')");
     expect(src).toContain('renderEngagementDetail()');
+  });
+
+  it('adds the comment write helper to the api and engagement controller layers', () => {
+    const apiSrc = readFileSync(join(ROOT, 'services/api.ts'), 'utf8');
+    const stateSrc = readFileSync(join(ROOT, 'services/engagement-state.ts'), 'utf8');
+
+    expect(apiSrc).toContain("'/v2/internal-write/comment'");
+    expect(apiSrc).toContain('commentPost(');
+    expect(stateSrc).toContain('commentPost(req: CommentPostRequest)');
+    expect(stateSrc).toContain('getCommentCount');
   });
 });

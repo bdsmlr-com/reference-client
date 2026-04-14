@@ -119,6 +119,93 @@ export class PostActions extends LitElement {
         border-color: var(--accent);
         transform: translateY(-1px);
       }
+
+      .comment-btn {
+        border: 1px solid var(--border);
+        background: var(--bg-panel-alt);
+        color: var(--text);
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+        flex-shrink: 0;
+      }
+
+      .comment-btn:hover {
+        border-color: var(--accent);
+        transform: translateY(-1px);
+      }
+
+      .comment-btn:disabled {
+        cursor: default;
+        opacity: 0.7;
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        padding: 16px;
+      }
+
+      .modal {
+        width: min(480px, 100%);
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .modal h3 {
+        margin: 0;
+        font-size: 16px;
+      }
+
+      .modal p {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+
+      .composer {
+        width: 100%;
+        min-height: 120px;
+        resize: vertical;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--bg-primary);
+        color: var(--text);
+        font: inherit;
+      }
+
+      .composer:disabled {
+        opacity: 0.75;
+        cursor: default;
+      }
+
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .modal-error {
+        color: var(--error, #ff6b6b);
+        font-size: 13px;
+      }
     `,
   ];
 
@@ -127,8 +214,13 @@ export class PostActions extends LitElement {
 
   @state() private likeState: boolean | undefined = undefined;
   @state() private reblogCount: number | undefined = undefined;
+  @state() private commentCount: number | undefined = undefined;
   @state() private syncing = false;
   @state() private reblogging = false;
+  @state() private commentModalOpen = false;
+  @state() private commentBody = '';
+  @state() private commenting = false;
+  @state() private commentError: string | null = null;
   private syncRequestId = 0;
   private unsubscribeLikeState: (() => void) | null = null;
 
@@ -150,6 +242,9 @@ export class PostActions extends LitElement {
 
   updated(changedProperties: Map<string, unknown>): void {
     if (changedProperties.has('post') || changedProperties.has('variant')) {
+      this.commentModalOpen = false;
+      this.commentBody = '';
+      this.commentError = null;
       void this.syncActorState();
     }
   }
@@ -166,6 +261,7 @@ export class PostActions extends LitElement {
     if (!post || !actor) {
       this.likeState = undefined;
       this.reblogCount = undefined;
+      this.commentCount = post?.commentsCount ?? 0;
       this.syncing = false;
       return;
     }
@@ -184,6 +280,7 @@ export class PostActions extends LitElement {
         this.likeState = false;
       }
       this.reblogCount = engagementState.getReblogCount(currentPostId) ?? 0;
+      this.commentCount = engagementState.getCommentCount(currentPostId) ?? post.commentsCount ?? 0;
     } finally {
       if (requestId === this.syncRequestId) {
         this.syncing = false;
@@ -234,6 +331,66 @@ export class PostActions extends LitElement {
     }
   }
 
+  private openCommentModal(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!this.post || this.commenting) {
+      return;
+    }
+
+    this.commentModalOpen = true;
+    this.commentBody = '';
+    this.commentError = null;
+  }
+
+  private closeCommentModal(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    if (this.commenting) {
+      return;
+    }
+
+    this.commentModalOpen = false;
+    this.commentBody = '';
+    this.commentError = null;
+  }
+
+  private async submitComment(event: Event): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const post = this.post;
+    if (!post || this.commenting) {
+      return;
+    }
+
+    const comment = this.commentBody.trim();
+    if (!comment) {
+      this.commentError = 'Enter a comment before submitting.';
+      return;
+    }
+
+    const previousCommentCount = this.commentCount ?? post.commentsCount ?? 0;
+    this.commenting = true;
+    this.commentError = null;
+    this.commentCount = previousCommentCount + 1;
+
+    try {
+      await engagementState.commentPost(post.id, comment);
+      this.commentCount = engagementState.getCommentCount(post.id) ?? previousCommentCount + 1;
+      this.commentModalOpen = false;
+      this.commentBody = '';
+    } catch (error) {
+      console.error('Failed to comment post', error);
+      this.commentCount = engagementState.getCommentCount(post.id) ?? previousCommentCount;
+      this.commentError = error instanceof Error ? error.message : 'Failed to submit comment';
+    } finally {
+      this.commenting = false;
+    }
+  }
+
   private renderCounts() {
     const post = this.post;
     if (!post) return nothing;
@@ -241,7 +398,43 @@ export class PostActions extends LitElement {
       <div class="counts">
         ${this.getCountLabel(post.likesCount, '❤️') ? html`<span class="count-chip">${this.getCountLabel(post.likesCount, '❤️')}</span>` : ''}
         ${this.getCountLabel(post.reblogsCount, '♻️') ? html`<span class="count-chip">${this.getCountLabel(post.reblogsCount, '♻️')}</span>` : ''}
-        ${this.getCountLabel(post.commentsCount, '💬') ? html`<span class="count-chip">${this.getCountLabel(post.commentsCount, '💬')}</span>` : ''}
+        ${this.getCountLabel(this.commentCount ?? post.commentsCount, '💬') ? html`<span class="count-chip">${this.getCountLabel(this.commentCount ?? post.commentsCount, '💬')}</span>` : ''}
+      </div>
+    `;
+  }
+
+  private renderCommentModal() {
+    if (!this.commentModalOpen || !this.post) {
+      return nothing;
+    }
+
+    const trimmed = this.commentBody.trim();
+
+    return html`
+      <div class="modal-backdrop" @click=${this.closeCommentModal}>
+        <section class="modal" role="dialog" aria-modal="true" aria-label="Comment composer" @click=${(event: Event) => event.stopPropagation()}>
+          <h3>Comment on post</h3>
+          <p>Use the active blog to create a comment with a plain textarea composer.</p>
+          <textarea
+            class="composer"
+            placeholder="Write a comment..."
+            .value=${this.commentBody}
+            ?disabled=${this.commenting}
+            @input=${(event: Event) => {
+              this.commentBody = (event.target as HTMLTextAreaElement).value;
+              if (this.commentError) {
+                this.commentError = null;
+              }
+            }}
+          ></textarea>
+          ${this.commentError ? html`<div class="modal-error">${this.commentError}</div>` : ''}
+          <div class="modal-actions">
+            <button type="button" class="reblog-btn" ?disabled=${this.commenting} @click=${this.closeCommentModal}>Cancel</button>
+            <button type="button" class="comment-btn" ?disabled=${this.commenting || !trimmed} @click=${this.submitComment}>
+              ${this.commenting ? '💬 Sending…' : '💬 Submit'}
+            </button>
+          </div>
+        </section>
       </div>
     `;
   }
@@ -253,6 +446,7 @@ export class PostActions extends LitElement {
     const isDetail = this.variant === 'detail';
     const liked = Boolean(this.likeState);
     const reblogCount = this.reblogCount ?? 0;
+    const commentCount = this.commentCount ?? post.commentsCount ?? 0;
     const actorAvailable = Boolean(getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId);
 
     return html`
@@ -263,10 +457,18 @@ export class PostActions extends LitElement {
           <button
             class="reblog-btn"
             type="button"
-            ?disabled=${!actorAvailable}
+            ?disabled=${!actorAvailable || this.syncing}
             @click=${this.triggerReblog}
           >
             ${this.reblogging ? '♻️ Reblogging…' : '♻️ Reblog'}
+          </button>
+          <button
+            class="comment-btn"
+            type="button"
+            ?disabled=${!actorAvailable || this.syncing}
+            @click=${this.openCommentModal}
+          >
+            ${this.commenting ? '💬 Commenting…' : `💬 Comment${commentCount ? ` (${commentCount})` : ''}`}
           </button>
           <button
             class="like-btn ${liked ? 'liked' : ''}"
@@ -279,6 +481,7 @@ export class PostActions extends LitElement {
           </button>
         </div>
       </div>
+      ${this.renderCommentModal()}
     `;
   }
 }

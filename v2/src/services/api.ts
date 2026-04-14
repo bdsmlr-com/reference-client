@@ -69,6 +69,8 @@ import type {
   BatchGetReblogStatesResponse,
   LikePostRequest,
   LikePostResponse,
+  CommentPostRequest,
+  CommentPostResponse,
   ReblogPostRequest,
   ReblogPostResponse,
   UnlikePostRequest,
@@ -1117,6 +1119,15 @@ export async function reblogPost(
 ): Promise<ReblogPostResponse> {
   return apiRequest<ReblogPostResponse>(
     '/v2/internal-write/reblog',
+    req
+  );
+}
+
+export async function commentPost(
+  req: CommentPostRequest
+): Promise<CommentPostResponse> {
+  return apiRequest<CommentPostResponse>(
+    '/v2/internal-write/comment',
     req
   );
 }
@@ -3145,6 +3156,13 @@ export class EngagementApi {
    */
   async reblogPost(req: ReblogPostRequest): Promise<ReblogPostResponse> {
     return reblogPost(req);
+  }
+
+  /**
+   * Comment on a post for the current actor.
+   */
+  async commentPost(req: CommentPostRequest): Promise<CommentPostResponse> {
+    return commentPost(req);
   }
 
   /**

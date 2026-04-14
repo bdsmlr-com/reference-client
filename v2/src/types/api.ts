@@ -198,6 +198,21 @@ export interface Reblog {
   createdAtUnix?: number;
 }
 
+export interface CommentPostRequest {
+  actor?: SignedActorAssertion;
+  actingBlogId?: number;
+  postId: number;
+  comment: string;
+}
+
+export interface CommentPostResponse {
+  ok?: boolean;
+  action?: string;
+  postId?: number;
+  actingBlogId?: number;
+  error?: WriteError;
+}
+
 // Request types
 export interface SearchPostsByTagRequest {
   tag_name: string;
