@@ -7,6 +7,7 @@ import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import type { Like, Comment, Reblog, PostType } from '../types/api.js';
 import { resolveLink } from '../services/link-resolver.js';
 import './loading-spinner.js';
+import './post-actions.js';
 
 @customElement('post-engagement')
 export class PostEngagement extends LitElement {
@@ -31,7 +32,7 @@ export class PostEngagement extends LitElement {
       
       .meta { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
 
-      .stats-bar { display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 16px; }
+      .tabs-bar { display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 16px; }
       .stat-btn {
         background: var(--bg-panel-alt); border: 1px solid var(--border);
         padding: 6px 12px; border-radius: 20px; font-size: 13px; color: var(--text);
@@ -178,10 +179,12 @@ export class PostEngagement extends LitElement {
         <div class="lightbox-links">${this.renderLinks()}</div>
         <div class="meta">Posted ${formatDate(p.createdAtUnix, 'friendly')}</div>
         
-        <div class="stats-bar">
-          <button class="stat-btn ${this.activeTab === 'likes' ? 'active' : ''}" @click=${() => this.toggleTab('likes')}>❤️ ${p.likesCount || 0}</button>
-          <button class="stat-btn ${this.activeTab === 'reblogs' ? 'active' : ''}" @click=${() => this.toggleTab('reblogs')}>♻️ ${p.reblogsCount || 0}</button>
-          <button class="stat-btn ${this.activeTab === 'comments' ? 'active' : ''}" @click=${() => this.toggleTab('comments')}>💬 ${p.commentsCount || 0}</button>
+        <post-actions variant="detail" .post=${p}></post-actions>
+
+        <div class="tabs-bar">
+          <button class="stat-btn ${this.activeTab === 'likes' ? 'active' : ''}" @click=${() => this.toggleTab('likes')}>❤️ Likes</button>
+          <button class="stat-btn ${this.activeTab === 'reblogs' ? 'active' : ''}" @click=${() => this.toggleTab('reblogs')}>♻️ Reblogs</button>
+          <button class="stat-btn ${this.activeTab === 'comments' ? 'active' : ''}" @click=${() => this.toggleTab('comments')}>💬 Comments</button>
         </div>
 
         ${this.renderEngagementDetail()}

@@ -6,6 +6,7 @@ import { type PostType } from '../types/api.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import './media-renderer.js';
+import './post-actions.js';
 
 @customElement('post-card')
 export class PostCard extends LitElement {
@@ -99,30 +100,6 @@ export class PostCard extends LitElement {
         display: flex;
         flex-direction: column;
         gap: 10px;
-      }
-
-      .stats-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-
-      .stat-chip {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        background: var(--bg-panel-alt);
-        border: 1px solid var(--border);
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 11px;
-        color: var(--text-muted);
-        transition: background 0.2s;
-      }
-
-      .stat-chip:hover {
-        background: var(--border);
-        color: var(--text);
       }
 
       .tags {
@@ -267,11 +244,7 @@ export class PostCard extends LitElement {
         </div>
 
         <div class="card-body">
-          <div class="stats-row">
-            ${p.likesCount ? html`<div class="stat-chip">❤️ ${p.likesCount}</div>` : ''}
-            ${p.reblogsCount ? html`<div class="stat-chip">♻️ ${p.reblogsCount}</div>` : ''}
-            ${p.commentsCount ? html`<div class="stat-chip">💬 ${p.commentsCount}</div>` : ''}
-          </div>
+          <post-actions variant="card" .post=${p}></post-actions>
 
           <div class="tags">
             ${(p.tags || []).slice(0, 3).map(t => html`<span class="tag">#${t}</span>`)}
