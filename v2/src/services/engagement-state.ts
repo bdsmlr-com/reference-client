@@ -65,6 +65,8 @@ export class EngagementStateController {
 
   clear(): void {
     this.likeStateCache.clear();
+    this.requestVersions.clear();
+    this.actorEpoch += 1;
   }
 
   private getCurrentActorBlogId(): number | null {

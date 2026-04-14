@@ -226,6 +226,37 @@ describe('engagement-state controller', () => {
     await likePending;
     expect(controller.getLikeState(8)).toBe(false);
   });
+
+  it('clear resets versioning so stale completions cannot repopulate cleared state', async () => {
+    let resolveLike!: (value: unknown) => void;
+    const likePromise = new Promise((resolve) => {
+      resolveLike = resolve;
+    });
+
+    const { controller } = createController({
+      likePost: vi.fn().mockReturnValue(likePromise),
+    });
+
+    setAuthUser({
+      userId: 7,
+      blogId: 11,
+      activeBlogId: 11,
+      blogs: [{ id: 11, name: 'alpha' }],
+    });
+
+    await controller.hydrateLikeStates([12]);
+
+    const pending = controller.likePost(12);
+    expect(controller.getLikeState(12)).toBe(true);
+
+    controller.clear();
+    expect(controller.getLikeState(12)).toBeUndefined();
+
+    resolveLike({ ok: true, action: 'like', postId: 12, actingBlogId: 11, state: { liked: true } });
+    await pending;
+
+    expect(controller.getLikeState(12)).toBeUndefined();
+  });
 });
 
 describe('engagement-state api helpers', () => {
