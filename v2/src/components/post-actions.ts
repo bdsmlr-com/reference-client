@@ -101,10 +101,6 @@ export class PostActions extends LitElement {
   private syncRequestId = 0;
   private unsubscribeLikeState: (() => void) | null = null;
 
-  private readonly handleAuthChanged = () => {
-    void this.syncLikeState();
-  };
-
   private readonly handleSharedStateChanged = () => {
     void this.syncLikeState();
   };
@@ -112,14 +108,12 @@ export class PostActions extends LitElement {
   connectedCallback(): void {
     super.connectedCallback();
     this.unsubscribeLikeState = engagementState.subscribe(this.handleSharedStateChanged);
-    window.addEventListener('auth-user-changed', this.handleAuthChanged as EventListener);
     void this.syncLikeState();
   }
 
   disconnectedCallback(): void {
     this.unsubscribeLikeState?.();
     this.unsubscribeLikeState = null;
-    window.removeEventListener('auth-user-changed', this.handleAuthChanged as EventListener);
     super.disconnectedCallback();
   }
 

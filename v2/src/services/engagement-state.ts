@@ -213,6 +213,7 @@ export class EngagementStateController {
         } else {
           this.likeStateCache.delete(cacheKey);
         }
+        this.notifyListeners();
       }
       throw error;
     }
@@ -243,6 +244,7 @@ export class EngagementStateController {
         } else {
           this.likeStateCache.delete(cacheKey);
         }
+        this.notifyListeners();
       }
       throw error;
     }

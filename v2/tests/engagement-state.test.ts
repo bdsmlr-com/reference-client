@@ -182,6 +182,30 @@ describe('engagement-state controller', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
+  it('notifies subscribers when a failed optimistic toggle rolls state back', async () => {
+    const { controller } = createController({
+      likePost: vi.fn().mockRejectedValue(new Error('network down')),
+    });
+
+    setAuthUser({
+      userId: 7,
+      blogId: 11,
+      activeBlogId: 11,
+      blogs: [{ id: 11, name: 'alpha' }],
+    });
+
+    await controller.hydrateLikeStates([31]);
+    expect(controller.getLikeState(31)).toBe(false);
+
+    const listener = vi.fn();
+    controller.subscribe(listener);
+
+    await expect(controller.likePost(31)).rejects.toThrow('network down');
+
+    expect(controller.getLikeState(31)).toBe(false);
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+
   it('ignores a stale mutation response after the actor switches', async () => {
     let resolveLike!: (value: unknown) => void;
     const likePromise = new Promise((resolve) => {
