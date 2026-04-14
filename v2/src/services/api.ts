@@ -63,6 +63,12 @@ import type {
   ListPostLikesResponse,
   ListPostCommentsResponse,
   ListPostReblogsResponse,
+  BatchGetLikeStatesRequest,
+  BatchGetLikeStatesResponse,
+  LikePostRequest,
+  LikePostResponse,
+  UnlikePostRequest,
+  UnlikePostResponse,
   LoginResponse,
   SearchBlogsRequest,
   SearchBlogsResponse,
@@ -349,15 +355,22 @@ async function apiRequest<T>(
     normalizedEndpoint = normalizedEndpoint.replace('/v2/auth/', '/v2/');
   }
   
-  // Ensure it starts with /v2/
-  if (!normalizedEndpoint.startsWith('/v2/')) {
-    const clean = normalizedEndpoint.startsWith('/') ? normalizedEndpoint.slice(1) : normalizedEndpoint;
-    if (!clean.startsWith('v2/')) {
-      normalizedEndpoint = '/v2/' + clean;
-    } else {
-      normalizedEndpoint = '/' + clean;
+  // Keep direct internal-write endpoints intact; they already live under /api/v2/.
+  if (!normalizedEndpoint.startsWith('/api/')) {
+    // Ensure it starts with /v2/
+    if (!normalizedEndpoint.startsWith('/v2/')) {
+      const clean = normalizedEndpoint.startsWith('/') ? normalizedEndpoint.slice(1) : normalizedEndpoint;
+      if (!clean.startsWith('v2/')) {
+        normalizedEndpoint = '/v2/' + clean;
+      } else {
+        normalizedEndpoint = '/' + clean;
+      }
     }
   }
+
+  const endpointPath = normalizedEndpoint.startsWith('/api/')
+    ? normalizedEndpoint
+    : `${API_BASE}${normalizedEndpoint}`;
 
   // Normalize follow graph direction payloads to satisfy backend validation
   if (
@@ -384,7 +397,7 @@ async function apiRequest<T>(
 
   // Backend admin gating for several endpoints is query-param based.
   // Keep body.admin for compatibility, but force admin=true in the URL as well.
-  const endpointUrl = new URL(`${API_BASE}${normalizedEndpoint}`, window.location.origin);
+  const endpointUrl = new URL(endpointPath, window.location.origin);
   if (isAdminMode() && !endpointUrl.searchParams.has('admin')) {
     endpointUrl.searchParams.set('admin', 'true');
   }
@@ -1061,6 +1074,33 @@ export async function listPostReblogs(
   return apiRequest<ListPostReblogsResponse>(
     '/v2/public-read-api-v2/list-post-reblogs',
     { post_id: postId }
+  );
+}
+
+export async function batchGetLikeStates(
+  req: BatchGetLikeStatesRequest
+): Promise<BatchGetLikeStatesResponse> {
+  return apiRequest<BatchGetLikeStatesResponse>(
+    '/v2/public-read-api-v2/batch-get-like-states',
+    req
+  );
+}
+
+export async function likePost(
+  req: LikePostRequest
+): Promise<LikePostResponse> {
+  return apiRequest<LikePostResponse>(
+    '/api/v2/internal-write/like',
+    req
+  );
+}
+
+export async function unlikePost(
+  req: UnlikePostRequest
+): Promise<UnlikePostResponse> {
+  return apiRequest<UnlikePostResponse>(
+    '/api/v2/internal-write/unlike',
+    req
   );
 }
 
@@ -3049,6 +3089,29 @@ export class EngagementApi {
    */
   async getLikes(postId: number): Promise<ListPostLikesResponse> {
     return listPostLikes(postId);
+  }
+
+  /**
+   * Get actor-specific like states for a batch of posts.
+   */
+  async batchGetLikeStates(
+    req: BatchGetLikeStatesRequest
+  ): Promise<BatchGetLikeStatesResponse> {
+    return batchGetLikeStates(req);
+  }
+
+  /**
+   * Like a post for the current actor.
+   */
+  async likePost(req: LikePostRequest): Promise<LikePostResponse> {
+    return likePost(req);
+  }
+
+  /**
+   * Unlike a post for the current actor.
+   */
+  async unlikePost(req: UnlikePostRequest): Promise<UnlikePostResponse> {
+    return unlikePost(req);
   }
 
   /**

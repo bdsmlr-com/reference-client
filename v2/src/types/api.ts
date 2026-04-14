@@ -108,6 +108,53 @@ export interface Like {
   createdAtUnix?: number;
 }
 
+export interface LikeState {
+  liked: boolean;
+  likesCount?: number;
+}
+
+export interface PostLikeState {
+  postId: number;
+  liked: boolean;
+}
+
+export interface SignedActorAssertion {
+  token: string;
+}
+
+export interface WriteError {
+  code?: string;
+  message?: string;
+}
+
+export interface LikePostRequest {
+  actor: SignedActorAssertion;
+  postId: number;
+}
+
+export interface LikePostResponse {
+  ok?: boolean;
+  action?: string;
+  postId?: number;
+  actingBlogId?: number;
+  state?: LikeState;
+  error?: WriteError;
+}
+
+export interface UnlikePostRequest {
+  actor: SignedActorAssertion;
+  postId: number;
+}
+
+export interface UnlikePostResponse {
+  ok?: boolean;
+  action?: string;
+  postId?: number;
+  actingBlogId?: number;
+  state?: LikeState;
+  error?: WriteError;
+}
+
 export interface Comment {
   id: number;
   postId?: number;
@@ -160,6 +207,15 @@ export interface ListPostLikesRequest {
   post_id: number;
   page?: Pagination;
   order?: Order;
+}
+
+export interface BatchGetLikeStatesRequest {
+  postIds: number[];
+  actingBlogId: number;
+}
+
+export interface BatchGetLikeStatesResponse {
+  states?: PostLikeState[];
 }
 
 export interface ListPostCommentsRequest {

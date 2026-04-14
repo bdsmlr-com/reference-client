@@ -33,7 +33,7 @@ import { defaultApiClient } from './api.js';
  * - `apiClient.blogs` - Blog search and metadata operations
  * - `apiClient.followGraph` - Follow graph operations (followers/following)
  * - `apiClient.recentActivity` - Merged feed from multiple blogs
- * - `apiClient.engagement` - Post likes, comments, and reblogs
+ * - `apiClient.engagement` - Post like-state, likes, comments, and reblogs
  * - `apiClient.media` - URL signing and image validation
  * - `apiClient.identity` - Blog name/ID resolution
  *
