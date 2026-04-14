@@ -355,22 +355,16 @@ async function apiRequest<T>(
     normalizedEndpoint = normalizedEndpoint.replace('/v2/auth/', '/v2/');
   }
   
-  // Keep direct internal-write endpoints intact; they already live under /api/v2/.
-  if (!normalizedEndpoint.startsWith('/api/')) {
-    // Ensure it starts with /v2/
-    if (!normalizedEndpoint.startsWith('/v2/')) {
-      const clean = normalizedEndpoint.startsWith('/') ? normalizedEndpoint.slice(1) : normalizedEndpoint;
-      if (!clean.startsWith('v2/')) {
-        normalizedEndpoint = '/v2/' + clean;
-      } else {
-        normalizedEndpoint = '/' + clean;
-      }
+  if (!normalizedEndpoint.startsWith('/v2/')) {
+    const clean = normalizedEndpoint.startsWith('/') ? normalizedEndpoint.slice(1) : normalizedEndpoint;
+    if (!clean.startsWith('v2/')) {
+      normalizedEndpoint = '/v2/' + clean;
+    } else {
+      normalizedEndpoint = '/' + clean;
     }
   }
 
-  const endpointPath = normalizedEndpoint.startsWith('/api/')
-    ? normalizedEndpoint
-    : `${API_BASE}${normalizedEndpoint}`;
+  const endpointPath = `${API_BASE}${normalizedEndpoint}`;
 
   // Normalize follow graph direction payloads to satisfy backend validation
   if (
@@ -1090,7 +1084,7 @@ export async function likePost(
   req: LikePostRequest
 ): Promise<LikePostResponse> {
   return apiRequest<LikePostResponse>(
-    '/api/v2/internal-write/like',
+    '/v2/internal-write/like',
     req
   );
 }
@@ -1099,7 +1093,7 @@ export async function unlikePost(
   req: UnlikePostRequest
 ): Promise<UnlikePostResponse> {
   return apiRequest<UnlikePostResponse>(
-    '/api/v2/internal-write/unlike',
+    '/v2/internal-write/unlike',
     req
   );
 }

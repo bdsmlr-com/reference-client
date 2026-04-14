@@ -35,8 +35,12 @@ export class EngagementStateController {
   private readonly getAuthUserFn: typeof getAuthUser;
   private readonly tokenProvider: () => string | null;
   private readonly likeStateCache = new Map<string, LikeStateSnapshot>();
+  private readonly requestVersions = new Map<string, number>();
+  private actorEpoch = 0;
   private readonly handleAuthUserChanged = () => {
     this.likeStateCache.clear();
+    this.requestVersions.clear();
+    this.actorEpoch += 1;
   };
   private readonly listening = typeof window !== 'undefined' && typeof window.addEventListener === 'function';
 
@@ -91,6 +95,21 @@ export class EngagementStateController {
     });
   }
 
+  private beginRequest(postId: number, actingBlogId: number): { epoch: number; version: number; key: string } {
+    const key = buildLikeStateCacheKey(postId, actingBlogId);
+    const version = (this.requestVersions.get(key) ?? 0) + 1;
+    this.requestVersions.set(key, version);
+    return {
+      epoch: this.actorEpoch,
+      version,
+      key,
+    };
+  }
+
+  private isCurrentRequest(snapshot: { epoch: number; version: number; key: string }): boolean {
+    return this.actorEpoch === snapshot.epoch && this.requestVersions.get(snapshot.key) === snapshot.version;
+  }
+
   getLikeState(postId: number): boolean | undefined {
     const actorBlogId = this.getCurrentActorBlogId();
     if (!actorBlogId) {
@@ -110,6 +129,10 @@ export class EngagementStateController {
     const missingPostIds = uniquePostIds.filter(
       (postId) => !this.likeStateCache.has(buildLikeStateCacheKey(postId, actorBlogId))
     );
+    const requestSnapshots = new Map<number, { epoch: number; version: number; key: string }>();
+    for (const postId of missingPostIds) {
+      requestSnapshots.set(postId, this.beginRequest(postId, actorBlogId));
+    }
 
     if (missingPostIds.length > 0) {
       const response = await this.engagementApi.batchGetLikeStates({
@@ -120,11 +143,15 @@ export class EngagementStateController {
 
       for (const state of response.states ?? []) {
         returned.set(state.postId, state.liked);
-        this.applySnapshot(state.postId, actorBlogId, state.liked, 'server');
+        const snapshot = requestSnapshots.get(state.postId);
+        if (snapshot && this.isCurrentRequest(snapshot)) {
+          this.applySnapshot(state.postId, actorBlogId, state.liked, 'server');
+        }
       }
 
       for (const postId of missingPostIds) {
-        if (!returned.has(postId)) {
+        const snapshot = requestSnapshots.get(postId);
+        if (!returned.has(postId) && snapshot && this.isCurrentRequest(snapshot)) {
           this.applySnapshot(postId, actorBlogId, false, 'server');
         }
       }
@@ -144,6 +171,7 @@ export class EngagementStateController {
     const actorBlogId = this.requireCurrentActorBlogId();
     const cacheKey = buildLikeStateCacheKey(postId, actorBlogId);
     const previous = this.likeStateCache.get(cacheKey);
+    const requestSnapshot = this.beginRequest(postId, actorBlogId);
 
     this.applySnapshot(postId, actorBlogId, true, 'optimistic');
 
@@ -152,14 +180,18 @@ export class EngagementStateController {
         postId,
         actor: { token: this.requireActorToken() },
       });
-      const liked = response.state?.liked ?? true;
-      this.applySnapshot(postId, actorBlogId, liked, 'server');
+      if (this.isCurrentRequest(requestSnapshot)) {
+        const liked = response.state?.liked ?? true;
+        this.applySnapshot(postId, actorBlogId, liked, 'server');
+      }
       return response;
     } catch (error) {
-      if (previous) {
-        this.likeStateCache.set(cacheKey, previous);
-      } else {
-        this.likeStateCache.delete(cacheKey);
+      if (this.isCurrentRequest(requestSnapshot)) {
+        if (previous) {
+          this.likeStateCache.set(cacheKey, previous);
+        } else {
+          this.likeStateCache.delete(cacheKey);
+        }
       }
       throw error;
     }
@@ -169,6 +201,7 @@ export class EngagementStateController {
     const actorBlogId = this.requireCurrentActorBlogId();
     const cacheKey = buildLikeStateCacheKey(postId, actorBlogId);
     const previous = this.likeStateCache.get(cacheKey);
+    const requestSnapshot = this.beginRequest(postId, actorBlogId);
 
     this.applySnapshot(postId, actorBlogId, false, 'optimistic');
 
@@ -177,14 +210,18 @@ export class EngagementStateController {
         postId,
         actor: { token: this.requireActorToken() },
       });
-      const liked = response.state?.liked ?? false;
-      this.applySnapshot(postId, actorBlogId, liked, 'server');
+      if (this.isCurrentRequest(requestSnapshot)) {
+        const liked = response.state?.liked ?? false;
+        this.applySnapshot(postId, actorBlogId, liked, 'server');
+      }
       return response;
     } catch (error) {
-      if (previous) {
-        this.likeStateCache.set(cacheKey, previous);
-      } else {
-        this.likeStateCache.delete(cacheKey);
+      if (this.isCurrentRequest(requestSnapshot)) {
+        if (previous) {
+          this.likeStateCache.set(cacheKey, previous);
+        } else {
+          this.likeStateCache.delete(cacheKey);
+        }
       }
       throw error;
     }

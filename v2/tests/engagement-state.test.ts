@@ -148,4 +148,131 @@ describe('engagement-state controller', () => {
     expect(engagementApi.likePost).toHaveBeenCalledWith({ postId: 5, actor: { token: 'test-token' } });
     expect(engagementApi.unlikePost).toHaveBeenCalledWith({ postId: 5, actor: { token: 'test-token' } });
   });
+
+  it('ignores a stale mutation response after the actor switches', async () => {
+    let resolveLike!: (value: unknown) => void;
+    const likePromise = new Promise((resolve) => {
+      resolveLike = resolve;
+    });
+
+    const { controller } = createController({
+      likePost: vi.fn().mockReturnValue(likePromise),
+    });
+
+    setAuthUser({
+      userId: 7,
+      blogId: 11,
+      activeBlogId: 11,
+      blogs: [
+        { id: 11, name: 'alpha' },
+        { id: 22, name: 'beta' },
+      ],
+    });
+
+    await controller.hydrateLikeStates([7]);
+
+    const pending = controller.likePost(7);
+    expect(controller.getLikeState(7)).toBe(true);
+
+    updateActiveBlog(22, 'beta');
+    await flush();
+    expect(controller.getLikeState(7)).toBeUndefined();
+
+    resolveLike({ ok: true, action: 'like', postId: 7, actingBlogId: 11, state: { liked: true } });
+    await pending;
+
+    updateActiveBlog(11, 'alpha');
+    await flush();
+    expect(controller.getLikeState(7)).toBeUndefined();
+  });
+
+  it('keeps the newest toggle response when requests resolve out of order', async () => {
+    let resolveLike!: (value: unknown) => void;
+    let resolveUnlike!: (value: unknown) => void;
+
+    const likePromise = new Promise((resolve) => {
+      resolveLike = resolve;
+    });
+    const unlikePromise = new Promise((resolve) => {
+      resolveUnlike = resolve;
+    });
+
+    const { controller } = createController({
+      likePost: vi.fn().mockReturnValue(likePromise),
+      unlikePost: vi.fn().mockReturnValue(unlikePromise),
+    });
+
+    setAuthUser({
+      userId: 7,
+      blogId: 11,
+      activeBlogId: 11,
+      blogs: [{ id: 11, name: 'alpha' }],
+    });
+
+    await controller.hydrateLikeStates([8]);
+
+    const likePending = controller.likePost(8);
+    expect(controller.getLikeState(8)).toBe(true);
+
+    const unlikePending = controller.unlikePost(8);
+    expect(controller.getLikeState(8)).toBe(false);
+
+    resolveLike({ ok: true, action: 'like', postId: 8, actingBlogId: 11, state: { liked: true } });
+    await flush();
+    expect(controller.getLikeState(8)).toBe(false);
+
+    resolveUnlike({ ok: true, action: 'unlike', postId: 8, actingBlogId: 11, state: { liked: false } });
+    await unlikePending;
+    await likePending;
+    expect(controller.getLikeState(8)).toBe(false);
+  });
+});
+
+describe('engagement-state api helpers', () => {
+  beforeEach(() => {
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.test/base');
+    const getItem = vi.fn((key: string) => {
+      if (key === 'bdsmlr_token') return 'token-123';
+      if (key === 'bdsmlr_token_expiry') return String(Math.floor(Date.now() / 1000) + 3600);
+      return null;
+    });
+    const setItem = vi.fn();
+    const removeItem = vi.fn();
+    vi.stubGlobal('localStorage', { getItem, setItem, removeItem });
+    vi.stubGlobal('window', {
+      location: { origin: 'https://client.example.test', search: '' },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    });
+    vi.stubGlobal('navigator', { onLine: true });
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  it('keeps like helpers on the configured API base', async () => {
+    vi.resetModules();
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true }),
+      headers: { get: () => null },
+    } as unknown as Response);
+
+    const { likePost, unlikePost } = await import('../src/services/api.js');
+
+    await likePost({ postId: 1, actor: { token: 'abc' } });
+    await unlikePost({ postId: 1, actor: { token: 'abc' } });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'https://api.example.test/base/v2/internal-write/like',
+      expect.objectContaining({ method: 'POST' })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://api.example.test/base/v2/internal-write/unlike',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
 });
