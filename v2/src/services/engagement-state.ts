@@ -187,6 +187,7 @@ export class EngagementStateController {
     try {
       const response = await this.engagementApi.likePost({
         postId,
+        actingBlogId: actorBlogId,
       });
       if (this.isCurrentRequest(requestSnapshot)) {
         const liked = response.state?.liked ?? true;
@@ -217,6 +218,7 @@ export class EngagementStateController {
     try {
       const response = await this.engagementApi.unlikePost({
         postId,
+        actingBlogId: actorBlogId,
       });
       if (this.isCurrentRequest(requestSnapshot)) {
         const liked = response.state?.liked ?? false;
