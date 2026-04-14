@@ -36,11 +36,10 @@ export class EngagementStateController {
   private readonly tokenProvider: () => string | null;
   private readonly likeStateCache = new Map<string, LikeStateSnapshot>();
   private readonly requestVersions = new Map<string, number>();
+  private readonly listeners = new Set<() => void>();
   private actorEpoch = 0;
   private readonly handleAuthUserChanged = () => {
-    this.likeStateCache.clear();
-    this.requestVersions.clear();
-    this.actorEpoch += 1;
+    this.clear();
   };
   private readonly listening = typeof window !== 'undefined' && typeof window.addEventListener === 'function';
 
@@ -61,12 +60,14 @@ export class EngagementStateController {
     if (this.listening) {
       window.removeEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
     }
+    this.listeners.clear();
   }
 
   clear(): void {
     this.likeStateCache.clear();
     this.requestVersions.clear();
     this.actorEpoch += 1;
+    this.notifyListeners();
   }
 
   private getCurrentActorBlogId(): number | null {
@@ -95,6 +96,24 @@ export class EngagementStateController {
       liked,
       source,
     });
+    this.notifyListeners();
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private notifyListeners(): void {
+    for (const listener of this.listeners) {
+      try {
+        listener();
+      } catch (error) {
+        console.error('Error in engagement-state listener', error);
+      }
+    }
   }
 
   private beginRequest(postId: number, actingBlogId: number): { epoch: number; version: number; key: string } {

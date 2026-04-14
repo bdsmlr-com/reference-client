@@ -99,18 +99,26 @@ export class PostActions extends LitElement {
   @state() private likeState: boolean | undefined = undefined;
   @state() private syncing = false;
   private syncRequestId = 0;
+  private unsubscribeLikeState: (() => void) | null = null;
 
   private readonly handleAuthChanged = () => {
     void this.syncLikeState();
   };
 
+  private readonly handleSharedStateChanged = () => {
+    void this.syncLikeState();
+  };
+
   connectedCallback(): void {
     super.connectedCallback();
+    this.unsubscribeLikeState = engagementState.subscribe(this.handleSharedStateChanged);
     window.addEventListener('auth-user-changed', this.handleAuthChanged as EventListener);
     void this.syncLikeState();
   }
 
   disconnectedCallback(): void {
+    this.unsubscribeLikeState?.();
+    this.unsubscribeLikeState = null;
     window.removeEventListener('auth-user-changed', this.handleAuthChanged as EventListener);
     super.disconnectedCallback();
   }
@@ -155,7 +163,10 @@ export class PostActions extends LitElement {
     }
   }
 
-  private async toggleLike(): Promise<void> {
+  private async toggleLike(event: Event): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+
     const post = this.post;
     if (!post) return;
 

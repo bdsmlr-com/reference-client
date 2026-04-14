@@ -10,12 +10,17 @@ describe('post actions strip', () => {
 
     expect(src).toContain("@customElement('post-actions')");
     expect(src).toContain("import { createEngagementStateController } from '../services/engagement-state.js';");
+    expect(src).toContain('engagementState.subscribe(');
+    expect(src).toContain('unsubscribeLikeState');
+    expect(src).toContain('handleSharedStateChanged');
     expect(src).toContain("variant: 'card' | 'detail'");
     expect(src).toContain('likesCount');
     expect(src).toContain('reblogsCount');
     expect(src).toContain('commentsCount');
     expect(src).toContain('likeState');
     expect(src).toContain('toggleLike');
+    expect(src).toContain('stopPropagation()');
+    expect(src).toContain('preventDefault()');
   });
 
   it('cards compose the shared action strip in card mode without changing the surrounding layout', () => {

@@ -149,6 +149,39 @@ describe('engagement-state controller', () => {
     expect(engagementApi.unlikePost).toHaveBeenCalledWith({ postId: 5, actor: { token: 'test-token' } });
   });
 
+  it('notifies subscribers when shared like state changes and stops after unsubscribe', async () => {
+    let resolveLike!: (value: unknown) => void;
+    const likePromise = new Promise((resolve) => {
+      resolveLike = resolve;
+    });
+
+    const { controller } = createController({
+      likePost: vi.fn().mockReturnValue(likePromise),
+    });
+
+    setAuthUser({
+      userId: 7,
+      blogId: 11,
+      activeBlogId: 11,
+      blogs: [{ id: 11, name: 'alpha' }],
+    });
+
+    await controller.hydrateLikeStates([21]);
+
+    const listener = vi.fn();
+    const unsubscribe = controller.subscribe(listener);
+
+    const pending = controller.likePost(21);
+    expect(controller.getLikeState(21)).toBe(true);
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+    resolveLike({ ok: true, action: 'like', postId: 21, actingBlogId: 11, state: { liked: true } });
+    await pending;
+
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
   it('ignores a stale mutation response after the actor switches', async () => {
     let resolveLike!: (value: unknown) => void;
     const likePromise = new Promise((resolve) => {
