@@ -128,7 +128,7 @@ export interface WriteError {
 }
 
 export interface LikePostRequest {
-  actor: SignedActorAssertion;
+  actor?: SignedActorAssertion;
   postId: number;
 }
 
@@ -142,7 +142,7 @@ export interface LikePostResponse {
 }
 
 export interface UnlikePostRequest {
-  actor: SignedActorAssertion;
+  actor?: SignedActorAssertion;
   postId: number;
 }
 

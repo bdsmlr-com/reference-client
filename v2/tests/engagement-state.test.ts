@@ -32,7 +32,6 @@ function createController(api?: Partial<LikeApi>) {
 
   currentController = new EngagementStateController({
     engagementApi,
-    tokenProvider: () => 'test-token',
   });
 
   return { engagementApi, controller: currentController };
@@ -145,8 +144,8 @@ describe('engagement-state controller', () => {
     await unlikePending;
     expect(controller.getLikeState(5)).toBe(false);
 
-    expect(engagementApi.likePost).toHaveBeenCalledWith({ postId: 5, actor: { token: 'test-token' } });
-    expect(engagementApi.unlikePost).toHaveBeenCalledWith({ postId: 5, actor: { token: 'test-token' } });
+    expect(engagementApi.likePost).toHaveBeenCalledWith({ postId: 5 });
+    expect(engagementApi.unlikePost).toHaveBeenCalledWith({ postId: 5 });
   });
 
   it('notifies subscribers when shared like state changes and stops after unsubscribe', async () => {

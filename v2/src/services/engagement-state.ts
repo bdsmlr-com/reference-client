@@ -1,5 +1,4 @@
 import { getAuthUser } from '../state/auth-state.js';
-import { getValidToken } from './storage.js';
 import type {
   BatchGetLikeStatesRequest,
   BatchGetLikeStatesResponse,
@@ -23,7 +22,6 @@ export interface LikeStateSnapshot {
 export interface EngagementStateDependencies {
   engagementApi?: EngagementApi;
   getAuthUser?: typeof getAuthUser;
-  tokenProvider?: () => string | null;
 }
 
 export function buildLikeStateCacheKey(postId: number, actingBlogId: number): string {
@@ -33,7 +31,6 @@ export function buildLikeStateCacheKey(postId: number, actingBlogId: number): st
 export class EngagementStateController {
   private readonly engagementApi: EngagementApi;
   private readonly getAuthUserFn: typeof getAuthUser;
-  private readonly tokenProvider: () => string | null;
   private readonly likeStateCache = new Map<string, LikeStateSnapshot>();
   private readonly requestVersions = new Map<string, number>();
   private readonly listeners = new Set<() => void>();
@@ -49,7 +46,6 @@ export class EngagementStateController {
     }
     this.engagementApi = deps.engagementApi;
     this.getAuthUserFn = deps.getAuthUser ?? getAuthUser;
-    this.tokenProvider = deps.tokenProvider ?? getValidToken;
 
     if (this.listening) {
       window.addEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
@@ -81,14 +77,6 @@ export class EngagementStateController {
       throw new Error('No active blog selected');
     }
     return actorBlogId;
-  }
-
-  private requireActorToken(): string {
-    const token = this.tokenProvider();
-    if (!token) {
-      throw new Error('No valid auth token available');
-    }
-    return token;
   }
 
   private applySnapshot(postId: number, actingBlogId: number, liked: boolean, source: LikeStateSnapshot['source']) {
@@ -199,7 +187,6 @@ export class EngagementStateController {
     try {
       const response = await this.engagementApi.likePost({
         postId,
-        actor: { token: this.requireActorToken() },
       });
       if (this.isCurrentRequest(requestSnapshot)) {
         const liked = response.state?.liked ?? true;
@@ -230,7 +217,6 @@ export class EngagementStateController {
     try {
       const response = await this.engagementApi.unlikePost({
         postId,
-        actor: { token: this.requireActorToken() },
       });
       if (this.isCurrentRequest(requestSnapshot)) {
         const liked = response.state?.liked ?? false;
