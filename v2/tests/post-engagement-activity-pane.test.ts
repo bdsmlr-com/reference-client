@@ -5,12 +5,13 @@ import { join } from 'node:path';
 const FILE = join(process.cwd(), 'src/components/post-engagement.ts');
 
 describe('post engagement activity pane', () => {
-  it('renders clickable count pills instead of plain labels', () => {
+  it('lets the shared action strip own the clickable count pills', () => {
     const src = readFileSync(FILE, 'utf8');
 
-    expect(src).toContain("❤️ ${p.likesCount ?? 0}");
-    expect(src).toContain("♻️ ${p.reblogsCount ?? 0}");
-    expect(src).toContain("💬 ${p.commentsCount ?? 0}");
+    expect(src).toContain("@engagement-open-tab=${this.handleOpenTab}");
+    expect(src).not.toContain("❤️ ${p.likesCount ?? 0}");
+    expect(src).not.toContain("♻️ ${p.reblogsCount ?? 0}");
+    expect(src).not.toContain("💬 ${p.commentsCount ?? 0}");
   });
 
   it('renders my activity above the full reverse chronological feed', () => {

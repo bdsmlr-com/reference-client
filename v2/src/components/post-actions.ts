@@ -56,37 +56,51 @@ export class PostActions extends LitElement {
         white-space: nowrap;
       }
 
+      .count-chip-button {
+        cursor: pointer;
+        transition: border-color 0.15s ease, transform 0.15s ease, color 0.15s ease;
+      }
+
+      .count-chip-button:hover {
+        border-color: var(--accent);
+        color: var(--text);
+        transform: translateY(-1px);
+      }
+
       .actions.detail .count-chip {
         background: transparent;
       }
 
-      .like-btn {
+      .icon-btn {
         border: 1px solid var(--border);
         background: var(--bg-panel-alt);
         color: var(--text);
         border-radius: 999px;
-        padding: 4px 10px;
-        font-size: 12px;
+        min-width: 34px;
+        min-height: 34px;
+        padding: 0 10px;
+        font-size: 16px;
         font-weight: 600;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        justify-content: center;
         cursor: pointer;
         transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
         flex-shrink: 0;
       }
 
-      .like-btn:hover {
+      .icon-btn:hover {
         border-color: var(--accent);
         transform: translateY(-1px);
       }
 
-      .like-btn.liked {
+      .icon-btn.liked,
+      .icon-btn.reblogged {
         background: color-mix(in srgb, var(--accent) 18%, var(--bg-panel-alt));
         border-color: var(--accent);
       }
 
-      .like-btn:disabled {
+      .icon-btn:disabled {
         cursor: default;
         opacity: 0.7;
       }
@@ -97,27 +111,6 @@ export class PostActions extends LitElement {
         gap: 8px;
         flex-wrap: wrap;
         justify-content: flex-end;
-      }
-
-      .reblog-btn {
-        border: 1px solid var(--border);
-        background: var(--bg-panel-alt);
-        color: var(--text);
-        border-radius: 999px;
-        padding: 4px 10px;
-        font-size: 12px;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        cursor: pointer;
-        transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
-        flex-shrink: 0;
-      }
-
-      .reblog-btn:hover {
-        border-color: var(--accent);
-        transform: translateY(-1px);
       }
 
       .comment-btn {
@@ -249,10 +242,14 @@ export class PostActions extends LitElement {
     }
   }
 
-  private getCountLabel(value: number | undefined, label: string): string | null {
-    const count = value ?? 0;
-    if (!count) return null;
-    return `${label} ${count}`;
+  private openEngagementTab(tab: 'likes' | 'reblogs' | 'comments', event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.dispatchEvent(new CustomEvent('engagement-open-tab', {
+      detail: { tab },
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   private async syncActorState(): Promise<void> {
@@ -394,11 +391,26 @@ export class PostActions extends LitElement {
   private renderCounts() {
     const post = this.post;
     if (!post) return nothing;
+    const likeCount = post.likesCount ?? 0;
+    const reblogCount = post.reblogsCount ?? 0;
+    const commentCount = this.commentCount ?? post.commentsCount ?? 0;
     return html`
       <div class="counts">
-        ${this.getCountLabel(post.likesCount, '❤️') ? html`<span class="count-chip">${this.getCountLabel(post.likesCount, '❤️')}</span>` : ''}
-        ${this.getCountLabel(post.reblogsCount, '♻️') ? html`<span class="count-chip">${this.getCountLabel(post.reblogsCount, '♻️')}</span>` : ''}
-        ${this.getCountLabel(this.commentCount ?? post.commentsCount, '💬') ? html`<span class="count-chip">${this.getCountLabel(this.commentCount ?? post.commentsCount, '💬')}</span>` : ''}
+        ${likeCount > 0 ? html`
+          <button class="count-chip count-chip-button" type="button" @click=${(event: Event) => this.openEngagementTab('likes', event)}>
+            ${likeCount}
+          </button>
+        ` : nothing}
+        ${reblogCount > 0 ? html`
+          <button class="count-chip count-chip-button" type="button" @click=${(event: Event) => this.openEngagementTab('reblogs', event)}>
+            ${reblogCount}
+          </button>
+        ` : nothing}
+        ${commentCount > 0 ? html`
+          <button class="count-chip count-chip-button" type="button" @click=${(event: Event) => this.openEngagementTab('comments', event)}>
+            ${commentCount}
+          </button>
+        ` : nothing}
       </div>
     `;
   }
@@ -429,7 +441,7 @@ export class PostActions extends LitElement {
           ></textarea>
           ${this.commentError ? html`<div class="modal-error">${this.commentError}</div>` : ''}
           <div class="modal-actions">
-            <button type="button" class="reblog-btn" ?disabled=${this.commenting} @click=${this.closeCommentModal}>Cancel</button>
+            <button type="button" class="comment-btn" ?disabled=${this.commenting} @click=${this.closeCommentModal}>Cancel</button>
             <button type="button" class="comment-btn" ?disabled=${this.commenting || !trimmed} @click=${this.submitComment}>
               ${this.commenting ? '💬 Sending…' : '💬 Submit'}
             </button>
@@ -446,38 +458,41 @@ export class PostActions extends LitElement {
     const isDetail = this.variant === 'detail';
     const liked = Boolean(this.likeState);
     const reblogCount = this.reblogCount ?? 0;
-    const commentCount = this.commentCount ?? post.commentsCount ?? 0;
+    const reblogged = reblogCount > 0;
     const actorAvailable = Boolean(getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId);
 
     return html`
       <div class="actions ${isDetail ? 'detail' : 'card'}">
         ${this.renderCounts()}
         <div class="buttons">
-          ${reblogCount > 0 ? html`<span class="count-chip">You reblogged ${reblogCount}x</span>` : nothing}
           <button
-            class="reblog-btn"
+            class="icon-btn ${reblogged ? 'reblogged' : ''}"
             type="button"
+            aria-pressed=${reblogged ? 'true' : 'false'}
+            title=${reblogged ? 'Reblogged' : 'Reblog'}
             ?disabled=${!actorAvailable || this.syncing}
             @click=${this.triggerReblog}
           >
-            ${this.reblogging ? '♻️ Reblogging…' : '♻️ Reblog'}
+            ${this.reblogging ? '⟳' : '♻️'}
           </button>
           <button
-            class="comment-btn"
+            class="icon-btn"
             type="button"
+            title="Comment"
             ?disabled=${!actorAvailable || this.syncing}
             @click=${this.openCommentModal}
           >
-            ${this.commenting ? '💬 Commenting…' : `💬 Comment${commentCount ? ` (${commentCount})` : ''}`}
+            💬
           </button>
           <button
-            class="like-btn ${liked ? 'liked' : ''}"
+            class="icon-btn ${liked ? 'liked' : ''}"
             type="button"
             aria-pressed=${liked ? 'true' : 'false'}
+            title=${liked ? 'Liked' : 'Like'}
             ?disabled=${!actorAvailable || this.syncing}
             @click=${this.toggleLike}
           >
-            ${liked ? '❤️ Unlike' : '🤍 Like'}
+            ${liked ? '❤️' : '🤍'}
           </button>
         </div>
       </div>

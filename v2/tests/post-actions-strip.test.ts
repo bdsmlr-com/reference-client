@@ -30,9 +30,15 @@ describe('post actions strip', () => {
     expect(src).toContain('commentPost');
     expect(src).toContain('stopPropagation()');
     expect(src).toContain('preventDefault()');
+    expect(src).toContain("dispatchEvent(new CustomEvent('engagement-open-tab'");
+    expect(src).toContain('openEngagementTab');
+    expect(src).toContain('count-chip-button');
+    expect(src).toContain('icon-btn');
+    expect(src).toContain('reblogged');
     expect(src).toContain('textarea');
     expect(src).toContain('modal-backdrop');
     expect(src).toContain('commenting');
+    expect(src).not.toContain('You reblogged');
   });
 
   it('cards compose the shared action strip in card mode without changing the surrounding layout', () => {
@@ -51,9 +57,8 @@ describe('post actions strip', () => {
     expect(src).toContain("import './post-actions.js';");
     expect(src).toContain('<post-actions');
     expect(src).toContain('variant="detail"');
-    expect(src).toContain("toggleTab('likes')");
-    expect(src).toContain("toggleTab('reblogs')");
-    expect(src).toContain("toggleTab('comments')");
+    expect(src).toContain("@engagement-open-tab=${this.handleOpenTab}");
+    expect(src).toContain('handleOpenTab');
     expect(src).toContain('renderEngagementDetail()');
   });
 

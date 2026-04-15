@@ -33,15 +33,6 @@ export class PostEngagement extends LitElement {
       
       .meta { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
 
-      .tabs-bar { display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 16px; }
-      .stat-btn {
-        background: var(--bg-panel-alt); border: 1px solid var(--border);
-        padding: 6px 12px; border-radius: 20px; font-size: 13px; color: var(--text);
-        cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;
-      }
-      .stat-btn:hover { border-color: var(--accent); }
-      .stat-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
-
       .detail-list { background: var(--bg-panel-alt); border-radius: 8px; padding: 12px; margin-top: 12px; max-height: 300px; overflow-y: auto; }
       .detail-section-title { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 8px; }
       .detail-divider { margin: 12px 0; border-top: 1px solid var(--border-subtle); }
@@ -95,6 +86,10 @@ export class PostEngagement extends LitElement {
     } finally {
       this.loadingDetails = false;
     }
+  }
+
+  private handleOpenTab(event: CustomEvent<{ tab: 'likes' | 'reblogs' | 'comments' }>) {
+    void this.toggleTab(event.detail.tab);
   }
 
   private renderLinks() {
@@ -201,13 +196,7 @@ export class PostEngagement extends LitElement {
         <div class="lightbox-links">${this.renderLinks()}</div>
         <div class="meta">Posted ${formatDate(p.createdAtUnix, 'friendly')}</div>
         
-        <post-actions variant="detail" .post=${p}></post-actions>
-
-        <div class="tabs-bar">
-          <button class="stat-btn ${this.activeTab === 'likes' ? 'active' : ''}" @click=${() => this.toggleTab('likes')}>❤️ ${p.likesCount ?? 0}</button>
-          <button class="stat-btn ${this.activeTab === 'reblogs' ? 'active' : ''}" @click=${() => this.toggleTab('reblogs')}>♻️ ${p.reblogsCount ?? 0}</button>
-          <button class="stat-btn ${this.activeTab === 'comments' ? 'active' : ''}" @click=${() => this.toggleTab('comments')}>💬 ${p.commentsCount ?? 0}</button>
-        </div>
+        <post-actions variant="detail" .post=${p} @engagement-open-tab=${this.handleOpenTab}></post-actions>
 
         ${this.renderEngagementDetail()}
 
