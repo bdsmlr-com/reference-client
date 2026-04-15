@@ -80,6 +80,11 @@ export class PostEngagement extends LitElement {
       } else if (tab === 'comments' && !this.comments) {
         const resp = await apiClient.engagement.getComments(this.post.id);
         this.comments = resp.comments || [];
+        const fetchedCount = this.comments.length;
+        const currentCount = this.post.commentsCount ?? 0;
+        if (fetchedCount > currentCount) {
+          this.post = { ...this.post, commentsCount: fetchedCount };
+        }
       }
     } catch (e) {
       console.error(`Failed to fetch ${tab}`, e);

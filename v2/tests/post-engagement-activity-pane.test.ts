@@ -19,6 +19,7 @@ describe('post engagement activity pane', () => {
 
     expect(src).toContain('private getActiveBlogId');
     expect(src).toContain('private splitPersonalActivity');
+    expect(src).toContain('commentsCount: fetchedCount');
     expect(src).toContain('My activity');
     expect(src).toContain('All activity');
     expect(src).toContain('myRows');

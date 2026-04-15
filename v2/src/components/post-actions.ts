@@ -80,6 +80,24 @@ export class PostActions extends LitElement {
         color: var(--text);
       }
 
+      .count-chip.like-active {
+        background: color-mix(in srgb, #e85d75 16%, var(--bg-panel-alt));
+        border-color: color-mix(in srgb, #e85d75 34%, var(--border));
+        color: #e85d75;
+      }
+
+      .count-chip.reblog-active {
+        background: color-mix(in srgb, #57b89a 16%, var(--bg-panel-alt));
+        border-color: color-mix(in srgb, #57b89a 34%, var(--border));
+        color: #57b89a;
+      }
+
+      .count-chip.comment-active {
+        background: color-mix(in srgb, #8d97a8 16%, var(--bg-panel-alt));
+        border-color: color-mix(in srgb, #8d97a8 34%, var(--border));
+        color: var(--text);
+      }
+
       .actions.detail .count-chip {
         background: transparent;
       }
@@ -110,6 +128,24 @@ export class PostActions extends LitElement {
       .icon-btn.is-active {
         background: color-mix(in srgb, var(--text-muted) 14%, var(--bg-panel-alt));
         border-color: color-mix(in srgb, var(--text-muted) 30%, var(--border));
+      }
+
+      .icon-btn.like-active {
+        background: color-mix(in srgb, #e85d75 16%, var(--bg-panel-alt));
+        border-color: color-mix(in srgb, #e85d75 34%, var(--border));
+        color: #e85d75;
+      }
+
+      .icon-btn.reblog-active {
+        background: color-mix(in srgb, #57b89a 16%, var(--bg-panel-alt));
+        border-color: color-mix(in srgb, #57b89a 34%, var(--border));
+        color: #57b89a;
+      }
+
+      .icon-btn.comment-active {
+        background: color-mix(in srgb, #8d97a8 16%, var(--bg-panel-alt));
+        border-color: color-mix(in srgb, #8d97a8 34%, var(--border));
+        color: var(--text);
       }
 
       .icon-btn:disabled {
@@ -213,6 +249,7 @@ export class PostActions extends LitElement {
   @state() private reblogCount: number | undefined = undefined;
   @state() private commentCount: number | undefined = undefined;
   @state() private syncing = false;
+  @state() private liking = false;
   @state() private reblogging = false;
   @state() private commentModalOpen = false;
   @state() private commentBody = '';
@@ -294,9 +331,10 @@ export class PostActions extends LitElement {
     event.stopPropagation();
 
     const post = this.post;
-    if (!post) return;
+    if (!post || this.liking) return;
 
     const nextLikeState = !this.likeState;
+    this.liking = true;
     this.likeState = nextLikeState;
     try {
       if (nextLikeState) {
@@ -308,6 +346,8 @@ export class PostActions extends LitElement {
     } catch (error) {
       console.error('Failed to toggle like state', error);
       this.likeState = engagementState.getLikeState(post.id) ?? !nextLikeState;
+    } finally {
+      this.liking = false;
     }
   }
 
@@ -402,7 +442,7 @@ export class PostActions extends LitElement {
       <div class="actions-row">
         <div class="action-group">
           <button
-            class="icon-btn ${reblogCount > 0 ? 'is-active' : ''}"
+            class="icon-btn ${reblogCount > 0 ? 'reblog-active' : ''}"
             type="button"
             aria-pressed=${reblogCount > 0 ? 'true' : 'false'}
             title=${reblogCount > 0 ? 'Reblogged' : 'Reblog'}
@@ -411,13 +451,13 @@ export class PostActions extends LitElement {
           >
             ${this.reblogging ? '⟳' : '♻️'}
           </button>
-          <button class="count-chip count-chip-button ${reblogCount > 0 ? 'has-activity' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('reblogs', event)}>
+          <button class="count-chip count-chip-button ${reblogCount > 0 ? 'reblog-active' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('reblogs', event)}>
             ${reblogCount}
           </button>
         </div>
         <div class="action-group">
           <button
-            class="icon-btn"
+            class="icon-btn ${commentCount > 0 ? 'comment-active' : ''}"
             type="button"
             title="Comment"
             ?disabled=${!Boolean(getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId) || this.syncing}
@@ -425,22 +465,22 @@ export class PostActions extends LitElement {
           >
             💬
           </button>
-          <button class="count-chip count-chip-button ${commentCount > 0 ? 'has-activity' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('comments', event)}>
+          <button class="count-chip count-chip-button ${commentCount > 0 ? 'comment-active' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('comments', event)}>
             ${commentCount}
           </button>
         </div>
         <div class="action-group">
           <button
-            class="icon-btn ${this.likeState ? 'is-active' : ''}"
+            class="icon-btn ${this.likeState ? 'like-active' : ''}"
             type="button"
             aria-pressed=${this.likeState ? 'true' : 'false'}
             title=${this.likeState ? 'Liked' : 'Like'}
-            ?disabled=${!Boolean(getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId) || this.syncing}
+            ?disabled=${!Boolean(getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId) || this.syncing || this.liking}
             @click=${this.toggleLike}
           >
-            ♥
+            ❤️
           </button>
-          <button class="count-chip count-chip-button ${likeCount > 0 ? 'has-activity' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('likes', event)}>
+          <button class="count-chip count-chip-button ${likeCount > 0 ? 'like-active' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('likes', event)}>
             ${likeCount}
           </button>
         </div>
