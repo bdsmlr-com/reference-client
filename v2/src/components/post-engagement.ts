@@ -3,6 +3,7 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { formatDate } from '../services/date-formatter.js';
+import { getCachedBlogId, getCurrentBlog } from '../services/storage.js';
 import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import type { Like, Comment, Reblog, PostType } from '../types/api.js';
 import { resolveLink } from '../services/link-resolver.js';
@@ -42,6 +43,8 @@ export class PostEngagement extends LitElement {
       .stat-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
 
       .detail-list { background: var(--bg-panel-alt); border-radius: 8px; padding: 12px; margin-top: 12px; max-height: 300px; overflow-y: auto; }
+      .detail-section-title { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 8px; }
+      .detail-divider { margin: 12px 0; border-top: 1px solid var(--border-subtle); }
       .detail-item { padding: 8px; border-bottom: 1px solid var(--border-subtle); font-size: 13px; display: flex; align-items: center; justify-content: space-between; }
       .detail-item:last-child { border-bottom: none; }
       .detail-item a { color: var(--accent); text-decoration: none; }
@@ -79,32 +82,13 @@ export class PostEngagement extends LitElement {
     try {
       if (tab === 'likes' && !this.likes) {
         const resp = await apiClient.engagement.getLikes(this.post.id);
-        const list = resp.likes || [];
-        const seen = new Set();
-        this.likes = list.filter(l => {
-          if (seen.has(l.blogName)) return false;
-          seen.add(l.blogName);
-          return true;
-        });
+        this.likes = resp.likes || [];
       } else if (tab === 'reblogs' && !this.reblogs) {
         const resp = await apiClient.engagement.getReblogs(this.post.id);
-        const list = resp.reblogs || [];
-        const seen = new Set();
-        this.reblogs = list.filter(r => {
-          if (seen.has(r.blogName)) return false;
-          seen.add(r.blogName);
-          return true;
-        });
+        this.reblogs = resp.reblogs || [];
       } else if (tab === 'comments' && !this.comments) {
         const resp = await apiClient.engagement.getComments(this.post.id);
-        const list = resp.comments || [];
-        const seen = new Set();
-        this.comments = list.filter(c => {
-          const key = `${c.blogName}:${c.body}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
+        this.comments = resp.comments || [];
       }
     } catch (e) {
       console.error(`Failed to fetch ${tab}`, e);
@@ -151,21 +135,59 @@ export class PostEngagement extends LitElement {
     return html`<a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing}>${link.label || label}</a>`;
   }
 
+  private getActiveBlogId(): number | null {
+    const currentBlog = getCurrentBlog();
+    if (!currentBlog) {
+      return null;
+    }
+    const cachedBlogId = getCachedBlogId(currentBlog);
+    return typeof cachedBlogId === 'number' ? cachedBlogId : null;
+  }
+
+  private splitPersonalActivity<T extends { blogId?: number }>(rows: T[] | null): { myRows: T[]; allRows: T[] } {
+    const allRows = rows || [];
+    const activeBlogId = this.getActiveBlogId();
+    if (!activeBlogId) {
+      return { myRows: [], allRows };
+    }
+    return {
+      myRows: allRows.filter((row) => row.blogId === activeBlogId),
+      allRows,
+    };
+  }
+
+  private renderPersonalizedList<T extends { blogId?: number }>(
+    rows: T[] | null,
+    renderRow: (row: T) => unknown,
+  ) {
+    const { myRows, allRows } = this.splitPersonalActivity(rows);
+    if (allRows.length === 0) {
+      return nothing;
+    }
+    return html`
+      <div class="detail-list">
+        ${myRows.length > 0 ? html`
+          <div class="detail-section-title">My activity</div>
+          ${myRows.map((row) => renderRow(row))}
+          <div class="detail-divider"></div>
+        ` : nothing}
+        <div class="detail-section-title">All activity</div>
+        ${allRows.map((row) => renderRow(row))}
+      </div>
+    `;
+  }
+
   private renderEngagementDetail() {
     if (this.loadingDetails) return html`<loading-spinner message="Fetching details..."></loading-spinner>`;
     
     if (this.activeTab === 'likes' && this.likes) {
-      return html`<div class="detail-list">${this.likes.map(l => html`<div class="detail-item"><span>❤️ by ${this.renderBlogIdentity(l.blogName)}</span><span class="ts">${formatDate(l.createdAtUnix, 'friendly')}</span></div>`)}</div>`;
+      return this.renderPersonalizedList(this.likes, (l) => html`<div class="detail-item"><span>❤️ by ${this.renderBlogIdentity(l.blogName)}</span><span class="ts">${formatDate(l.createdAtUnix, 'friendly')}</span></div>`);
     }
     if (this.activeTab === 'reblogs' && this.reblogs) {
-      return html`<div class="detail-list">${this.reblogs.map(r => {
-        const targetPostId = r.postId || (r as any).id;
-        const targetLink = resolveLink('post_permalink', { postId: targetPostId });
-        return html`<div class="detail-item"><span>♻️ by ${this.renderBlogIdentity(r.blogName, 'post_via_blog')}</span><span><a href=${targetLink.href} target=${targetLink.target} rel=${targetLink.rel || nothing} title=${targetLink.title || nothing}>${targetLink.label || `post:${targetPostId}`}</a></span></div>`;
-      })}</div>`;
+      return this.renderPersonalizedList(this.reblogs, (r) => html`<div class="detail-item"><span>♻️ by ${this.renderBlogIdentity(r.blogName, 'post_via_blog')}</span><span class="ts">${formatDate(r.createdAtUnix, 'friendly')}</span></div>`);
     }
     if (this.activeTab === 'comments' && this.comments) {
-      return html`<div class="detail-list">${this.comments.map(c => html`<div class="detail-item"><span>💬 <b>${this.normalizeBlogName(c.blogName) ? `@${this.normalizeBlogName(c.blogName)}` : '@unknown'}</b>: ${c.body}</span><span class="ts">${formatDate(c.createdAtUnix, 'friendly')}</span></div>`)}</div>`;
+      return this.renderPersonalizedList(this.comments, (c) => html`<div class="detail-item"><span>💬 <b>${this.normalizeBlogName(c.blogName) ? `@${this.normalizeBlogName(c.blogName)}` : '@unknown'}</b>: ${c.body}</span><span class="ts">${formatDate(c.createdAtUnix, 'friendly')}</span></div>`);
     }
     return nothing;
   }
@@ -182,9 +204,9 @@ export class PostEngagement extends LitElement {
         <post-actions variant="detail" .post=${p}></post-actions>
 
         <div class="tabs-bar">
-          <button class="stat-btn ${this.activeTab === 'likes' ? 'active' : ''}" @click=${() => this.toggleTab('likes')}>❤️ Likes</button>
-          <button class="stat-btn ${this.activeTab === 'reblogs' ? 'active' : ''}" @click=${() => this.toggleTab('reblogs')}>♻️ Reblogs</button>
-          <button class="stat-btn ${this.activeTab === 'comments' ? 'active' : ''}" @click=${() => this.toggleTab('comments')}>💬 Comments</button>
+          <button class="stat-btn ${this.activeTab === 'likes' ? 'active' : ''}" @click=${() => this.toggleTab('likes')}>❤️ ${p.likesCount ?? 0}</button>
+          <button class="stat-btn ${this.activeTab === 'reblogs' ? 'active' : ''}" @click=${() => this.toggleTab('reblogs')}>♻️ ${p.reblogsCount ?? 0}</button>
+          <button class="stat-btn ${this.activeTab === 'comments' ? 'active' : ''}" @click=${() => this.toggleTab('comments')}>💬 ${p.commentsCount ?? 0}</button>
         </div>
 
         ${this.renderEngagementDetail()}
