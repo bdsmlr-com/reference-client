@@ -1052,29 +1052,32 @@ export async function resolveIdentifier(
 }
 
 export async function listPostLikes(
-  postId: number
+  postId: number,
+  pageSize = 100
 ): Promise<ListPostLikesResponse> {
   return apiRequest<ListPostLikesResponse>(
     '/v2/public-read-api-v2/list-post-likes',
-    { post_id: postId }
+    { post_id: postId, page: { page_size: pageSize } }
   );
 }
 
 export async function listPostComments(
-  postId: number
+  postId: number,
+  pageSize = 100
 ): Promise<ListPostCommentsResponse> {
   return apiRequest<ListPostCommentsResponse>(
     '/v2/public-read-api-v2/list-post-comments',
-    { post_id: postId }
+    { post_id: postId, page: { page_size: pageSize } }
   );
 }
 
 export async function listPostReblogs(
-  postId: number
+  postId: number,
+  pageSize = 100
 ): Promise<ListPostReblogsResponse> {
   return apiRequest<ListPostReblogsResponse>(
     '/v2/public-read-api-v2/list-post-reblogs',
-    { post_id: postId }
+    { post_id: postId, page: { page_size: pageSize } }
   );
 }
 

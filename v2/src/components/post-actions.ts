@@ -422,11 +422,9 @@ export class PostActions extends LitElement {
           >
             💬
           </button>
-          ${commentCount > 0 ? html`
-            <button class="count-chip count-chip-button" type="button" @click=${(event: Event) => this.openEngagementTab('comments', event)}>
-              ${commentCount}
-            </button>
-          ` : nothing}
+          <button class="count-chip count-chip-button" type="button" @click=${(event: Event) => this.openEngagementTab('comments', event)}>
+            ${commentCount}
+          </button>
         </div>
         <div class="action-group">
           <button
