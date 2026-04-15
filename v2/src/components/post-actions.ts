@@ -74,6 +74,12 @@ export class PostActions extends LitElement {
         transform: translateY(-1px);
       }
 
+      .count-chip.has-activity {
+        background: color-mix(in srgb, var(--text-muted) 14%, var(--bg-panel-alt));
+        border-color: color-mix(in srgb, var(--text-muted) 30%, var(--border));
+        color: var(--text);
+      }
+
       .actions.detail .count-chip {
         background: transparent;
       }
@@ -101,10 +107,9 @@ export class PostActions extends LitElement {
         transform: translateY(-1px);
       }
 
-      .icon-btn.liked,
-      .icon-btn.reblogged {
-        background: color-mix(in srgb, var(--accent) 18%, var(--bg-panel-alt));
-        border-color: var(--accent);
+      .icon-btn.is-active {
+        background: color-mix(in srgb, var(--text-muted) 14%, var(--bg-panel-alt));
+        border-color: color-mix(in srgb, var(--text-muted) 30%, var(--border));
       }
 
       .icon-btn:disabled {
@@ -397,7 +402,7 @@ export class PostActions extends LitElement {
       <div class="actions-row">
         <div class="action-group">
           <button
-            class="icon-btn ${reblogCount > 0 ? 'reblogged' : ''}"
+            class="icon-btn ${reblogCount > 0 ? 'is-active' : ''}"
             type="button"
             aria-pressed=${reblogCount > 0 ? 'true' : 'false'}
             title=${reblogCount > 0 ? 'Reblogged' : 'Reblog'}
@@ -406,7 +411,7 @@ export class PostActions extends LitElement {
           >
             ${this.reblogging ? '⟳' : '♻️'}
           </button>
-          <button class="count-chip count-chip-button" type="button" @click=${(event: Event) => this.openEngagementTab('reblogs', event)}>
+          <button class="count-chip count-chip-button ${reblogCount > 0 ? 'has-activity' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('reblogs', event)}>
             ${reblogCount}
           </button>
         </div>
@@ -420,22 +425,22 @@ export class PostActions extends LitElement {
           >
             💬
           </button>
-          <button class="count-chip count-chip-button" type="button" @click=${(event: Event) => this.openEngagementTab('comments', event)}>
+          <button class="count-chip count-chip-button ${commentCount > 0 ? 'has-activity' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('comments', event)}>
             ${commentCount}
           </button>
         </div>
         <div class="action-group">
           <button
-            class="icon-btn ${this.likeState ? 'liked' : ''}"
+            class="icon-btn ${this.likeState ? 'is-active' : ''}"
             type="button"
             aria-pressed=${this.likeState ? 'true' : 'false'}
             title=${this.likeState ? 'Liked' : 'Like'}
             ?disabled=${!Boolean(getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId) || this.syncing}
             @click=${this.toggleLike}
           >
-            ${this.likeState ? '❤️' : '🤍'}
+            ♥
           </button>
-          <button class="count-chip count-chip-button" type="button" @click=${(event: Event) => this.openEngagementTab('likes', event)}>
+          <button class="count-chip count-chip-button ${likeCount > 0 ? 'has-activity' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('likes', event)}>
             ${likeCount}
           </button>
         </div>

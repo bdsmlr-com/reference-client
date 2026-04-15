@@ -33,11 +33,13 @@ describe('post actions strip', () => {
     expect(src).toContain("dispatchEvent(new CustomEvent('engagement-open-tab'");
     expect(src).toContain('openEngagementTab');
     expect(src).toContain('count-chip-button');
+    expect(src).toContain('has-activity');
     expect(src).toContain('icon-btn');
-    expect(src).toContain('reblogged');
+    expect(src).toContain('is-active');
     expect(src).toContain("openEngagementTab('likes'");
     expect(src).toContain("openEngagementTab('reblogs'");
     expect(src).toContain("openEngagementTab('comments'");
+    expect(src).toContain('♥');
     expect(src).toContain('textarea');
     expect(src).toContain('modal-backdrop');
     expect(src).toContain('commenting');
