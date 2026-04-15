@@ -406,11 +406,9 @@ export class PostActions extends LitElement {
           >
             ${this.reblogging ? '⟳' : '♻️'}
           </button>
-          ${reblogCount > 0 ? html`
-            <button class="count-chip count-chip-button" type="button" @click=${(event: Event) => this.openEngagementTab('reblogs', event)}>
-              ${reblogCount}
-            </button>
-          ` : nothing}
+          <button class="count-chip count-chip-button" type="button" @click=${(event: Event) => this.openEngagementTab('reblogs', event)}>
+            ${reblogCount}
+          </button>
         </div>
         <div class="action-group">
           <button
@@ -437,11 +435,9 @@ export class PostActions extends LitElement {
           >
             ${this.likeState ? '❤️' : '🤍'}
           </button>
-          ${likeCount > 0 ? html`
-            <button class="count-chip count-chip-button" type="button" @click=${(event: Event) => this.openEngagementTab('likes', event)}>
-              ${likeCount}
-            </button>
-          ` : nothing}
+          <button class="count-chip count-chip-button" type="button" @click=${(event: Event) => this.openEngagementTab('likes', event)}>
+            ${likeCount}
+          </button>
         </div>
       </div>
     `;

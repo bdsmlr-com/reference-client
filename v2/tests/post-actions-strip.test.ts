@@ -35,6 +35,8 @@ describe('post actions strip', () => {
     expect(src).toContain('count-chip-button');
     expect(src).toContain('icon-btn');
     expect(src).toContain('reblogged');
+    expect(src).toContain("openEngagementTab('likes'");
+    expect(src).toContain("openEngagementTab('reblogs'");
     expect(src).toContain("openEngagementTab('comments'");
     expect(src).toContain('textarea');
     expect(src).toContain('modal-backdrop');
