@@ -3,6 +3,7 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { formatDate } from '../services/date-formatter.js';
+import { toPresentationModel } from '../services/post-presentation.js';
 import { getCachedBlogId, getCurrentBlog } from '../services/storage.js';
 import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import type { Like, Comment, Reblog, PostType } from '../types/api.js';
@@ -100,7 +101,8 @@ export class PostEngagement extends LitElement {
   private renderLinks() {
     if (!this.post) return nothing;
     const p = this.post;
-    const typeIcon = POST_TYPE_ICONS[p.type as PostType] || '📄';
+    const presentation = toPresentationModel(p, { surface: 'detail', page: 'post' });
+    const typeIcon = presentation.identity.postTypeIcon || POST_TYPE_ICONS[p.type as PostType] || '📄';
     const isReblog = p.originPostId && p.originPostId !== p.id;
 
     if (isReblog) {
@@ -117,7 +119,10 @@ export class PostEngagement extends LitElement {
         <a class="post-id-link" href=${viaPostLink.href} target=${viaPostLink.target} rel=${viaPostLink.rel || nothing} title=${viaPostLink.title || nothing}>${viaPostLabel}<span class="post-id-outlink">${viaPostIcon}</span></a>
       `;
     }
-    return html`${typeIcon} ${this.renderBlogIdentity(p.blogName)} / ${p.id}`;
+    const permalink = presentation.identity.permalink;
+    const permalinkLabel = permalink.label || String(p.id);
+    const permalinkIcon = permalink.icon || '↗';
+    return html`${typeIcon} ${this.renderBlogIdentity(p.blogName)} / <a class="post-id-link" href=${permalink.href} target=${permalink.target} rel=${permalink.rel || nothing} title=${permalink.title || nothing}>${permalinkLabel}<span class="post-id-outlink">${permalinkIcon}</span></a>`;
   }
 
   private normalizeBlogName(blogName: string | null | undefined): string | null {

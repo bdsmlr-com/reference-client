@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { createEngagementStateController } from '../services/engagement-state.js';
+import { toPresentationModel } from '../services/post-presentation.js';
 import { getAuthUser } from '../state/auth-state.js';
 import type { ProcessedPost } from '../types/post.js';
 
@@ -435,9 +436,16 @@ export class PostActions extends LitElement {
   private renderCounts() {
     const post = this.post;
     if (!post) return nothing;
+    const presentation = toPresentationModel(post, {
+      surface: this.variant === 'detail' ? 'detail' : 'card',
+      page: this.variant === 'detail' ? 'post' : 'feed',
+    });
     const likeCount = post.likesCount ?? 0;
     const reblogCount = post.reblogsCount ?? 0;
     const commentCount = this.commentCount ?? post.commentsCount ?? 0;
+    const reblogAction = presentation.actions.reblog;
+    const commentAction = presentation.actions.comment;
+    const likeAction = presentation.actions.like;
     return html`
       <div class="actions-row">
         <div class="action-group">
@@ -445,11 +453,11 @@ export class PostActions extends LitElement {
             class="icon-btn ${reblogCount > 0 ? 'reblog-active' : ''}"
             type="button"
             aria-pressed=${reblogCount > 0 ? 'true' : 'false'}
-            title=${reblogCount > 0 ? 'Reblogged' : 'Reblog'}
+            title=${reblogCount > 0 ? 'Reblogged' : reblogAction.label}
             ?disabled=${!Boolean(getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId) || this.syncing}
             @click=${this.triggerReblog}
           >
-            ${this.reblogging ? '⟳' : '♻️'}
+            ${this.reblogging ? '⟳' : reblogAction.icon}
           </button>
           <button class="count-chip count-chip-button ${reblogCount > 0 ? 'reblog-active' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('reblogs', event)}>
             ${reblogCount}
@@ -459,11 +467,11 @@ export class PostActions extends LitElement {
           <button
             class="icon-btn ${commentCount > 0 ? 'comment-active' : ''}"
             type="button"
-            title="Comment"
+            title=${commentAction.label}
             ?disabled=${!Boolean(getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId) || this.syncing}
             @click=${this.openCommentModal}
           >
-            💬
+            ${commentAction.icon}
           </button>
           <button class="count-chip count-chip-button ${commentCount > 0 ? 'comment-active' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('comments', event)}>
             ${commentCount}
@@ -474,11 +482,11 @@ export class PostActions extends LitElement {
             class="icon-btn ${this.likeState ? 'like-active' : ''}"
             type="button"
             aria-pressed=${this.likeState ? 'true' : 'false'}
-            title=${this.likeState ? 'Liked' : 'Like'}
+            title=${this.likeState ? 'Liked' : likeAction.label}
             ?disabled=${!Boolean(getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId) || this.syncing || this.liking}
             @click=${this.toggleLike}
           >
-            ❤️
+            ${likeAction.icon}
           </button>
           <button class="count-chip count-chip-button ${likeCount > 0 ? 'like-active' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('likes', event)}>
             ${likeCount}

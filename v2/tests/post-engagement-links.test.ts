@@ -24,8 +24,10 @@ describe('post engagement links', () => {
     const src = readFileSync(FILE, 'utf8');
 
     expect(src).toContain("import { resolveLink } from '../services/link-resolver.js';");
+    expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
     expect(src).toContain('private normalizeBlogName');
     expect(src).toContain('private renderBlogIdentity');
+    expect(src).toContain('const presentation = toPresentationModel');
     expect(src).toContain("resolveLink('post_permalink'");
     expect(src).toContain("'post_origin_blog' | 'post_via_blog'");
     expect(src).toContain("'post_via_blog'");

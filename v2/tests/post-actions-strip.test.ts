@@ -10,6 +10,7 @@ describe('post actions strip', () => {
 
     expect(src).toContain("@customElement('post-actions')");
     expect(src).toContain("import { createEngagementStateController } from '../services/engagement-state.js';");
+    expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
     expect(src).toContain('engagementState.subscribe(');
     expect(src).toContain('unsubscribeLikeState');
     expect(src).toContain('handleSharedStateChanged');
@@ -41,10 +42,11 @@ describe('post actions strip', () => {
     expect(src).toContain("openEngagementTab('likes'");
     expect(src).toContain("openEngagementTab('reblogs'");
     expect(src).toContain("openEngagementTab('comments'");
-    expect(src).toContain('❤️');
+    expect(src).toContain('likeAction.icon');
     expect(src).toContain('textarea');
     expect(src).toContain('modal-backdrop');
     expect(src).toContain('commenting');
+    expect(src).toContain('const presentation = toPresentationModel');
     expect(src).not.toContain('You reblogged');
   });
 
@@ -62,8 +64,10 @@ describe('post actions strip', () => {
     const src = readFileSync(join(ROOT, 'components/post-engagement.ts'), 'utf8');
 
     expect(src).toContain("import './post-actions.js';");
+    expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
     expect(src).toContain('<post-actions');
     expect(src).toContain('variant="detail"');
+    expect(src).toContain('const presentation = toPresentationModel');
     expect(src).toContain("@engagement-open-tab=${this.handleOpenTab}");
     expect(src).toContain('handleOpenTab');
     expect(src).toContain('renderEngagementDetail()');
