@@ -32,8 +32,12 @@ describe('gallery mode wiring', () => {
   it('activity-grid supports explicit grid/masonry mode', () => {
     const src = readFileSync(join(ROOT, 'components/activity-grid.ts'), 'utf8');
 
+    expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
     expect(src).toContain("@property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';");
     expect(src).toContain(":host([mode='masonry'])");
+    expect(src).toContain("const presentation = toPresentationModel(p, { surface: 'card', page: 'activity', interactionKind: this.interactionType, role: 'cluster' });");
+    expect(src).toContain('let typeIcon = presentation.identity.postTypeIcon || \'📄\'');
+    expect(src).not.toContain('POST_TYPE_ICONS[p.type as PostType] ||');
   });
 
   it('uses stable row-first column assignment for masonry pagination', () => {

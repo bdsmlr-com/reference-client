@@ -1,10 +1,10 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { POST_TYPE_ICONS, extractRenderableTags, type ProcessedPost } from '../types/post.js';
-import { type PostType } from '../types/api.js';
+import { extractRenderableTags, type ProcessedPost } from '../types/post.js';
 import { formatDate } from '../services/date-formatter.js';
 import { getBlogNameFromPath, isAdminMode } from '../services/blog-resolver.js';
+import { toPresentationModel } from '../services/post-presentation.js';
 import './media-renderer.js';
 
 @customElement('activity-item')
@@ -153,7 +153,8 @@ export class ActivityItem extends LitElement {
     const media = p._media;
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
 
-    let typeIcon = POST_TYPE_ICONS[p.type as PostType] || '📄';
+    const presentation = toPresentationModel(p, { surface: 'card', page: 'activity', interactionKind: this.interactionType, role: 'cluster' });
+    let typeIcon = presentation.identity.postTypeIcon || '📄';
     if (this.interactionType === 'reblog') typeIcon = '♻️';
     if (this.interactionType === 'like') typeIcon = '❤️';
     if (this.interactionType === 'comment') typeIcon = '💬';
@@ -164,9 +165,11 @@ export class ActivityItem extends LitElement {
     const isOriginDeleted = Boolean(p.originDeletedAtUnix);
     const renderType = this.mode === 'masonry' ? 'gallery-masonry' : 'gallery-grid';
     const tags = extractRenderableTags(p);
-    const chipBlogName = this.interactionType === 'reblog'
-      ? (p.originBlogName || p.blogName || '')
-      : (p.variant === 2 ? (p.originBlogName || p.blogName || '') : (p.blogName || ''));
+    const chipBlogName = presentation.identity.originBlog?.label
+      || presentation.identity.viaBlog?.label
+      || (this.interactionType === 'reblog'
+        ? (p.originBlogName || p.blogName || '')
+        : (p.variant === 2 ? (p.originBlogName || p.blogName || '') : (p.blogName || '')));
     const viewedBlog = this.normalizeBlogName(getBlogNameFromPath());
     const chipBlog = this.normalizeBlogName(chipBlogName);
     const shouldHideSelfInteractionChip =
@@ -196,12 +199,12 @@ export class ActivityItem extends LitElement {
         <div class="card-info">
           <div class="meta-line">
             <span>${typeIcon}</span>
-            ${showBlogChip ? html`<span class="blog-chip">@${chipBlogName}</span>` : html`<span>${formatDate(p.createdAtUnix, 'date')}</span>`}
+            ${showBlogChip ? html`<span class="blog-chip">${chipBlogName.startsWith('@') ? chipBlogName : `@${chipBlogName}`}</span>` : html`<span>${formatDate(p.createdAtUnix, 'date')}</span>`}
           </div>
           <div class="stats-line">
-            ${p.likesCount ? html`<div class="stat-item">❤️ ${p.likesCount}</div>` : ''}
-            ${p.reblogsCount ? html`<div class="stat-item">♻️ ${p.reblogsCount}</div>` : ''}
-            ${p.commentsCount ? html`<div class="stat-item">💬 ${p.commentsCount}</div>` : ''}
+            ${presentation.actions.like.count ? html`<div class="stat-item">${presentation.actions.like.icon} ${presentation.actions.like.count}</div>` : ''}
+            ${presentation.actions.reblog.count ? html`<div class="stat-item">${presentation.actions.reblog.icon} ${presentation.actions.reblog.count}</div>` : ''}
+            ${presentation.actions.comment.count ? html`<div class="stat-item">${presentation.actions.comment.icon} ${presentation.actions.comment.count}</div>` : ''}
             ${tags.length > 0 ? html`<div class="stat-item">🏷️ ${tags.length}</div>` : ''}
           </div>
         </div>

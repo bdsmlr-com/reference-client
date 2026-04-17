@@ -5,8 +5,8 @@ import { apiClient } from '../services/client.js';
 import { formatDate } from '../services/date-formatter.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { getCachedBlogId, getCurrentBlog } from '../services/storage.js';
-import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
-import type { Like, Comment, Reblog, PostType } from '../types/api.js';
+import { type ProcessedPost } from '../types/post.js';
+import type { Like, Comment, Reblog } from '../types/api.js';
 import { resolveLink } from '../services/link-resolver.js';
 import './loading-spinner.js';
 import './post-actions.js';
@@ -102,7 +102,7 @@ export class PostEngagement extends LitElement {
     if (!this.post) return nothing;
     const p = this.post;
     const presentation = toPresentationModel(p, { surface: 'detail', page: 'post' });
-    const typeIcon = presentation.identity.postTypeIcon || POST_TYPE_ICONS[p.type as PostType] || '📄';
+    const typeIcon = presentation.identity.postTypeIcon || '📄';
     const isReblog = p.originPostId && p.originPostId !== p.id;
 
     if (isReblog) {

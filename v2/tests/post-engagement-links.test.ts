@@ -28,6 +28,7 @@ describe('post engagement links', () => {
     expect(src).toContain('private normalizeBlogName');
     expect(src).toContain('private renderBlogIdentity');
     expect(src).toContain('const presentation = toPresentationModel');
+    expect(src).not.toContain('POST_TYPE_ICONS[p.type as PostType] ||');
     expect(src).toContain("resolveLink('post_permalink'");
     expect(src).toContain("'post_origin_blog' | 'post_via_blog'");
     expect(src).toContain("'post_via_blog'");

@@ -13,6 +13,8 @@ describe('post feed context', () => {
     expect(src).toContain("const presentation = toPresentationModel(post, {");
     expect(src).toContain("surface: this.page === 'post' ? 'detail' : 'timeline'");
     expect(src).toContain("page: this.page === 'activity' ? 'activity' : this.page");
+    expect(src).toContain('presentation.identity.postTypeIcon');
+    expect(src).not.toContain('POST_TYPE_ICONS[post.type as PostType]');
   });
 
   it('passes explicit page context from feed, activity, and post routes', () => {

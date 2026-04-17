@@ -10,9 +10,12 @@ describe('post card presentation', () => {
 
     expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
     expect(src).toContain("const presentation = toPresentationModel(p, { surface: 'card', page: 'archive' });");
+    expect(src).toContain("presentation.identity.postTypeIcon");
+    expect(src).toContain("presentation.media.type === 'video'");
     expect(src).toContain('href=${presentation.identity.permalink.href}');
     expect(src).toContain('presentation.identity.originBlog?.href');
     expect(src).toContain('presentation.identity.viaBlog?.href');
     expect(src).toContain("@click=${(event: Event) => event.stopPropagation()}");
+    expect(src).not.toContain('POST_TYPE_ICONS[p.type as PostType]');
   });
 });

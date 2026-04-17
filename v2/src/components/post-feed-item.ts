@@ -1,8 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { POST_TYPE_ICONS, extractRenderableTags, type ProcessedPost } from '../types/post.js';
-import { type PostType } from '../types/api.js';
+import { extractRenderableTags, type ProcessedPost } from '../types/post.js';
 import { formatDateShort, getTooltipDate } from '../services/date-formatter.js';
 import { MAX_VISIBLE_TAGS } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
@@ -208,14 +207,17 @@ export class PostFeedItem extends LitElement {
     });
     const media = post._media;
 
-    const isReblog = post.originPostId && post.originPostId !== post.id;
+    const tags = extractRenderableTags(post);
     const blogName = post.blogName || 'unknown';
     const originBlogName = post.originBlogName || 'unknown';
-    const tags = extractRenderableTags(post);
-    const blogLink = presentation.identity.viaBlog || resolveLink('post_via_blog', { blog: blogName });
+    const blogLink = presentation.identity.viaBlog || presentation.identity.originBlog || resolveLink('post_via_blog', { blog: blogName });
     const originBlogLink = presentation.identity.originBlog || resolveLink('post_origin_blog', { blog: originBlogName });
     const blogLabel = blogLink.label || `@${blogName}`;
     const originBlogLabel = originBlogLink.label || `@${originBlogName}`;
+    const isReblog = Boolean(presentation.identity.originBlog && presentation.identity.viaBlog);
+    const likeCount = presentation.actions.like.count;
+    const reblogCount = presentation.actions.reblog.count;
+    const commentCount = presentation.actions.comment.count;
     const rawUrl = media.type === 'video'
       ? (media.videoUrl || media.url)
       : (media.url || media.videoUrl || media.audioUrl);
@@ -278,11 +280,11 @@ export class PostFeedItem extends LitElement {
 
         <footer class="card-footer">
           <div class="card-stats">
-            ${post.likesCount ? html`<span class="stat">❤️ ${post.likesCount}</span>` : ''}
-            ${post.reblogsCount ? html`<span class="stat">♻️ ${post.reblogsCount}</span>` : ''}
-            ${post.commentsCount ? html`<span class="stat">💬 ${post.commentsCount}</span>` : ''}
+            ${likeCount ? html`<span class="stat">${presentation.actions.like.icon} ${likeCount}</span>` : ''}
+            ${reblogCount ? html`<span class="stat">${presentation.actions.reblog.icon} ${reblogCount}</span>` : ''}
+            ${commentCount ? html`<span class="stat">${presentation.actions.comment.icon} ${commentCount}</span>` : ''}
           </div>
-          <div class="post-type-icon">${POST_TYPE_ICONS[post.type as PostType] || '📄'}</div>
+          <div class="post-type-icon">${presentation.identity.postTypeIcon}</div>
         </footer>
       </article>
     `;

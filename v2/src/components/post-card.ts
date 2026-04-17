@@ -1,8 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
-import { type PostType } from '../types/api.js';
+import { type ProcessedPost } from '../types/post.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
@@ -252,7 +251,7 @@ export class PostCard extends LitElement {
             rel=${presentation.identity.permalink.rel || nothing}
             title=${presentation.identity.permalink.title || nothing}
             @click=${(event: Event) => event.stopPropagation()}
-          >${presentation.identity.permalink.label || `${POST_TYPE_ICONS[p.type as PostType] || '📄'} ${p.id}`}</a>
+          >${presentation.identity.permalink.label || `${presentation.identity.postTypeIcon} ${p.id}`}</a>
         </div>
 
         <div class="media-container">
@@ -263,7 +262,7 @@ export class PostCard extends LitElement {
           ></media-renderer>
           
           ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge">1 / ${p.content.files.length}</div>` : ''}
-          ${p.type === 3 ? html`<div class="video-overlay-icon">▶</div>` : ''}
+          ${presentation.media.type === 'video' ? html`<div class="video-overlay-icon">▶</div>` : ''}
           ${isAdmin && (isDeleted || isOriginDeleted) ? html`
             <div class="status-badges">
               ${isDeleted ? html`<div class="status-badge deleted">deleted</div>` : ''}
