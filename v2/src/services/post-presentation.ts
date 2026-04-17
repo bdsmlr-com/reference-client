@@ -96,7 +96,7 @@ function buildActionSet(post: ProcessedPost, ctx: NormalizedPresentationContext,
   };
 }
 
-function buildIdentity(post: ProcessedPost, ctx: NormalizedPresentationContext) {
+function buildIdentity(post: ProcessedPost) {
   const permalink = resolveLink('post_permalink', { postId: post.id });
   const originBlogName = post.originBlogName || post.blogName || '';
   const blogLabel = originBlogName || `Post ${post.id}`;
@@ -143,7 +143,7 @@ function buildMediaDescriptor(post: ProcessedPost, ctx: NormalizedPresentationCo
 
 export function toPresentationModel(post: ProcessedPost, ctx: PresentationContext): PostPresentationModel {
   const normalizedContext = normalizePresentationContext(ctx);
-  const identity = buildIdentity(post, normalizedContext);
+  const identity = buildIdentity(post);
   const layout = buildLayout(normalizedContext);
   const actions = buildActionSet(post, normalizedContext, identity.permalink);
   const media = buildMediaDescriptor(post, normalizedContext);
