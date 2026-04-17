@@ -1,0 +1,18 @@
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const FILE = join(process.cwd(), 'src/components/post-card.ts');
+
+describe('post card presentation', () => {
+  it('drives header links from the shared presentation model', () => {
+    const src = readFileSync(FILE, 'utf8');
+
+    expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
+    expect(src).toContain("const presentation = toPresentationModel(p, { surface: 'card', page: 'archive' });");
+    expect(src).toContain('href=${presentation.identity.permalink.href}');
+    expect(src).toContain('presentation.identity.originBlog?.href');
+    expect(src).toContain('presentation.identity.viaBlog?.href');
+    expect(src).toContain("@click=${(event: Event) => event.stopPropagation()}");
+  });
+});

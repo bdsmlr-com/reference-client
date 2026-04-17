@@ -1,10 +1,11 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import { type PostType } from '../types/api.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
 import { isAdminMode } from '../services/blog-resolver.js';
+import { toPresentationModel } from '../services/post-presentation.js';
 import './media-renderer.js';
 import './post-actions.js';
 
@@ -196,6 +197,7 @@ export class PostCard extends LitElement {
 
   render() {
     const p = this.post;
+    const presentation = toPresentationModel(p, { surface: 'card', page: 'archive' });
     const media = p._media;
     const rbCount = p._reblog_variants?.length || 0;
     
@@ -214,15 +216,43 @@ export class PostCard extends LitElement {
         <div class="card-header">
           <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
             ${isReblog ? html`
-              <span class="blog-link" title="Original post by @${originName}">@${originName}</span>
+              <a
+                class="blog-link"
+                href=${presentation.identity.originBlog?.href || '#'}
+                target=${presentation.identity.originBlog?.target || '_self'}
+                rel=${presentation.identity.originBlog?.rel || nothing}
+                title=${presentation.identity.originBlog?.title || `Original post by @${originName}`}
+                @click=${(event: Event) => event.stopPropagation()}
+              >${presentation.identity.originBlog?.label || `@${originName}`}</a>
               <span style="opacity: 0.5;">♻️ via</span>
-              <span class="blog-link">@${p.blogName || 'unknown'}</span>
+              <a
+                class="blog-link"
+                href=${presentation.identity.viaBlog?.href || '#'}
+                target=${presentation.identity.viaBlog?.target || '_self'}
+                rel=${presentation.identity.viaBlog?.rel || nothing}
+                title=${presentation.identity.viaBlog?.title || `Open @${p.blogName || 'unknown'}`}
+                @click=${(event: Event) => event.stopPropagation()}
+              >${presentation.identity.viaBlog?.label || `@${p.blogName || 'unknown'}`}</a>
             ` : html`
-              <span class="blog-link">@${p.blogName || 'unknown'}</span>
+              <a
+                class="blog-link"
+                href=${presentation.identity.viaBlog?.href || '#'}
+                target=${presentation.identity.viaBlog?.target || '_self'}
+                rel=${presentation.identity.viaBlog?.rel || nothing}
+                title=${presentation.identity.viaBlog?.title || `Open @${p.blogName || 'unknown'}`}
+                @click=${(event: Event) => event.stopPropagation()}
+              >${presentation.identity.viaBlog?.label || `@${p.blogName || 'unknown'}`}</a>
             `}
             ${rbCount > 0 ? html`<span class="reblog-badge" title="Aggregated reblogs">+${rbCount}</span>` : ''}
           </div>
-          <span style="font-size: 12px; opacity: 0.5;">${POST_TYPE_ICONS[p.type as PostType] || '📄'}</span>
+          <a
+            class="blog-link"
+            href=${presentation.identity.permalink.href}
+            target=${presentation.identity.permalink.target}
+            rel=${presentation.identity.permalink.rel || nothing}
+            title=${presentation.identity.permalink.title || nothing}
+            @click=${(event: Event) => event.stopPropagation()}
+          >${presentation.identity.permalink.label || `${POST_TYPE_ICONS[p.type as PostType] || '📄'} ${p.id}`}</a>
         </div>
 
         <div class="media-container">
