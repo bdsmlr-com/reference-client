@@ -1,0 +1,33 @@
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const ROOT = join(process.cwd(), 'src');
+
+describe('post feed context', () => {
+  it('lets post-feed-item derive presentation from an explicit page context', () => {
+    const src = readFileSync(join(ROOT, 'components/post-feed-item.ts'), 'utf8');
+
+    expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
+    expect(src).toContain("@property({ type: String }) page: 'feed' | 'activity' | 'post' = 'feed';");
+    expect(src).toContain("const presentation = toPresentationModel(post, {");
+    expect(src).toContain("surface: this.page === 'post' ? 'detail' : 'timeline'");
+    expect(src).toContain("page: this.page === 'activity' ? 'activity' : this.page");
+  });
+
+  it('passes explicit page context from feed, activity, and post routes', () => {
+    const feedSrc = readFileSync(join(ROOT, 'pages/view-feed.ts'), 'utf8');
+    const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
+    const postSrc = readFileSync(join(ROOT, 'pages/view-post.ts'), 'utf8');
+    const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
+
+    expect(feedSrc).toContain('<timeline-stream');
+    expect(feedSrc).toContain('page="feed"');
+    expect(postsSrc).toContain('<timeline-stream');
+    expect(postsSrc).toContain('page="activity"');
+    expect(postSrc).toContain('<post-feed-item');
+    expect(postSrc).toContain('page="post"');
+    expect(streamSrc).toContain("@property({ type: String }) page: 'feed' | 'activity' = 'feed';");
+    expect(streamSrc).toContain('.page=${this.page}');
+  });
+});

@@ -6,6 +6,7 @@ import { type PostType } from '../types/api.js';
 import { formatDateShort, getTooltipDate } from '../services/date-formatter.js';
 import { MAX_VISIBLE_TAGS } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
+import { toPresentationModel } from '../services/post-presentation.js';
 import './media-renderer.js';
 
 /**
@@ -184,6 +185,7 @@ export class PostFeedItem extends LitElement {
   @property({ type: Object, hasChanged: postHasChanged }) post!: ProcessedPost;
   @property({ type: Boolean }) disableClick = false;
   @property({ type: String }) mediaRenderType: 'feed' | 'post-detail' = 'feed';
+  @property({ type: String }) page: 'feed' | 'activity' | 'post' = 'feed';
   @property({ type: Boolean }) videoAutoplay?: boolean;
   @property({ type: Boolean }) videoControls?: boolean;
   @property({ type: Boolean }) videoLoop?: boolean;
@@ -199,14 +201,19 @@ export class PostFeedItem extends LitElement {
 
   render() {
     const post = this.post;
+    const presentation = toPresentationModel(post, {
+      surface: this.page === 'post' ? 'detail' : 'timeline',
+      page: this.page === 'activity' ? 'activity' : this.page,
+      interactionKind: post._activityKindOverride,
+    });
     const media = post._media;
 
     const isReblog = post.originPostId && post.originPostId !== post.id;
     const blogName = post.blogName || 'unknown';
     const originBlogName = post.originBlogName || 'unknown';
     const tags = extractRenderableTags(post);
-    const blogLink = resolveLink('post_via_blog', { blog: blogName });
-    const originBlogLink = resolveLink('post_origin_blog', { blog: originBlogName });
+    const blogLink = presentation.identity.viaBlog || resolveLink('post_via_blog', { blog: blogName });
+    const originBlogLink = presentation.identity.originBlog || resolveLink('post_origin_blog', { blog: originBlogName });
     const blogLabel = blogLink.label || `@${blogName}`;
     const originBlogLabel = originBlogLink.label || `@${originBlogName}`;
     const rawUrl = media.type === 'video'

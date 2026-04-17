@@ -261,6 +261,7 @@ export class ViewPosts extends LitElement {
         <div class="feed-container">
           <timeline-stream
             .items=${this.timelineItems}
+            page="activity"
             .activityKinds=${this.activityKinds}
             .showActorInCluster=${false}
             @post-click=${this.handlePostClick}

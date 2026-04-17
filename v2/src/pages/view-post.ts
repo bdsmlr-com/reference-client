@@ -116,6 +116,7 @@ export class ViewPost extends LitElement {
 
       <post-feed-item
         .post=${this.post}
+        page="post"
         .disableClick=${true}
         mediaRenderType="post-detail"
         .videoAutoplay=${false}

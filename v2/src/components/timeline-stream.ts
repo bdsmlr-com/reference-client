@@ -74,6 +74,7 @@ export class TimelineStream extends LitElement {
   @property({ type: Array }) items: TimelineItem[] = [];
   @property({ type: Array }) activityKinds: ActivityKind[] = ['post', 'reblog', 'like', 'comment'];
   @property({ type: Boolean }) showActorInCluster = false;
+  @property({ type: String }) page: 'feed' | 'activity' = 'feed';
   @state() private clusterVisibleCounts = new Map<string, number>();
   private readonly clusterPageSize = 12;
   private readonly openLightboxInteraction = buildInteractionHandler((loadRenderContract().interactions as any).open_lightbox_post);
@@ -284,6 +285,7 @@ export class TimelineStream extends LitElement {
             return html`
               <post-feed-item
                 .post=${item.post}
+                .page=${this.page}
                 @post-click=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}
                 @click=${() => this.handlePostClick(item.post)}
               ></post-feed-item>
