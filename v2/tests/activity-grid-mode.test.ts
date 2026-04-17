@@ -61,9 +61,7 @@ describe('gallery mode wiring', () => {
   it('activity cards use origin-aware blog chip logic for like/comment/reblog interactions', () => {
     const src = readFileSync(join(ROOT, 'components/activity-grid.ts'), 'utf8');
 
-    expect(src).toContain('const chipBlogName =');
-    expect(src).toContain('p.originBlogName');
-    expect(src).toContain("this.interactionType === 'reblog'");
+    expect(src).toContain('const chipBlogName = presentation.identity.chipBlogLabel;');
     expect(src).toContain('white-space: nowrap;');
     expect(src).toContain('text-overflow: ellipsis;');
     expect(src).not.toContain('reblog-variant-badge');

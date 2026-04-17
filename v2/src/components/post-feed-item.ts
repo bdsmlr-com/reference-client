@@ -214,7 +214,7 @@ export class PostFeedItem extends LitElement {
     const originBlogLink = presentation.identity.originBlog || resolveLink('post_origin_blog', { blog: originBlogName });
     const blogLabel = blogLink.label || `@${blogName}`;
     const originBlogLabel = originBlogLink.label || `@${originBlogName}`;
-    const isReblog = Boolean(presentation.identity.originBlog && presentation.identity.viaBlog);
+    const isReblog = presentation.identity.isReblog;
     const likeCount = presentation.actions.like.count;
     const reblogCount = presentation.actions.reblog.count;
     const commentCount = presentation.actions.comment.count;

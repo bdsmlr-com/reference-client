@@ -202,7 +202,6 @@ export class PostCard extends LitElement {
     
     // Media URLs
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
-    const isReblog = p.originPostId && p.originPostId !== p.id;
     const originName = p.originBlogName || 'unknown';
 
     const isAdmin = isAdminMode();
@@ -214,7 +213,7 @@ export class PostCard extends LitElement {
       <article class="card" @click=${this.handleClick}>
         <div class="card-header">
           <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
-            ${isReblog ? html`
+            ${presentation.identity.isReblog ? html`
               <a
                 class="blog-link"
                 href=${presentation.identity.originBlog?.href || '#'}

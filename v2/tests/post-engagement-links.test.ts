@@ -41,8 +41,8 @@ describe('post engagement links', () => {
   it('links both origin and via post ids in reblog lightbox details', () => {
     const src = readFileSync(FILE, 'utf8');
 
-    expect(src).toContain("const originPostLink = resolveLink('post_permalink', { postId: p.originPostId as number });");
-    expect(src).toContain("const viaPostLink = resolveLink('post_permalink', { postId: p.id });");
+    expect(src).toContain("const originPostLink = presentation.identity.originPostPermalink || resolveLink('post_permalink', { postId: p.originPostId as number });");
+    expect(src).toContain("const viaPostLink = presentation.identity.viaPostPermalink || presentation.identity.permalink;");
     expect(src).toContain('via ♻️ ${this.renderBlogIdentity(p.blogName)} /');
     expect(src).toContain('href=${viaPostLink.href}');
   });

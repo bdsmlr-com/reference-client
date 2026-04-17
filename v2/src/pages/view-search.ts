@@ -19,6 +19,7 @@ import {
   getSearchSortPreference,
   setSearchSortPreference,
 } from '../services/profile.js';
+import { toPresentationModel } from '../services/post-presentation.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import '../components/filter-bar.js';
@@ -323,6 +324,14 @@ export class ViewSearch extends LitElement {
     this.retrying = false;
   }
 
+  private toActivityItem(post: ProcessedPost): { post: ProcessedPost; type: 'post' | 'reblog' } {
+    const presentation = toPresentationModel(post, { surface: 'card', page: 'activity' });
+    return {
+      post,
+      type: presentation.identity.isReblog ? 'reblog' : 'post',
+    };
+  }
+
   private async fillPage(searchToken: number = this.activeSearchToken, signature: string = this.currentSearchSignature): Promise<void> {
     this.loading = true;
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
@@ -527,18 +536,9 @@ export class ViewSearch extends LitElement {
                   .mode=${this.galleryMode}
                   .items=${this.timelineItems.flatMap(entry => {
                     if (entry.type === 1 && entry.post) {
-                      return [{ 
-                        post: entry.post as ProcessedPost, 
-                        type: (entry.post.originPostId && entry.post.originPostId !== entry.post.id) ? 'reblog' : 'post' 
-                      }];
+                      return [this.toActivityItem(entry.post as ProcessedPost)];
                     } else if (entry.type === 2 && entry.cluster) {
-                      return (entry.cluster.interactions || []).map((post: any) => {
-                        const p = post as ProcessedPost;
-                        return {
-                          post: p,
-                          type: (p.originPostId && p.originPostId !== p.id) || p.variant === 2 ? 'reblog' : 'post',
-                        };
-                      });
+                      return (entry.cluster.interactions || []).map((post: any) => this.toActivityItem(post as ProcessedPost));
                     }
                     return [];
                   })} 

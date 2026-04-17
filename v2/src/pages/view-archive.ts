@@ -20,6 +20,7 @@ import {
   getArchiveSortPreference,
   setArchiveSortPreference,
 } from '../services/profile.js';
+import { toPresentationModel } from '../services/post-presentation.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 
@@ -343,6 +344,14 @@ export class ViewArchive extends LitElement {
     if (this.infiniteScroll) this.observeSentinel();
   }
 
+  private toActivityItem(post: ProcessedPost): { post: ProcessedPost; type: 'post' | 'reblog' } {
+    const presentation = toPresentationModel(post, { surface: 'card', page: 'activity' });
+    return {
+      post,
+      type: presentation.identity.isReblog ? 'reblog' : 'post',
+    };
+  }
+
   private async handleRetry(e?: CustomEvent): Promise<void> {
     const isAutoRetry = e?.detail?.isAutoRetry ?? false;
     
@@ -387,18 +396,9 @@ ${this.timelineItems.length > 0
           .showBlogChip=${false}
           .items=${this.timelineItems.flatMap(entry => {
             if (entry.type === 1 && entry.post) {
-              return [{ 
-                post: entry.post as ProcessedPost, 
-                type: (entry.post.originPostId && entry.post.originPostId !== entry.post.id) ? 'reblog' : 'post' 
-              }];
+              return [this.toActivityItem(entry.post as ProcessedPost)];
             } else if (entry.type === 2 && entry.cluster) {
-              return (entry.cluster.interactions || []).map((post: any) => {
-                const p = post as ProcessedPost;
-                return {
-                  post: p,
-                  type: (p.originPostId && p.originPostId !== p.id) || p.variant === 2 ? 'reblog' : 'post',
-                };
-              });
+              return (entry.cluster.interactions || []).map((post: any) => this.toActivityItem(post as ProcessedPost));
             }
 
             return [];

@@ -15,9 +15,6 @@ describe('post actions strip', () => {
     expect(src).toContain('unsubscribeLikeState');
     expect(src).toContain('handleSharedStateChanged');
     expect(src).toContain("variant: 'card' | 'detail'");
-    expect(src).toContain('likesCount');
-    expect(src).toContain('reblogsCount');
-    expect(src).toContain('commentsCount');
     expect(src).toContain('likeState');
     expect(src).toContain('reblogCount');
     expect(src).toContain('commentCount');
@@ -47,6 +44,9 @@ describe('post actions strip', () => {
     expect(src).toContain('modal-backdrop');
     expect(src).toContain('commenting');
     expect(src).toContain('const presentation = toPresentationModel');
+    expect(src).toContain('const likeCount = likeAction.count ?? 0;');
+    expect(src).toContain('const reblogCount = reblogAction.count ?? 0;');
+    expect(src).toContain('const commentCount = this.commentCount ?? commentAction.count ?? 0;');
     expect(src).not.toContain('You reblogged');
   });
 

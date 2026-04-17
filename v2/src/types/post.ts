@@ -114,10 +114,16 @@ export interface PresentationActionSet {
 }
 
 export interface PresentationIdentity {
+  isReblog: boolean;
+  isCanonicalCard: boolean;
+  allowSelfSameDayLikeSuppression: boolean;
   postTypeIcon: string;
   permalink: ResolvedLink;
+  originPostPermalink?: ResolvedLink | null;
+  viaPostPermalink?: ResolvedLink | null;
   originBlog?: ResolvedLink | null;
   viaBlog?: ResolvedLink | null;
+  chipBlogLabel: string;
   summaryLine: string;
 }
 

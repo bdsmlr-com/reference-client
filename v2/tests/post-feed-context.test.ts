@@ -25,6 +25,10 @@ describe('post feed context', () => {
 
     expect(feedSrc).toContain('<timeline-stream');
     expect(feedSrc).toContain('page="feed"');
+    expect(feedSrc).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
+    expect(feedSrc).toContain("const processedPost: ProcessedPost = {");
+    expect(feedSrc).toContain("const presentation = toPresentationModel(processedPost, { surface: 'card', page: 'activity', interactionKind: kind, role: 'cluster' });");
+    expect(feedSrc).toContain('const isCanonicalPostCard = presentation.identity.isCanonicalCard;');
     expect(postsSrc).toContain('<timeline-stream');
     expect(postsSrc).toContain('page="activity"');
     expect(postSrc).toContain('<post-feed-item');

@@ -101,7 +101,8 @@ describe('hybrid activity stream', () => {
   it('classifies variant=2 timeline posts as reblogs', () => {
     const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
 
-    expect(streamSrc).toContain('p.variant === 2');
+    expect(streamSrc).toContain('presentation.identity.isReblog ? \'reblog\' : \'post\'');
+    expect(streamSrc).toContain('presentation.identity.allowSelfSameDayLikeSuppression');
   });
 
   it('syncs activity kind filters into posts URL state', () => {

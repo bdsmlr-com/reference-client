@@ -7,6 +7,7 @@ import type { TimelineItem } from '../types/api.js';
 import type { ActivityKind } from '../services/profile.js';
 import { buildInteractionHandler } from '../services/render-interactions.js';
 import { loadRenderContract } from '../services/render-contract.js';
+import { toPresentationModel } from '../services/post-presentation.js';
 import '../components/post-feed-item.js';
 import '../components/activity-grid.js';
 
@@ -83,8 +84,8 @@ export class TimelineStream extends LitElement {
     if (item.type === 1 && item.post) {
       const p = item.post as ProcessedPost;
       if (p._activityKindOverride) return p._activityKindOverride;
-      if (p.variant === 2) return 'reblog';
-      return p.originPostId && p.originPostId !== p.id ? 'reblog' : 'post';
+      const presentation = toPresentationModel(p, { surface: 'timeline', page: this.page });
+      return presentation.identity.isReblog ? 'reblog' : 'post';
     }
     if (item.type === 2 && item.cluster) {
       const label = (item.cluster.label || '').toLowerCase();
@@ -138,7 +139,8 @@ export class TimelineStream extends LitElement {
 
   private shouldSuppressSelfSameDayLike(post: ProcessedPost, kind: ActivityKind): boolean {
     if (kind !== 'like' || this.showActorInCluster) return false;
-    if (post.variant === 2 || (post.originPostId && post.originPostId !== post.id)) return false;
+    const presentation = toPresentationModel(post, { surface: 'timeline', page: this.page, interactionKind: kind });
+    if (!presentation.identity.allowSelfSameDayLikeSuppression) return false;
 
     const viewedBlog = this.getViewedBlogFromPath();
     if (!viewedBlog) return false;

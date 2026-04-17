@@ -98,6 +98,8 @@ function buildActionSet(post: ProcessedPost, ctx: NormalizedPresentationContext,
 
 function buildIdentity(post: ProcessedPost) {
   const permalink = resolveLink('post_permalink', { postId: post.id });
+  const isReblog = Boolean(post.originPostId && post.originPostId !== post.id);
+  const isCanonicalCard = post.variant === 1 || post.variant === 2;
   const originBlogName = post.originBlogName || post.blogName || '';
   const blogLabel = originBlogName || `Post ${post.id}`;
   const originBlog = originBlogName
@@ -107,12 +109,25 @@ function buildIdentity(post: ProcessedPost) {
   const viaBlog = viaBlogName
     ? resolveLink('post_via_blog', { blog: viaBlogName })
     : null;
+  const originPostPermalink = isReblog && post.originPostId
+    ? resolveLink('post_permalink', { postId: post.originPostId })
+    : null;
+  const viaPostPermalink = isReblog ? permalink : null;
+  const chipBlogLabel = isReblog
+    ? (originBlog?.label || viaBlog?.label || `@${originBlogName || viaBlogName || 'unknown'}`)
+    : (viaBlog?.label || originBlog?.label || `@${viaBlogName || originBlogName || 'unknown'}`);
 
   return {
+    isReblog,
+    isCanonicalCard,
+    allowSelfSameDayLikeSuppression: !isReblog && post.variant !== 2,
     postTypeIcon: POST_TYPE_ICONS[post.type] || '❓',
     permalink,
+    originPostPermalink,
+    viaPostPermalink,
     originBlog,
     viaBlog,
+    chipBlogLabel,
     summaryLine: `${blogLabel} · ${POST_TYPE_LABELS[post.type]}`,
   };
 }

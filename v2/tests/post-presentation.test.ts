@@ -35,6 +35,9 @@ describe('toPresentationModel', () => {
     expect(lightbox.identity.permalink.title).toBe(detail.identity.permalink.title);
     expect(card.identity.summaryLine).toBe(lightbox.identity.summaryLine);
     expect(lightbox.identity.summaryLine).toBe(detail.identity.summaryLine);
+    expect(card.identity.isReblog).toBe(false);
+    expect(card.identity.isCanonicalCard).toBe(false);
+    expect(card.identity.chipBlogLabel).toContain('@');
   });
 
   it('keeps action descriptors stable across card and detail contexts', () => {
@@ -70,5 +73,26 @@ describe('toPresentationModel', () => {
     expect(lightbox.media.preset).toBe('lightbox');
     expect(detail.media.preset).toBe('post-detail');
     expect(videoDetail.media.preset).toBe('poster');
+  });
+
+  it('marks reblog state in the shared identity descriptor', () => {
+    const model = toPresentationModel(
+      makePost({ originBlogName: 'OriginBlog', originPostId: 123 }),
+      { surface: 'detail', page: 'post' },
+    );
+
+    expect(model.identity.isReblog).toBe(true);
+    expect(model.identity.originBlog?.label).toContain('@');
+    expect(model.identity.originPostPermalink?.href).toBe('/post/123');
+    expect(model.identity.viaPostPermalink?.href).toBe('/post/686683457');
+  });
+
+  it('exposes canonical-card eligibility for clustered activity promotion', () => {
+    const model = toPresentationModel(
+      makePost({ variant: 2 }),
+      { surface: 'card', page: 'activity', interactionKind: 'like', role: 'cluster' },
+    );
+
+    expect(model.identity.isCanonicalCard).toBe(true);
   });
 });

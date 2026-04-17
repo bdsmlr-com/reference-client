@@ -8,6 +8,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { resolveLink } from '../services/link-resolver.js';
+import { toPresentationModel } from '../services/post-presentation.js';
 import './media-renderer.js';
 import './load-footer.js';
 import './loading-spinner.js';
@@ -278,6 +279,7 @@ export class PostRecommendations extends LitElement {
           const h = (r as any)._hydratedPost;
           if (!h) return html`<div class="gutter-skeleton"></div>`;
           const postLink = resolveLink('recommendation_post', { postId: h.id });
+          const presentation = toPresentationModel(h, { surface: 'card', page: 'post' });
           
           const raw = h._media?.url || h._media?.videoUrl || h.content?.thumbnail;
           return html`
@@ -286,8 +288,8 @@ export class PostRecommendations extends LitElement {
                 <media-renderer .src=${raw} .type=${'gutter'}></media-renderer>
               </div>
               <div class="rec-meta">
-                <span class="rec-blog">@${h.blogName || 'unknown'}</span>
-                <span title=${postLink.title || nothing}>${postLink.label || h.id}${postLink.icon ? ` ${postLink.icon}` : ''}</span>
+                <span class="rec-blog">${presentation.identity.viaBlog?.label || `@${h.blogName || 'unknown'}`}</span>
+                <span title=${presentation.identity.permalink.title || postLink.title || nothing}>${presentation.identity.permalink.label || postLink.label || h.id}${presentation.identity.permalink.icon || postLink.icon ? ` ${presentation.identity.permalink.icon || postLink.icon}` : ''}</span>
               </div>
             </div>
           `;

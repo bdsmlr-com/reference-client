@@ -17,6 +17,7 @@ import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
+import { toPresentationModel } from '../services/post-presentation.js';
 import '../components/activity-kind-pills.js';
 import '../components/timeline-stream.js';
 import '../components/load-footer.js';
@@ -524,13 +525,17 @@ export class ViewFeed extends LitElement {
 
           const interactions: ProcessedPost[] = [];
           item.cluster.interactions.forEach((post) => {
-            const isCanonicalPostCard = post.variant === 1 || post.variant === 2;
+            const media = extractMedia(post);
+            const processedPost: ProcessedPost = {
+              ...post,
+              _media: media,
+            };
+            const presentation = toPresentationModel(processedPost, { surface: 'card', page: 'activity', interactionKind: kind, role: 'cluster' });
+            const isCanonicalPostCard = presentation.identity.isCanonicalCard;
             if ((kind === 'like' || kind === 'comment') && post.blogId === blogId && isCanonicalPostCard) {
               if (this.seenIds.has(post.id)) return;
-              const media = extractMedia(post);
               const promoted: ProcessedPost = {
-                ...post,
-                _media: media,
+                ...processedPost,
                 _activityCreatedAtUnix: post.updatedAtUnix || post.createdAtUnix,
                 _activityKindOverride: kind,
               };
@@ -539,7 +544,6 @@ export class ViewFeed extends LitElement {
               return;
             }
             if (this.seenIds.has(post.id)) return;
-            const media = extractMedia(post);
             const mediaUrl = media.videoUrl || media.audioUrl || media.url;
             if (mediaUrl) {
               const normalizedUrl = mediaUrl.split('?')[0];
@@ -547,7 +551,7 @@ export class ViewFeed extends LitElement {
               this.seenUrls.add(normalizedUrl);
             }
             this.seenIds.add(post.id);
-            interactions.push({ ...post, _media: media });
+            interactions.push(processedPost);
           });
 
           if (interactions.length === 0) return;

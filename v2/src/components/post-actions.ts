@@ -440,12 +440,12 @@ export class PostActions extends LitElement {
       surface: this.variant === 'detail' ? 'detail' : 'card',
       page: this.variant === 'detail' ? 'post' : 'feed',
     });
-    const likeCount = post.likesCount ?? 0;
-    const reblogCount = post.reblogsCount ?? 0;
-    const commentCount = this.commentCount ?? post.commentsCount ?? 0;
     const reblogAction = presentation.actions.reblog;
     const commentAction = presentation.actions.comment;
     const likeAction = presentation.actions.like;
+    const likeCount = likeAction.count ?? 0;
+    const reblogCount = reblogAction.count ?? 0;
+    const commentCount = this.commentCount ?? commentAction.count ?? 0;
     return html`
       <div class="actions-row">
         <div class="action-group">

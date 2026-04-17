@@ -165,11 +165,7 @@ export class ActivityItem extends LitElement {
     const isOriginDeleted = Boolean(p.originDeletedAtUnix);
     const renderType = this.mode === 'masonry' ? 'gallery-masonry' : 'gallery-grid';
     const tags = extractRenderableTags(p);
-    const chipBlogName = presentation.identity.originBlog?.label
-      || presentation.identity.viaBlog?.label
-      || (this.interactionType === 'reblog'
-        ? (p.originBlogName || p.blogName || '')
-        : (p.variant === 2 ? (p.originBlogName || p.blogName || '') : (p.blogName || '')));
+    const chipBlogName = presentation.identity.chipBlogLabel;
     const viewedBlog = this.normalizeBlogName(getBlogNameFromPath());
     const chipBlog = this.normalizeBlogName(chipBlogName);
     const shouldHideSelfInteractionChip =

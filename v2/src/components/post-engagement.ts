@@ -103,11 +103,10 @@ export class PostEngagement extends LitElement {
     const p = this.post;
     const presentation = toPresentationModel(p, { surface: 'detail', page: 'post' });
     const typeIcon = presentation.identity.postTypeIcon || '📄';
-    const isReblog = p.originPostId && p.originPostId !== p.id;
 
-    if (isReblog) {
-      const originPostLink = resolveLink('post_permalink', { postId: p.originPostId as number });
-      const viaPostLink = resolveLink('post_permalink', { postId: p.id });
+    if (presentation.identity.isReblog) {
+      const originPostLink = presentation.identity.originPostPermalink || resolveLink('post_permalink', { postId: p.originPostId as number });
+      const viaPostLink = presentation.identity.viaPostPermalink || presentation.identity.permalink;
       const originPostLabel = originPostLink.label || String(p.originPostId);
       const viaPostLabel = viaPostLink.label || String(p.id);
       const originPostIcon = originPostLink.icon || '↗';

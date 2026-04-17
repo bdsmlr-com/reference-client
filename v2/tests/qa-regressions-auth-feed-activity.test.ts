@@ -53,8 +53,7 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(streamSrc).toContain('.showBlogChip=${!this.showActorInCluster}');
     expect(gridSrc).toContain('const shouldHideSelfInteractionChip =');
     expect(gridSrc).toContain("this.interactionType === 'like' || this.interactionType === 'comment'");
-    expect(gridSrc).toContain('const chipBlogName =');
-    expect(gridSrc).toContain('p.originBlogName');
+    expect(gridSrc).toContain('const chipBlogName = presentation.identity.chipBlogLabel;');
   });
 
   it('feed interaction clusters request only likes/comments, reject reblogs, and promote self-interactions to full cards', () => {
@@ -64,7 +63,10 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(feedSrc).toContain("if (kind !== 'like' && kind !== 'comment') return;");
     expect(feedSrc).toContain("if (label.includes('reblog')) return 'reblog';");
     expect(feedSrc).toContain('const selfInteractionPosts = new Map<number, ProcessedPost>();');
-    expect(feedSrc).toContain('const isCanonicalPostCard = post.variant === 1 || post.variant === 2;');
+    expect(feedSrc).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
+    expect(feedSrc).toContain("const processedPost: ProcessedPost = {");
+    expect(feedSrc).toContain("const presentation = toPresentationModel(processedPost, { surface: 'card', page: 'activity', interactionKind: kind, role: 'cluster' });");
+    expect(feedSrc).toContain('const isCanonicalPostCard = presentation.identity.isCanonicalCard;');
     expect(feedSrc).toContain('post.blogId === blogId && isCanonicalPostCard');
     expect(feedSrc).toContain('_activityCreatedAtUnix: post.updatedAtUnix || post.createdAtUnix');
     expect(feedSrc).toContain('_activityKindOverride: kind');
