@@ -314,7 +314,7 @@ export class PostLightbox extends LitElement {
             ` : ''}
             ${this.renderAdminDebug()}
 
-            <post-detail-content .post=${p} recommendationsMode="list"></post-detail-content>
+            <post-detail-content .post=${p} surface="lightbox" recommendationsMode="list"></post-detail-content>
           </div>
         </div>
       </div>

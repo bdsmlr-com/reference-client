@@ -5,6 +5,7 @@ import { baseStyles } from '../styles/theme.js';
 import { extractRenderableTags, type ProcessedPost } from '../types/post.js';
 import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
 import { resolveLink } from '../services/link-resolver.js';
+import { toPresentationModel } from '../services/post-presentation.js';
 import './post-engagement.js';
 import './post-recommendations.js';
 
@@ -45,10 +46,15 @@ export class PostDetailContent extends LitElement {
   @property({ type: Object }) post: ProcessedPost | null = null;
   @property({ type: String }) recommendationsMode: 'list' | 'grid' = 'list';
   @property({ type: Boolean }) engagementStandalone = false;
+  @property({ type: String }) surface: 'detail' | 'lightbox' = 'detail';
 
   render() {
     if (!this.post) return nothing;
     const p = this.post;
+    const presentation = toPresentationModel(p, {
+      surface: this.surface === 'lightbox' ? 'lightbox' : 'detail',
+      page: 'post',
+    });
     const tags = extractRenderableTags(p);
 
     return html`
@@ -56,7 +62,7 @@ export class PostDetailContent extends LitElement {
         ${unsafeHTML(sanitizeHtmlFragment(p.content?.html || p.body || ''))}
       </div>
 
-      ${tags.length > 0 ? html`
+      ${presentation.layout.showTags && tags.length > 0 ? html`
         <div class="post-tags">
           ${tags.map((tag) => {
             const link = resolveLink('search_tag', { tag });
@@ -67,7 +73,9 @@ export class PostDetailContent extends LitElement {
 
       <post-engagement .post=${p} ?standalone=${this.engagementStandalone}></post-engagement>
 
-      <post-recommendations .postId=${p.id} .mode=${this.recommendationsMode}></post-recommendations>
+      ${presentation.layout.showRecommendations
+        ? html`<post-recommendations .postId=${p.id} .mode=${this.recommendationsMode}></post-recommendations>`
+        : nothing}
     `;
   }
 }
