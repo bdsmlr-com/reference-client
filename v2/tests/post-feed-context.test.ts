@@ -9,7 +9,7 @@ describe('post feed context', () => {
     const src = readFileSync(join(ROOT, 'components/post-feed-item.ts'), 'utf8');
 
     expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
-    expect(src).toContain("@property({ type: String }) page: 'feed' | 'activity' | 'post' = 'feed';");
+    expect(src).toContain("@property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'feed';");
     expect(src).toContain("const presentation = toPresentationModel(post, {");
     expect(src).toContain("surface: this.page === 'post' ? 'detail' : 'timeline'");
     expect(src).toContain("page: this.page === 'activity' ? 'activity' : this.page");

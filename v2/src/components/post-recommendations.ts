@@ -288,7 +288,7 @@ export class PostRecommendations extends LitElement {
                 <media-renderer .src=${raw} .type=${'gutter'}></media-renderer>
               </div>
               <div class="rec-meta">
-                <span class="rec-blog">${presentation.identity.viaBlog?.label || `@${h.blogName || 'unknown'}`}</span>
+                <span class="rec-blog">${presentation.identity.viaBlogLabel}</span>
                 <span title=${presentation.identity.permalink.title || postLink.title || nothing}>${presentation.identity.permalink.label || postLink.label || h.id}${presentation.identity.permalink.icon || postLink.icon ? ` ${presentation.identity.permalink.icon || postLink.icon}` : ''}</span>
               </div>
             </div>

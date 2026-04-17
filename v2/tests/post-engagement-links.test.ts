@@ -23,15 +23,14 @@ describe('post engagement links', () => {
   it('guards empty blog names and falls back to @unknown text', () => {
     const src = readFileSync(FILE, 'utf8');
 
-    expect(src).toContain("import { resolveLink } from '../services/link-resolver.js';");
+    expect(src).toContain("import { resolveLink, type ResolvedLink } from '../services/link-resolver.js';");
     expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
     expect(src).toContain('private normalizeBlogName');
     expect(src).toContain('private renderBlogIdentity');
+    expect(src).toContain('private renderResolvedBlogIdentity');
     expect(src).toContain('const presentation = toPresentationModel');
     expect(src).not.toContain('POST_TYPE_ICONS[p.type as PostType] ||');
     expect(src).toContain("resolveLink('post_permalink'");
-    expect(src).toContain("'post_origin_blog' | 'post_via_blog'");
-    expect(src).toContain("'post_via_blog'");
     expect(src).toContain("const normalized = (blogName || '').trim();");
     expect(src).toContain("const label = normalized ? `@${normalized}` : '@unknown';");
     expect(src).not.toContain('href="/${p.originBlogName}/posts"');
@@ -43,7 +42,14 @@ describe('post engagement links', () => {
 
     expect(src).toContain("const originPostLink = presentation.identity.originPostPermalink || resolveLink('post_permalink', { postId: p.originPostId as number });");
     expect(src).toContain("const viaPostLink = presentation.identity.viaPostPermalink || presentation.identity.permalink;");
-    expect(src).toContain('via ♻️ ${this.renderBlogIdentity(p.blogName)} /');
+    expect(src).toContain('via ♻️ ${this.renderResolvedBlogIdentity(presentation.identity.viaBlog, presentation.identity.viaBlogLabel)} /');
+    expect(src).toContain('${typeIcon} ${this.renderResolvedBlogIdentity(presentation.identity.originBlog, presentation.identity.originBlogLabel)} /');
     expect(src).toContain('href=${viaPostLink.href}');
+  });
+
+  it('keeps ordinary post metadata linked via the primary blog identity', () => {
+    const src = readFileSync(FILE, 'utf8');
+
+    expect(src).toContain('this.renderResolvedBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, presentation.identity.primaryBlogLabel)');
   });
 });

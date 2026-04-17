@@ -7,7 +7,7 @@ import { toPresentationModel } from '../services/post-presentation.js';
 import { getCachedBlogId, getCurrentBlog } from '../services/storage.js';
 import { type ProcessedPost } from '../types/post.js';
 import type { Like, Comment, Reblog } from '../types/api.js';
-import { resolveLink } from '../services/link-resolver.js';
+import { resolveLink, type ResolvedLink } from '../services/link-resolver.js';
 import './loading-spinner.js';
 import './post-actions.js';
 
@@ -112,16 +112,16 @@ export class PostEngagement extends LitElement {
       const originPostIcon = originPostLink.icon || '↗';
       const viaPostIcon = viaPostLink.icon || '↗';
       return html`
-        ${typeIcon} ${this.renderBlogIdentity(p.originBlogName, 'post_origin_blog')} /
+        ${typeIcon} ${this.renderResolvedBlogIdentity(presentation.identity.originBlog, presentation.identity.originBlogLabel)} /
         <a class="post-id-link" href=${originPostLink.href} target=${originPostLink.target} rel=${originPostLink.rel || nothing} title=${originPostLink.title || nothing}>${originPostLabel}<span class="post-id-outlink">${originPostIcon}</span></a>
-        via ♻️ ${this.renderBlogIdentity(p.blogName)} /
+        via ♻️ ${this.renderResolvedBlogIdentity(presentation.identity.viaBlog, presentation.identity.viaBlogLabel)} /
         <a class="post-id-link" href=${viaPostLink.href} target=${viaPostLink.target} rel=${viaPostLink.rel || nothing} title=${viaPostLink.title || nothing}>${viaPostLabel}<span class="post-id-outlink">${viaPostIcon}</span></a>
       `;
     }
     const permalink = presentation.identity.permalink;
     const permalinkLabel = permalink.label || String(p.id);
     const permalinkIcon = permalink.icon || '↗';
-    return html`${typeIcon} ${this.renderBlogIdentity(p.blogName)} / <a class="post-id-link" href=${permalink.href} target=${permalink.target} rel=${permalink.rel || nothing} title=${permalink.title || nothing}>${permalinkLabel}<span class="post-id-outlink">${permalinkIcon}</span></a>`;
+    return html`${typeIcon} ${this.renderResolvedBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, presentation.identity.primaryBlogLabel)} / <a class="post-id-link" href=${permalink.href} target=${permalink.target} rel=${permalink.rel || nothing} title=${permalink.title || nothing}>${permalinkLabel}<span class="post-id-outlink">${permalinkIcon}</span></a>`;
   }
 
   private normalizeBlogName(blogName: string | null | undefined): string | null {
@@ -136,6 +136,13 @@ export class PostEngagement extends LitElement {
       return html`<span>${label}</span>`;
     }
     const link = resolveLink(contextId, { blog: normalized });
+    return html`<a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing}>${link.label || label}</a>`;
+  }
+
+  private renderResolvedBlogIdentity(link: ResolvedLink | null | undefined, label: string) {
+    if (!link) {
+      return html`<span>${label}</span>`;
+    }
     return html`<a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing}>${link.label || label}</a>`;
   }
 

@@ -44,8 +44,6 @@ export class PostDetailContent extends LitElement {
   ];
 
   @property({ type: Object }) post: ProcessedPost | null = null;
-  @property({ type: String }) recommendationsMode: 'list' | 'grid' = 'list';
-  @property({ type: Boolean }) engagementStandalone = false;
   @property({ type: String }) surface: 'detail' | 'lightbox' = 'detail';
 
   render() {
@@ -55,6 +53,8 @@ export class PostDetailContent extends LitElement {
       surface: this.surface === 'lightbox' ? 'lightbox' : 'detail',
       page: 'post',
     });
+    const recommendationsMode = this.surface === 'lightbox' ? 'list' : 'grid';
+    const engagementStandalone = this.surface !== 'lightbox';
     const tags = extractRenderableTags(p);
 
     return html`
@@ -71,10 +71,10 @@ export class PostDetailContent extends LitElement {
         </div>
       ` : nothing}
 
-      <post-engagement .post=${p} ?standalone=${this.engagementStandalone}></post-engagement>
+      <post-engagement .post=${p} ?standalone=${engagementStandalone}></post-engagement>
 
       ${presentation.layout.showRecommendations
-        ? html`<post-recommendations .postId=${p.id} .mode=${this.recommendationsMode}></post-recommendations>`
+        ? html`<post-recommendations .postId=${p.id} .mode=${recommendationsMode}></post-recommendations>`
         : nothing}
     `;
   }

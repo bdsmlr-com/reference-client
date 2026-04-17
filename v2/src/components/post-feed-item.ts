@@ -6,6 +6,7 @@ import { formatDateShort, getTooltipDate } from '../services/date-formatter.js';
 import { MAX_VISIBLE_TAGS } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
+import type { MediaRenderType } from '../services/media-resolver.js';
 import './media-renderer.js';
 
 /**
@@ -183,8 +184,7 @@ export class PostFeedItem extends LitElement {
 
   @property({ type: Object, hasChanged: postHasChanged }) post!: ProcessedPost;
   @property({ type: Boolean }) disableClick = false;
-  @property({ type: String }) mediaRenderType: 'feed' | 'post-detail' = 'feed';
-  @property({ type: String }) page: 'feed' | 'activity' | 'post' = 'feed';
+  @property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'feed';
   @property({ type: Boolean }) videoAutoplay?: boolean;
   @property({ type: Boolean }) videoControls?: boolean;
   @property({ type: Boolean }) videoLoop?: boolean;
@@ -208,16 +208,13 @@ export class PostFeedItem extends LitElement {
     const media = post._media;
 
     const tags = extractRenderableTags(post);
-    const blogName = post.blogName || 'unknown';
-    const originBlogName = post.originBlogName || 'unknown';
-    const blogLink = presentation.identity.viaBlog || presentation.identity.originBlog || resolveLink('post_via_blog', { blog: blogName });
-    const originBlogLink = presentation.identity.originBlog || resolveLink('post_origin_blog', { blog: originBlogName });
-    const blogLabel = blogLink.label || `@${blogName}`;
-    const originBlogLabel = originBlogLink.label || `@${originBlogName}`;
+    const blogLabel = presentation.identity.viaBlogLabel;
+    const originBlogLabel = presentation.identity.originBlogLabel;
     const isReblog = presentation.identity.isReblog;
     const likeCount = presentation.actions.like.count;
     const reblogCount = presentation.actions.reblog.count;
     const commentCount = presentation.actions.comment.count;
+    const mediaRenderType = presentation.media.preset as MediaRenderType;
     const rawUrl = media.type === 'video'
       ? (media.videoUrl || media.url)
       : (media.url || media.videoUrl || media.audioUrl);
@@ -227,6 +224,12 @@ export class PostFeedItem extends LitElement {
       : post._activityKindOverride === 'comment'
         ? '💬 Self-commented'
         : '';
+    const renderBlogIdentity = (link: typeof presentation.identity.viaBlog, label: string) => {
+      if (!link) {
+        return html`<span class="blog-name">${label}</span>`;
+      }
+      return html`<a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>${link.label || label}</a>`;
+    };
 
     let mediaHtml;
     if (media.type === 'image' || media.type === 'video') {
@@ -236,7 +239,7 @@ export class PostFeedItem extends LitElement {
             <media-renderer
               .src=${rawUrl}
               .posterSrc=${posterSrc}
-              .type=${this.mediaRenderType}
+              .type=${mediaRenderType}
               .autoplayVideo=${this.videoAutoplay}
               .controlsVideo=${this.videoControls}
               .loopVideo=${this.videoLoop}
@@ -251,12 +254,12 @@ export class PostFeedItem extends LitElement {
         <header class="card-header">
           <div class="blog-info">
             ${isReblog ? html`
-              <a href=${originBlogLink.href} target=${originBlogLink.target} rel=${originBlogLink.rel || nothing} title=${originBlogLink.title || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>${originBlogLabel}</a>
+              ${renderBlogIdentity(presentation.identity.originBlog, originBlogLabel)}
               <span class="reblog-indicator">
-                ♻️ via <a href=${blogLink.href} target=${blogLink.target} rel=${blogLink.rel || nothing} title=${blogLink.title || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>${blogLabel}</a>
+                ♻️ via ${renderBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, blogLabel)}
               </span>
             ` : html`
-              <a href=${blogLink.href} target=${blogLink.target} rel=${blogLink.rel || nothing} title=${blogLink.title || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>${blogLabel}</a>
+              ${renderBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, blogLabel)}
             `}
             ${selfActivityBadge ? html`<span class="self-activity-badge">${selfActivityBadge}</span>` : ''}
           </div>

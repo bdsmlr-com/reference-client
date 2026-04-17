@@ -118,7 +118,6 @@ export class ViewPost extends LitElement {
         .post=${this.post}
         page="post"
         .disableClick=${true}
-        mediaRenderType="post-detail"
         .videoAutoplay=${false}
         .videoControls=${true}
         .videoLoop=${true}
@@ -126,8 +125,6 @@ export class ViewPost extends LitElement {
 
       <post-detail-content
         .post=${this.post}
-        recommendationsMode="grid"
-        ?engagementStandalone=${true}
       ></post-detail-content>
     `;
   }

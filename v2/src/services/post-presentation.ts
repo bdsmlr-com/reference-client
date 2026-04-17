@@ -12,7 +12,7 @@ import {
 type NormalizedPresentationContext = Required<Pick<PresentationContext, 'surface' | 'page'>> & PresentationContext;
 
 function normalizePresentationContext(ctx: PresentationContext): NormalizedPresentationContext {
-  const fallbackPage = ctx.view === 'archive' || ctx.view === 'search' || ctx.view === 'activity' || ctx.view === 'post' || ctx.view === 'feed'
+  const fallbackPage = ctx.view === 'archive' || ctx.view === 'search' || ctx.view === 'activity' || ctx.view === 'post' || ctx.view === 'feed' || ctx.view === 'social'
     ? ctx.view
     : 'feed';
   const page = ctx.page || fallbackPage;
@@ -109,13 +109,16 @@ function buildIdentity(post: ProcessedPost) {
   const viaBlog = viaBlogName
     ? resolveLink('post_via_blog', { blog: viaBlogName })
     : null;
+  const originBlogLabel = originBlog?.label || `@${originBlogName || 'unknown'}`;
+  const viaBlogLabel = viaBlog?.label || `@${viaBlogName || originBlogName || 'unknown'}`;
   const originPostPermalink = isReblog && post.originPostId
     ? resolveLink('post_permalink', { postId: post.originPostId })
     : null;
   const viaPostPermalink = isReblog ? permalink : null;
   const chipBlogLabel = isReblog
-    ? (originBlog?.label || viaBlog?.label || `@${originBlogName || viaBlogName || 'unknown'}`)
-    : (viaBlog?.label || originBlog?.label || `@${viaBlogName || originBlogName || 'unknown'}`);
+    ? originBlogLabel
+    : viaBlogLabel;
+  const primaryBlogLabel = isReblog ? originBlogLabel : viaBlogLabel;
 
   return {
     isReblog,
@@ -127,6 +130,9 @@ function buildIdentity(post: ProcessedPost) {
     viaPostPermalink,
     originBlog,
     viaBlog,
+    originBlogLabel,
+    viaBlogLabel,
+    primaryBlogLabel,
     chipBlogLabel,
     summaryLine: `${blogLabel} · ${POST_TYPE_LABELS[post.type]}`,
   };
@@ -149,9 +155,7 @@ function buildMediaDescriptor(post: ProcessedPost, ctx: NormalizedPresentationCo
     preset: ctx.surface === 'lightbox'
       ? 'lightbox'
       : ctx.surface === 'detail'
-        ? media.type === 'video'
-          ? 'poster'
-          : 'post-detail'
+        ? 'post-detail'
         : 'gallery-grid',
   };
 }

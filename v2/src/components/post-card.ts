@@ -5,6 +5,7 @@ import { type ProcessedPost } from '../types/post.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
+import type { MediaRenderType } from '../services/media-resolver.js';
 import './media-renderer.js';
 import './post-actions.js';
 
@@ -174,6 +175,7 @@ export class PostCard extends LitElement {
   ];
 
   @property({ type: Object }) post!: ProcessedPost;
+  @property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'archive';
 
   private handleClick(): void {
     const detail = { post: this.post };
@@ -196,50 +198,55 @@ export class PostCard extends LitElement {
 
   render() {
     const p = this.post;
-    const presentation = toPresentationModel(p, { surface: 'card', page: 'archive' });
+    const presentation = toPresentationModel(p, { surface: 'card', page: this.page });
     const media = p._media;
     const rbCount = p._reblog_variants?.length || 0;
+    const mediaRenderType = presentation.media.preset as MediaRenderType;
     
     // Media URLs
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
-    const originName = p.originBlogName || 'unknown';
-
     const isAdmin = isAdminMode();
     const isTombstone = !rawUrl && !p.body;
     const isDeleted = Boolean(p.deletedAtUnix);
     const isOriginDeleted = Boolean(p.originDeletedAtUnix);
+    const renderBlogLink = (link: typeof presentation.identity.viaBlog, label: string, titleFallback: string) => {
+      if (!link) {
+        return html`<span class="blog-link">${label}</span>`;
+      }
+      return html`
+        <a
+          class="blog-link"
+          href=${link.href}
+          target=${link.target}
+          rel=${link.rel || nothing}
+          title=${link.title || titleFallback}
+          @click=${(event: Event) => event.stopPropagation()}
+        >${link.label || label}</a>
+      `;
+    };
 
     return html`
       <article class="card" @click=${this.handleClick}>
         <div class="card-header">
           <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
             ${presentation.identity.isReblog ? html`
-              <a
-                class="blog-link"
-                href=${presentation.identity.originBlog?.href || '#'}
-                target=${presentation.identity.originBlog?.target || '_self'}
-                rel=${presentation.identity.originBlog?.rel || nothing}
-                title=${presentation.identity.originBlog?.title || `Original post by @${originName}`}
-                @click=${(event: Event) => event.stopPropagation()}
-              >${presentation.identity.originBlog?.label || `@${originName}`}</a>
+              ${renderBlogLink(
+                presentation.identity.originBlog,
+                presentation.identity.originBlogLabel,
+                `Original post by ${presentation.identity.originBlogLabel}`,
+              )}
               <span style="opacity: 0.5;">♻️ via</span>
-              <a
-                class="blog-link"
-                href=${presentation.identity.viaBlog?.href || '#'}
-                target=${presentation.identity.viaBlog?.target || '_self'}
-                rel=${presentation.identity.viaBlog?.rel || nothing}
-                title=${presentation.identity.viaBlog?.title || `Open @${p.blogName || 'unknown'}`}
-                @click=${(event: Event) => event.stopPropagation()}
-              >${presentation.identity.viaBlog?.label || `@${p.blogName || 'unknown'}`}</a>
+              ${renderBlogLink(
+                presentation.identity.viaBlog,
+                presentation.identity.viaBlogLabel,
+                `Open ${presentation.identity.viaBlogLabel}`,
+              )}
             ` : html`
-              <a
-                class="blog-link"
-                href=${presentation.identity.viaBlog?.href || '#'}
-                target=${presentation.identity.viaBlog?.target || '_self'}
-                rel=${presentation.identity.viaBlog?.rel || nothing}
-                title=${presentation.identity.viaBlog?.title || `Open @${p.blogName || 'unknown'}`}
-                @click=${(event: Event) => event.stopPropagation()}
-              >${presentation.identity.viaBlog?.label || `@${p.blogName || 'unknown'}`}</a>
+              ${renderBlogLink(
+                presentation.identity.viaBlog,
+                presentation.identity.viaBlogLabel,
+                `Open ${presentation.identity.viaBlogLabel}`,
+              )}
             `}
             ${rbCount > 0 ? html`<span class="reblog-badge" title="Aggregated reblogs">+${rbCount}</span>` : ''}
           </div>
@@ -256,7 +263,7 @@ export class PostCard extends LitElement {
         <div class="media-container">
           <media-renderer 
             .src=${rawUrl} 
-            .type=${'gallery-grid'}
+            .type=${mediaRenderType}
             style="object-fit: cover;"
           ></media-renderer>
           

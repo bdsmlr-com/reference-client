@@ -10,7 +10,7 @@ describe('post recommendations presentation', () => {
 
     expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
     expect(src).toContain("const presentation = toPresentationModel(h, { surface: 'card', page: 'post' });");
-    expect(src).toContain("presentation.identity.viaBlog?.label");
+    expect(src).toContain("presentation.identity.viaBlogLabel");
     expect(src).toContain("presentation.identity.permalink.label");
     expect(src).toContain("presentation.identity.permalink.icon");
   });

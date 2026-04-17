@@ -38,6 +38,8 @@ describe('toPresentationModel', () => {
     expect(card.identity.isReblog).toBe(false);
     expect(card.identity.isCanonicalCard).toBe(false);
     expect(card.identity.chipBlogLabel).toContain('@');
+    expect(card.identity.primaryBlogLabel).toContain('@');
+    expect(card.identity.viaBlogLabel).toContain('@');
   });
 
   it('keeps action descriptors stable across card and detail contexts', () => {
@@ -72,7 +74,7 @@ describe('toPresentationModel', () => {
     expect(card.media.preset).toBe('gallery-grid');
     expect(lightbox.media.preset).toBe('lightbox');
     expect(detail.media.preset).toBe('post-detail');
-    expect(videoDetail.media.preset).toBe('poster');
+    expect(videoDetail.media.preset).toBe('post-detail');
   });
 
   it('marks reblog state in the shared identity descriptor', () => {
@@ -83,6 +85,7 @@ describe('toPresentationModel', () => {
 
     expect(model.identity.isReblog).toBe(true);
     expect(model.identity.originBlog?.label).toContain('@');
+    expect(model.identity.originBlogLabel).toContain('@');
     expect(model.identity.originPostPermalink?.href).toBe('/post/123');
     expect(model.identity.viaPostPermalink?.href).toBe('/post/686683457');
   });

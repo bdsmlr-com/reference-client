@@ -16,10 +16,12 @@ describe('post route media behavior', () => {
     expect(src).toContain('@property({ type: Boolean }) videoAutoplay?: boolean;');
     expect(src).toContain('@property({ type: Boolean }) videoControls?: boolean;');
     expect(src).toContain('@property({ type: Boolean }) videoLoop?: boolean;');
+    expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
+    expect(src).toContain("const mediaRenderType = presentation.media.preset as MediaRenderType;");
     expect(src).toContain('.autoplayVideo=${this.videoAutoplay}');
     expect(src).toContain('.controlsVideo=${this.videoControls}');
     expect(src).toContain('.loopVideo=${this.videoLoop}');
-    expect(src).toContain(".type=${this.mediaRenderType}");
+    expect(src).toContain('.type=${mediaRenderType}');
     expect(src).toContain("const rawUrl = media.type === 'video'");
     expect(src).toContain('? (media.videoUrl || media.url)');
     expect(src).toContain('.posterSrc=${posterSrc}');
@@ -55,6 +57,9 @@ describe('post route media behavior', () => {
 
   it('lightbox forwards video poster source to media-renderer', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/post-lightbox.ts'), 'utf8');
+    expect(src).toContain("const presentation = toPresentationModel(this.post, { surface: 'lightbox', page: 'post' });");
+    expect(src).toContain("const mediaRenderType = presentation.media.preset as MediaRenderType;");
     expect(src).toContain(".posterSrc=${media.type === 'video' ? media.url : undefined}");
+    expect(src).toContain('.type=${mediaRenderType}');
   });
 });

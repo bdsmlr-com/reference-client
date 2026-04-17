@@ -6,9 +6,11 @@ import { BREAKPOINTS } from '../types/ui-constants.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { resolveMediaUrl } from '../services/media-resolver.js';
+import type { MediaRenderType } from '../services/media-resolver.js';
 import { buildLightboxMediaSources } from '../services/lightbox-media-sources.js';
 import { buildInteractionHandler } from '../services/render-interactions.js';
 import { loadRenderContract } from '../services/render-contract.js';
+import { toPresentationModel } from '../services/post-presentation.js';
 import './media-renderer.js';
 import './post-detail-content.js';
 
@@ -216,6 +218,8 @@ export class PostLightbox extends LitElement {
     
     const params = new URLSearchParams(window.location.search);
     const activeMode = params.get('media_mode') || 'default';
+    const presentation = toPresentationModel(this.post, { surface: 'lightbox', page: 'post' });
+    const mediaRenderType = presentation.media.preset as MediaRenderType;
 
     const media = this.post._media || extractMedia(this.post);
     const files = this.post.content?.files || [];
@@ -231,7 +235,7 @@ export class PostLightbox extends LitElement {
         ${sources.map((src, i) => html`
           <div style="margin-top: 12px; border-top: 1px solid #333; padding-top: 8px;">
             <div class="entry"><span class="label">MEDIA[${i}] RAW:</span> ${src}</div>
-            <div class="entry"><span class="label">MEDIA[${i}] RES:</span> ${resolveMediaUrl(src, 'lightbox')}</div>
+            <div class="entry"><span class="label">MEDIA[${i}] RES:</span> ${resolveMediaUrl(src, mediaRenderType)}</div>
           </div>
         `)}
       </div>
@@ -242,6 +246,8 @@ export class PostLightbox extends LitElement {
     if (!this.post) return nothing;
     const media = this.post._media || extractMedia(this.post);
     if (!media) return this.renderGhost('🖼️', false, false, 'Media Error');
+    const presentation = toPresentationModel(this.post, { surface: 'lightbox', page: 'post' });
+    const mediaRenderType = presentation.media.preset as MediaRenderType;
 
     const isAdmin = isAdminMode();
     const isTombstone = !media.url && !this.post.body;
@@ -258,7 +264,7 @@ export class PostLightbox extends LitElement {
             <media-renderer
               .src=${src}
               .posterSrc=${media.type === 'video' ? media.url : undefined}
-              .type=${'lightbox'}
+              .type=${mediaRenderType}
             ></media-renderer>
           </div>
         `)}
@@ -314,7 +320,7 @@ export class PostLightbox extends LitElement {
             ` : ''}
             ${this.renderAdminDebug()}
 
-            <post-detail-content .post=${p} surface="lightbox" recommendationsMode="list"></post-detail-content>
+            <post-detail-content .post=${p} surface="lightbox"></post-detail-content>
           </div>
         </div>
       </div>

@@ -44,6 +44,7 @@ export class PostFeed extends LitElement {
   ];
 
   @property({ type: Array }) posts: ProcessedPost[] = [];
+  @property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'feed';
 
   private handlePostSelect(e: PostSelectEvent): void {
     this.dispatchEvent(
@@ -60,7 +61,7 @@ export class PostFeed extends LitElement {
       <section class="feed" role="feed" aria-label="Post feed" aria-busy="false">
         ${this.posts.map(
           (post) => html`
-            <post-feed-item .post=${post} @post-select=${this.handlePostSelect}></post-feed-item>
+            <post-feed-item .post=${post} .page=${this.page} @post-select=${this.handlePostSelect}></post-feed-item>
           `
         )}
       </section>

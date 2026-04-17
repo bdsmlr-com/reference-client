@@ -60,6 +60,7 @@ export class PostGrid extends LitElement {
   ];
 
   @property({ type: Array }) posts: ProcessedPost[] = [];
+  @property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'archive';
 
   private handlePostSelect(e: PostSelectEvent): void {
     this.dispatchEvent(
@@ -85,7 +86,7 @@ export class PostGrid extends LitElement {
         ${columns.map(col => html`
           <div class="masonry-column">
             ${col.map(post => html`
-              <post-card .post=${post} @post-select=${this.handlePostSelect}></post-card>
+              <post-card .post=${post} .page=${this.page} @post-select=${this.handlePostSelect}></post-card>
             `)}
           </div>
         `)}

@@ -78,7 +78,7 @@ export function extractRenderableTags(post: Post): string[] {
 }
 
 export type PresentationSurface = 'card' | 'lightbox' | 'detail' | 'timeline';
-export type PresentationPage = 'feed' | 'archive' | 'search' | 'activity' | 'post';
+export type PresentationPage = 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social';
 export type PresentationActionKind = 'permalink' | 'like' | 'reblog' | 'comment' | 'engagementList';
 export type PresentationActionOpenMode = 'toggle' | 'modal' | 'panel' | 'navigate';
 export type PresentationActionChipMode = 'count' | 'none';
@@ -123,6 +123,9 @@ export interface PresentationIdentity {
   viaPostPermalink?: ResolvedLink | null;
   originBlog?: ResolvedLink | null;
   viaBlog?: ResolvedLink | null;
+  originBlogLabel: string;
+  viaBlogLabel: string;
+  primaryBlogLabel: string;
   chipBlogLabel: string;
   summaryLine: string;
 }

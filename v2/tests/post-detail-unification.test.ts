@@ -15,8 +15,12 @@ describe('post detail unification', () => {
     expect(detailSrc).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
     expect(detailSrc).toContain("@property({ type: String }) surface: 'detail' | 'lightbox' = 'detail';");
     expect(detailSrc).toContain("const presentation = toPresentationModel(p, {");
+    expect(detailSrc).toContain("const recommendationsMode = this.surface === 'lightbox' ? 'list' : 'grid';");
+    expect(detailSrc).toContain("const engagementStandalone = this.surface !== 'lightbox';");
     expect(lightboxSrc).toContain('<post-detail-content');
     expect(lightboxSrc).toContain('surface="lightbox"');
     expect(postViewSrc).toContain('<post-detail-content');
+    expect(postViewSrc).not.toContain('recommendationsMode=');
+    expect(postViewSrc).not.toContain('engagementStandalone');
   });
 });
