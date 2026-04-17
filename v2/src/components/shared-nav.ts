@@ -168,11 +168,6 @@ export class SharedNav extends LitElement {
         color: #fff;
       }
 
-      .build-tag {
-        font-size: 10px;
-        color: var(--text-muted);
-      }
-
       .profile-menu {
         position: absolute;
         top: calc(100% + 8px);
@@ -187,6 +182,15 @@ export class SharedNav extends LitElement {
         flex-direction: column;
         gap: 10px;
         z-index: 120;
+      }
+
+      .menu-build-tag {
+        border-top: 1px solid var(--border);
+        color: var(--text-muted);
+        font-size: 10px;
+        letter-spacing: 0.03em;
+        margin-top: 4px;
+        padding-top: 8px;
       }
 
       .menu-section-title {
@@ -642,11 +646,13 @@ export class SharedNav extends LitElement {
               </select>
               <a class="menu-button" href=${this.getClearCacheUrl()}>Clear cache</a>
               <button class="menu-button" @click=${this.handleLogout}>Log out</button>
+              <div class="menu-build-tag" aria-label="Build tag">${BUILD_TAG}</div>
             `
           : html`
               <div class="menu-section-title">Settings</div>
               <button class="menu-button" @click=${this.openLoginModal}>Log in</button>
               <a class="menu-button" href=${this.getClearCacheUrl()}>Clear cache</a>
+              <div class="menu-build-tag" aria-label="Build tag">${BUILD_TAG}</div>
             `}
       </div>
     `;
@@ -741,7 +747,6 @@ export class SharedNav extends LitElement {
             `
           : ''}
         <div class="right-controls">
-          <span class="build-tag" aria-label="Build tag">${BUILD_TAG}</span>
           <button
             class="theme-toggle"
             @click=${this.toggleTheme}
