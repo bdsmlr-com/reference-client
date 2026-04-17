@@ -1,4 +1,5 @@
 import type { Post, PostContent, PostType } from './api.js';
+import type { ResolvedLink } from '../services/link-resolver.js';
 
 export interface MediaInfo {
   type: 'image' | 'video' | 'audio' | 'link' | 'text' | 'chat' | 'quote' | 'none';
@@ -76,19 +77,69 @@ export function extractRenderableTags(post: Post): string[] {
   return [...new Set(tags)];
 }
 
-export type PresentationActionKind = 'permalink';
+export type PresentationSurface = 'card' | 'lightbox' | 'detail' | 'timeline';
+export type PresentationPage = 'feed' | 'archive' | 'search' | 'activity' | 'post';
+export type PresentationActionKind = 'permalink' | 'like' | 'reblog' | 'comment' | 'engagementList';
+export type PresentationActionOpenMode = 'toggle' | 'modal' | 'panel' | 'navigate';
+export type PresentationActionChipMode = 'count' | 'none';
+
+export interface PresentationContext {
+  surface?: PresentationSurface;
+  page?: PresentationPage;
+  role?: 'primary' | 'cluster' | 'recommendation';
+  interactionKind?: 'post' | 'reblog' | 'like' | 'comment';
+  view?: string;
+  env?: string;
+}
 
 export interface PresentationAction {
   kind: PresentationActionKind;
   label: string;
   contextId: string;
+  visible: boolean;
+  openMode: PresentationActionOpenMode;
+  chipMode: PresentationActionChipMode;
+  count?: number;
+  icon?: string;
+}
+
+export interface PresentationActionSet {
+  permalink: PresentationAction;
+  like: PresentationAction;
+  reblog: PresentationAction;
+  comment: PresentationAction;
+  engagementList: PresentationAction;
+  some(predicate: (action: PresentationAction) => boolean): boolean;
+  values(): PresentationAction[];
+}
+
+export interface PresentationIdentity {
+  postTypeIcon: string;
+  permalink: ResolvedLink;
+  originBlog?: ResolvedLink | null;
+  viaBlog?: ResolvedLink | null;
+  summaryLine: string;
+}
+
+export interface PresentationLayout {
+  showBlogChip: boolean;
+  compactMetadata: boolean;
+  showTags: boolean;
+  showRecommendations: boolean;
+}
+
+export interface MediaPresentationDescriptor extends MediaInfo {
+  preset: string;
 }
 
 export interface PostPresentationModel {
+  identity: PresentationIdentity;
+  actions: PresentationActionSet;
+  layout: PresentationLayout;
+  media: MediaPresentationDescriptor;
   showPermalink: boolean;
   showBlogChip: boolean;
   compactMetadata: boolean;
-  actions: PresentationAction[];
   linkContexts: {
     permalink: string;
     originBlog: string;
