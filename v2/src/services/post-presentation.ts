@@ -132,12 +132,12 @@ function buildMediaDescriptor(post: ProcessedPost, ctx: NormalizedPresentationCo
   return {
     ...media,
     preset: ctx.surface === 'lightbox'
-      ? 'post-lightbox'
+      ? 'lightbox'
       : ctx.surface === 'detail'
-        ? 'post-detail'
-        : ctx.surface === 'timeline'
-          ? 'post-timeline'
-          : 'post-card',
+        ? media.type === 'video'
+          ? 'poster'
+          : 'post-detail'
+        : 'gallery-grid',
   };
 }
 
