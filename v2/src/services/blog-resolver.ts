@@ -20,7 +20,7 @@ const SUBDOMAIN_ENABLED_DOMAINS = ['bdsmlr.com', 'bdsmlr.localhost'];
 const RESERVED_SUBDOMAINS = ['www', 'api', 'cdn', 'static', 'admin', 'app'];
 
 // Pages that support path-based blog routing
-const BLOG_PAGES = ['archive', 'posts', 'feed', 'social', 'masquerade', 'timeline', 'following'];
+const BLOG_PAGES = ['archive', 'activity', 'posts', 'feed', 'social', 'masquerade', 'timeline', 'following'];
 
 // Reserved page routes that are NOT blog names
 const RESERVED_PAGE_ROUTES = [

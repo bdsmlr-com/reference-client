@@ -54,6 +54,13 @@ describe('shared-nav profile/settings behavior', () => {
     expect(src).toContain("window.scrollTo({ top: 0, behavior: 'smooth' });");
   });
 
+  it('normalizes timeline page state back to the activity route when returning to the primary blog', () => {
+    const src = readFileSync(NAV_FILE, 'utf8');
+
+    expect(src).toContain("const page = this.currentPage === 'timeline' ? 'activity' : this.currentPage;");
+    expect(src).toContain('const url = buildPageUrl(page, primaryBlog);');
+  });
+
   it('keeps settings menu open while interacting with sort select controls', () => {
     const src = readFileSync(NAV_FILE, 'utf8');
 

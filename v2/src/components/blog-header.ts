@@ -7,8 +7,9 @@ import {
 } from '../services/blog-resolver.js';
 import { BREAKPOINTS, SPACING } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
+import './blog-identity.js';
 
-type PageName = 'archive' | 'timeline' | 'social' | 'following';
+type PageName = 'archive' | 'timeline' | 'social' | 'following' | 'activity';
 
 /**
  * Unified blog header component (UX-001b).
@@ -50,16 +51,21 @@ export class BlogHeader extends LitElement {
       .blog-selector {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: 8px;
         padding: 8px 14px;
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--accent);
         background: var(--bg-panel-alt);
         border: 1px solid var(--border);
         border-radius: 8px;
         cursor: pointer;
         transition: background 0.2s, border-color 0.2s;
+        color: inherit;
+        max-width: 100%;
+        text-align: left;
+      }
+
+      blog-identity {
+        flex: 1 1 auto;
+        min-width: 0;
       }
 
       .blog-selector:hover {
@@ -274,6 +280,11 @@ export class BlogHeader extends LitElement {
   @property({ type: String }) blogTitle = '';
 
   /**
+   * Optional blog avatar URL.
+   */
+  @property({ type: String }) avatarUrl = '';
+
+  /**
    * Whether the component is in edit mode.
    */
   @state() private editing = false;
@@ -437,7 +448,12 @@ export class BlogHeader extends LitElement {
                 aria-label="Blog: ${this.blogName}. Click to change."
                 title=${this.blogTitle || `@${this.blogName}`}
               >
-                @${this.blogName}
+                <blog-identity
+                  variant="header"
+                  .blogName=${this.blogName}
+                  .blogTitle=${this.blogTitle}
+                  .avatarUrl=${this.avatarUrl}
+                ></blog-identity>
                 <span class="chevron" aria-hidden="true">&#9662;</span>
               </button>
 

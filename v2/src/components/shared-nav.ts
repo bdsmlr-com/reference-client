@@ -31,6 +31,7 @@ import { SORT_OPTIONS, normalizeSortValue } from '../types/post.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { logout as legacyLogout, login as legacyLogin } from '../services/auth-service.js';
 import { normalizeAvatarUrl } from '../services/avatar-url.js';
+import './blog-identity.js';
 
 type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social' | 'posts';
 const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'staging@unknown/unknown';
@@ -206,6 +207,10 @@ export class SharedNav extends LitElement {
         font-weight: 600;
       }
 
+      .profile-blog-identity {
+        display: block;
+      }
+
       .gallery-row {
         display: flex;
         gap: 6px;
@@ -330,6 +335,7 @@ export class SharedNav extends LitElement {
   @state() private currentUsername: string | null = getCurrentUsername();
   @state() private galleryMode: GalleryMode = getGalleryMode();
   @state() private profileAvatarUrl: string | null = null;
+  @state() private profileBlogTitle: string | null = null;
   @state() private archiveSortPreference = normalizeSortValue(getArchiveSortPreference() || 'newest');
   @state() private searchSortPreference = normalizeSortValue(getSearchSortPreference() || 'newest');
   @state() private loginError: string | null = null;
@@ -344,7 +350,7 @@ export class SharedNav extends LitElement {
     window.addEventListener(PROFILE_EVENTS.sortPreferencesChanged, this.handleProfileStateChange as EventListener);
     window.addEventListener('auth-user-changed', this.handleAuthChanged as EventListener);
     this.syncFromAuth();
-    void this.refreshAvatar();
+    void this.refreshProfileIdentity();
   }
 
   disconnectedCallback(): void {
@@ -370,7 +376,7 @@ export class SharedNav extends LitElement {
     this.galleryMode = getGalleryMode();
     this.archiveSortPreference = normalizeSortValue(getArchiveSortPreference() || 'newest');
     this.searchSortPreference = normalizeSortValue(getSearchSortPreference() || 'newest');
-    void this.refreshAvatar();
+    void this.refreshProfileIdentity();
   };
 
   private handleAuthChanged = (e: CustomEvent): void => {
@@ -404,14 +410,17 @@ export class SharedNav extends LitElement {
       this.blogs = [];
       this.activeBlogId = null;
       this.currentUsername = null;
+      this.profileAvatarUrl = null;
+      this.profileBlogTitle = null;
     }
-    void this.refreshAvatar();
+    void this.refreshProfileIdentity();
   };
 
-  private async refreshAvatar(): Promise<void> {
+  private async refreshProfileIdentity(): Promise<void> {
     const username = this.currentUsername;
     if (!username) {
       this.profileAvatarUrl = null;
+      this.profileBlogTitle = null;
       return;
     }
 
@@ -420,11 +429,17 @@ export class SharedNav extends LitElement {
       if (this.currentUsername !== username) {
         return;
       }
-      const blog = response.blog as { avatarUrl?: string; avatar_url?: string } | undefined;
+      const blog = response.blog as {
+        avatarUrl?: string;
+        avatar_url?: string;
+        title?: string;
+      } | undefined;
       this.profileAvatarUrl = normalizeAvatarUrl(blog?.avatarUrl ?? blog?.avatar_url ?? null);
+      this.profileBlogTitle = blog?.title ?? null;
     } catch {
       if (this.currentUsername === username) {
         this.profileAvatarUrl = null;
+        this.profileBlogTitle = null;
       }
     }
   }
@@ -497,7 +512,8 @@ export class SharedNav extends LitElement {
   private handleBackToPrimary(): void {
     const primaryBlog = getPrimaryBlogName();
     if (primaryBlog) {
-      const url = buildPageUrl(this.currentPage, primaryBlog);
+      const page = this.currentPage === 'timeline' ? 'activity' : this.currentPage;
+      const url = buildPageUrl(page, primaryBlog);
       window.location.href = url;
     }
   }
@@ -561,6 +577,7 @@ export class SharedNav extends LitElement {
       clearStoredBlogName();
       this.currentUsername = null;
       this.profileAvatarUrl = null;
+      this.profileBlogTitle = null;
       window.location.href = '/';
     });
   }
@@ -595,7 +612,7 @@ export class SharedNav extends LitElement {
     setStoredBlogName(selectedBlog.name);
     this.currentUsername = selectedBlog.name;
     this.activeBlogId = selectedBlog.id;
-    void this.refreshAvatar();
+    void this.refreshProfileIdentity();
     // Rebuild URLs for current page
     const currentPath = window.location.pathname;
     if (currentPath === '/' || currentPath === '') {
@@ -610,8 +627,14 @@ export class SharedNav extends LitElement {
       <div class="profile-menu" role="menu" aria-label="Profile and settings menu" @click=${(e: Event) => e.stopPropagation()}>
         ${loggedIn
           ? html`
+              <blog-identity
+                class="profile-blog-identity"
+                variant="menu"
+                .blogName=${this.currentUsername ?? ''}
+                .blogTitle=${this.profileBlogTitle ?? ''}
+                .avatarUrl=${this.profileAvatarUrl ?? ''}
+              ></blog-identity>
               <div class="menu-section-title">Settings</div>
-              <div class="current-user">@${this.currentUsername ?? '—'}</div>
               ${this.blogs && this.blogs.length > 1
                 ? html`
                     <label class="menu-section-title" for="blog-switcher">Active blog</label>

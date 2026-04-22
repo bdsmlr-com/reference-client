@@ -27,13 +27,13 @@ describe('activity route alias', () => {
   it('shared nav targets activity path for the activity tab', () => {
     const navSrc = readFileSync(join(ROOT, 'components/shared-nav.ts'), 'utf8');
     const headerSrc = readFileSync(join(ROOT, 'components/blog-header.ts'), 'utf8');
+    const resolverSrc = readFileSync(join(ROOT, 'services/blog-resolver.ts'), 'utf8');
 
-    expect(navSrc).toContain("if (page === 'posts')");
-    expect(navSrc).toContain("return resolveLink('nav_activity', { blog: blogName }).href;");
-    expect(navSrc).toContain("import { resolveLink } from '../services/link-resolver.js';");
-    expect(navSrc).toContain("resolveLink('nav_logo'");
+    expect(navSrc).toContain("if (page === 'activity')");
+    expect(navSrc).toContain("return buildPageUrl('activity', activeBlog);");
     expect(headerSrc).toContain("import { resolveLink } from '../services/link-resolver.js';");
     expect(headerSrc).toContain("resolveLink('blog_header_external_blog'");
+    expect(resolverSrc).toContain("const BLOG_PAGES = ['archive', 'activity', 'posts', 'feed', 'social', 'masquerade', 'timeline', 'following'];");
   });
 
   it('activity view treats newest as canonical and keeps URLs minimal', () => {

@@ -240,7 +240,12 @@ export class ViewPosts extends LitElement {
   render() {
     return html`
       <div class="content">
-        <blog-header page="posts" .blogName=${this.blog} .blogTitle=${this.blogData?.title || ''}></blog-header>
+        <blog-header
+          page="activity"
+          .blogName=${this.blog}
+          .blogTitle=${this.blogData?.title || ''}
+          .avatarUrl=${this.blogData?.avatarUrl || ''}
+        ></blog-header>
 
         <activity-kind-pills
           .selected=${this.activityKinds}

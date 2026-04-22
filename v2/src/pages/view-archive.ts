@@ -368,7 +368,12 @@ export class ViewArchive extends LitElement {
   render() {
     return html`
       <div class="content">
-        <blog-header page="archive" .blogName=${this.blog} .blogTitle=${this.blogData?.title || ''}></blog-header>
+        <blog-header
+          page="archive"
+          .blogName=${this.blog}
+          .blogTitle=${this.blogData?.title || ''}
+          .avatarUrl=${this.blogData?.avatarUrl || ''}
+        ></blog-header>
 
         ${this.initialLoading ? html`<loading-spinner message="Loading archive..."></loading-spinner>` : ''}
 
