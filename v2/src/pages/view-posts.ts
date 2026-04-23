@@ -50,7 +50,7 @@ export class ViewPosts extends LitElement {
   static styles = [
     baseStyles,
     css`
-      :host { display: block; min-height: 100vh; background: var(--bg-primary); }
+      :host { display: block; min-height: 100vh; background: var(--blog-bg, var(--bg-primary)); }
       .content { padding: 20px 0; }
       .feed-container { margin-bottom: 20px; }
     `,

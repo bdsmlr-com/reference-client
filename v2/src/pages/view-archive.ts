@@ -41,7 +41,7 @@ export class ViewArchive extends LitElement {
       :host {
         display: block;
         min-height: 100vh;
-        background: var(--bg-primary);
+        background: var(--blog-bg, var(--bg-primary));
       }
 
       .content {
