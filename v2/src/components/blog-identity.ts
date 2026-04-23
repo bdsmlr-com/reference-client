@@ -188,6 +188,14 @@ export class BlogIdentity extends LitElement {
         word-break: break-word;
       }
 
+      .description {
+        min-width: 0;
+        color: var(--text-muted);
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+
       :host([variant='header']) .avatar,
       :host([variant='header']) .avatar-fallback {
         width: 40px;
@@ -200,7 +208,12 @@ export class BlogIdentity extends LitElement {
 
       :host([variant='header']) .title {
         font-size: 12px;
-        max-width: 32ch;
+        max-width: 40ch;
+      }
+
+      :host([variant='header']) .description {
+        font-size: 12px;
+        max-width: 52ch;
       }
 
       :host([variant='menu']) .avatar,
@@ -221,11 +234,16 @@ export class BlogIdentity extends LitElement {
         font-size: 11px;
         max-width: 20ch;
       }
+
+      :host([variant='menu']) .description {
+        display: none;
+      }
     `,
   ];
 
   @property({ type: String }) blogName = '';
   @property({ type: String }) blogTitle = '';
+  @property({ type: String }) blogDescription = '';
   @property({ type: String }) avatarUrl = '';
   @property({ type: String, reflect: true }) variant: BlogIdentityVariant = 'header';
 
@@ -254,6 +272,7 @@ export class BlogIdentity extends LitElement {
     const initial = (blogName.charAt(0) || '?').toUpperCase();
     const avatarUrl = this.resolvedAvatarUrl;
     const title = this.blogTitle.trim();
+    const description = this.blogDescription.trim();
 
     return html`
       <div
@@ -276,6 +295,7 @@ export class BlogIdentity extends LitElement {
         <span class="copy">
           <span class="name">@${blogName}</span>
           ${title ? html`<span class="title">${title}</span>` : nothing}
+          ${description ? html`<span class="description">${description}</span>` : nothing}
         </span>
       </div>
     `;

@@ -372,6 +372,7 @@ export class ViewArchive extends LitElement {
           page="archive"
           .blogName=${this.blog}
           .blogTitle=${this.blogData?.title || ''}
+          .blogDescription=${this.blogData?.description || ''}
           .avatarUrl=${this.blogData?.avatarUrl || ''}
         ></blog-header>
 

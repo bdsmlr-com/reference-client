@@ -280,6 +280,11 @@ export class BlogHeader extends LitElement {
   @property({ type: String }) blogTitle = '';
 
   /**
+   * Optional blog description shown below the title.
+   */
+  @property({ type: String }) blogDescription = '';
+
+  /**
    * Optional blog avatar URL.
    */
   @property({ type: String }) avatarUrl = '';
@@ -452,6 +457,7 @@ export class BlogHeader extends LitElement {
                   variant="header"
                   .blogName=${this.blogName}
                   .blogTitle=${this.blogTitle}
+                  .blogDescription=${this.blogDescription}
                   .avatarUrl=${this.avatarUrl}
                 ></blog-identity>
                 <span class="chevron" aria-hidden="true">&#9662;</span>

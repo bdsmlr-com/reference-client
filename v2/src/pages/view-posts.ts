@@ -244,6 +244,7 @@ export class ViewPosts extends LitElement {
           page="activity"
           .blogName=${this.blog}
           .blogTitle=${this.blogData?.title || ''}
+          .blogDescription=${this.blogData?.description || ''}
           .avatarUrl=${this.blogData?.avatarUrl || ''}
         ></blog-header>
 
