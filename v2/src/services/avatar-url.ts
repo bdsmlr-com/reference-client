@@ -1,18 +1,27 @@
 const AVATAR_CDN_HOST = 'cdn012.bdsmlr.com';
 const LEGACY_AVATAR_HOST = 'ocdn012.bdsmlr.com';
 
+function normalizeDirectLegacyAvatarHost(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === LEGACY_AVATAR_HOST) {
+      parsed.hostname = AVATAR_CDN_HOST;
+      return parsed.toString();
+    }
+  } catch {
+    return url;
+  }
+  return url;
+}
+
 export function normalizeAvatarUrl(avatarUrl: string | null | undefined): string | null {
   if (!avatarUrl) return null;
 
   let normalized = avatarUrl.trim();
   if (!normalized) return null;
 
-  if (normalized.includes(LEGACY_AVATAR_HOST)) {
-    normalized = normalized.replace(LEGACY_AVATAR_HOST, AVATAR_CDN_HOST);
-  }
-
   if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
-    return normalized;
+    return normalizeDirectLegacyAvatarHost(normalized);
   }
 
   const path = normalized.startsWith('/') ? normalized.slice(1) : normalized;
@@ -22,10 +31,11 @@ export function normalizeAvatarUrl(avatarUrl: string | null | undefined): string
 export function handleAvatarImageError(e: Event): void {
   const img = e.target as HTMLImageElement;
   const src = img.src;
+  const fallbackSrc = normalizeDirectLegacyAvatarHost(src);
 
-  if (src.includes(LEGACY_AVATAR_HOST) && !img.dataset.triedFallback) {
+  if (fallbackSrc !== src && !img.dataset.triedFallback) {
     img.dataset.triedFallback = 'true';
-    img.src = src.replace(LEGACY_AVATAR_HOST, AVATAR_CDN_HOST);
+    img.src = fallbackSrc;
     return;
   }
 
