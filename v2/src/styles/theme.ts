@@ -135,8 +135,8 @@ export const globalThemeCSS = `
   }
 
   body {
-    background: var(--bg-primary);
-    color: var(--text-primary);
+    background: var(--blog-bg, var(--bg-primary));
+    color: var(--blog-text, var(--text-primary));
     font-family: system-ui, -apple-system, sans-serif;
     line-height: 1.5;
   }
@@ -156,7 +156,7 @@ export const baseStyles = css`
   :host {
     display: block;
     font-family: system-ui, -apple-system, sans-serif;
-    color: var(--text-primary);
+    color: var(--blog-text, var(--text-primary));
   }
 
   button {

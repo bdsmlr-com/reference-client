@@ -21,16 +21,23 @@ import { apiClient } from './client.js';
 import type { Blog } from '../types/api.js';
 
 const BLOG_THEME_CACHE_KEY = 'bdsmlr_blog_theme_cache';
+const BLOG_THEME_CACHE_VERSION = 2;
 // Blog metadata (name, avatar, theme colors) rarely changes (CACHE-009)
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours (was 30 minutes, increased per CACHE-009)
 
 interface CachedBlogTheme {
   blog: Blog | null;
   timestamp: number;
+  version?: number;
 }
 
 interface BlogThemeCache {
   [blogName: string]: CachedBlogTheme;
+}
+
+function hasBlogIdentityFields(blog: Blog | null): boolean {
+  if (!blog) return true;
+  return 'avatarUrl' in blog && 'backgroundColor' in blog;
 }
 
 /**
@@ -43,6 +50,10 @@ function getCachedBlogTheme(blogName: string): Blog | null | undefined {
     const entry = cache[key];
 
     if (!entry) return undefined; // Cache miss
+
+    if (entry.version !== BLOG_THEME_CACHE_VERSION || !hasBlogIdentityFields(entry.blog)) {
+      return undefined; // Legacy cache entry from before avatar/background contract
+    }
 
     if (Date.now() > entry.timestamp + CACHE_TTL) {
       return undefined; // Expired
@@ -63,6 +74,7 @@ function setCachedBlogTheme(blogName: string, blog: Blog | null): void {
     cache[blogName.toLowerCase()] = {
       blog,
       timestamp: Date.now(),
+      version: BLOG_THEME_CACHE_VERSION,
     };
     localStorage.setItem(BLOG_THEME_CACHE_KEY, JSON.stringify(cache));
   } catch {
@@ -310,25 +322,12 @@ function adaptBlogColorsForTheme(blog: Blog): AdaptedThemeColors {
     result.accentHover = generateHoverColor(result.accent);
   }
 
-  // Handle background color - only apply if it doesn't conflict with theme
+  // Handle background color. The blog's configured color is intentional identity,
+  // so apply it directly and derive readable foreground text where needed.
   if (isValidColor(blog.backgroundColor)) {
     const blogBg = blog.backgroundColor!;
-    const isLightMode = getCurrentThemeMode() === 'light';
-
-    try {
-      const blogBgLuminance = chroma(blogBg).luminance();
-
-      // Only apply background if it's compatible with current theme
-      // Light mode: prefer light backgrounds; Dark mode: prefer dark backgrounds
-      if (isLightMode && blogBgLuminance > 0.4) {
-        result.background = blogBg;
-      } else if (!isLightMode && blogBgLuminance < 0.4) {
-        result.background = blogBg;
-      }
-      // Otherwise, skip applying background to preserve theme compatibility
-    } catch {
-      // Skip invalid colors
-    }
+    result.background = blogBg;
+    result.text = getTextColorForBackground(blogBg);
   }
 
   // Handle text color
