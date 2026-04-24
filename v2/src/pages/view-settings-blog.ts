@@ -166,7 +166,7 @@ export class ViewSettingsBlog extends LitElement {
   }
 
   private async fetchSettingsBlog(blogName: string): Promise<BlogSettingsResponse> {
-    const response = await fetch('/api/v2/auth/settings/blog', {
+    const response = await fetch('/api/v2/settings/blog', {
       method: 'POST',
       credentials: 'include',
       cache: 'no-store',

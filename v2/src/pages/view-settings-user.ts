@@ -173,7 +173,7 @@ export class ViewSettingsUser extends LitElement {
   }
 
   private async fetchSettingsUser(username: string): Promise<SettingsUserResponse> {
-    const response = await fetch('/api/v2/auth/settings/user', {
+    const response = await fetch('/api/v2/settings/user', {
       method: 'POST',
       credentials: 'include',
       cache: 'no-store',
