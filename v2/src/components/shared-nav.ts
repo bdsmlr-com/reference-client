@@ -33,7 +33,7 @@ import { logout as legacyLogout, login as legacyLogin } from '../services/auth-s
 import { normalizeAvatarUrl } from '../services/avatar-url.js';
 import './blog-identity.js';
 
-type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social' | 'posts';
+type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social' | 'posts' | 'settings';
 const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'staging@unknown/unknown';
 
 @customElement('shared-nav')
@@ -498,6 +498,11 @@ export class SharedNav extends LitElement {
     return isDevMode() ? 'clear-cache.html' : '/clear-cache';
   }
 
+  private getSettingsUserUrl(): string {
+    const username = this.currentUsername || getCurrentUsername();
+    return username ? `/settings/user/${encodeURIComponent(username)}` : '/settings/user';
+  }
+
   private isViewingDifferentBlog(): boolean {
     const primaryBlog = getPrimaryBlogName();
     const viewedBlog = getViewedBlogName();
@@ -635,6 +640,7 @@ export class SharedNav extends LitElement {
                 .avatarUrl=${this.profileAvatarUrl ?? ''}
               ></blog-identity>
               <div class="menu-section-title">Settings</div>
+              <a class="menu-button" href=${this.getSettingsUserUrl()}>Settings</a>
               ${this.blogs && this.blogs.length > 1
                 ? html`
                     <label class="menu-section-title" for="blog-switcher">Active blog</label>

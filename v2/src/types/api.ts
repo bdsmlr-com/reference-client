@@ -75,6 +75,35 @@ export interface TimelineItem {
   cluster?: InteractionCluster;
 }
 
+export interface BlogInterests {
+  maledom?: boolean;
+  femdom?: boolean;
+  lesbian?: boolean;
+  gay?: boolean;
+  sissy?: boolean;
+  latex?: boolean;
+  gifs?: boolean;
+  extreme?: boolean;
+  vanilla?: boolean;
+  vintage?: boolean;
+  art?: boolean;
+  funny?: boolean;
+  hentai?: boolean;
+  journal?: boolean;
+  quotes?: boolean;
+  cartoon?: boolean;
+  other?: boolean;
+}
+
+export interface BlogPersonals {
+  labels?: Record<string, string>;
+}
+
+export interface BlogPrivacy {
+  isPrivate?: boolean;
+  isPublic?: boolean;
+}
+
 export interface Blog {
   id: number;
   name?: string;
@@ -90,6 +119,9 @@ export interface Blog {
   backgroundColor?: string;
   textColor?: string;
   headerImageUrl?: string;
+  interests?: BlogInterests;
+  personals?: BlogPersonals;
+  privacy?: BlogPrivacy;
 }
 
 export interface User {
@@ -412,6 +444,11 @@ export interface ListBlogsRecentActivityResponse {
 }
 
 export interface GetBlogResponse {
+  blog?: Blog;
+  error?: string;
+}
+
+export interface BlogSettingsResponse {
   blog?: Blog;
   error?: string;
 }

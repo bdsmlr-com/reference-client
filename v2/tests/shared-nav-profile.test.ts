@@ -24,6 +24,8 @@ describe('shared-nav profile/settings behavior', () => {
     expect(src).toContain('Log out');
     expect(src).toContain('Gallery view');
     expect(src).toContain('Clear cache');
+    expect(src).toContain('Settings');
+    expect(src).toContain('/settings/user/');
   });
 
   it('uses log in label when logged out and avatar button when logged in', () => {

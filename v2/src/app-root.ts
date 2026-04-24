@@ -9,6 +9,8 @@ import './pages/view-blogs.js';
 import './pages/view-search.js';
 import './pages/view-social.js';
 import './pages/view-discover.js';
+import './pages/view-settings-user.js';
+import './pages/view-settings-blog.js';
 import './pages/view-post.js';
 import './pages/view-clear-cache.js';
 import './components/shared-nav.js';
@@ -63,6 +65,8 @@ export class AppRoot extends LitElement {
     { path: '/discover*', render: () => html`<view-discover></view-discover>` },
     { path: '/post/:postId', render: ({ postId }) => html`<view-post .postId=${postId}></view-post>` },
     { path: '/clear-cache*', render: () => html`<view-clear-cache></view-clear-cache>` },
+    { path: '/settings/user/:username', render: ({ username }) => html`<view-settings-user .username=${username}></view-settings-user>` },
+    { path: '/settings/blog/:blogName', render: ({ blogName }) => html`<view-settings-blog .blogName=${blogName}></view-settings-blog>` },
     { path: '/:blog/activity', render: ({ blog }) => html`<view-posts .blog=${blog}></view-posts>` },
     { path: '/:blog/feed', render: ({ blog }) => html`<view-feed .blog=${blog}></view-feed>` },
     { path: '/:blog/archive', render: ({ blog }) => html`<view-archive .blog=${blog}></view-archive>` },
@@ -193,6 +197,7 @@ export class AppRoot extends LitElement {
     else if (pathname.includes('/search')) currentPage = 'search';
     else if (pathname.includes('/blogs')) currentPage = 'blogs';
     else if (pathname.includes('/social')) currentPage = 'social';
+    else if (pathname.includes('/settings')) currentPage = 'settings';
 
     return html`
       ${isAdmin ? html`<div class="admin-banner">Admin Mode Active (Suppressed posts visible)</div>` : ''}
