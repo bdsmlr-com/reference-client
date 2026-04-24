@@ -10,13 +10,10 @@ import '../components/loading-spinner.js';
 
 type OwnedBlogCard = Blog & { name: string };
 type SettingsUserResponse = {
-  user_id: number;
-  username?: string | null;
-  blog_id?: number | null;
-  blog_name?: string | null;
-  primary_blog_id?: number | null;
-  active_blog_id?: number | null;
-  active_blog_name?: string | null;
+  user?: {
+    id: number;
+    username?: string | null;
+  } | null;
   blogs?: Blog[];
 };
 
@@ -167,7 +164,7 @@ export class ViewSettingsUser extends LitElement {
       );
       this.ownedBlogs = resolvedBlogs.filter((blog): blog is OwnedBlogCard => Boolean(blog?.name));
     } catch (error) {
-      this.errorMessage = getContextualErrorMessage(error, 'resolve_blog', { blogName: this.username });
+      this.errorMessage = getContextualErrorMessage(error, 'load_blog', { blogName: this.username });
       this.settingsUser = null;
       this.ownedBlogs = [];
     } finally {
@@ -176,10 +173,14 @@ export class ViewSettingsUser extends LitElement {
   }
 
   private async fetchSettingsUser(username: string): Promise<SettingsUserResponse> {
-    const response = await fetch(`/api/v2/settings/user/${encodeURIComponent(username)}`, {
-      method: 'GET',
+    const response = await fetch('/api/v2/auth/settings/user', {
+      method: 'POST',
       credentials: 'include',
       cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username }),
     });
 
     if (!response.ok) {
@@ -215,16 +216,8 @@ export class ViewSettingsUser extends LitElement {
   }
 
   render() {
-    const accountName = this.username || this.settingsUser?.username || this.settingsUser?.blog_name || 'account';
-    const primaryBlogName =
-      this.settingsUser?.blogs?.find((blog) => blog.id === this.settingsUser?.primary_blog_id)?.name ||
-      this.settingsUser?.blog_name ||
-      'unknown';
-    const activeBlogName =
-      this.settingsUser?.blogs?.find((blog) => blog.id === this.settingsUser?.active_blog_id)?.name ||
-      this.settingsUser?.active_blog_name ||
-      this.settingsUser?.blog_name ||
-      'unknown';
+    const accountName = this.settingsUser?.user?.username || this.username || 'account';
+    const primaryBlogName = this.ownedBlogs[0]?.name || 'unknown';
 
     return html`
       <div class="content">
@@ -235,7 +228,7 @@ export class ViewSettingsUser extends LitElement {
           <section class="hero">
             <div class="eyebrow">Account settings</div>
             <h1>@${accountName}</h1>
-            <p class="muted">User ID ${this.settingsUser?.user_id ?? 'unknown'}</p>
+            <p class="muted">User ID ${this.settingsUser?.user?.id ?? 'unknown'}</p>
           </section>
 
           <section class="section">
@@ -250,15 +243,15 @@ export class ViewSettingsUser extends LitElement {
             <div class="account-grid">
               <div class="account-pill">
                 <div class="eyebrow">Username</div>
-                <div>@${this.settingsUser?.username || accountName}</div>
+                <div>@${this.settingsUser?.user?.username || accountName}</div>
               </div>
               <div class="account-pill">
                 <div class="eyebrow">Primary blog</div>
                 <div>@${primaryBlogName}</div>
               </div>
               <div class="account-pill">
-                <div class="eyebrow">Active blog</div>
-                <div>@${activeBlogName}</div>
+                <div class="eyebrow">Owned blogs</div>
+                <div>${this.ownedBlogs.length}</div>
               </div>
             </div>
           </section>

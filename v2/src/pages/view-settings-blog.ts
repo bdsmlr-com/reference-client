@@ -166,10 +166,14 @@ export class ViewSettingsBlog extends LitElement {
   }
 
   private async fetchSettingsBlog(blogName: string): Promise<BlogSettingsResponse> {
-    const response = await fetch(`/api/v2/settings/blog/${encodeURIComponent(blogName)}`, {
-      method: 'GET',
+    const response = await fetch('/api/v2/auth/settings/blog', {
+      method: 'POST',
       credentials: 'include',
       cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ blogName }),
     });
 
     if (!response.ok) {
