@@ -132,6 +132,13 @@ describe('Media Resolver', () => {
       
       spy.mockRestore();
     });
+
+    it('preserves already-transformed pixelated proxy URLs instead of re-deriving a clear variant', () => {
+      CONFIG.imgproxyMode = 'unsafe';
+      const src = 'https://imgproxy.i.bdsmlr.com/unsafe/g:sm/rs:fit:600:0/pix:24/plain/s3://ocdn012.bdsmlr.com/uploads/foo.jpg';
+      const url = resolveMediaUrl(src, 'gallery-grid');
+      expect(url).toBe(src);
+    });
   });
 
   describe('isAnimation', () => {
@@ -172,26 +179,26 @@ describe('Media Resolver', () => {
       expect(BUCKET_LIST).not.toContain('cdn002.reblogme.com');
     });
 
-    it('should fail over ergonomic s3 URLs while preserving alias and query params', () => {
+    it('should not probe ergonomic s3 URLs when the bucket list is intentionally single-host', () => {
       const img = new MockImageElement();
       img.src = 'https://media.i.bdsmlr.com/gutter/s3://ocdn012.bdsmlr.com/uploads/photos/2023/08/11289205/bdsmlr-11289205-s3pdSudIvT.gif?e=1774206957&t=hqHlN9H94QRTWcWH9XdFxd9tKxsKGaTjW6m6WYjTPzY&cb=1774120557';
 
       const didProbe = probeNextBucket(img as any);
 
-      expect(didProbe).toBe(true);
+      expect(didProbe).toBe(false);
       expect(img.src).toBe(
-        'https://media.i.bdsmlr.com/gutter/s3://cdn101.bdsmlr.com/uploads/photos/2023/08/11289205/bdsmlr-11289205-s3pdSudIvT.gif?e=1774206957&t=hqHlN9H94QRTWcWH9XdFxd9tKxsKGaTjW6m6WYjTPzY&cb=1774120557'
+        'https://media.i.bdsmlr.com/gutter/s3://ocdn012.bdsmlr.com/uploads/photos/2023/08/11289205/bdsmlr-11289205-s3pdSudIvT.gif?e=1774206957&t=hqHlN9H94QRTWcWH9XdFxd9tKxsKGaTjW6m6WYjTPzY&cb=1774120557'
       );
     });
 
-    it('should return false when already at last bucket', () => {
+    it('should normalize unknown legacy buckets back to the canonical host', () => {
       const img = new MockImageElement();
       img.src = 'https://media.i.bdsmlr.com/gutter/s3://cdn013.bdsmlr.com/uploads/photos/2023/08/11289205/bdsmlr-11289205-s3pdSudIvT.gif?e=1&t=2';
 
       const didProbe = probeNextBucket(img as any);
 
-      expect(didProbe).toBe(false);
-      expect(img.src).toContain('cdn013.bdsmlr.com');
+      expect(didProbe).toBe(true);
+      expect(img.src).toContain('ocdn012.bdsmlr.com');
     });
   });
 });

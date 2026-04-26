@@ -73,6 +73,14 @@ export function toS3Scheme(url: string): [string, string] {
 export function resolveMediaUrl(url: string | undefined, type: MediaRenderType): string {
   if (!url) return '';
 
+  // Preserve URLs that already encode an explicit obscuration transform.
+  // Search/archive policy can return pixelated variants directly from the API,
+  // and re-deriving them from the render type would silently downgrade them
+  // back to clear variants.
+  if (url.includes('/unsafe/') && (url.includes('/pix:') || url.includes('/bd:') || url.includes('/bl:'))) {
+    return url;
+  }
+
   const params = new URLSearchParams(window.location.search);
   const modeOverride = (isAdminMode() && params.get('media_mode')) || null;
 
@@ -93,6 +101,11 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
   const currentMode = modeOverride || CONFIG.imgproxyMode;
 
   const isAnim = isAnimation(url);
+  const isVideo = isNativeVideo(url);
+
+  if (currentMode === 'unsafe' && isVideo) {
+    return url;
+  }
   
   if (currentMode === 'fixed' || currentMode === 'ergonomic') {
     // FIXED PATH MODE: Uses pre-configured gateway aliases
