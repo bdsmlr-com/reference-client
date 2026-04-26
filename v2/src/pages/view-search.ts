@@ -355,46 +355,22 @@ export class ViewSearch extends LitElement {
       this.backendCursor = resp.page?.nextPageToken || null;
       if (!this.backendCursor) this.exhausted = true;
 
-      // DUMB FRONTEND: Just append pre-processed items
       const newItems: TimelineItem[] = [];
-      (resp.timelineItems || []).forEach(item => {
-        if (item.type === 1 && item.post) {
-          const post = item.post as ProcessedPost;
-          const media = extractMedia(post);
-          const mediaUrl = media.url || media.videoUrl || media.audioUrl;
-          const contentKey = post.originPostId ? `oid:${post.originPostId}` : (mediaUrl ? `url:${mediaUrl.split('?')[0]}` : `pid:${post.id}`);
+      (resp.posts || []).forEach(rawPost => {
+        const post = rawPost as ProcessedPost;
+        const media = extractMedia(post);
+        const mediaUrl = media.url || media.videoUrl || media.audioUrl;
+        const contentKey = post.originPostId ? `oid:${post.originPostId}` : (mediaUrl ? `url:${mediaUrl.split('?')[0]}` : `pid:${post.id}`);
 
-          if (this.seenIds.has(post.id) || this.renderedMediaKeys.has(contentKey)) {
-            this.stats.dupes++;
-            return;
-          }
-          
-          this.seenIds.add(post.id);
-          this.renderedMediaKeys.add(contentKey);
-          post._media = media;
-          newItems.push(item);
-        } else if (item.type === 2 && item.cluster) {
-          const uniqueInteractions: ProcessedPost[] = [];
-          item.cluster.interactions?.forEach(post => {
-            const p = post as ProcessedPost;
-            const media = extractMedia(p);
-            const mediaUrl = media.url || media.videoUrl || media.audioUrl;
-            const contentKey = p.originPostId ? `oid:${p.originPostId}` : (mediaUrl ? `url:${mediaUrl.split('?')[0]}` : `pid:${p.id}`);
-
-            if (this.seenIds.has(p.id) || this.renderedMediaKeys.has(contentKey)) {
-              return;
-            }
-            
-            this.seenIds.add(p.id);
-            this.renderedMediaKeys.add(contentKey);
-            p._media = media;
-            uniqueInteractions.push(p);
-          });
-          if (uniqueInteractions.length > 0) {
-            item.cluster.interactions = uniqueInteractions;
-            newItems.push(item);
-          }
+        if (this.seenIds.has(post.id) || this.renderedMediaKeys.has(contentKey)) {
+          this.stats.dupes++;
+          return;
         }
+
+        this.seenIds.add(post.id);
+        this.renderedMediaKeys.add(contentKey);
+        post._media = media;
+        newItems.push({ type: 1, post });
       });
 
       this.timelineItems = [...this.timelineItems, ...newItems];

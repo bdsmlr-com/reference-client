@@ -14,6 +14,14 @@ describe('search regression and tag visibility', () => {
     expect(src).toContain('if (searchToken !== this.activeSearchToken || signature !== this.currentSearchSignature)');
   });
 
+  it('treats posts as the canonical search payload instead of backend timelineItems', () => {
+    const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+
+    expect(src).toContain('(resp.posts || []).forEach');
+    expect(src).toContain("newItems.push({ type: 1, post });");
+    expect(src).not.toContain('(resp.timelineItems || []).forEach');
+  });
+
   it('extracts fallback tags from body/html when API tags are missing', () => {
     const src = readFileSync(join(ROOT, 'types/post.ts'), 'utf8');
 
