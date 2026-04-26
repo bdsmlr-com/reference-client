@@ -14,4 +14,14 @@ describe('archive/search render contract usage', () => {
     expect(archiveSrc).toContain('count=${this.mainSlotConfig.loading?.count');
     expect(searchSrc).toContain('count=${this.mainSlotConfig.loading?.count');
   });
+
+  it('archive and search consume canonical posts instead of backend timelineItems', () => {
+    const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
+    const searchSrc = readFileSync(join(process.cwd(), 'src/pages/view-search.ts'), 'utf8');
+
+    expect(archiveSrc).toContain('(resp.posts || []).forEach');
+    expect(searchSrc).toContain('(resp.posts || []).forEach');
+    expect(archiveSrc).not.toContain('(resp.timelineItems || []).forEach');
+    expect(searchSrc).not.toContain('(resp.timelineItems || []).forEach');
+  });
 });
