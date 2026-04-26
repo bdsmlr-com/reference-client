@@ -22,6 +22,13 @@ describe('search regression and tag visibility', () => {
     expect(src).not.toContain('(resp.timelineItems || []).forEach');
   });
 
+  it('scopes cached search responses by build sha so deploys do not serve stale clear results', () => {
+    const src = readFileSync(join(ROOT, 'services/api.ts'), 'utf8');
+
+    expect(src).toContain("const BUILD_SHA = import.meta.env.VITE_BUILD_SHA || 'dev@unknown/unknown';");
+    expect(src).toContain('`search:${BUILD_SHA}:${generateSearchCacheKey(req as unknown as Record<string, unknown>)}`');
+  });
+
   it('extracts fallback tags from body/html when API tags are missing', () => {
     const src = readFileSync(join(ROOT, 'types/post.ts'), 'utf8');
 
