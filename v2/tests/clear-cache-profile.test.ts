@@ -11,4 +11,12 @@ describe('view-clear-cache profile cleanup', () => {
     expect(src).toContain('clearProfileState()');
     expect(src).toContain('clearStoredBlogName()');
   });
+
+  it('uses the canonical storage clear path so search and response caches are wiped too', () => {
+    const src = readFileSync(FILE, 'utf8');
+
+    expect(src).toContain("clearAllStorage()");
+    expect(src).not.toContain('clearSearchCache()');
+    expect(src).not.toContain('clearResponseCache()');
+  });
 });

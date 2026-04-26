@@ -2,19 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import {
-  clearActivityBlogs,
-  clearBlogAvatarCache,
-  clearBlogCache,
-  clearBlogIdCache,
-  clearBlogSearchCache,
-  clearFollowGraphCache,
-  clearHttpCache,
-  clearPaginationCursorCache,
-  clearRecentActivityCache,
-  clearResponseCache,
-  clearSearchCache,
-  clearSWRCache,
-  clearToken,
+  clearAllStorage,
 } from '../services/storage.js';
 import { clearPostCache } from '../services/post-cache.js';
 import { clearBlogTheme } from '../services/blog-theme.js';
@@ -79,19 +67,7 @@ export class ViewClearCache extends LitElement {
   }
 
   private performClear() {
-    clearToken();
-    clearActivityBlogs();
-    clearBlogCache();
-    clearBlogIdCache();
-    clearBlogAvatarCache();
-    clearBlogSearchCache();
-    clearSearchCache();
-    clearResponseCache();
-    clearFollowGraphCache();
-    clearRecentActivityCache();
-    clearSWRCache();
-    clearPaginationCursorCache();
-    clearHttpCache();
+    clearAllStorage();
     clearPostCache();
     clearBlogTheme();
     clearProfileState();
