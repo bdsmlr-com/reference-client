@@ -79,6 +79,8 @@ describe('route normalization', () => {
     expect(buildPageUrl('search')).toBe('/search');
     expect(buildPageUrl('search', 'alice')).toBe('/search/for/you');
     expect(buildPageUrl('search', 'sam')).toBe('/search/for/sam');
+    expect(buildPageUrl('for', 'alice')).toBe('/for/you');
+    expect(buildPageUrl('for', 'sam')).toBe('/for/sam');
     expect(buildPageUrl('feed', 'alice')).toBe('/feed/for/you');
     expect(buildPageUrl('feed', 'sam')).toBe('/feed/for/sam');
     expect(buildPageUrl('follower-feed', 'alice')).toBe('/follower-feed/you');

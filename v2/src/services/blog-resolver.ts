@@ -397,6 +397,9 @@ export function buildPageUrl(
     if (normalizedPage === 'search') {
       const blogSegment = resolveBuildBlogSegment(blogName);
       url = blogName ? `/search/for/${blogSegment || 'you'}` : '/search';
+    } else if (normalizedPage === 'for') {
+      const blogSegment = resolveBuildBlogSegment(blogName);
+      url = `/for/${blogSegment || 'you'}`;
     } else if (normalizedPage === 'feed') {
       const blogSegment = resolveBuildBlogSegment(blogName);
       url = `/feed/for/${blogSegment || 'you'}`;
