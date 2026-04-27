@@ -51,6 +51,28 @@ export default defineConfig({
         target: 'https://api-staging.bdsmlr.com',
         changeOrigin: true,
         secure: true,
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes, req) => {
+            // Dev-only cookie mangling to allow HTTP localhost to store auth cookies.
+            // The origin server sets Secure cookies (correct for prod), but that breaks
+            // local HTTP dev behind a proxy.
+            const host = String(req.headers.host || '');
+            if (!host.startsWith('localhost') && !host.startsWith('127.0.0.1')) return;
+
+            const setCookie = proxyRes.headers['set-cookie'];
+            if (!setCookie) return;
+            const cookies = Array.isArray(setCookie) ? setCookie : [String(setCookie)];
+            proxyRes.headers['set-cookie'] = cookies.map((c) =>
+              c
+                .replace(/;\s*Secure/gi, '')
+                // When proxying to localhost, a Domain=api-staging... cookie will be rejected.
+                // Host-only cookies (no Domain attr) will store for localhost.
+                .replace(/;\s*Domain=[^;]+/gi, '')
+                // If server ever sets SameSite=None, make it compatible with HTTP dev.
+                .replace(/;\s*SameSite=None/gi, '; SameSite=Lax')
+            );
+          });
+        },
       },
     },
   },
