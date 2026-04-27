@@ -20,7 +20,23 @@ API_PREFIXES = ('v1', 'v2', 'api', 'auth', 'admin', 'health', 'metrics', 'static
 
 def _canonical_redirect(path: str) -> str | None:
     normalized = '/' + path.lstrip('/')
+    if normalized == '/for':
+        return '/for/you'
+    if normalized == '/feed':
+        return '/feed/for/you'
+    if normalized == '/activity':
+        return '/activity/you'
+    if normalized == '/archive':
+        return '/archive/you'
+    if normalized == '/settings':
+        return '/settings/you'
+    if normalized == '/social':
+        return '/social/you/followers'
     parts = [part for part in normalized.split('/') if part]
+    if len(parts) == 2 and parts[0].lower() == 'social':
+        tab = (request.args.get('tab') or 'followers').lower()
+        tab = 'following' if tab == 'following' else 'followers'
+        return f'/social/{parts[1]}/{tab}'
     if len(parts) != 2:
         return None
     blog, page = parts[0], parts[1].lower()
@@ -31,7 +47,9 @@ def _canonical_redirect(path: str) -> str | None:
     if page == 'feed':
         return f'/feed/for/{blog}'
     if page == 'social':
-        return f'/social/{blog}'
+        tab = (request.args.get('tab') or 'followers').lower()
+        tab = 'following' if tab == 'following' else 'followers'
+        return f'/social/{blog}/{tab}'
     return None
 
 def init_client_routes(dist_path):
@@ -80,7 +98,7 @@ def catch_all(path):
     redirect_target = _canonical_redirect(path)
     if redirect_target:
         query = request.query_string.decode().strip()
-        if query:
+        if query and not (redirect_target.startswith('/social/') and 'tab=' in query):
             redirect_target = f'{redirect_target}?{query}'
         return redirect(redirect_target, code=301)
     

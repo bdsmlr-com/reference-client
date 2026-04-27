@@ -49,8 +49,10 @@ describe('route normalization', () => {
       ['/archive/sam', 'archive', 'sam'],
       ['/settings/you', 'settings', 'alice'],
       ['/settings/sam', 'settings', 'sam'],
-      ['/social/you', 'social', 'alice'],
-      ['/social/sam', 'social', 'sam'],
+      ['/social/you/followers', 'social', 'alice'],
+      ['/social/you/following', 'social', 'alice'],
+      ['/social/sam/followers', 'social', 'sam'],
+      ['/social/sam/following', 'social', 'sam'],
       ['/sam/archive', 'archive', 'sam'],
       ['/sam/activity', 'activity', 'sam'],
       ['/sam/feed', 'feed', 'sam'],
@@ -102,8 +104,8 @@ describe('route normalization', () => {
 
     expect(buildPageUrl('posts', 'alice')).toBe('/activity/you');
     expect(buildPageUrl('timeline', 'sam')).toBe('/activity/sam');
-    expect(buildPageUrl('social', 'alice')).toBe('/social/you');
-    expect(buildPageUrl('social', 'sam')).toBe('/social/sam');
+    expect(buildPageUrl('social', 'alice')).toBe('/social/you/followers');
+    expect(buildPageUrl('social', 'sam')).toBe('/social/sam/followers');
   });
 
   it('documents the canonical and legacy router aliases in app-root', () => {
@@ -121,8 +123,10 @@ describe('route normalization', () => {
     expect(appRootSrc).toContain("path: '/archive/you'");
     expect(appRootSrc).toContain("path: '/archive/:blogname'");
     expect(appRootSrc).toContain("path: '/settings/:blogname'");
-    expect(appRootSrc).toContain("path: '/social/you'");
-    expect(appRootSrc).toContain("path: '/social/:blogname'");
+    expect(appRootSrc).toContain("path: '/social/you/followers'");
+    expect(appRootSrc).toContain("path: '/social/you/following'");
+    expect(appRootSrc).toContain("path: '/social/:blogname/followers'");
+    expect(appRootSrc).toContain("path: '/social/:blogname/following'");
     expect(appRootSrc).toContain("path: '/:blog/archive'");
     expect(appRootSrc).toContain("path: '/:blog/activity'");
     expect(appRootSrc).toContain("path: '/:blog/feed'");

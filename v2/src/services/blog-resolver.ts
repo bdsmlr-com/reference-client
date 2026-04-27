@@ -183,7 +183,8 @@ export function getBlogNameFromSubdomain(): string {
  *   /activity/:blogname
  *   /archive/:blogname
  *   /settings/:blogname
- *   /social/:blogname
+ *   /social/:blogname/followers
+ *   /social/:blogname/following
  *
  * Also accepts legacy aliases like /:blog/archive and /:blog/social.
  * Returns empty string if not a path-based blog URL.
@@ -419,7 +420,7 @@ export function buildPageUrl(
       url = `/${normalizedPage}/${blogSegment || 'you'}`;
     } else if (normalizedPage === 'social') {
       const blogSegment = resolveBuildBlogSegment(blogName);
-      url = `/social/${blogSegment || 'you'}`;
+      url = `/social/${blogSegment || 'you'}/followers`;
     } else {
       // Non-blog pages: /:page
       url = `/${normalizedPage}`;
@@ -562,6 +563,9 @@ function parseRouteContext(pathname: string): { page: string; blogName: string }
   }
 
   if (first === 'social' && second) {
+    if (third === 'followers' || third === 'following') {
+      return { page: 'social', blogName: resolvePathBlogSegment(second) };
+    }
     return { page: 'social', blogName: resolvePathBlogSegment(second) };
   }
 

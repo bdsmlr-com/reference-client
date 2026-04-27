@@ -3,7 +3,7 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
-import { getUrlParam, setUrlParams, isBlogInPath } from '../services/blog-resolver.js';
+import { getUrlParam } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
@@ -109,6 +109,7 @@ export class ViewSocial extends LitElement {
   ];
 
   @property({ type: String }) blog = '';
+  @property({ type: String }) initialTab: Tab = 'followers';
 
   @state() private blogId: number | null = null;
   @state() private activeTab: Tab = 'followers';
@@ -192,7 +193,8 @@ export class ViewSocial extends LitElement {
     this.seenFollowingCursors.clear();
     this.followersPageAttempts = 0;
     this.followingPageAttempts = 0;
-    const tab = getUrlParam('tab') as Tab;
+    const pathTab = window.location.pathname.split('/').filter(Boolean)[2] as Tab | undefined;
+    const tab = pathTab || (getUrlParam('tab') as Tab) || this.initialTab;
     if (tab === 'followers' || tab === 'following') {
       this.activeTab = tab;
     }
@@ -247,12 +249,14 @@ export class ViewSocial extends LitElement {
 
   private async loadData(): Promise<void> {
     if (!this.blogId) return;
-
-    const params: Record<string, string> = { tab: this.activeTab };
-    if (!isBlogInPath()) {
-      params.blog = this.blog;
+    const normalizedBlog = (this.blog || 'you').trim() || 'you';
+    const targetPath = `/social/${encodeURIComponent(normalizedBlog)}/${this.activeTab}`;
+    const url = new URL(window.location.href);
+    if (url.pathname !== targetPath || url.search) {
+      url.pathname = targetPath;
+      url.search = '';
+      window.history.replaceState({}, '', url.toString());
     }
-    setUrlParams(params);
 
     this.followersPaginationKey = generatePaginationCursorKey('social-followers', {
       blog: this.blog,
@@ -457,12 +461,11 @@ export class ViewSocial extends LitElement {
     if (tab === this.activeTab) return;
 
     this.activeTab = tab;
-
-    const params: Record<string, string> = { tab: this.activeTab };
-    if (!isBlogInPath()) {
-      params.blog = this.blog;
-    }
-    setUrlParams(params);
+    const normalizedBlog = (this.blog || 'you').trim() || 'you';
+    const url = new URL(window.location.href);
+    url.pathname = `/social/${encodeURIComponent(normalizedBlog)}/${this.activeTab}`;
+    url.search = '';
+    window.history.replaceState({}, '', url.toString());
 
     if (this.currentList.length === 0) {
       await this.fetchPage();

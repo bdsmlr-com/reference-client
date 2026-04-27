@@ -3,7 +3,7 @@ import { customElement, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
-import { getBlogNameFromPath, getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';
+import { buildPageUrl, getBlogNameFromPath, getPrimaryBlogName, getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
   generatePaginationCursorKey,
@@ -22,14 +22,17 @@ import {
 import { toPresentationModel } from '../services/post-presentation.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
+import { materializeRecommendedPosts, recService } from '../services/recommendation-api.js';
 import '../components/filter-bar.js';
 import '../components/activity-grid.js';
+import '../components/post-grid.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
 import '../components/error-state.js';
 import '../components/type-pills.js'; // Might still be used elsewhere or redundant but keeping imports safe
 import '../components/render-card.js';
+import '../components/result-group.js';
 
 const PAGE_SIZE = 12;
 
@@ -169,6 +172,8 @@ export class ViewSearch extends LitElement {
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
   @state() private galleryMode: GalleryMode = getGalleryMode();
+  @state() private teaserPosts: ProcessedPost[] = [];
+  @state() private teaserLoading = false;
   private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('search', 'main_stream');
 
   private backendCursor: string | null = null;
@@ -181,6 +186,7 @@ export class ViewSearch extends LitElement {
   connectedCallback(): void {
     super.connectedCallback();
     this.loadFromUrl();
+    void this.loadTeasers();
     window.addEventListener('beforeunload', this.savePaginationState);
     window.addEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
   }
@@ -233,6 +239,21 @@ export class ViewSearch extends LitElement {
 
     if (this.query) {
       this.search();
+    }
+  }
+
+  private async loadTeasers(): Promise<void> {
+    const routePerspectiveBlog = getBlogNameFromPath();
+    const subjectBlog = routePerspectiveBlog || getPrimaryBlogName() || '';
+    if (!subjectBlog) return;
+    this.teaserLoading = true;
+    try {
+      const response = await recService.getRecommendedPostsForUser(subjectBlog, 6);
+      this.teaserPosts = materializeRecommendedPosts(response);
+    } catch {
+      this.teaserPosts = [];
+    } finally {
+      this.teaserLoading = false;
     }
   }
 
@@ -478,7 +499,27 @@ export class ViewSearch extends LitElement {
           @variant-change=${this.handleVariantChange}
         ></filter-bar>
 
-        ${!this.hasSearched ? html`<div class="status">Enter a query to begin searching.</div>` : ''}
+        ${!this.hasSearched
+          ? html`
+              <div class="status">Enter a query to begin searching.</div>
+              ${this.teaserPosts.length > 0
+                ? html`
+                    <result-group
+                      wide
+                      bare
+                      .title=${'For You'}
+                      .description=${'A teaser of personalized results while you refine your search.'}
+                      .actionHref=${buildPageUrl('for', getBlogNameFromPath() || getPrimaryBlogName() || '')}
+                      .actionLabel=${'See more'}
+                    >
+                      <post-grid .posts=${this.teaserPosts} .page=${'search'}></post-grid>
+                    </result-group>
+                  `
+                : this.teaserLoading
+                ? html`<div class="status">Loading recommendations…</div>`
+                : ''}
+            `
+          : ''}
 
         ${this.searching && this.timelineItems.length === 0
           ? html`

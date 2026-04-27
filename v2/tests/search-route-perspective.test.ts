@@ -8,10 +8,20 @@ describe('search route perspective wiring', () => {
   it('threads the route blog perspective into the search request payload', () => {
     const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
 
-    expect(src).toContain("import { getBlogNameFromPath, getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';");
+    expect(src).toContain("import { buildPageUrl, getBlogNameFromPath, getPrimaryBlogName, getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';");
     expect(src).toContain('perspective_blog_name');
     expect(src).toContain('const routePerspectiveBlog = getBlogNameFromPath();');
     expect(src).toContain('perspective_blog_name: routePerspectiveBlog || undefined');
     expect(src).toContain('tag_name: this.query');
+  });
+
+  it('shows a for-you teaser group on empty search state', () => {
+    const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+
+    expect(src).toContain('void this.loadTeasers();');
+    expect(src).toContain("getRecommendedPostsForUser(subjectBlog, 6)");
+    expect(src).toContain(".title=${'For You'}");
+    expect(src).toContain("A teaser of personalized results while you refine your search.");
+    expect(src).toContain(".actionHref=${buildPageUrl('for', getBlogNameFromPath() || getPrimaryBlogName() || '')}");
   });
 });
