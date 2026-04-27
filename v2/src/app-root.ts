@@ -62,6 +62,8 @@ export class AppRoot extends LitElement {
     { path: '/', render: () => html`<view-home></view-home>` },
     { path: '/search', render: () => html`<view-search></view-search>` },
     { path: '/search/for/:blogname', render: () => html`<view-search></view-search>` },
+    { path: '/for/you', render: () => html`<view-discover .blog=${this.resolveRouteBlogName('you')}></view-discover>` },
+    { path: '/for/:blogname', render: ({ blogname }) => html`<view-discover .blog=${this.resolveRouteBlogName(blogname || '')}></view-discover>` },
     { path: '/blogs*', render: () => html`<view-blogs></view-blogs>` },
     { path: '/discover*', render: () => html`<view-discover></view-discover>` },
     { path: '/post/:postId', render: ({ postId }) => html`<view-post .postId=${postId}></view-post>` },

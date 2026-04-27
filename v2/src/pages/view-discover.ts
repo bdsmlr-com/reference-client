@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { recService, materializeRecommendedPosts, type RecResult } from '../services/recommendation-api.js';
 import { getPrimaryBlogName } from '../services/blog-resolver.js';
@@ -25,6 +25,7 @@ export class ViewDiscover extends LitElement {
     `
   ];
 
+  @property({ type: String }) blog = '';
   @state() private recommendedPosts: ProcessedPost[] = [];
   @state() private recommendedBlogs: RecResult[] = [];
   @state() private usingCanonicalPosts = false;
@@ -40,7 +41,7 @@ export class ViewDiscover extends LitElement {
     this.usingCanonicalPosts = false;
     this.recommendedPosts = [];
     this.recommendedBlogs = [];
-    const blogName = getPrimaryBlogName() || 'LittleWays';
+    const blogName = this.blog || getPrimaryBlogName() || 'LittleWays';
     try {
       const response = await recService.getRecommendedPostsForUser(blogName, 12);
       if (Array.isArray(response.posts)) {
