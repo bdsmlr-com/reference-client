@@ -35,6 +35,7 @@ import './blog-identity.js';
 
 type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social' | 'posts';
 const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'staging@unknown/unknown';
+const SHOW_SCOPED_NAV_IN_SHARED_NAV = false;
 
 @customElement('shared-nav')
 export class SharedNav extends LitElement {
@@ -772,24 +773,28 @@ export class SharedNav extends LitElement {
               `;
             })}
           </div>
-          <div class="nav-group" aria-label="Blog navigation">
-            ${blogScopedPages.map((page) => {
-              const href = this.getPageUrl(page.name);
-              return html`
-                <a
-                  href=${href}
-                  class="nav-link ${activePage === page.name ? 'active' : ''}"
-                  title=${page.description}
-                  aria-current=${activePage === page.name ? 'page' : 'false'}
-                  @click=${(e: Event) => this.handleNavLinkClick(e, href)}
-                >
-                  ${page.label}
-                </a>
-              `;
-            })}
-          </div>
+          ${SHOW_SCOPED_NAV_IN_SHARED_NAV
+            ? html`
+                <div class="nav-group" aria-label="Blog navigation">
+                  ${blogScopedPages.map((page) => {
+                    const href = this.getPageUrl(page.name);
+                    return html`
+                      <a
+                        href=${href}
+                        class="nav-link ${activePage === page.name ? 'active' : ''}"
+                        title=${page.description}
+                        aria-current=${activePage === page.name ? 'page' : 'false'}
+                        @click=${(e: Event) => this.handleNavLinkClick(e, href)}
+                      >
+                        ${page.label}
+                      </a>
+                    `;
+                  })}
+                </div>
+              `
+            : ''}
         </nav>
-        ${showViewingIndicator
+        ${SHOW_SCOPED_NAV_IN_SHARED_NAV && showViewingIndicator
           ? html`
               <span class="viewing-indicator" title="You're viewing another blog - blog navigation stays on the viewed blog">
                 <span aria-hidden="true">👁️</span>

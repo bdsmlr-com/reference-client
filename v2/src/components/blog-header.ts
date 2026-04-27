@@ -10,6 +10,7 @@ import { resolveLink } from '../services/link-resolver.js';
 import './blog-identity.js';
 
 type PageName = 'archive' | 'timeline' | 'social' | 'following' | 'activity';
+const SHOW_SCOPED_NAV_IN_BLOG_HEADER = true;
 
 /**
  * Unified blog header component (UX-001b).
@@ -45,6 +46,35 @@ export class BlogHeader extends LitElement {
         gap: ${SPACING.SM}px;
         padding: ${SPACING.SM}px ${SPACING.LG}px;
         flex-wrap: wrap;
+      }
+
+      .scoped-nav {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: ${SPACING.XS}px;
+      }
+
+      .scoped-nav-link {
+        padding: 6px 10px;
+        border-radius: 4px;
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+      }
+
+      .scoped-nav-link:hover {
+        background: var(--bg-panel-alt);
+        color: var(--text-primary);
+        text-decoration: none;
+      }
+
+      .scoped-nav-link.active {
+        background: var(--accent);
+        color: #fff;
       }
 
       /* Blog selector pill - the primary element */
@@ -403,6 +433,14 @@ export class BlogHeader extends LitElement {
     this.inputValue = input.value;
   }
 
+  private getScopedPageUrl(page: 'activity' | 'archive' | 'social'): string {
+    const targetBlog = this.blogName || this.primaryBlog;
+    if (!targetBlog) {
+      return '/';
+    }
+    return buildPageUrl(page, targetBlog);
+  }
+
   render() {
     // Don't render if no blog name
     if (!this.blogName) {
@@ -410,98 +448,123 @@ export class BlogHeader extends LitElement {
     }
 
     const isOwnBlog = !this.isViewingDifferent;
+    const navPages = [
+      { name: 'activity' as const, label: 'Activity' },
+      { name: 'archive' as const, label: 'Archive' },
+      { name: 'social' as const, label: 'Connections' },
+    ];
+    const activePage = this.page === 'timeline' ? 'activity' : this.page;
 
     return html`
-      <div class="header-container" role="region" aria-label="Blog header">
-        ${this.editing
-          ? html`
-              <div class="edit-container">
-                <input
-                  type="text"
-                  class="blog-input"
-                  .value=${this.inputValue}
-                  @input=${this.handleInput}
-                  @keydown=${this.handleKeydown}
-                  placeholder="Enter blog name..."
-                  aria-label="Blog name"
-                />
+      <div role="region" aria-label="Blog header">
+        <div class="header-container">
+          ${this.editing
+            ? html`
+                <div class="edit-container">
+                  <input
+                    type="text"
+                    class="blog-input"
+                    .value=${this.inputValue}
+                    @input=${this.handleInput}
+                    @keydown=${this.handleKeydown}
+                    placeholder="Enter blog name..."
+                    aria-label="Blog name"
+                  />
+                  <button
+                    class="btn btn-primary"
+                    @click=${this.navigateToBlog}
+                    aria-label="Go to blog"
+                  >
+                    Go
+                  </button>
+                  <button
+                    class="btn btn-secondary"
+                    @click=${this.cancelEdit}
+                    aria-label="Cancel editing"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              `
+            : html`
+                <!-- Blog selector pill -->
                 <button
-                  class="btn btn-primary"
-                  @click=${this.navigateToBlog}
-                  aria-label="Go to blog"
+                  class="blog-selector"
+                  @click=${this.enterEditMode}
+                  @keydown=${this.handleSelectorKeydown}
+                  role="button"
+                  aria-expanded=${this.editing}
+                  aria-haspopup="dialog"
+                  aria-label="Blog: ${this.blogName}. Click to change."
+                  title=${this.blogTitle || `@${this.blogName}`}
                 >
-                  Go
+                  <blog-identity
+                    variant="header"
+                    .blogName=${this.blogName}
+                    .blogTitle=${this.blogTitle}
+                    .blogDescription=${this.blogDescription}
+                    .avatarUrl=${this.avatarUrl}
+                  ></blog-identity>
+                  <span class="chevron" aria-hidden="true">&#9662;</span>
                 </button>
-                <button
-                  class="btn btn-secondary"
-                  @click=${this.cancelEdit}
-                  aria-label="Cancel editing"
-                >
-                  Cancel
-                </button>
-              </div>
-            `
-          : html`
-              <!-- Blog selector pill -->
-              <button
-                class="blog-selector"
-                @click=${this.enterEditMode}
-                @keydown=${this.handleSelectorKeydown}
-                role="button"
-                aria-expanded=${this.editing}
-                aria-haspopup="dialog"
-                aria-label="Blog: ${this.blogName}. Click to change."
-                title=${this.blogTitle || `@${this.blogName}`}
-              >
-                <blog-identity
-                  variant="header"
-                  .blogName=${this.blogName}
-                  .blogTitle=${this.blogTitle}
-                  .blogDescription=${this.blogDescription}
-                  .avatarUrl=${this.avatarUrl}
-                ></blog-identity>
-                <span class="chevron" aria-hidden="true">&#9662;</span>
-              </button>
 
-              <!-- Secondary row: Context badge, actions, and external link -->
-              <div class="secondary-row">
-                ${isOwnBlog
-                  ? html`
-                      <span
-                        class="context-badge own"
-                        aria-label="This is your primary blog"
-                      >
-                        Your blog
-                      </span>
-                    `
-                  : html`
-                      <span
-                        class="context-badge other"
-                        aria-label="Viewing another blog"
-                      >
-                        <span aria-hidden="true">&#128065;</span>
-                        Viewing
-                      </span>
-                      <button
-                        class="return-action"
-                        @click=${this.resetToPrimary}
-                        aria-label="Return to your blog: ${this.primaryBlog}"
-                      >
-                        &larr; Back to @${this.primaryBlog}
-                      </button>
-                    `}
-                <!-- External link -->
-                <a
-                  class="external-link"
-                  href=${this.externalBlogLink.href}
-                  target=${this.externalBlogLink.target}
-                  rel=${this.externalBlogLink.rel}
-                  aria-label=${this.externalBlogLink.title || `Visit ${this.blogName}'s blog on BDSMLR (opens in new tab)`}
-                >
-                  ${this.externalBlogLink.label || 'Visit'} ${this.externalBlogLink.icon || '→'}
-                </a>
-              </div>
-            `}
+                <!-- Secondary row: Context badge, actions, and external link -->
+                <div class="secondary-row">
+                  ${isOwnBlog
+                    ? html`
+                        <span
+                          class="context-badge own"
+                          aria-label="This is your primary blog"
+                        >
+                          Your blog
+                        </span>
+                      `
+                    : html`
+                        <span
+                          class="context-badge other"
+                          aria-label="Viewing another blog"
+                        >
+                          <span aria-hidden="true">&#128065;</span>
+                          Viewing
+                        </span>
+                        <button
+                          class="return-action"
+                          @click=${this.resetToPrimary}
+                          aria-label="Return to your blog: ${this.primaryBlog}"
+                        >
+                          &larr; Back to @${this.primaryBlog}
+                        </button>
+                      `}
+                  <!-- External link -->
+                  <a
+                    class="external-link"
+                    href=${this.externalBlogLink.href}
+                    target=${this.externalBlogLink.target}
+                    rel=${this.externalBlogLink.rel}
+                    aria-label=${this.externalBlogLink.title || `Visit ${this.blogName}'s blog on BDSMLR (opens in new tab)`}
+                  >
+                    ${this.externalBlogLink.label || 'Visit'} ${this.externalBlogLink.icon || '→'}
+                  </a>
+                </div>
+              `}
+        </div>
+        ${SHOW_SCOPED_NAV_IN_BLOG_HEADER
+          ? html`
+              <nav class="scoped-nav" aria-label="Blog page navigation">
+                ${navPages.map((page) => {
+                  const href = this.getScopedPageUrl(page.name);
+                  return html`
+                    <a
+                      class="scoped-nav-link ${activePage === page.name ? 'active' : ''}"
+                      href=${href}
+                    >
+                      ${page.label}
+                    </a>
+                  `;
+                })}
+              </nav>
+            `
+          : ''}
       </div>
     `;
   }
