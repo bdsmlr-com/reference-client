@@ -212,9 +212,11 @@ export class AppRoot extends LitElement {
     const isAdmin = isAdminMode();
     let currentPage: any = 'home';
     if (pathname.includes('/activity')) currentPage = 'timeline';
+    else if (pathname.includes('/follower-feed')) currentPage = 'follower-feed';
     else if (pathname.includes('/feed')) currentPage = 'following';
     else if (pathname.includes('/archive')) currentPage = 'archive';
     else if (pathname.includes('/search')) currentPage = 'search';
+    else if (pathname.startsWith('/for/')) currentPage = 'blogs';
     else if (pathname.includes('/blogs')) currentPage = 'blogs';
     else if (pathname.includes('/social')) currentPage = 'social';
     else if (pathname.includes('/settings')) currentPage = 'settings';

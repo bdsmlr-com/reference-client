@@ -33,7 +33,7 @@ import { logout as legacyLogout, login as legacyLogin } from '../services/auth-s
 import { normalizeAvatarUrl } from '../services/avatar-url.js';
 import './blog-identity.js';
 
-type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'social' | 'posts';
+type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'follower-feed' | 'social' | 'posts';
 const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'staging@unknown/unknown';
 
 @customElement('shared-nav')
@@ -451,7 +451,7 @@ export class SharedNav extends LitElement {
 
   private getPageUrl(page: string): string {
     const activeBlog = this.currentUsername || getPrimaryBlogName() || getViewedBlogName();
-    const blogPages = ['archive', 'posts', 'feed', 'social'];
+    const blogPages = ['archive', 'posts', 'feed', 'follower-feed', 'social'];
     if (page === 'activity') {
       if (activeBlog) return buildPageUrl('activity', activeBlog);
       // Never emit bare /activity (invalid route). Fall back to home.
@@ -731,7 +731,10 @@ export class SharedNav extends LitElement {
 
     const viewedBlog = getViewedBlogName();
     const showViewingIndicator = this.isViewingDifferentBlog();
-    const activePage = this.currentPage === 'following' ? '' : (this.currentPage === 'timeline' ? 'activity' : this.currentPage);
+    const activePage =
+      this.currentPage === 'following' || this.currentPage === 'follower-feed'
+        ? ''
+        : (this.currentPage === 'timeline' ? 'activity' : this.currentPage);
     const loggedIn = isLoggedIn();
     const profileToggleLabel = loggedIn ? '' : 'Log in';
     const profileInitial = (this.currentUsername || 'u').charAt(0).toUpperCase();

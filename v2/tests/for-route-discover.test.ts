@@ -12,6 +12,7 @@ describe('for-you discover routes', () => {
     expect(src).toContain("<view-discover .blog=${this.resolveRouteBlogName('you')}></view-discover>");
     expect(src).toContain("path: '/for/:blogname'");
     expect(src).toContain("<view-discover .blog=${this.resolveRouteBlogName(blogname || '')}></view-discover>");
+    expect(src).toContain("else if (pathname.startsWith('/for/')) currentPage = 'blogs';");
   });
 
   it('uses the routed blog perspective instead of always falling back to the primary blog', () => {

@@ -59,6 +59,8 @@ describe('shared-nav profile/settings behavior', () => {
 
     expect(src).toContain("const page = this.currentPage === 'timeline' ? 'activity' : this.currentPage;");
     expect(src).toContain('const url = buildPageUrl(page, primaryBlog);');
+    expect(src).toContain("const blogPages = ['archive', 'posts', 'feed', 'follower-feed', 'social'];");
+    expect(src).toContain("this.currentPage === 'following' || this.currentPage === 'follower-feed'");
   });
 
   it('keeps settings menu open while interacting with sort select controls', () => {
