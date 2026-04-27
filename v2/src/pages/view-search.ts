@@ -3,7 +3,7 @@ import { customElement, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
-import { getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';
+import { getBlogNameFromPath, getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
   generatePaginationCursorKey,
@@ -335,10 +335,12 @@ export class ViewSearch extends LitElement {
   private async fillPage(searchToken: number = this.activeSearchToken, signature: string = this.currentSearchSignature): Promise<void> {
     this.loading = true;
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
+    const routePerspectiveBlog = getBlogNameFromPath();
 
     try {
       const resp = await apiClient.posts.searchCached({
         tag_name: this.query,
+        perspective_blog_name: routePerspectiveBlog || undefined,
         sort_field: sortOpt.field as PostSortField,
         order: sortOpt.order as Order,
         post_types: this.selectedTypes,

@@ -223,6 +223,7 @@ export interface SearchPostsByTagRequest {
   blocked_blog_ids?: number[];
   blocked_user_ids?: number[];
   variants?: PostVariant[];
+  perspective_blog_name?: string;
 }
 
 export interface ListBlogPostsRequest {

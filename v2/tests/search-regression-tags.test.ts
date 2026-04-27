@@ -45,4 +45,12 @@ describe('search regression and tag visibility', () => {
     expect(detailSrc).toContain('extractRenderableTags');
     expect(detailSrc).toContain('class="post-tags"');
   });
+
+  it('threads the search route perspective blog into the API request payload', () => {
+    const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+
+    expect(src).toContain("import { getBlogNameFromPath, getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';");
+    expect(src).toContain('const routePerspectiveBlog = getBlogNameFromPath();');
+    expect(src).toContain('perspective_blog_name: routePerspectiveBlog || undefined');
+  });
 });
