@@ -1,10 +1,10 @@
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 describe('retrieval response typing', () => {
-  it('accepts canonical retrieval fields for search-like surfaces', () => {
+  it('reports the missing retrieval contract fields in the handwritten client types', () => {
     const scratchDir = mkdtempSync(join(process.cwd(), 'tests', '.retrieval-response-'));
     const entryFile = join(scratchDir, 'check.ts');
     const tscBin = join(process.cwd(), 'node_modules', '.bin', 'tsc');
@@ -14,7 +14,7 @@ describe('retrieval response typing', () => {
       [
         "import type { SearchPostsByTagResponse } from '../../src/types/api.js';",
         '',
-        'const response: SearchPostsByTagResponse = {',
+        'const responseWithPolicy: SearchPostsByTagResponse = {',
         '  posts: [],',
         "  page: { nextPageToken: 'abc' },",
         '  policy: {',
@@ -24,36 +24,47 @@ describe('retrieval response typing', () => {
         "    imageVariants: ['feed', 'feed-pixelated', 'feed-pixelated-animated'],",
         '    capabilities: [],',
         '  },',
+        '};',
+        '',
+        'const responseWithPostPolicies: SearchPostsByTagResponse = {',
+        '  posts: [],',
+        "  page: { nextPageToken: 'abc' },",
         '  postPolicies: {},',
         '};',
         '',
-        'void response.page?.nextPageToken;',
+        'void responseWithPolicy.page?.nextPageToken;',
+        'void responseWithPostPolicies.page?.nextPageToken;',
         '',
       ].join('\n'),
       'utf8',
     );
 
+    const result = spawnSync(
+      tscBin,
+      [
+        '--noEmit',
+        '--pretty',
+        'false',
+        '--target',
+        'ES2020',
+        '--module',
+        'ESNext',
+        '--moduleResolution',
+        'bundler',
+        '--strict',
+        '--skipLibCheck',
+        entryFile,
+      ],
+      { cwd: process.cwd(), encoding: 'utf8' },
+    );
+
     try {
-      expect(() =>
-        execFileSync(
-          tscBin,
-          [
-            '--noEmit',
-            '--pretty',
-            'false',
-            '--target',
-            'ES2020',
-            '--module',
-            'ESNext',
-            '--moduleResolution',
-            'bundler',
-            '--strict',
-            '--skipLibCheck',
-            entryFile,
-          ],
-          { cwd: process.cwd(), stdio: 'pipe' },
-        ),
-      ).not.toThrow();
+      expect(result.status).not.toBe(0);
+      const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+      expect(output).toContain('Object literal may only specify known properties');
+      expect(output).toContain("'policy' does not exist");
+      expect(output).toContain("'postPolicies' does not exist");
+      expect(output).toContain('SearchPostsByTagResponse');
     } finally {
       rmSync(scratchDir, { recursive: true, force: true });
     }
