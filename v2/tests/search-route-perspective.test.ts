@@ -17,6 +17,16 @@ describe('search route perspective wiring', () => {
     expect(src).toContain('tag_name: this.query');
   });
 
+  it('does not force a saved sort preference into the URL when sort was implicit', () => {
+    const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+
+    expect(src).toContain('@state() private sortValue = \'newest\';');
+    expect(src).toContain('private sortExplicitInUrl = false;');
+    expect(src).toContain("this.sortExplicitInUrl = !!sort;");
+    expect(src).toContain("sort: this.sortExplicitInUrl ? this.sortValue : ''");
+    expect(src).toContain('this.sortExplicitInUrl = true;');
+  });
+
   it('shows a for-you teaser group on empty search state', () => {
     const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
 

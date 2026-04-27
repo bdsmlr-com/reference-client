@@ -182,6 +182,7 @@ export class ViewSearch extends LitElement {
   private paginationKey = '';
   private activeSearchToken = 0;
   private currentSearchSignature = '';
+  private sortExplicitInUrl = false;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -225,6 +226,7 @@ export class ViewSearch extends LitElement {
     const variants = getUrlParam('variants');
 
     if (q) this.query = q;
+    this.sortExplicitInUrl = !!sort;
     const resolvedSort = normalizeSortValue(sort || getSearchSortPreference());
     this.sortValue = resolvedSort;
     if (!sort) {
@@ -296,7 +298,7 @@ export class ViewSearch extends LitElement {
 
     const params: Record<string, string> = {
       q: this.query,
-      sort: this.sortValue,
+      sort: this.sortExplicitInUrl ? this.sortValue : '',
       types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','),
       variants: this.selectedVariants.length > 0 ? this.selectedVariants.join(',') : '',
     };
@@ -414,6 +416,7 @@ export class ViewSearch extends LitElement {
 
   private handleSortChange(e: CustomEvent): void {
     this.sortValue = e.detail.value;
+    this.sortExplicitInUrl = true;
     setSearchSortPreference(this.sortValue);
     if (this.hasSearched) {
       this.search();
