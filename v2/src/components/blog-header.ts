@@ -9,7 +9,7 @@ import { BREAKPOINTS, SPACING } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
 import './blog-identity.js';
 
-type PageName = 'archive' | 'timeline' | 'social' | 'following' | 'activity';
+type PageName = 'archive' | 'timeline' | 'social' | 'following' | 'feed' | 'activity';
 const SHOW_SCOPED_NAV_IN_BLOG_HEADER = true;
 
 /**
@@ -433,7 +433,7 @@ export class BlogHeader extends LitElement {
     this.inputValue = input.value;
   }
 
-  private getScopedPageUrl(page: 'activity' | 'archive' | 'social'): string {
+  private getScopedPageUrl(page: 'activity' | 'archive' | 'feed' | 'social'): string {
     const targetBlog = this.blogName || this.primaryBlog;
     if (!targetBlog) {
       return '/';
@@ -449,11 +449,15 @@ export class BlogHeader extends LitElement {
 
     const isOwnBlog = !this.isViewingDifferent;
     const navPages = [
+      { name: 'feed' as const, label: 'Feed' },
       { name: 'activity' as const, label: 'Activity' },
       { name: 'archive' as const, label: 'Archive' },
       { name: 'social' as const, label: 'Connections' },
     ];
-    const activePage = this.page === 'timeline' ? 'activity' : this.page;
+    const activePage =
+      this.page === 'timeline'
+        ? 'activity'
+        : (this.page === 'following' ? 'feed' : this.page);
 
     return html`
       <div role="region" aria-label="Blog header">

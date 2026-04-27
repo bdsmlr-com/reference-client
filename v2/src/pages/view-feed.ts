@@ -16,9 +16,9 @@ import {
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
-import { resolveLink } from '../services/link-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import '../components/activity-kind-pills.js';
+import '../components/blog-header.js';
 import '../components/timeline-stream.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
@@ -42,92 +42,6 @@ export class ViewFeed extends LitElement {
 
       .content {
         padding: 20px 0;
-      }
-
-      .blog-input-section {
-        max-width: 400px;
-        margin: 0 auto 16px;
-        padding: 0 16px;
-      }
-
-      .blog-input-section h2 {
-        font-size: 14px;
-        color: var(--text-primary);
-        margin: 0 0 8px;
-        text-align: center;
-      }
-
-      .input-row {
-        display: flex;
-        gap: 8px;
-      }
-
-      .blog-input-section input {
-        flex: 1;
-        padding: 8px 12px;
-        border-radius: 4px;
-        border: 1px solid var(--border);
-        background: var(--bg-panel);
-        color: var(--text-primary);
-        font-size: 14px;
-        min-height: 32px;
-      }
-
-      .blog-input-section input:focus {
-        outline: 2px solid var(--accent);
-        outline-offset: 1px;
-      }
-
-      .blog-input-section button {
-        padding: 8px 16px;
-        border-radius: 4px;
-        background: var(--accent);
-        color: white;
-        font-size: 14px;
-        min-height: 32px;
-        transition: background 0.2s;
-        white-space: nowrap;
-      }
-
-      .blog-input-section button:hover {
-        background: var(--accent-hover);
-      }
-
-      .blog-input-section button:disabled {
-        background: var(--text-muted);
-        cursor: wait;
-      }
-
-      .blog-info {
-        text-align: center;
-        margin-top: 12px;
-        color: var(--text-muted);
-        font-size: 14px;
-      }
-
-      .blog-info .name {
-        color: var(--accent);
-        font-weight: 600;
-      }
-
-      .blog-info a {
-        color: var(--accent);
-        text-decoration: none;
-      }
-
-      .blog-info a:hover {
-        text-decoration: underline;
-      }
-
-      .name-copy {
-        font-family: monospace;
-        font-size: 12px;
-        border: 1px solid var(--border);
-        background: var(--bg-panel-alt);
-        color: var(--text-muted);
-        border-radius: 6px;
-        padding: 2px 8px;
-        margin-left: 6px;
       }
 
       .filters-container {
@@ -155,11 +69,19 @@ export class ViewFeed extends LitElement {
         margin-bottom: 20px;
       }
 
-      @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE - 1)}px) {
-        .input-row {
-          flex-direction: column;
-        }
+      .feed-summary {
+        text-align: center;
+        color: var(--text-muted);
+        padding: 0 16px 12px;
+        font-size: 13px;
       }
+
+      .feed-summary strong {
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+
+      @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE - 1)}px) {}
     `,
   ];
 
@@ -596,21 +518,6 @@ export class ViewFeed extends LitElement {
     }
   }
 
-  private handleKeyPress(e: KeyboardEvent): void {
-    if (e.key === 'Enter') {
-      this.resolveBlog();
-    }
-  }
-
-  private async copyResolvedBlogName(): Promise<void> {
-    if (!this.resolvedBlogName) return;
-    try {
-      await navigator.clipboard.writeText(this.resolvedBlogName);
-    } catch {
-      // Ignore clipboard failures.
-    }
-  }
-
   private handleActivityKindsChange(e: CustomEvent): void {
     this.activityKinds = e.detail.kinds || ['post', 'reblog', 'like', 'comment'];
     setFollowingActivityKindsPreference(this.activityKinds);
@@ -622,42 +529,22 @@ export class ViewFeed extends LitElement {
   render() {
     return html`
       <div class="content">
-        ${(() => {
-          const followingLink = this.resolvedBlogName
-            ? resolveLink('feed_following_list', { blog: this.resolvedBlogName })
-            : null;
-          return html`
-        <div class="blog-input-section">
-          <h2>View posts from blogs followed by:</h2>
-          <div class="input-row">
-            <input
-              type="text"
-              placeholder="Enter blog name..."
-              .value=${this.blogNameInput}
-              @input=${(e: Event) => (this.blogNameInput = (e.target as HTMLInputElement).value)}
-              @keypress=${this.handleKeyPress}
-            />
-            <button ?disabled=${this.resolving} @click=${() => this.resolveBlog()}>
-              ${this.resolving ? 'Loading...' : 'Load'}
-            </button>
-          </div>
+        <blog-header
+          page="feed"
+          .blogName=${this.resolvedBlogName || this.blogNameInput.trim().replace(/^@/, '')}
+          .blogTitle=${this.blogData?.title || ''}
+          .blogDescription=${this.blogData?.description || ''}
+          .avatarUrl=${this.blogData?.avatarUrl || ''}
+        ></blog-header>
 
-          ${this.resolvedBlogName && this.followingBlogIds.length > 0
-            ? html`
-                <div class="blog-info">
-                  ${this.blogData?.title ? html`<div style="margin-bottom: 4px;">${this.blogData.title}</div>` : ''}
-                  Showing posts from
-                  ${followingLink
-                    ? html`<a href=${followingLink.href} target=${followingLink.target} rel=${followingLink.rel || ''}>${this.followingCount} blogs followed</a>`
-                    : html`${this.followingCount} blogs followed`}
-                  by
-                  <button class="name-copy" type="button" @click=${this.copyResolvedBlogName}>${this.resolvedBlogName}</button>
-                </div>
-              `
-            : ''}
-        </div>
-      `;
-        })()}
+        ${this.resolvedBlogName && this.followingCount > 0
+          ? html`
+              <div class="feed-summary">
+                Posts from <strong>${this.followingCount}</strong> blogs followed by
+                <strong>@${this.resolvedBlogName}</strong>
+              </div>
+            `
+          : ''}
 
         ${this.resolving && !this.errorMessage
           ? html`<loading-spinner message="Loading..." trackTime></loading-spinner>`
