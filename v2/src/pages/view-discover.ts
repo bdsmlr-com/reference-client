@@ -1,8 +1,10 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { recService, type RecResult } from '../services/recommendation-api.js';
+import { recService, materializeRecommendedPosts, type RecResult } from '../services/recommendation-api.js';
 import { getPrimaryBlogName } from '../services/blog-resolver.js';
+import type { ProcessedPost } from '../types/post.js';
+import '../components/post-grid.js';
 import '../components/blog-card.js';
 import '../components/loading-spinner.js';
 
@@ -23,7 +25,9 @@ export class ViewDiscover extends LitElement {
     `
   ];
 
+  @state() private recommendedPosts: ProcessedPost[] = [];
   @state() private recommendedBlogs: RecResult[] = [];
+  @state() private usingCanonicalPosts = false;
   @state() private loading = true;
 
   async connectedCallback() {
@@ -33,9 +37,18 @@ export class ViewDiscover extends LitElement {
 
   async loadRecommendations() {
     this.loading = true;
+    this.usingCanonicalPosts = false;
+    this.recommendedPosts = [];
+    this.recommendedBlogs = [];
     const blogName = getPrimaryBlogName() || 'LittleWays';
     try {
-      // Fetch both similar to current and generic recs if possible
+      const response = await recService.getRecommendedPostsForUser(blogName, 12);
+      if (Array.isArray(response.posts)) {
+        this.usingCanonicalPosts = true;
+        this.recommendedPosts = materializeRecommendedPosts(response);
+        return;
+      }
+
       this.recommendedBlogs = await recService.getRecommendedBlogsForUser(blogName, 12);
     } catch (e) {
       console.error(e);
@@ -46,6 +59,16 @@ export class ViewDiscover extends LitElement {
 
   render() {
     if (this.loading) return html`<loading-spinner></loading-spinner>`;
+
+    if (this.usingCanonicalPosts) {
+      return html`
+        <div class="section">
+          <h2>For You</h2>
+          <p class="text-muted">Recommended posts based on your activity and interests.</p>
+          <post-grid .posts=${this.recommendedPosts} .page=${'social'}></post-grid>
+        </div>
+      `;
+    }
 
     return html`
       <div class="section">

@@ -3,8 +3,9 @@
  * Maps underscore names to hyphen names for compatibility with main API.
  */
 
+import { extractMedia, type ProcessedPost } from '../types/post.js';
 import type { Post } from '../types/api.js';
-import type { RetrievalPostPolicyMap } from './retrieval-presentation.js';
+import { applyRetrievalPostPolicies, type RetrievalPostPolicyMap } from './retrieval-presentation.js';
 
 export interface RecResult {
   user_id?: string;
@@ -43,6 +44,20 @@ const API_BASE = '/api/recs';
 function normalizeName(name: string | undefined): string {
   if (!name) return '';
   return name.replace(/_/g, '-');
+}
+
+export function materializeRecommendedPosts(response: SimilarPostsResponse): ProcessedPost[] {
+  if (!Array.isArray(response.posts) || response.posts.length === 0) {
+    return [];
+  }
+
+  const posts = response.posts.map((post) => {
+    const processed = { ...post } as ProcessedPost;
+    processed._media = extractMedia(processed);
+    return processed;
+  });
+
+  return applyRetrievalPostPolicies(posts, response.postPolicies);
 }
 
 export const recService = {
@@ -86,13 +101,24 @@ export const recService = {
     };
   },
 
-  async getRecommendedPostsForUser(userId: string, limit = 10, offset = 0): Promise<RecResult[]> {
+  async getRecommendedPostsForUser(userId: string, limit = 10, offset = 0): Promise<SimilarPostsResponse> {
     const res = await fetch(`${API_BASE}/recommendations/posts/${encodeURIComponent(userId)}?limit=${limit}&offset=${offset}`);
-    const data: RecResponse = await res.json();
+    const data: SimilarPostsResponse = await res.json();
+    if (Array.isArray(data.posts)) {
+      return data;
+    }
+
     const items = data.recommendations || [];
-    return items.map(item => ({
-      ...item,
-      post_owner: normalizeName(item.post_owner)
-    }));
+    return {
+      ...data,
+      recommendations: items.map(item => ({
+        ...item,
+        post_owner: normalizeName(item.post_owner)
+      })),
+      similar_posts: (data.similar_posts || items).map(item => ({
+        ...item,
+        post_owner: normalizeName(item.post_owner)
+      })),
+    };
   }
 };
