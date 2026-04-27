@@ -21,6 +21,8 @@ describe('settings route pages', () => {
     const src = readFileSync(join(ROOT, 'components/shared-nav.ts'), 'utf8');
 
     expect(src).toContain("href=\"/settings/you\"");
+    expect(src).toContain("href=\"/for/you\"");
+    expect(src).toContain("buildPageUrl('follower-feed'");
     expect(src).toContain('>Settings</a>');
   });
 

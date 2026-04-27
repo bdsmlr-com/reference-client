@@ -634,6 +634,10 @@ export class SharedNav extends LitElement {
                 .blogTitle=${this.profileBlogTitle ?? ''}
                 .avatarUrl=${this.profileAvatarUrl ?? ''}
               ></blog-identity>
+              <div class="menu-section-title">Routes</div>
+              <a class="menu-button" href="/for/you">For you</a>
+              <a class="menu-button" href=${buildPageUrl('feed', this.currentUsername || getPrimaryBlogName() || getViewedBlogName() || '')}>Feed</a>
+              <a class="menu-button" href=${buildPageUrl('follower-feed', this.currentUsername || getPrimaryBlogName() || getViewedBlogName() || '')}>Follower Feed</a>
               <div class="menu-section-title">Settings</div>
               <a class="menu-button" href="/settings/you">Settings</a>
               ${this.blogs && this.blogs.length > 1
