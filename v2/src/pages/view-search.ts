@@ -357,11 +357,13 @@ export class ViewSearch extends LitElement {
     this.loading = true;
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
     const routePerspectiveBlog = getBlogNameFromPath();
+    const explicitSort = !!getUrlParam('sort');
+    const perspectiveBlogName = explicitSort ? undefined : (routePerspectiveBlog || undefined);
 
     try {
       const resp = await apiClient.posts.searchCached({
         tag_name: this.query,
-        perspective_blog_name: routePerspectiveBlog || undefined,
+        perspective_blog_name: perspectiveBlogName,
         sort_field: sortOpt.field as PostSortField,
         order: sortOpt.order as Order,
         post_types: this.selectedTypes,

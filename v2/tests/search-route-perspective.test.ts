@@ -11,7 +11,9 @@ describe('search route perspective wiring', () => {
     expect(src).toContain("import { buildPageUrl, getBlogNameFromPath, getPrimaryBlogName, getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';");
     expect(src).toContain('perspective_blog_name');
     expect(src).toContain('const routePerspectiveBlog = getBlogNameFromPath();');
-    expect(src).toContain('perspective_blog_name: routePerspectiveBlog || undefined');
+    expect(src).toContain("const explicitSort = !!getUrlParam('sort');");
+    expect(src).toContain('const perspectiveBlogName = explicitSort ? undefined : (routePerspectiveBlog || undefined);');
+    expect(src).toContain('perspective_blog_name: perspectiveBlogName');
     expect(src).toContain('tag_name: this.query');
   });
 
