@@ -23,6 +23,16 @@ describe('post related routes', () => {
     expect(recommendationsSrc).toContain('@property({ type: String }) perspectiveBlogName = \'\'');
   });
 
+  it('related page renders perspective tabs for default, you, and blog-scoped variants', () => {
+    const pageSrc = readFileSync(join(ROOT, 'pages/view-post-related.ts'), 'utf8');
+
+    expect(pageSrc).toContain("label: 'More like this'");
+    expect(pageSrc).toContain("add(activeBlog || undefined, 'For you');");
+    expect(pageSrc).toContain('add(this.seedPost?.originBlogName');
+    expect(pageSrc).toContain('add(this.seedPost?.blogName');
+    expect(pageSrc).toContain('apiClient.posts.get(id)');
+  });
+
   it('recommendation API forwards perspective blog name when provided', () => {
     const apiSrc = readFileSync(join(ROOT, 'services/recommendation-api.ts'), 'utf8');
 
