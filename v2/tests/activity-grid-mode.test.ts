@@ -48,14 +48,19 @@ describe('gallery mode wiring', () => {
     expect(src).not.toContain(":host([mode='masonry']) {\n        display: block;\n        columns:");
   });
 
-  it('archive and search views pass persisted gallery mode into activity-grid', () => {
+  it('archive/search/discover views pass persisted gallery mode into their result grids', () => {
     const archiveSrc = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
     const searchSrc = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+    const discoverSrc = readFileSync(join(ROOT, 'pages/view-discover.ts'), 'utf8');
+    const postGridSrc = readFileSync(join(ROOT, 'components/post-grid.ts'), 'utf8');
 
     expect(archiveSrc).toContain('.mode=${this.galleryMode}');
     expect(searchSrc).toContain('.mode=${this.galleryMode}');
+    expect(discoverSrc).toContain('.mode=${this.galleryMode}');
     expect(archiveSrc).toContain("getGalleryMode()")
     expect(searchSrc).toContain("getGalleryMode()")
+    expect(discoverSrc).toContain("getGalleryMode()")
+    expect(postGridSrc).toContain("@property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';");
   });
 
   it('activity cards use origin-aware blog chip logic for like/comment/reblog interactions', () => {

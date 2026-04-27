@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { recService, materializeRecommendedPosts, type RecResult } from '../services/recommendation-api.js';
 import { buildPageUrl, getPrimaryBlogName } from '../services/blog-resolver.js';
+import { getGalleryMode, PROFILE_EVENTS, type GalleryMode } from '../services/profile.js';
 import type { ProcessedPost } from '../types/post.js';
 import '../components/post-grid.js';
 import '../components/blog-card.js';
@@ -31,11 +32,22 @@ export class ViewDiscover extends LitElement {
   @state() private recommendedBlogs: RecResult[] = [];
   @state() private usingCanonicalPosts = false;
   @state() private loading = true;
+  @state() private galleryMode: GalleryMode = getGalleryMode();
 
   async connectedCallback() {
     super.connectedCallback();
+    window.addEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
     await this.loadRecommendations();
   }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
+  }
+
+  private handleGalleryModeChanged = (): void => {
+    this.galleryMode = getGalleryMode();
+  };
 
   async loadRecommendations() {
     this.loading = true;
@@ -64,17 +76,23 @@ export class ViewDiscover extends LitElement {
 
     if (this.usingCanonicalPosts) {
       const subjectBlog = this.blog || getPrimaryBlogName() || '';
+      const primaryBlog = getPrimaryBlogName() || '';
+      const isPrimaryPerspective = !!subjectBlog && subjectBlog === primaryBlog;
+      const title = isPrimaryPerspective ? 'For You' : `For @${subjectBlog}`;
+      const description = isPrimaryPerspective
+        ? 'Recommended posts based on your activity and interests.'
+        : `Recommended posts for the perspective of @${subjectBlog}.`;
       const targetHref = subjectBlog ? buildPageUrl('for', subjectBlog) : '';
       return html`
         <result-group
           wide
           bare
-          .title=${'For You'}
-          .description=${'Recommended posts based on your activity and interests.'}
+          .title=${title}
+          .description=${description}
           .actionHref=${window.location.pathname === targetHref ? '' : targetHref}
           .actionLabel=${'See more'}
         >
-          <post-grid .posts=${this.recommendedPosts} .page=${'social'}></post-grid>
+          <post-grid .posts=${this.recommendedPosts} .page=${'search'} .mode=${this.galleryMode}></post-grid>
         </result-group>
       `;
     }

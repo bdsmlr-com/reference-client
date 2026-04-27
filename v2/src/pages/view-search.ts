@@ -512,7 +512,7 @@ export class ViewSearch extends LitElement {
                       .actionHref=${buildPageUrl('for', getBlogNameFromPath() || getPrimaryBlogName() || '')}
                       .actionLabel=${'See more'}
                     >
-                      <post-grid .posts=${this.teaserPosts} .page=${'search'}></post-grid>
+                      <post-grid .posts=${this.teaserPosts} .page=${'search'} .mode=${this.galleryMode}></post-grid>
                     </result-group>
                   `
                 : this.teaserLoading

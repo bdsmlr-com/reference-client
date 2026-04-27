@@ -9,10 +9,12 @@ describe('result-group teaser consumers', () => {
     const src = readFileSync(join(ROOT, 'pages/view-discover.ts'), 'utf8');
 
     expect(src).toContain('<result-group');
-    expect(src).toContain(".title=${'For You'}");
+    expect(src).toContain('.title=${title}');
+    expect(src).toContain('.description=${description}');
     expect(src).toContain("const targetHref = subjectBlog ? buildPageUrl('for', subjectBlog) : '';");
     expect(src).toContain("window.location.pathname === targetHref ? '' : targetHref");
     expect(src).toContain(".actionLabel=${'See more'}");
+    expect(src).toContain(".mode=${this.galleryMode}");
   });
 
   it('related page uses result-group as the outer shell around recommendation results', () => {

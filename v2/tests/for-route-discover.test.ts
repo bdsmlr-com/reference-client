@@ -24,5 +24,7 @@ describe('for-you discover routes', () => {
     expect(src).toContain("@property({ type: String }) blog = '';");
     expect(src).toContain('const blogName = this.blog || getPrimaryBlogName() ||');
     expect(src).toContain('getRecommendedPostsForUser(blogName, 12)');
+    expect(src).toContain('const isPrimaryPerspective = !!subjectBlog && subjectBlog === primaryBlog;');
+    expect(src).toContain("const title = isPrimaryPerspective ? 'For You' : `For @${subjectBlog}`;");
   });
 });

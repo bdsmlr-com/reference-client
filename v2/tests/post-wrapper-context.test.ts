@@ -12,10 +12,13 @@ describe('post wrapper context', () => {
     expect(src).toContain('<post-feed-item .post=${post} .page=${this.page} @post-select=${this.handlePostSelect}></post-feed-item>');
   });
 
-  it('post-grid forwards explicit page context into post-card', () => {
+  it('post-grid forwards explicit mode and re-emits post-click through activity-grid', () => {
     const src = readFileSync(join(ROOT, 'post-grid.ts'), 'utf8');
 
     expect(src).toContain("@property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'archive';");
-    expect(src).toContain('<post-card .post=${post} .page=${this.page} @post-select=${this.handlePostSelect}></post-card>');
+    expect(src).toContain("@property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';");
+    expect(src).toContain('<activity-grid');
+    expect(src).toContain('.mode=${this.mode}');
+    expect(src).toContain("@activity-click=${this.handleActivityClick}");
   });
 });
