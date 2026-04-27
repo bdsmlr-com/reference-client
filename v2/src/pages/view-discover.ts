@@ -4,14 +4,18 @@ import { baseStyles } from '../styles/theme.js';
 import { recService, materializeRecommendedPosts, type RecResult } from '../services/recommendation-api.js';
 import { buildPageUrl, getPrimaryBlogName } from '../services/blog-resolver.js';
 import { getGalleryMode, PROFILE_EVENTS, type GalleryMode } from '../services/profile.js';
+import { scrollObserver } from '../services/scroll-observer.js';
 import type { ProcessedPost } from '../types/post.js';
 import '../components/post-grid.js';
 import '../components/blog-card.js';
 import '../components/loading-spinner.js';
+import '../components/load-footer.js';
 import '../components/result-group.js';
 
 @customElement('view-discover')
 export class ViewDiscover extends LitElement {
+  private static readonly PAGE_SIZE = 24;
+
   static styles = [
     baseStyles,
     css`
@@ -31,39 +35,83 @@ export class ViewDiscover extends LitElement {
   @state() private recommendedPosts: ProcessedPost[] = [];
   @state() private recommendedBlogs: RecResult[] = [];
   @state() private usingCanonicalPosts = false;
-  @state() private loading = true;
+  @state() private loading = false;
   @state() private galleryMode: GalleryMode = getGalleryMode();
+  @state() private exhausted = false;
+  @state() private infiniteScroll = false;
+  @state() private nextOffset = 0;
 
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
-    await this.loadRecommendations();
+    await this.loadRecommendations(true);
+    this.observeSentinel();
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     window.removeEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
+    const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
+    if (sentinel) {
+      scrollObserver.unobserve(sentinel);
+    }
   }
 
   private handleGalleryModeChanged = (): void => {
     this.galleryMode = getGalleryMode();
   };
 
-  async loadRecommendations() {
+  protected updated(changed: Map<string, unknown>): void {
+    if (changed.has('blog')) {
+      void this.loadRecommendations(true);
+    }
+  }
+
+  private observeSentinel(): void {
+    requestAnimationFrame(() => {
+      const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
+      if (sentinel) {
+        scrollObserver.observe(sentinel, () => {
+          if (this.infiniteScroll && !this.loading && !this.exhausted && this.usingCanonicalPosts) {
+            void this.loadRecommendations(false);
+          }
+        });
+      }
+    });
+  }
+
+  private async loadRecommendations(reset: boolean) {
+    if (this.loading) return;
     this.loading = true;
-    this.usingCanonicalPosts = false;
-    this.recommendedPosts = [];
-    this.recommendedBlogs = [];
+    if (reset) {
+      this.usingCanonicalPosts = false;
+      this.recommendedPosts = [];
+      this.recommendedBlogs = [];
+      this.exhausted = false;
+      this.nextOffset = 0;
+    }
     const blogName = this.blog || getPrimaryBlogName() || 'LittleWays';
     try {
-      const response = await recService.getRecommendedPostsForUser(blogName, 12);
+      const response = await recService.getRecommendedPostsForUser(
+        blogName,
+        ViewDiscover.PAGE_SIZE,
+        this.nextOffset,
+      );
       if (Array.isArray(response.posts)) {
         this.usingCanonicalPosts = true;
-        this.recommendedPosts = materializeRecommendedPosts(response);
+        const newPosts = materializeRecommendedPosts(response);
+        this.recommendedPosts = reset ? newPosts : [...this.recommendedPosts, ...newPosts];
+        this.nextOffset += ViewDiscover.PAGE_SIZE;
+        if (newPosts.length < ViewDiscover.PAGE_SIZE || this.recommendedPosts.length >= 96) {
+          this.exhausted = true;
+        }
         return;
       }
 
-      this.recommendedBlogs = await recService.getRecommendedBlogsForUser(blogName, 12);
+      if (reset) {
+        this.recommendedBlogs = await recService.getRecommendedBlogsForUser(blogName, 12);
+        this.exhausted = true;
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -94,6 +142,20 @@ export class ViewDiscover extends LitElement {
         >
           <post-grid .posts=${this.recommendedPosts} .page=${'search'} .mode=${this.galleryMode}></post-grid>
         </result-group>
+        <load-footer
+          mode="search"
+          pageName="discover"
+          .loading=${this.loading}
+          .exhausted=${this.exhausted}
+          .loadingTarget=${ViewDiscover.PAGE_SIZE}
+          .infiniteScroll=${this.infiniteScroll}
+          @load-more=${() => this.loadRecommendations(false)}
+          @infinite-toggle=${(e: CustomEvent) => {
+            this.infiniteScroll = e.detail.enabled;
+            if (this.infiniteScroll) this.observeSentinel();
+          }}
+        ></load-footer>
+        <div id="scroll-sentinel" style="height:1px;" aria-hidden="true"></div>
       `;
     }
 

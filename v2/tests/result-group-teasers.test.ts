@@ -15,6 +15,8 @@ describe('result-group teaser consumers', () => {
     expect(src).toContain("window.location.pathname === targetHref ? '' : targetHref");
     expect(src).toContain(".actionLabel=${'See more'}");
     expect(src).toContain(".mode=${this.galleryMode}");
+    expect(src).toContain('<load-footer');
+    expect(src).toContain('pageName="discover"');
   });
 
   it('related page uses result-group as the outer shell around recommendation results', () => {
