@@ -17,9 +17,10 @@ describe('activity route alias', () => {
     expect(links.contexts.post_via_blog).toBeDefined();
   });
 
-  it('app router uses only /:blog/activity', () => {
+  it('app router exposes canonical activity and legacy alias routes', () => {
     const appRootSrc = readFileSync(join(ROOT, 'app-root.ts'), 'utf8');
 
+    expect(appRootSrc).toContain("{ path: '/activity/:blogname'");
     expect(appRootSrc).toContain("{ path: '/:blog/activity'");
     expect(appRootSrc).not.toContain("{ path: '/:blog/posts'");
   });
@@ -33,7 +34,7 @@ describe('activity route alias', () => {
     expect(navSrc).toContain("return buildPageUrl('activity', activeBlog);");
     expect(headerSrc).toContain("import { resolveLink } from '../services/link-resolver.js';");
     expect(headerSrc).toContain("resolveLink('blog_header_external_blog'");
-    expect(resolverSrc).toContain("const BLOG_PAGES = ['archive', 'activity', 'posts', 'feed', 'social', 'masquerade', 'timeline', 'following'];");
+    expect(resolverSrc).toContain("const BLOG_PAGES = ['search', 'feed', 'follower-feed', 'activity', 'archive', 'settings', 'social'];");
   });
 
   it('activity view treats newest as canonical and keeps URLs minimal', () => {

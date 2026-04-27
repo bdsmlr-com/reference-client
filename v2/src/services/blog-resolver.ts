@@ -19,14 +19,24 @@ const SUBDOMAIN_ENABLED_DOMAINS = ['bdsmlr.com', 'bdsmlr.localhost'];
 // Subdomains that are NOT blog names (reserved)
 const RESERVED_SUBDOMAINS = ['www', 'api', 'cdn', 'static', 'admin', 'app'];
 
-// Pages that support path-based blog routing
-const BLOG_PAGES = ['archive', 'activity', 'posts', 'feed', 'social', 'masquerade', 'timeline', 'following'];
+// Canonical FE pages that accept a blog context in the path.
+const BLOG_PAGES = ['search', 'feed', 'follower-feed', 'activity', 'archive', 'settings', 'social'];
+
+// Legacy page aliases that should resolve to the canonical FE routes.
+const BLOG_PAGE_ALIASES: Record<string, string> = {
+  posts: 'activity',
+  timeline: 'activity',
+};
+
+// Reserved aliases that are not valid blog names.
+const RESERVED_BLOG_ALIASES = ['you'];
 
 // Reserved page routes that are NOT blog names
 const RESERVED_PAGE_ROUTES = [
   'home',
   'search',
   'blogs',
+  'you',
   'activity',
   'feed',
   'posts',
@@ -65,7 +75,7 @@ export function isAdminMode(): boolean {
  * Check if a string is a reserved page route (not a valid blog name).
  */
 export function isReservedPageRoute(name: string): boolean {
-  return RESERVED_PAGE_ROUTES.includes(name.toLowerCase());
+  return RESERVED_PAGE_ROUTES.includes(name.toLowerCase()) || RESERVED_BLOG_ALIASES.includes(name.toLowerCase());
 }
 
 /**
@@ -159,11 +169,15 @@ export function getBlogNameFromSubdomain(): string {
 
 /**
  * Extract blog name from URL path.
- * Supports patterns like:
- *   /:blogname/timeline/ -> blogname
- *   /:blogname/archive/ -> blogname
- *   /:blogname/ -> blogname (defaults to archive)
+ * Supports canonical routes like:
+ *   /search/for/:blogname
+ *   /feed/for/:blogname
+ *   /follower-feed/:blogname
+ *   /activity/:blogname
+ *   /archive/:blogname
+ *   /settings/:blogname
  *
+ * Also accepts legacy aliases like /:blog/archive and /:blog/social.
  * Returns empty string if not a path-based blog URL.
  */
 export function getBlogNameFromPath(): string {
@@ -175,31 +189,8 @@ export function getBlogNameFromPath(): string {
     return '';
   }
 
-  // Remove leading slash and split
-  const parts = pathname.slice(1).split('/').filter(Boolean);
-
-  if (parts.length === 0) {
-    return '';
-  }
-
-  // First part is blog name, second is page (optional)
-  const potentialBlog = parts[0];
-  const potentialPage = parts[1] || '';
-
-  // Check if first part is a reserved page route (not a blog name)
-  // e.g., /home/, /search/, /blogs/, /activity/
-  if (RESERVED_PAGE_ROUTES.includes(potentialBlog)) {
-    return '';
-  }
-
-  // Validate that this looks like a blog route:
-  // - If second part is a known page, first is the blog name
-  // - If only one part, could be a blog name (default to archive)
-  if (BLOG_PAGES.includes(potentialPage) || (parts.length === 1 && potentialBlog)) {
-    return potentialBlog;
-  }
-
-  return '';
+  const parsed = parseRouteContext(pathname);
+  return parsed.blogName;
 }
 
 /**
@@ -232,17 +223,8 @@ export function getPageFromPath(): string {
     return 'archive';
   }
 
-  // Path-based routing: /:blogname/:page/
-  if (parts.length >= 2 && BLOG_PAGES.includes(parts[1])) {
-    return parts[1];
-  }
-
-  // Default to archive for /:blogname/ routes
-  if (parts.length === 1) {
-    return 'archive';
-  }
-
-  return 'home';
+  const parsed = parseRouteContext(pathname);
+  return parsed.page;
 }
 
 /**
@@ -397,26 +379,39 @@ export function buildPageUrl(
   queryParams?: Record<string, string>
 ): string {
   let url: string;
+  const normalizedPage = normalizePageRoute(page);
 
   if (isSubdomainMode()) {
     // Subdomain mode: blogname.bdsmlr.com
     const currentBlog = getBlogNameFromSubdomain();
 
-    if (blogName && BLOG_PAGES.includes(page) && blogName !== currentBlog) {
+    if (blogName && BLOG_PAGES.includes(normalizedPage) && blogName !== currentBlog) {
       // Different blog: need full subdomain URL
-      url = buildSubdomainUrl(blogName, page, queryParams);
+      url = buildSubdomainUrl(blogName, normalizedPage, queryParams);
       return url; // buildSubdomainUrl already handles query params
     } else {
       // Same blog or non-blog page: relative path
-      url = `/${page}`;
+      url = `/${normalizedPage}`;
     }
   } else {
-    // Production path-based routing: /:blogname/:page
-    if (blogName && BLOG_PAGES.includes(page)) {
-      url = `/${blogName}/${page}`;
+    if (normalizedPage === 'search') {
+      const blogSegment = resolveBuildBlogSegment(blogName);
+      url = blogName ? `/search/for/${blogSegment || 'you'}` : '/search';
+    } else if (normalizedPage === 'feed') {
+      const blogSegment = resolveBuildBlogSegment(blogName);
+      url = `/feed/for/${blogSegment || 'you'}`;
+    } else if (normalizedPage === 'follower-feed') {
+      const blogSegment = resolveBuildBlogSegment(blogName);
+      url = `/follower-feed/${blogSegment || 'you'}`;
+    } else if (normalizedPage === 'activity' || normalizedPage === 'archive' || normalizedPage === 'settings') {
+      const blogSegment = resolveBuildBlogSegment(blogName);
+      url = `/${normalizedPage}/${blogSegment || 'you'}`;
+    } else if (normalizedPage === 'social') {
+      const blogSegment = resolveBuildBlogSegment(blogName);
+      url = blogSegment ? `/${blogSegment}/social` : '/social';
     } else {
       // Non-blog pages: /:page
-      url = `/${page}`;
+      url = `/${normalizedPage}`;
     }
   }
 
@@ -493,4 +488,87 @@ export function isDefaultTypes(types: number[]): boolean {
   // Check if arrays contain same elements (order-independent)
   const sorted = [...types].sort((a, b) => a - b);
   return sorted.every((val, idx) => val === DEFAULT_POST_TYPES[idx]);
+}
+
+function normalizePageRoute(page: string): string {
+  const lower = page.toLowerCase();
+  return BLOG_PAGE_ALIASES[lower] || lower;
+}
+
+function resolveBuildBlogSegment(blogName?: string): string {
+  const candidate = (blogName || '').trim();
+  const currentBlog = getPrimaryBlogName() || getViewedBlogName();
+  if (!candidate) {
+    return currentBlog ? 'you' : '';
+  }
+  if (candidate.toLowerCase() === 'you') {
+    return 'you';
+  }
+  if (currentBlog && candidate.toLowerCase() === currentBlog.toLowerCase()) {
+    return 'you';
+  }
+  return candidate;
+}
+
+function resolvePathBlogSegment(segment: string): string {
+  const normalized = segment.trim();
+  if (!normalized) return '';
+  if (normalized.toLowerCase() === 'you') {
+    return getStoredBlogName();
+  }
+  return normalized;
+}
+
+function parseRouteContext(pathname: string): { page: string; blogName: string } {
+  const parts = pathname.slice(1).split('/').filter(Boolean);
+
+  if (parts.length === 0) {
+    return { page: 'home', blogName: '' };
+  }
+
+  const first = normalizePageRoute(parts[0]);
+  const second = parts[1] || '';
+  const third = parts[2] || '';
+
+  if (first === 'search') {
+    if (second === 'for' && third) {
+      return { page: 'search', blogName: resolvePathBlogSegment(third) };
+    }
+    if (parts.length === 1) {
+      return { page: 'search', blogName: '' };
+    }
+  }
+
+  if (first === 'feed' && second === 'for' && third) {
+    return { page: 'feed', blogName: resolvePathBlogSegment(third) };
+  }
+
+  if (BLOG_PAGES.includes(first)) {
+    if (first === 'search') {
+      return { page: 'search', blogName: '' };
+    }
+    if (first === 'feed' && second === 'for' && third) {
+      return { page: 'feed', blogName: resolvePathBlogSegment(third) };
+    }
+    if (second) {
+      return { page: first, blogName: resolvePathBlogSegment(second) };
+    }
+    return { page: first, blogName: '' };
+  }
+
+  if (parts.length >= 2) {
+    const legacyPage = normalizePageRoute(parts[1]);
+    if (BLOG_PAGES.includes(legacyPage)) {
+      return { page: legacyPage, blogName: resolvePathBlogSegment(parts[0]) };
+    }
+  }
+
+  if (parts.length === 1) {
+    if (RESERVED_PAGE_ROUTES.includes(first)) {
+      return { page: first, blogName: '' };
+    }
+    return { page: 'archive', blogName: resolvePathBlogSegment(parts[0]) };
+  }
+
+  return { page: 'home', blogName: '' };
 }

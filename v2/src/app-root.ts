@@ -17,7 +17,7 @@ import './components/post-lightbox.js';
 import './components/contract-error-screen.js';
 import { initTheme, injectGlobalStyles, baseStyles } from './styles/theme.js';
 import type { ProcessedPost } from './types/post.js';
-import { isAdminMode, syncAdminModeFromUrl } from './services/blog-resolver.js';
+import { getPrimaryBlogName, getViewedBlogName, isAdminMode, syncAdminModeFromUrl } from './services/blog-resolver.js';
 import { loadRenderContract } from './services/render-contract.js';
 import { validateRenderContract } from './services/render-contract-validator.js';
 import { getStatus } from './services/auth-service.js';
@@ -58,14 +58,20 @@ export class AppRoot extends LitElement {
 
   private _router = new Router(this, [
     { path: '/', render: () => html`<view-home></view-home>` },
-    { path: '/search*', render: () => html`<view-search></view-search>` },
+    { path: '/search', render: () => html`<view-search></view-search>` },
+    { path: '/search/for/:blogname', render: () => html`<view-search></view-search>` },
     { path: '/blogs*', render: () => html`<view-blogs></view-blogs>` },
     { path: '/discover*', render: () => html`<view-discover></view-discover>` },
     { path: '/post/:postId', render: ({ postId }) => html`<view-post .postId=${postId}></view-post>` },
     { path: '/clear-cache*', render: () => html`<view-clear-cache></view-clear-cache>` },
+    { path: '/feed/for/:blogname', render: ({ blogname }) => html`<view-feed .blog=${this.resolveRouteBlogName(blogname || '')}></view-feed>` },
+    { path: '/follower-feed/:blogname', render: ({ blogname }) => html`<view-social .blog=${this.resolveRouteBlogName(blogname || '')}></view-social>` },
+    { path: '/activity/:blogname', render: ({ blogname }) => html`<view-posts .blog=${this.resolveRouteBlogName(blogname || '')}></view-posts>` },
+    { path: '/archive/:blogname', render: ({ blogname }) => html`<view-archive .blog=${this.resolveRouteBlogName(blogname || '')}></view-archive>` },
+    { path: '/settings/:blogname', render: ({ blogname }) => html`<view-social .blog=${this.resolveRouteBlogName(blogname || '')}></view-social>` },
+    { path: '/:blog/archive', render: ({ blog }) => html`<view-archive .blog=${blog}></view-archive>` },
     { path: '/:blog/activity', render: ({ blog }) => html`<view-posts .blog=${blog}></view-posts>` },
     { path: '/:blog/feed', render: ({ blog }) => html`<view-feed .blog=${blog}></view-feed>` },
-    { path: '/:blog/archive', render: ({ blog }) => html`<view-archive .blog=${blog}></view-archive>` },
     { path: '/:blog/social', render: ({ blog }) => html`<view-social .blog=${blog}></view-social>` },
   ]);
 
@@ -193,6 +199,7 @@ export class AppRoot extends LitElement {
     else if (pathname.includes('/search')) currentPage = 'search';
     else if (pathname.includes('/blogs')) currentPage = 'blogs';
     else if (pathname.includes('/social')) currentPage = 'social';
+    else if (pathname.includes('/settings')) currentPage = 'settings';
 
     return html`
       ${isAdmin ? html`<div class="admin-banner">Admin Mode Active (Suppressed posts visible)</div>` : ''}
@@ -209,5 +216,12 @@ export class AppRoot extends LitElement {
       ></post-lightbox>
 
     `;
+  }
+
+  private resolveRouteBlogName(blogname: string): string {
+    if (blogname.toLowerCase() === 'you') {
+      return getPrimaryBlogName() || getViewedBlogName() || '';
+    }
+    return blogname;
   }
 }
