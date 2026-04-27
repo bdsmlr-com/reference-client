@@ -58,6 +58,14 @@ export interface ProcessedPost extends Post {
   _reblog_variants?: { id: number; blogName?: string }[];
   _activityCreatedAtUnix?: number;
   _activityKindOverride?: 'post' | 'reblog' | 'like' | 'comment';
+  _retrievalPolicy?: {
+    imageVariant?: string;
+    linkAllowed?: boolean;
+    clickAction?: string;
+    redactionMode?: string;
+    overrideReason?: string;
+    visibilityFraction?: number;
+  };
 }
 
 export function extractRenderableTags(post: Post): string[] {

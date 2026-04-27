@@ -19,8 +19,10 @@ describe('archive/search render contract usage', () => {
     const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
     const searchSrc = readFileSync(join(process.cwd(), 'src/pages/view-search.ts'), 'utf8');
 
-    expect(archiveSrc).toContain('(resp.posts || []).forEach');
+    expect(archiveSrc).toContain('applyRetrievalPostPolicies');
+    expect(archiveSrc).toContain('(resp.posts || []).map');
     expect(searchSrc).toContain('(resp.posts || []).forEach');
+    expect(archiveSrc).toContain('postPolicies');
     expect(archiveSrc).not.toContain('(resp.timelineItems || []).forEach');
     expect(searchSrc).not.toContain('(resp.timelineItems || []).forEach');
   });

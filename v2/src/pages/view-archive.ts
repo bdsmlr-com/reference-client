@@ -12,7 +12,7 @@ import {
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
-import type { Blog, PostType, PostSortField, Order, TimelineItem, PostVariant } from '../types/api.js';
+import type { Blog, PostType, PostSortField, Order, PostVariant } from '../types/api.js';
 import {
   getGalleryMode,
   PROFILE_EVENTS,
@@ -22,6 +22,7 @@ import {
 } from '../services/profile.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { getPageSlotConfig } from '../services/render-page.js';
+import { applyRetrievalPostPolicies, type RetrievalPostPolicyMap } from '../services/retrieval-presentation.js';
 import type { RenderSlotConfig } from '../config.js';
 
 import '../components/filter-bar.js';
@@ -67,7 +68,7 @@ export class ViewArchive extends LitElement {
   @state() private sortValue = 'newest';
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
   @state() private selectedVariants: PostVariant[] = [];
-  @state() private timelineItems: TimelineItem[] = [];
+  @state() private posts: ProcessedPost[] = [];
   @state() private loading = false;
   @state() private exhausted = false;
   @state() private stats: ViewStats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
@@ -117,12 +118,12 @@ export class ViewArchive extends LitElement {
   };
 
   private savePaginationState = (): void => {
-    if (this.paginationKey && this.timelineItems.length > 0) {
+    if (this.paginationKey && this.posts.length > 0) {
       setCachedPaginationCursor(
         this.paginationKey,
         this.backendCursor,
         window.scrollY,
-        this.timelineItems.length,
+        this.posts.length,
         this.exhausted
       );
     }
@@ -185,7 +186,7 @@ export class ViewArchive extends LitElement {
     this.seenIds.clear();
     this.renderedMediaKeys.clear();
     this.stats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
-    this.timelineItems = [];
+     this.posts = [];
     this.statusMessage = '';
 
     const params: Record<string, string> = {
@@ -244,9 +245,14 @@ export class ViewArchive extends LitElement {
       this.backendCursor = resp.page?.nextPageToken || null;
       if (!this.backendCursor) this.exhausted = true;
 
-      const newItems: TimelineItem[] = [];
-      (resp.posts || []).forEach(rawPost => {
-        const post = rawPost as ProcessedPost;
+       const postPolicies = (resp as { postPolicies?: RetrievalPostPolicyMap }).postPolicies;
+       const retrievedPosts = applyRetrievalPostPolicies(
+         (resp.posts || []).map((rawPost) => rawPost as ProcessedPost),
+         postPolicies,
+       );
+
+      const newPosts: ProcessedPost[] = [];
+      retrievedPosts.forEach(post => {
         const media = extractMedia(post);
         const mediaUrl = media.url || media.videoUrl || media.audioUrl;
         const contentKey = post.originPostId ? `oid:${post.originPostId}` : (mediaUrl ? `url:${mediaUrl.split('?')[0]}` : `pid:${post.id}`);
@@ -259,11 +265,11 @@ export class ViewArchive extends LitElement {
         this.seenIds.add(post.id);
         this.renderedMediaKeys.add(contentKey);
         post._media = media;
-        newItems.push({ type: 1, post });
+        newPosts.push(post);
       });
 
-      this.timelineItems = [...this.timelineItems, ...newItems];
-      if (newItems.length === 0) this.exhausted = true;
+      this.posts = [...this.posts, ...newPosts];
+      if (newPosts.length === 0) this.exhausted = true;
     } finally {
       this.loading = false;
     }
@@ -292,22 +298,10 @@ export class ViewArchive extends LitElement {
 
   private handlePostClick(e: CustomEvent): void {
     const post = e.detail.post as ProcessedPost;
-    
-    const allPosts: ProcessedPost[] = [];
-    this.timelineItems.forEach(item => {
-      if (item.type === 1 && item.post) {
-        allPosts.push(item.post as ProcessedPost);
-      } else if (item.type === 2 && item.cluster) {
-        item.cluster.interactions?.forEach(p => {
-          allPosts.push(p as ProcessedPost);
-        });
-      }
-    });
-
-    const index = allPosts.findIndex(p => p.id === post.id);
+    const index = this.posts.findIndex((p) => p.id === post.id);
 
     this.dispatchEvent(new CustomEvent('post-click', {
-      detail: { post, posts: allPosts, index: index >= 0 ? index : 0 },
+      detail: { post, posts: this.posts, index: index >= 0 ? index : 0 },
       bubbles: true,
       composed: true
     }));
@@ -368,27 +362,19 @@ export class ViewArchive extends LitElement {
 
         ${this.errorMessage ? html`<error-state title="Error" message=${this.errorMessage} @retry=${this.handleRetry}></error-state>` : ''}
         ${this.statusMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
-${this.timelineItems.length > 0
+ ${this.posts.length > 0
   ? html`
       <div class="grid-container">
         <activity-grid 
           .mode=${this.galleryMode}
           .showBlogChip=${false}
-          .items=${this.timelineItems.flatMap(entry => {
-            if (entry.type === 1 && entry.post) {
-              return [this.toActivityItem(entry.post as ProcessedPost)];
-            } else if (entry.type === 2 && entry.cluster) {
-              return (entry.cluster.interactions || []).map((post: any) => this.toActivityItem(post as ProcessedPost));
-            }
-
-            return [];
-          })} 
+          .items=${this.posts.map((post) => this.toActivityItem(post))}
           @activity-click=${this.handlePostClick}
         ></activity-grid>
         </div>
         `
         : ''}
-        ${this.loading && this.timelineItems.length === 0 && !this.errorMessage
+        ${this.loading && this.posts.length === 0 && !this.errorMessage
           ? html`
               <div class="grid-container">
                 <render-card
