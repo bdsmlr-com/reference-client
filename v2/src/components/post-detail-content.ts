@@ -74,7 +74,7 @@ export class PostDetailContent extends LitElement {
       <post-engagement .post=${p} ?standalone=${engagementStandalone}></post-engagement>
 
       ${presentation.layout.showRecommendations
-        ? html`<post-recommendations .postId=${p.id} .mode=${recommendationsMode}></post-recommendations>`
+        ? html`<post-recommendations .postId=${p.id} .mode=${recommendationsMode} .showBrowseLink=${true}></post-recommendations>`
         : nothing}
     `;
   }

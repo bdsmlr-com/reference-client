@@ -185,6 +185,9 @@ export class PostRecommendations extends LitElement {
 
   @property({ type: Number }) postId = 0;
   @property({ type: String }) mode: 'grid' | 'list' = 'grid';
+  @property({ type: String }) perspectiveBlogName = '';
+  @property({ type: String }) title = 'More like this ✨';
+  @property({ type: Boolean }) showBrowseLink = false;
 
   @state() private relatedPosts: RecResult[] = [];
   @state() private loading = false;
@@ -272,7 +275,12 @@ export class PostRecommendations extends LitElement {
 
     try {
       const requestOffset = this.nextOffset;
-      const recs = await recService.getSimilarPosts(id, RECS_PAGE_SIZE, requestOffset);
+      const recs = await recService.getSimilarPosts(
+        id,
+        RECS_PAGE_SIZE,
+        requestOffset,
+        this.perspectiveBlogName || undefined,
+      );
       
       if (fetchSignal?.aborted) return;
 
@@ -352,7 +360,12 @@ export class PostRecommendations extends LitElement {
 
     return html`
       ${isAdmin ? html`<div style="font-family:monospace; font-size:10px; color:#00ff00; background:#000; padding:2px 4px; border-radius:4px; margin-bottom:8px;">[REC_DEBUG: id=${id}, count=${this.relatedPosts.length}, loading=${this.loading}]</div>` : ''}
-      <h3>More like this ✨</h3>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:24px;">
+        <h3 style="margin:0;">${this.title}</h3>
+        ${this.showBrowseLink
+          ? html`<a href="/post/${id}/related" style="color:var(--accent); text-decoration:none; font-size:14px;">See more...</a>`
+          : nothing}
+      </div>
       
       ${this.error ? html`<div class="error-text" style="color: var(--error); font-size: 13px; margin-bottom: 16px;">${this.error}</div>` : ''}
 

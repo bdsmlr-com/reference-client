@@ -10,6 +10,7 @@ import './pages/view-search.js';
 import './pages/view-social.js';
 import './pages/view-discover.js';
 import './pages/view-post.js';
+import './pages/view-post-related.js';
 import './pages/view-clear-cache.js';
 import './pages/view-settings-user.js';
 import './pages/view-settings-blog.js';
@@ -67,6 +68,18 @@ export class AppRoot extends LitElement {
     { path: '/blogs*', render: () => html`<view-blogs></view-blogs>` },
     { path: '/discover*', render: () => html`<view-discover></view-discover>` },
     { path: '/post/:postId', render: ({ postId }) => html`<view-post .postId=${postId}></view-post>` },
+    {
+      path: '/post/:postId/related',
+      render: ({ postId }) => html`<view-post-related .postId=${postId} .title=${'More like this ✨'}></view-post-related>`,
+    },
+    {
+      path: '/post/:postId/related/for/you',
+      render: ({ postId }) => html`<view-post-related .postId=${postId} .perspectiveBlogName=${this.resolveRouteBlogName('you')} .title=${`More like this for you ✨`}></view-post-related>`,
+    },
+    {
+      path: '/post/:postId/related/for/:blogname',
+      render: ({ postId, blogname }) => html`<view-post-related .postId=${postId} .perspectiveBlogName=${this.resolveRouteBlogName(blogname || '')} .title=${`More like this for ${this.resolveRouteBlogName(blogname || '')} ✨`}></view-post-related>`,
+    },
     { path: '/clear-cache*', render: () => html`<view-clear-cache></view-clear-cache>` },
     { path: '/feed/for/:blogname', render: ({ blogname }) => html`<view-feed .blog=${this.resolveRouteBlogName(blogname || '')}></view-feed>` },
     { path: '/follower-feed/:blogname', render: ({ blogname }) => html`<view-feed .blog=${this.resolveRouteBlogName(blogname || '')} .mode=${'followers'}></view-feed>` },

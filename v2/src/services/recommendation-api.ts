@@ -81,8 +81,21 @@ export const recService = {
     }));
   },
 
-  async getSimilarPosts(postId: number, limit = 10, offset = 0): Promise<SimilarPostsResponse> {
-    const res = await fetch(`${API_BASE}/similar-posts/${postId}?limit=${limit}&offset=${offset}&exclude_self=true`);
+  async getSimilarPosts(
+    postId: number,
+    limit = 10,
+    offset = 0,
+    perspectiveBlogName?: string,
+  ): Promise<SimilarPostsResponse> {
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+      exclude_self: 'true',
+    });
+    if (perspectiveBlogName) {
+      params.set('perspective_blog_name', perspectiveBlogName);
+    }
+    const res = await fetch(`${API_BASE}/similar-posts/${postId}?${params.toString()}`);
     const data: SimilarPostsResponse = await res.json();
     if (Array.isArray(data.posts) && data.posts.length > 0) {
       return data;
