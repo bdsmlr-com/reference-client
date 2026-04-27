@@ -6,7 +6,7 @@ Serves index.html for all non-asset and non-API paths.
 """
 
 import os
-from flask import Blueprint, send_from_directory, request, abort
+from flask import Blueprint, send_from_directory, request, abort, redirect
 
 # Blueprint
 client_blueprint = Blueprint('client', __name__)
@@ -16,6 +16,23 @@ _dist_dir = None
 
 # Paths that should NOT be handled by client routes (API endpoints)
 API_PREFIXES = ('v1', 'v2', 'api', 'auth', 'admin', 'health', 'metrics', 'static')
+
+
+def _canonical_redirect(path: str) -> str | None:
+    normalized = '/' + path.lstrip('/')
+    parts = [part for part in normalized.split('/') if part]
+    if len(parts) != 2:
+        return None
+    blog, page = parts[0], parts[1].lower()
+    if page == 'archive':
+        return f'/archive/{blog}'
+    if page == 'activity':
+        return f'/activity/{blog}'
+    if page == 'feed':
+        return f'/feed/for/{blog}'
+    if page == 'social':
+        return f'/social/{blog}'
+    return None
 
 def init_client_routes(dist_path):
     """Initialize with path to dist folder. Call before registering blueprint."""
@@ -59,6 +76,13 @@ def catch_all(path):
     """
     if _is_api_path(path):
         abort(404)
+
+    redirect_target = _canonical_redirect(path)
+    if redirect_target:
+        query = request.query_string.decode().strip()
+        if query:
+            redirect_target = f'{redirect_target}?{query}'
+        return redirect(redirect_target, code=301)
     
     if not _dist_dir:
         abort(500, "Client routes not initialized")

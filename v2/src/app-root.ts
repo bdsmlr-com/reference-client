@@ -92,6 +92,8 @@ export class AppRoot extends LitElement {
     { path: '/archive/:blogname', render: ({ blogname }) => html`<view-archive .blog=${this.resolveRouteBlogName(blogname || '')}></view-archive>` },
     { path: '/settings/you', render: () => html`<view-settings-user></view-settings-user>` },
     { path: '/settings/:blogname', render: ({ blogname }) => html`<view-settings-blog .blog=${this.resolveRouteBlogName(blogname || '')}></view-settings-blog>` },
+    { path: '/social/you', render: () => html`<view-social .blog=${this.resolveRouteBlogName('you')}></view-social>` },
+    { path: '/social/:blogname', render: ({ blogname }) => html`<view-social .blog=${this.resolveRouteBlogName(blogname || '')}></view-social>` },
     { path: '/:blog/archive', render: ({ blog }) => html`<view-archive .blog=${blog}></view-archive>` },
     { path: '/:blog/activity', render: ({ blog }) => html`<view-posts .blog=${blog}></view-posts>` },
     { path: '/:blog/feed', render: ({ blog }) => html`<view-feed .blog=${blog}></view-feed>` },

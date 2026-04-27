@@ -49,10 +49,12 @@ describe('route normalization', () => {
       ['/archive/sam', 'archive', 'sam'],
       ['/settings/you', 'settings', 'alice'],
       ['/settings/sam', 'settings', 'sam'],
-      ['/sam/social', 'social', 'sam'],
+      ['/social/you', 'social', 'alice'],
+      ['/social/sam', 'social', 'sam'],
       ['/sam/archive', 'archive', 'sam'],
       ['/sam/activity', 'activity', 'sam'],
       ['/sam/feed', 'feed', 'sam'],
+      ['/sam/social', 'social', 'sam'],
     ];
 
     for (const [pathname, page, blog] of cases) {
@@ -100,8 +102,8 @@ describe('route normalization', () => {
 
     expect(buildPageUrl('posts', 'alice')).toBe('/activity/you');
     expect(buildPageUrl('timeline', 'sam')).toBe('/activity/sam');
-    expect(buildPageUrl('social', 'alice')).toBe('/you/social');
-    expect(buildPageUrl('social', 'sam')).toBe('/sam/social');
+    expect(buildPageUrl('social', 'alice')).toBe('/social/you');
+    expect(buildPageUrl('social', 'sam')).toBe('/social/sam');
   });
 
   it('documents the canonical and legacy router aliases in app-root', () => {
@@ -119,6 +121,8 @@ describe('route normalization', () => {
     expect(appRootSrc).toContain("path: '/archive/you'");
     expect(appRootSrc).toContain("path: '/archive/:blogname'");
     expect(appRootSrc).toContain("path: '/settings/:blogname'");
+    expect(appRootSrc).toContain("path: '/social/you'");
+    expect(appRootSrc).toContain("path: '/social/:blogname'");
     expect(appRootSrc).toContain("path: '/:blog/archive'");
     expect(appRootSrc).toContain("path: '/:blog/activity'");
     expect(appRootSrc).toContain("path: '/:blog/feed'");

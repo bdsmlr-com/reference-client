@@ -45,22 +45,28 @@ export class ViewPostRelated extends LitElement {
 
       .tabs {
         display: flex;
-        gap: 8px;
+        justify-content: flex-start;
+        gap: 6px;
         flex-wrap: wrap;
         margin: 0 0 20px;
       }
 
       .tab {
+        padding: 6px 14px;
+        border-radius: 4px;
+        background: var(--bg-panel);
+        color: var(--text-muted);
+        font-size: 13px;
+        min-height: 30px;
+        transition: all 0.2s;
+        border: 1px solid var(--border);
+        text-decoration: none;
         display: inline-flex;
         align-items: center;
-        min-height: 36px;
-        padding: 8px 12px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        background: var(--bg-panel);
-        color: var(--text-primary);
-        text-decoration: none;
-        font-size: 13px;
+      }
+
+      .tab:hover {
+        background: var(--bg-panel-alt);
       }
 
       .tab.active {
@@ -161,6 +167,7 @@ export class ViewPostRelated extends LitElement {
 
       <result-group
         wide
+        ?bare=${true}
         .title=${this.title}
         .description=${`Expanded related results for post ${id}`}
       >

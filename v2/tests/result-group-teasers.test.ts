@@ -10,7 +10,8 @@ describe('result-group teaser consumers', () => {
 
     expect(src).toContain('<result-group');
     expect(src).toContain(".title=${'For You'}");
-    expect(src).toContain(".actionHref=${subjectBlog ? buildPageUrl('for', subjectBlog) : ''}");
+    expect(src).toContain("const targetHref = subjectBlog ? buildPageUrl('for', subjectBlog) : '';");
+    expect(src).toContain("window.location.pathname === targetHref ? '' : targetHref");
     expect(src).toContain(".actionLabel=${'See more'}");
   });
 
@@ -18,7 +19,9 @@ describe('result-group teaser consumers', () => {
     const src = readFileSync(join(ROOT, 'pages/view-post-related.ts'), 'utf8');
 
     expect(src).toContain('<result-group');
+    expect(src).toContain('?bare=${true}');
     expect(src).toContain('.title=${this.title}');
     expect(src).toContain(".mode=${'list'}");
+    expect(src).toContain('.tab.active');
   });
 });

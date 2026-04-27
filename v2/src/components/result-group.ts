@@ -88,6 +88,13 @@ export class ResultGroup extends LitElement {
       :host([wide]) {
         max-width: 1200px;
       }
+
+      :host([bare]) {
+        background: transparent;
+        border: 0;
+        padding: 0;
+        border-radius: 0;
+      }
     `,
   ];
 
@@ -98,6 +105,7 @@ export class ResultGroup extends LitElement {
   @property({ type: Number }) remaining = 0;
   @property({ type: String }) actionLabel = 'Load more';
   @property({ type: Boolean, reflect: true }) wide = false;
+  @property({ type: Boolean, reflect: true }) bare = false;
 
   private handleLoadMore() {
     this.dispatchEvent(new CustomEvent('result-group-load-more', {

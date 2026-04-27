@@ -64,12 +64,14 @@ export class ViewDiscover extends LitElement {
 
     if (this.usingCanonicalPosts) {
       const subjectBlog = this.blog || getPrimaryBlogName() || '';
+      const targetHref = subjectBlog ? buildPageUrl('for', subjectBlog) : '';
       return html`
         <result-group
           wide
+          bare
           .title=${'For You'}
           .description=${'Recommended posts based on your activity and interests.'}
-          .actionHref=${subjectBlog ? buildPageUrl('for', subjectBlog) : ''}
+          .actionHref=${window.location.pathname === targetHref ? '' : targetHref}
           .actionLabel=${'See more'}
         >
           <post-grid .posts=${this.recommendedPosts} .page=${'social'}></post-grid>
@@ -80,6 +82,7 @@ export class ViewDiscover extends LitElement {
     return html`
       <result-group
         wide
+        bare
         .title=${'Recommended Blogs for You'}
         .description=${'Based on your liking patterns and similar audiences.'}
       >

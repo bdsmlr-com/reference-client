@@ -16,6 +16,8 @@ describe('result-group component', () => {
     expect(src).toContain("@property({ type: Number }) remaining = 0;");
     expect(src).toContain("@property({ type: String }) actionLabel = 'Load more';");
     expect(src).toContain("@property({ type: Boolean, reflect: true }) wide = false;");
+    expect(src).toContain("@property({ type: Boolean, reflect: true }) bare = false;");
+    expect(src).toContain(':host([bare])');
     expect(src).toContain("<slot></slot>");
     expect(src).toContain("this.dispatchEvent(new CustomEvent('result-group-load-more'");
     expect(src).toContain('class="action-link"');
