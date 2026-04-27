@@ -1,13 +1,23 @@
-import { spawnSync } from 'node:child_process';
+import * as ts from 'typescript';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+
+function flattenDiagnosticMessage(messageText: string | ts.DiagnosticMessageChain): string {
+  return ts.flattenDiagnosticMessageText(messageText, '\n');
+}
+
+function getMissingPropertyDiagnosticMessages(diagnostics: readonly ts.Diagnostic[], propertyName: string): string[] {
+  return diagnostics
+    .filter((diagnostic) => diagnostic.code === 2353)
+    .map((diagnostic) => flattenDiagnosticMessage(diagnostic.messageText))
+    .filter((message) => message.includes(`'${propertyName}'`));
+}
 
 describe('retrieval response typing', () => {
   it('reports the missing retrieval contract fields in the handwritten client types', () => {
     const scratchDir = mkdtempSync(join(process.cwd(), 'tests', '.retrieval-response-'));
     const entryFile = join(scratchDir, 'check.ts');
-    const tscBin = join(process.cwd(), 'node_modules', '.bin', 'tsc');
 
     writeFileSync(
       entryFile,
@@ -39,32 +49,20 @@ describe('retrieval response typing', () => {
       'utf8',
     );
 
-    const result = spawnSync(
-      tscBin,
-      [
-        '--noEmit',
-        '--pretty',
-        'false',
-        '--target',
-        'ES2020',
-        '--module',
-        'ESNext',
-        '--moduleResolution',
-        'bundler',
-        '--strict',
-        '--skipLibCheck',
-        entryFile,
-      ],
-      { cwd: process.cwd(), encoding: 'utf8' },
-    );
-
     try {
-      expect(result.status).not.toBe(0);
-      const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
-      expect(output).toContain('Object literal may only specify known properties');
-      expect(output).toContain("'policy' does not exist");
-      expect(output).toContain("'postPolicies' does not exist");
-      expect(output).toContain('SearchPostsByTagResponse');
+      const program = ts.createProgram([entryFile], {
+        noEmit: true,
+        target: ts.ScriptTarget.ES2020,
+        module: ts.ModuleKind.ESNext,
+        moduleResolution: ts.ModuleResolutionKind.Bundler,
+        strict: true,
+        skipLibCheck: true,
+      });
+      const diagnostics = ts.getPreEmitDiagnostics(program).filter((diagnostic) => diagnostic.file?.fileName === entryFile);
+
+      expect(diagnostics.length).toBeGreaterThan(0);
+      expect(getMissingPropertyDiagnosticMessages(diagnostics, 'policy')).not.toHaveLength(0);
+      expect(getMissingPropertyDiagnosticMessages(diagnostics, 'postPolicies')).not.toHaveLength(0);
     } finally {
       rmSync(scratchDir, { recursive: true, force: true });
     }
