@@ -35,10 +35,17 @@ const RESERVED_BLOG_ALIASES = ['you'];
 const RESERVED_PAGE_ROUTES = [
   'home',
   'search',
+  'for',
   'blogs',
+  'discover',
   'you',
   'activity',
+  'archive',
   'feed',
+  'follower-feed',
+  'social',
+  'settings',
+  'post',
   'posts',
   'following',
   'timeline',
@@ -540,6 +547,13 @@ function parseRouteContext(pathname: string): { page: string; blogName: string }
     if (parts.length === 1) {
       return { page: 'search', blogName: '' };
     }
+  }
+
+  if (first === 'for') {
+    if (second) {
+      return { page: 'for', blogName: resolvePathBlogSegment(second) };
+    }
+    return { page: 'for', blogName: '' };
   }
 
   if (first === 'feed' && second === 'for' && third) {

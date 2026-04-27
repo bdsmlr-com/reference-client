@@ -37,6 +37,8 @@ describe('route normalization', () => {
       ['/search', 'search', ''],
       ['/search/for/you', 'search', 'alice'],
       ['/search/for/sam', 'search', 'sam'],
+      ['/for/you', 'for', 'alice'],
+      ['/for/sam', 'for', 'sam'],
       ['/feed/for/you', 'feed', 'alice'],
       ['/feed/for/sam', 'feed', 'sam'],
       ['/follower-feed/you', 'follower-feed', 'alice'],
@@ -106,10 +108,15 @@ describe('route normalization', () => {
     const appRootSrc = readFileSync(join(ROOT, 'app-root.ts'), 'utf8');
 
     expect(appRootSrc).toContain("path: '/search'");
+    expect(appRootSrc).toContain("path: '/search/for/you'");
     expect(appRootSrc).toContain("path: '/search/for/:blogname'");
+    expect(appRootSrc).toContain("path: '/feed/for/you'");
     expect(appRootSrc).toContain("path: '/feed/for/:blogname'");
+    expect(appRootSrc).toContain("path: '/follower-feed/you'");
     expect(appRootSrc).toContain("path: '/follower-feed/:blogname'");
+    expect(appRootSrc).toContain("path: '/activity/you'");
     expect(appRootSrc).toContain("path: '/activity/:blogname'");
+    expect(appRootSrc).toContain("path: '/archive/you'");
     expect(appRootSrc).toContain("path: '/archive/:blogname'");
     expect(appRootSrc).toContain("path: '/settings/:blogname'");
     expect(appRootSrc).toContain("path: '/:blog/archive'");
