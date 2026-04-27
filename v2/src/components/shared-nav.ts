@@ -45,8 +45,7 @@ export class SharedNav extends LitElement {
         display: block;
         background: var(--bg-panel);
         border-bottom: 1px solid var(--border);
-        position: sticky;
-        top: 0;
+        position: relative;
         z-index: 50;
       }
 
@@ -74,8 +73,21 @@ export class SharedNav extends LitElement {
 
       nav {
         display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .nav-group {
+        display: flex;
         gap: 2px;
         flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .nav-group + .nav-group {
+        padding-left: 10px;
+        border-left: 1px solid var(--border);
       }
 
       .nav-link {
@@ -450,16 +462,21 @@ export class SharedNav extends LitElement {
   }
 
   private getPageUrl(page: string): string {
-    const activeBlog = this.currentUsername || getPrimaryBlogName() || getViewedBlogName();
+    // For blog-scoped pages (Activity/Archive/Connections/etc) prefer the blog
+    // currently being viewed in the URL over the signed-in/primary blog.
+    const viewedBlog = getViewedBlogName();
+    const primaryBlog = this.currentUsername || getPrimaryBlogName();
+    const blogForScopedPages = viewedBlog || primaryBlog;
+
     const blogPages = ['archive', 'posts', 'feed', 'social'];
     if (page === 'activity') {
-      if (activeBlog) return buildPageUrl('activity', activeBlog);
+      if (blogForScopedPages) return buildPageUrl('activity', blogForScopedPages);
       // Never emit bare /activity (invalid route). Fall back to home.
       return this.getHomeUrl();
     }
 
-    if (blogPages.includes(page) && activeBlog) {
-      return buildPageUrl(page, activeBlog);
+    if (blogPages.includes(page) && blogForScopedPages) {
+      return buildPageUrl(page, blogForScopedPages);
     }
     return buildPageUrl(page);
   }
@@ -716,12 +733,15 @@ export class SharedNav extends LitElement {
   }
 
   render() {
-    const pages = [
+    const globalPages = [
+      { name: 'blogs', label: 'Discover', description: 'Discover blogs by name or description' },
+      { name: 'search', label: 'Search', description: 'Search posts by tags with boolean syntax' },
+    ];
+
+    const blogScopedPages = [
       { name: 'activity', label: 'Activity', description: "A blog's full timeline including reblogs, likes, and comments" },
       { name: 'archive', label: 'Archive', description: 'High-density matrix of all blog interactions' },
       { name: 'social', label: 'Connections', description: 'View who follows a blog and who they follow' },
-      { name: 'blogs', label: 'Discover', description: 'Discover blogs by name or description' },
-      { name: 'search', label: 'Search', description: 'Search posts by tags with boolean syntax' },
     ];
 
     const viewedBlog = getViewedBlogName();
@@ -736,26 +756,42 @@ export class SharedNav extends LitElement {
       <header class="nav-container">
         <a href=${logoLink.href} class="logo" title=${logoLink.title} aria-label=${logoLink.title}>${logoLink.label}</a>
         <nav aria-label="Main navigation">
-          ${pages.map(
-            (page) => {
+          <div class="nav-group" aria-label="Global navigation">
+            ${globalPages.map((page) => {
               const href = this.getPageUrl(page.name);
               return html`
-              <a
-                href=${href}
-                class="nav-link ${activePage === page.name ? 'active' : ''}"
-                title=${page.description}
-                aria-current=${activePage === page.name ? 'page' : 'false'}
-                @click=${(e: Event) => this.handleNavLinkClick(e, href)}
-              >
-                ${page.label}
-              </a>
-            `;
-            }
-          )}
+                <a
+                  href=${href}
+                  class="nav-link ${activePage === page.name ? 'active' : ''}"
+                  title=${page.description}
+                  aria-current=${activePage === page.name ? 'page' : 'false'}
+                  @click=${(e: Event) => this.handleNavLinkClick(e, href)}
+                >
+                  ${page.label}
+                </a>
+              `;
+            })}
+          </div>
+          <div class="nav-group" aria-label="Blog navigation">
+            ${blogScopedPages.map((page) => {
+              const href = this.getPageUrl(page.name);
+              return html`
+                <a
+                  href=${href}
+                  class="nav-link ${activePage === page.name ? 'active' : ''}"
+                  title=${page.description}
+                  aria-current=${activePage === page.name ? 'page' : 'false'}
+                  @click=${(e: Event) => this.handleNavLinkClick(e, href)}
+                >
+                  ${page.label}
+                </a>
+              `;
+            })}
+          </div>
         </nav>
         ${showViewingIndicator
           ? html`
-              <span class="viewing-indicator" title="You're viewing another blog - nav links go to your primary blog">
+              <span class="viewing-indicator" title="You're viewing another blog - blog navigation stays on the viewed blog">
                 <span aria-hidden="true">👁️</span>
                 <span class="blog-name">@${viewedBlog}</span>
                 <span
