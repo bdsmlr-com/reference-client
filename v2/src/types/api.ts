@@ -224,6 +224,15 @@ export interface SearchPostsByTagRequest {
   blocked_user_ids?: number[];
   variants?: PostVariant[];
   perspective_blog_name?: string;
+  facetMode?: 'off' | 'boost' | 'suppress' | 'require' | 'custom';
+  viewerInterestMatchWeight?: number;
+  viewerPersonalMatchWeight?: number;
+  viewerInterestMissWeight?: number;
+  viewerPersonalMissWeight?: number;
+  seedInterestMatchWeight?: number;
+  seedPersonalMatchWeight?: number;
+  seedInterestMissWeight?: number;
+  seedPersonalMissWeight?: number;
 }
 
 export interface ListBlogPostsRequest {

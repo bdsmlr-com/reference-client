@@ -12,7 +12,7 @@ describe('search route perspective wiring', () => {
     expect(src).toContain('perspective_blog_name');
     expect(src).toContain('const routePerspectiveBlog = getBlogNameFromPath();');
     expect(src).toContain("const explicitSort = !!getUrlParam('sort');");
-    expect(src).toContain('const perspectiveBlogName = explicitSort ? undefined : (routePerspectiveBlog || undefined);');
+    expect(src).toContain('const perspectiveBlogName = (explicitSort && !hasFacetTuning) ? undefined : (routePerspectiveBlog || undefined);');
     expect(src).toContain('perspective_blog_name: perspectiveBlogName');
     expect(src).toContain('tag_name: this.query');
   });
@@ -25,6 +25,16 @@ describe('search route perspective wiring', () => {
     expect(src).toContain("this.sortExplicitInUrl = !!sort;");
     expect(src).toContain("sort: this.sortExplicitInUrl ? this.sortValue : ''");
     expect(src).toContain('this.sortExplicitInUrl = true;');
+  });
+
+  it('supports dev-only facet tuning query params on search', () => {
+    const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+
+    expect(src).toContain("if (ACTIVE_ENV !== 'dev') return {};");
+    expect(src).toContain("const facetMode = getUrlParam('facet_mode') || getUrlParam('facetMode');");
+    expect(src).toContain('const hasFacetTuning = Object.keys(facetTuning).length > 0;');
+    expect(src).toContain('const perspectiveBlogName = (explicitSort && !hasFacetTuning) ? undefined : (routePerspectiveBlog || undefined);');
+    expect(src).toContain('...facetTuning,');
   });
 
   it('shows a for-you teaser group on empty search state', () => {

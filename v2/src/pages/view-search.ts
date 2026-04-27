@@ -22,6 +22,7 @@ import {
 import { toPresentationModel } from '../services/post-presentation.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
+import { ACTIVE_ENV } from '../config.js';
 import { materializeRecommendedPosts, recService } from '../services/recommendation-api.js';
 import '../components/filter-bar.js';
 import '../components/activity-grid.js';
@@ -183,6 +184,38 @@ export class ViewSearch extends LitElement {
   private activeSearchToken = 0;
   private currentSearchSignature = '';
   private sortExplicitInUrl = false;
+
+  private parseDevFacetTuning(): Record<string, number | string> {
+    if (ACTIVE_ENV !== 'dev') return {};
+
+    const readNumber = (key: string): number | undefined => {
+      const raw = getUrlParam(key);
+      if (!raw) return undefined;
+      const parsed = Number(raw);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    };
+
+    const facetMode = getUrlParam('facet_mode') || getUrlParam('facetMode');
+    const tuning: Record<string, number | string> = {};
+    if (facetMode) {
+      tuning.facetMode = facetMode;
+    }
+    const numericKeys = [
+      'viewerInterestMatchWeight',
+      'viewerPersonalMatchWeight',
+      'viewerInterestMissWeight',
+      'viewerPersonalMissWeight',
+      'seedInterestMatchWeight',
+      'seedPersonalMatchWeight',
+      'seedInterestMissWeight',
+      'seedPersonalMissWeight',
+    ] as const;
+    for (const key of numericKeys) {
+      const value = readNumber(key);
+      if (value !== undefined) tuning[key] = value;
+    }
+    return tuning;
+  }
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -360,7 +393,9 @@ export class ViewSearch extends LitElement {
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
     const routePerspectiveBlog = getBlogNameFromPath();
     const explicitSort = !!getUrlParam('sort');
-    const perspectiveBlogName = explicitSort ? undefined : (routePerspectiveBlog || undefined);
+    const facetTuning = this.parseDevFacetTuning();
+    const hasFacetTuning = Object.keys(facetTuning).length > 0;
+    const perspectiveBlogName = (explicitSort && !hasFacetTuning) ? undefined : (routePerspectiveBlog || undefined);
 
     try {
       const resp = await apiClient.posts.searchCached({
@@ -374,6 +409,7 @@ export class ViewSearch extends LitElement {
           page_size: 48,
           page_token: this.backendCursor || undefined,
         },
+        ...facetTuning,
       });
       if (searchToken !== this.activeSearchToken || signature !== this.currentSearchSignature) {
         return;
