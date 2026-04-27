@@ -2,18 +2,121 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
-import { recService, type RecResult } from '../services/recommendation-api.js';
+import { recService, type RecResult, type SimilarPostsResponse } from '../services/recommendation-api.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
+import type { Post } from '../types/api.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
+import { applyRetrievalPostPolicies, type RetrievalPostPolicyMap } from '../services/retrieval-presentation.js';
 import './media-renderer.js';
 import './load-footer.js';
 import './loading-spinner.js';
 
 const RECS_PAGE_SIZE = 20;
+
+export interface RecommendationHydrationDeps {
+  batchGetPosts: (postIds: number[]) => Promise<{ posts?: ProcessedPost[] }>;
+  getPost: (postId: number) => Promise<{ post?: ProcessedPost }>;
+}
+
+function buildCanonicalRecommendationItems(
+  posts: Post[],
+  policies: RetrievalPostPolicyMap | undefined,
+): RecResult[] {
+  const normalizedPosts = applyRetrievalPostPolicies(
+    posts.map((post) => {
+      const processed = { ...post } as ProcessedPost;
+      processed._media = extractMedia(processed);
+      return processed;
+    }),
+    policies,
+  );
+
+  return normalizedPosts.map((post) => ({
+    post_id: post.id,
+    post_owner: post.blogName,
+    similarity_score: 0,
+    _hydratedPost: post,
+  })) as RecResult[];
+}
+
+async function hydrateLegacyRecommendationItems(
+  recs: RecResult[],
+  policies: RetrievalPostPolicyMap | undefined,
+  deps: RecommendationHydrationDeps,
+): Promise<RecResult[]> {
+  const normalized = recs.map((r) => {
+    const rawId = r.post_id || (r as any).id;
+    if (rawId) {
+      r.post_id = typeof rawId === 'string' ? parseInt(rawId, 10) : rawId;
+    }
+    return r;
+  });
+
+  const postIds = normalized
+    .map((r) => r.post_id)
+    .filter((pid): pid is number => !!pid)
+    .filter((pid, idx, arr) => arr.indexOf(pid) === idx);
+
+  if (postIds.length > 0) {
+    const hydratedMap = new Map<number, ProcessedPost>();
+
+    try {
+      const batchResp = await deps.batchGetPosts(postIds);
+      (batchResp.posts || []).forEach((p) => {
+        const processed = p as ProcessedPost;
+        processed._media = extractMedia(processed);
+        hydratedMap.set(processed.id, processed);
+      });
+    } catch {
+      const hydratedPosts = await Promise.allSettled(
+        postIds.map(async (postId) => {
+          const resp = await deps.getPost(postId);
+          const post = resp.post as ProcessedPost | undefined;
+          if (!post) return null;
+          post._media = extractMedia(post);
+          return post;
+        }),
+      );
+
+      hydratedPosts.forEach((result) => {
+        if (result.status === 'fulfilled' && result.value) {
+          hydratedMap.set(result.value.id, result.value);
+        }
+      });
+    }
+
+    const hydratedPosts = applyRetrievalPostPolicies([...hydratedMap.values()], policies);
+    hydratedPosts.forEach((hydrated) => {
+      hydratedMap.set(hydrated.id, hydrated);
+    });
+
+    normalized.forEach((r) => {
+      if (!r.post_id) return;
+      const hydrated = hydratedMap.get(r.post_id);
+      if (hydrated) {
+        (r as any)._hydratedPost = hydrated;
+      }
+    });
+  }
+
+  return normalized.filter((r) => !!r.post_id && !!(r as any)._hydratedPost) as RecResult[];
+}
+
+export async function materializeRecommendationItems(
+  response: SimilarPostsResponse,
+  deps: RecommendationHydrationDeps,
+): Promise<RecResult[]> {
+  if (Array.isArray(response.posts) && response.posts.length > 0) {
+    return buildCanonicalRecommendationItems(response.posts, response.postPolicies);
+  }
+
+  const legacy = response.similar_posts || response.recommendations || [];
+  return hydrateLegacyRecommendationItems(legacy, response.postPolicies, deps);
+}
 
 @customElement('post-recommendations')
 export class PostRecommendations extends LitElement {
@@ -173,68 +276,31 @@ export class PostRecommendations extends LitElement {
       
       if (fetchSignal?.aborted) return;
 
-      if (recs.length === 0) {
+      const items = await materializeRecommendationItems(recs, {
+        batchGetPosts: async (postIds) => {
+          const batchResp = await apiClient.posts.batchGet({ post_ids: postIds });
+          return { posts: batchResp.posts as ProcessedPost[] | undefined };
+        },
+        getPost: async (postId) => {
+          const resp = await apiClient.posts.get(postId);
+          return { post: resp.post as ProcessedPost | undefined };
+        },
+      });
+
+      if (fetchSignal?.aborted) return;
+
+      if (items.length === 0) {
         this.exhausted = true;
         return;
       }
       this.nextOffset += RECS_PAGE_SIZE;
 
-      // Normalize IDs from backend
-      recs.forEach(r => {
-        const rawId = r.post_id || (r as any).id;
-        if (rawId) {
-          r.post_id = typeof rawId === 'string' ? parseInt(rawId, 10) : rawId;
-        }
-      });
-
-      const postIds = recs
-        .map(r => r.post_id)
-        .filter((pid): pid is number => !!pid && !this.seenIds.has(pid));
-
-      if (postIds.length > 0) {
-        const hydratedMap = new Map<number, ProcessedPost>();
-
-        try {
-          const batchResp = await apiClient.posts.batchGet({ post_ids: postIds });
-          if (fetchSignal?.aborted) return;
-          (batchResp.posts || []).forEach((p) => {
-            const processed = p as ProcessedPost;
-            processed._media = extractMedia(processed);
-            hydratedMap.set(processed.id, processed);
-          });
-        } catch {
-          const hydratedPosts = await Promise.allSettled(
-            postIds.map(async (postId) => {
-              const resp = await apiClient.posts.get(postId);
-              const post = resp.post as ProcessedPost | undefined;
-              if (!post) return null;
-              post._media = extractMedia(post);
-              return post;
-            })
-          );
-          if (fetchSignal?.aborted) return;
-          hydratedPosts.forEach((result) => {
-            if (result.status === 'fulfilled' && result.value) {
-              hydratedMap.set(result.value.id, result.value);
-            }
-          });
-        }
-
-        recs.forEach((r) => {
-          if (!r.post_id) return;
-          const hydrated = hydratedMap.get(r.post_id);
-          if (hydrated) {
-            (r as any)._hydratedPost = hydrated;
-          }
-        });
-      }
-      
       // De-duplicate items before appending
-      const newItems = recs.filter(r => r.post_id && !this.seenIds.has(r.post_id));
+      const newItems = items.filter(r => r.post_id && !this.seenIds.has(r.post_id));
       newItems.forEach(r => { if (r.post_id) this.seenIds.add(r.post_id); });
 
       this.relatedPosts = [...this.relatedPosts, ...newItems];
-      if (recs.length < RECS_PAGE_SIZE || this.relatedPosts.length >= 96) {
+      if (items.length < RECS_PAGE_SIZE || this.relatedPosts.length >= 96) {
         this.exhausted = true;
       }
     } catch (e) {
