@@ -635,6 +635,7 @@ export class SharedNav extends LitElement {
                 .avatarUrl=${this.profileAvatarUrl ?? ''}
               ></blog-identity>
               <div class="menu-section-title">Settings</div>
+              <a class="menu-button" href="/settings/you">Settings</a>
               ${this.blogs && this.blogs.length > 1
                 ? html`
                     <label class="menu-section-title" for="blog-switcher">Active blog</label>

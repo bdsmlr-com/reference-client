@@ -11,6 +11,8 @@ import './pages/view-social.js';
 import './pages/view-discover.js';
 import './pages/view-post.js';
 import './pages/view-clear-cache.js';
+import './pages/view-settings-user.js';
+import './pages/view-settings-blog.js';
 import './components/shared-nav.js';
 import './components/offline-banner.js';
 import './components/post-lightbox.js';
@@ -68,7 +70,8 @@ export class AppRoot extends LitElement {
     { path: '/follower-feed/:blogname', render: ({ blogname }) => html`<view-social .blog=${this.resolveRouteBlogName(blogname || '')}></view-social>` },
     { path: '/activity/:blogname', render: ({ blogname }) => html`<view-posts .blog=${this.resolveRouteBlogName(blogname || '')}></view-posts>` },
     { path: '/archive/:blogname', render: ({ blogname }) => html`<view-archive .blog=${this.resolveRouteBlogName(blogname || '')}></view-archive>` },
-    { path: '/settings/:blogname', render: ({ blogname }) => html`<view-social .blog=${this.resolveRouteBlogName(blogname || '')}></view-social>` },
+    { path: '/settings/you', render: () => html`<view-settings-user></view-settings-user>` },
+    { path: '/settings/:blogname', render: ({ blogname }) => html`<view-settings-blog .blog=${this.resolveRouteBlogName(blogname || '')}></view-settings-blog>` },
     { path: '/:blog/archive', render: ({ blog }) => html`<view-archive .blog=${blog}></view-archive>` },
     { path: '/:blog/activity', render: ({ blog }) => html`<view-posts .blog=${blog}></view-posts>` },
     { path: '/:blog/feed', render: ({ blog }) => html`<view-feed .blog=${blog}></view-feed>` },
