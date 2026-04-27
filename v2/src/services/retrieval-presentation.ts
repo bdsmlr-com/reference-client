@@ -10,6 +10,7 @@ export type RetrievalPostPolicy = {
 };
 
 export type RetrievalPostPolicyMap = Record<string, RetrievalPostPolicy | undefined>;
+export type RetrievalClickMode = 'navigate' | 'open_modal' | 'disabled';
 
 export function getRetrievalPostPolicy(
   postId: number,
@@ -39,3 +40,18 @@ export function applyRetrievalPostPolicies(
   });
 }
 
+export function resolveRetrievalClickMode(policy: RetrievalPostPolicy | undefined): RetrievalClickMode {
+  if (!policy) {
+    return 'navigate';
+  }
+  if (policy.clickAction === 'open_modal') {
+    return 'open_modal';
+  }
+  if (policy.linkAllowed === false) {
+    return 'open_modal';
+  }
+  if (policy.linkAllowed === true) {
+    return 'navigate';
+  }
+  return 'navigate';
+}

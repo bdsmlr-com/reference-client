@@ -5,6 +5,7 @@ import { type ProcessedPost } from '../types/post.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
+import { resolveRetrievalClickMode } from '../services/retrieval-presentation.js';
 import type { MediaRenderType } from '../services/media-resolver.js';
 import './media-renderer.js';
 import './post-actions.js';
@@ -196,6 +197,16 @@ export class PostCard extends LitElement {
     );
   }
 
+  private handlePermalinkClick(event: Event): void {
+    const mode = resolveRetrievalClickMode(this.post._retrievalPolicy);
+    if (mode === 'navigate') {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    this.handleClick();
+  }
+
   render() {
     const p = this.post;
     const presentation = toPresentationModel(p, { surface: 'card', page: this.page });
@@ -256,7 +267,7 @@ export class PostCard extends LitElement {
             target=${presentation.identity.permalink.target}
             rel=${presentation.identity.permalink.rel || nothing}
             title=${presentation.identity.permalink.title || nothing}
-            @click=${(event: Event) => event.stopPropagation()}
+            @click=${this.handlePermalinkClick}
           >${presentation.identity.permalink.label || `${presentation.identity.postTypeIcon} ${p.id}`}</a>
         </div>
 

@@ -10,7 +10,7 @@ import { scrollObserver } from '../services/scroll-observer.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
-import { applyRetrievalPostPolicies, type RetrievalPostPolicyMap } from '../services/retrieval-presentation.js';
+import { applyRetrievalPostPolicies, resolveRetrievalClickMode, type RetrievalPostPolicyMap } from '../services/retrieval-presentation.js';
 import './media-renderer.js';
 import './load-footer.js';
 import './loading-spinner.js';
@@ -316,16 +316,32 @@ export class PostRecommendations extends LitElement {
     this.infiniteScroll = e.detail.enabled;
   }
 
-  private navigateToRelated(rec: RecResult) {
-    const id = rec.post_id;
-    if (id) {
-      const link = resolveLink('recommendation_post', { postId: id });
-      if (link.target === '_blank') {
-        window.open(link.href, '_blank', 'noopener,noreferrer');
-        return;
+  private navigateToRelated(rec: RecResult, event?: Event) {
+    const hydrated = (rec as any)._hydratedPost;
+    const mode = resolveRetrievalClickMode(hydrated?._retrievalPolicy);
+
+    if (mode !== 'navigate') {
+      event?.preventDefault();
+      event?.stopPropagation();
+      if (hydrated) {
+        this.dispatchEvent(new CustomEvent('post-click', {
+          detail: { post: hydrated, posts: [hydrated], index: 0 },
+          bubbles: true,
+          composed: true,
+        }));
       }
-      window.location.href = link.href;
+      return;
     }
+
+    const id = rec.post_id;
+    if (!id) return;
+
+    const link = resolveLink('recommendation_post', { postId: id });
+    if (link.target === '_blank') {
+      window.open(link.href, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    window.location.href = link.href;
   }
 
   render() {
@@ -349,7 +365,7 @@ export class PostRecommendations extends LitElement {
           
           const raw = h._media?.url || h._media?.videoUrl || h.content?.thumbnail;
           return html`
-            <div class="gutter-item" @click=${() => this.navigateToRelated(r)}>
+            <div class="gutter-item" @click=${(event: Event) => this.navigateToRelated(r, event)}>
               <div class="rec-media">
                 <media-renderer .src=${raw} .type=${'gutter'}></media-renderer>
               </div>
