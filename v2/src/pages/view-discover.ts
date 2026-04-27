@@ -2,11 +2,12 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { recService, materializeRecommendedPosts, type RecResult } from '../services/recommendation-api.js';
-import { getPrimaryBlogName } from '../services/blog-resolver.js';
+import { buildPageUrl, getPrimaryBlogName } from '../services/blog-resolver.js';
 import type { ProcessedPost } from '../types/post.js';
 import '../components/post-grid.js';
 import '../components/blog-card.js';
 import '../components/loading-spinner.js';
+import '../components/result-group.js';
 
 @customElement('view-discover')
 export class ViewDiscover extends LitElement {
@@ -62,25 +63,32 @@ export class ViewDiscover extends LitElement {
     if (this.loading) return html`<loading-spinner></loading-spinner>`;
 
     if (this.usingCanonicalPosts) {
+      const subjectBlog = this.blog || getPrimaryBlogName() || '';
       return html`
-        <div class="section">
-          <h2>For You</h2>
-          <p class="text-muted">Recommended posts based on your activity and interests.</p>
+        <result-group
+          wide
+          .title=${'For You'}
+          .description=${'Recommended posts based on your activity and interests.'}
+          .actionHref=${subjectBlog ? buildPageUrl('for', subjectBlog) : ''}
+          .actionLabel=${'See more'}
+        >
           <post-grid .posts=${this.recommendedPosts} .page=${'social'}></post-grid>
-        </div>
+        </result-group>
       `;
     }
 
     return html`
-      <div class="section">
-        <h2>Recommended Blogs for You</h2>
-        <p class="text-muted">Based on your liking patterns and similar audiences.</p>
+      <result-group
+        wide
+        .title=${'Recommended Blogs for You'}
+        .description=${'Based on your liking patterns and similar audiences.'}
+      >
         <div class="grid">
           ${this.recommendedBlogs.map(rec => html`
             <blog-card .blogName=${rec.content_id}></blog-card>
           `)}
         </div>
-      </div>
+      </result-group>
     `;
   }
 }

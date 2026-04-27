@@ -360,12 +360,16 @@ export class PostRecommendations extends LitElement {
 
     return html`
       ${isAdmin ? html`<div style="font-family:monospace; font-size:10px; color:#00ff00; background:#000; padding:2px 4px; border-radius:4px; margin-bottom:8px;">[REC_DEBUG: id=${id}, count=${this.relatedPosts.length}, loading=${this.loading}]</div>` : ''}
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:24px;">
-        <h3 style="margin:0;">${this.title}</h3>
-        ${this.showBrowseLink
-          ? html`<a href="/post/${id}/related" style="color:var(--accent); text-decoration:none; font-size:14px;">See more...</a>`
-          : nothing}
-      </div>
+      ${this.title || this.showBrowseLink
+        ? html`
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:24px;">
+              ${this.title ? html`<h3 style="margin:0;">${this.title}</h3>` : html`<span></span>`}
+              ${this.showBrowseLink
+                ? html`<a href="/post/${id}/related" style="color:var(--accent); text-decoration:none; font-size:14px;">See more...</a>`
+                : nothing}
+            </div>
+          `
+        : nothing}
       
       ${this.error ? html`<div class="error-text" style="color: var(--error); font-size: 13px; margin-bottom: 16px;">${this.error}</div>` : ''}
 
