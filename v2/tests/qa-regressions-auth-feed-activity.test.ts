@@ -51,6 +51,7 @@ describe('QA regressions: auth, feed, activity semantics', () => {
 
     expect(streamSrc).toContain('shouldSuppressSelfSameDayLike');
     expect(streamSrc).toContain('.showBlogChip=${!this.showActorInCluster}');
+    expect(streamSrc).toContain('<result-group');
     expect(gridSrc).toContain('const shouldHideSelfInteractionChip =');
     expect(gridSrc).toContain("this.interactionType === 'like' || this.interactionType === 'comment'");
     expect(gridSrc).toContain('const chipBlogName = presentation.identity.chipBlogLabel;');

@@ -10,6 +10,7 @@ import { loadRenderContract } from '../services/render-contract.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import '../components/post-feed-item.js';
 import '../components/activity-grid.js';
+import '../components/result-group.js';
 
 type BucketInteraction = {
   post: ProcessedPost;
@@ -38,37 +39,6 @@ export class TimelineStream extends LitElement {
     css`
       :host { display: block; }
       .stream { max-width: 600px; margin: 0 auto; }
-      .interaction-cluster {
-        max-width: 600px;
-        margin: 0 auto 20px auto;
-        background: var(--bg-panel-alt);
-        padding: 12px;
-        border-radius: 8px;
-        border: 1px solid var(--border);
-      }
-      .cluster-label {
-        font-size: 12px;
-        color: var(--text-muted);
-        margin-bottom: 8px;
-        font-weight: 600;
-      }
-      .cluster-actions {
-        margin-top: 8px;
-        display: flex;
-        justify-content: center;
-      }
-      .load-more {
-        border: 1px solid var(--border);
-        background: var(--bg-panel);
-        color: var(--text);
-        font-size: 12px;
-        border-radius: 999px;
-        padding: 4px 10px;
-        cursor: pointer;
-      }
-      .load-more:hover {
-        border-color: var(--accent);
-      }
     `,
   ];
 
@@ -260,21 +230,20 @@ export class TimelineStream extends LitElement {
     const visibleItems = bucket.interactions.slice(0, visibleCount);
     const remaining = bucket.interactions.length - visibleItems.length;
     const actorSuffix = this.showActorInCluster && bucket.actor ? ` by @${bucket.actor}` : '';
+    const label = `Activity on ${bucket.dateKey} : ❤️ ${bucket.likeCount} . 💬 ${bucket.commentCount}${actorSuffix}`;
     return html`
-      <div class="interaction-cluster">
-        <div class="cluster-label">Activity on ${bucket.dateKey} : ❤️ ${bucket.likeCount} . 💬 ${bucket.commentCount}${actorSuffix}</div>
+      <result-group
+        .label=${label}
+        .remaining=${remaining}
+        @result-group-load-more=${() => this.loadMoreInCluster(bucket.key)}
+      >
         <activity-grid
           compact
           .items=${visibleItems}
           .showBlogChip=${!this.showActorInCluster}
           @activity-click=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}
         ></activity-grid>
-        ${remaining > 0 ? html`
-          <div class="cluster-actions">
-            <button class="load-more" type="button" @click=${() => this.loadMoreInCluster(bucket.key)}>Load more (${remaining})</button>
-          </div>
-        ` : ''}
-      </div>
+      </result-group>
     `;
   }
 

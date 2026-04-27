@@ -52,6 +52,7 @@ describe('hybrid activity stream', () => {
     expect(streamSrc).toContain('item.type === 1 && item.post');
     expect(streamSrc).toContain('item.type === 2 && item.cluster');
     expect(streamSrc).toContain('<activity-grid');
+    expect(streamSrc).toContain('<result-group');
     expect(streamSrc).toContain('showActorInCluster');
     expect(streamSrc).toContain('@post-click=');
     expect(streamSrc).not.toContain('@post-select=');
@@ -62,7 +63,7 @@ describe('hybrid activity stream', () => {
 
     expect(streamSrc).toContain('getInteractionUnix(post)');
     expect(streamSrc).toContain('post.updatedAtUnix');
-    expect(streamSrc).toContain('Activity on ${bucket.dateKey} : ❤️ ${bucket.likeCount} . 💬 ${bucket.commentCount}');
+    expect(streamSrc).toContain('const label = `Activity on ${bucket.dateKey} : ❤️ ${bucket.likeCount} . 💬 ${bucket.commentCount}${actorSuffix}`;');
     expect(streamSrc).toContain("if (kind !== 'like' && kind !== 'comment')");
   });
 
@@ -70,8 +71,8 @@ describe('hybrid activity stream', () => {
     const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
 
     expect(streamSrc).toContain('clusterVisibleCounts = new Map<string, number>()');
-    expect(streamSrc).toContain('Load more (${remaining})');
     expect(streamSrc).toContain('clusterVisibleCounts.set(key, this.clusterPageSize)');
+    expect(streamSrc).toContain("@result-group-load-more=${() => this.loadMoreInCluster(bucket.key)}");
   });
 
   it('deduplicates same post within a date bucket across like/comment clusters', () => {
