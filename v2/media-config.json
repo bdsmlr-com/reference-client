@@ -331,6 +331,12 @@
         "labelTemplate": "Following list",
         "titleTemplate": "Open @{blog} following list"
       },
+      "feed_followers_list": {
+        "mode": "internal",
+        "pattern": "/{blog}/social?tab=followers",
+        "labelTemplate": "Followers list",
+        "titleTemplate": "Open @{blog} followers list"
+      },
       "post_permalink": {
         "mode": "internal",
         "pattern": "/post/{postId}",

@@ -114,5 +114,7 @@ describe('route normalization', () => {
     expect(appRootSrc).toContain("path: '/:blog/activity'");
     expect(appRootSrc).toContain("path: '/:blog/feed'");
     expect(appRootSrc).toContain("path: '/:blog/social'");
+    expect(appRootSrc).toContain("path: '/follower-feed/:blogname'");
+    expect(appRootSrc).toContain("<view-feed .blog=${this.resolveRouteBlogName(blogname || '')} .mode=${'followers'}></view-feed>");
   });
 });

@@ -15,8 +15,8 @@ describe('QA regressions: auth, feed, activity semantics', () => {
   it('clears following feed state when resolving a blog with empty follow graph', () => {
     const feedSrc = readFileSync(join(ROOT, 'pages/view-feed.ts'), 'utf8');
 
-    expect(feedSrc).toContain('this.followingBlogIds = [];');
-    expect(feedSrc).toContain('this.followingCount = 0;');
+    expect(feedSrc).toContain('this.sourceBlogIds = [];');
+    expect(feedSrc).toContain('this.sourceCount = 0;');
     expect(feedSrc).toContain('this.timelineItems = [];');
   });
 
@@ -24,9 +24,26 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     const feedSrc = readFileSync(join(ROOT, 'pages/view-feed.ts'), 'utf8');
     const config = readFileSync(join(process.cwd(), 'media-config.json'), 'utf8');
 
-    expect(feedSrc).toContain("resolveLink('feed_following_list'");
+    expect(feedSrc).toContain('resolveLink(this.relationshipLinkContext');
     expect(config).toContain('"feed_following_list"');
     expect(config).toContain('/{blog}/social?tab=following');
+    expect(feedSrc).toContain("private get relationshipLinkContext(): 'feed_following_list' | 'feed_followers_list'");
+    expect(config).toContain('"feed_followers_list"');
+    expect(config).toContain('/{blog}/social?tab=followers');
+  });
+
+  it('generalizes feed pages for following and follower modes', () => {
+    const feedSrc = readFileSync(join(ROOT, 'pages/view-feed.ts'), 'utf8');
+    const appRootSrc = readFileSync(join(ROOT, 'app-root.ts'), 'utf8');
+
+    expect(feedSrc).toContain("@property({ type: String }) mode: 'following' | 'followers' = 'following';");
+    expect(feedSrc).toContain("private get relationshipDirection(): 1 | 2");
+    expect(feedSrc).toContain("return this.isFollowerFeed ? 2 : 1;");
+    expect(feedSrc).toContain("return this.isFollowerFeed ? 'followers' : 'following';");
+    expect(feedSrc).toContain("View posts from followers of:");
+    expect(feedSrc).toContain("page=${this.isFollowerFeed ? 'follower-feed' : 'feed'}");
+    expect(appRootSrc).toContain("path: '/follower-feed/:blogname'");
+    expect(appRootSrc).toContain("<view-feed .blog=${this.resolveRouteBlogName(blogname || '')} .mode=${'followers'}></view-feed>");
   });
 
   it('keeps activity URLs focused on activity filters only', () => {

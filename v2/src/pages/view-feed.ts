@@ -164,11 +164,12 @@ export class ViewFeed extends LitElement {
   ];
 
   @property({ type: String }) blog = '';
+  @property({ type: String }) mode: 'following' | 'followers' = 'following';
 
   @state() private blogNameInput = '';
   @state() private resolvedBlogName = '';
-  @state() private followingBlogIds: number[] = [];
-  @state() private followingCount = 0;
+  @state() private sourceBlogIds: number[] = [];
+  @state() private sourceCount = 0;
   @state() private resolving = false;
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
   @state() private selectedVariants: PostVariant[] = [];
@@ -186,7 +187,7 @@ export class ViewFeed extends LitElement {
   @state() private blogData: Blog | null = null;
   private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('feed', 'main_stream');
   private skipCacheOnNextResolve = false;
-  private emptyFollowingAttempts = 0;
+  private emptySourceAttempts = 0;
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
@@ -201,6 +202,36 @@ export class ViewFeed extends LitElement {
         this.resolveBlog();
       }
     }
+  }
+
+  private get isFollowerFeed(): boolean {
+    return this.mode === 'followers';
+  }
+
+  private get relationshipDirection(): 1 | 2 {
+    return this.isFollowerFeed ? 2 : 1;
+  }
+
+  private get relationshipLabel(): 'followers' | 'following' {
+    return this.isFollowerFeed ? 'followers' : 'following';
+  }
+
+  private get relationshipTitleCopy(): string {
+    return this.isFollowerFeed ? 'View posts from followers of:' : 'View posts from blogs followed by:';
+  }
+
+  private get relationshipSummarySuffix(): string {
+    return this.isFollowerFeed ? 'of' : 'by';
+  }
+
+  private get emptyRelationshipStatus(): string {
+    return this.isFollowerFeed
+      ? ErrorMessages.STATUS.noFollowers(this.resolvedBlogName)
+      : ErrorMessages.STATUS.notFollowingAnyone(this.resolvedBlogName);
+  }
+
+  private get relationshipLinkContext(): 'feed_following_list' | 'feed_followers_list' {
+    return this.isFollowerFeed ? 'feed_followers_list' : 'feed_following_list';
   }
 
   connectedCallback(): void {
@@ -220,7 +251,7 @@ export class ViewFeed extends LitElement {
   }
 
   private savePaginationState = (): void => {
-    // Following feed currently uses multi-source cursors; skip cursor persistence for now.
+    // Relationship feeds currently use multi-source cursors; skip cursor persistence for now.
   };
 
   private observeSentinel(): void {
@@ -228,7 +259,7 @@ export class ViewFeed extends LitElement {
       const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
       if (sentinel) {
         scrollObserver.observe(sentinel, () => {
-          if (this.infiniteScroll && !this.loading && !this.exhausted && this.followingBlogIds.length > 0) {
+          if (this.infiniteScroll && !this.loading && !this.exhausted && this.sourceBlogIds.length > 0) {
             this.loadMore();
           }
         });
@@ -255,13 +286,13 @@ export class ViewFeed extends LitElement {
     }
 
     if (this.resolvedBlogName && this.resolvedBlogName !== name) {
-      this.emptyFollowingAttempts = 0;
+      this.emptySourceAttempts = 0;
     }
 
     this.resolving = true;
     this.statusMessage = `Resolving @${name}...`;
-    this.followingBlogIds = [];
-    this.followingCount = 0;
+    this.sourceBlogIds = [];
+    this.sourceCount = 0;
     this.timelineItems = [];
     this.resetState();
 
@@ -286,43 +317,47 @@ export class ViewFeed extends LitElement {
 
       const followGraph = await apiClient.followGraph.getCached({
         blog_id: blogId,
-        direction: 1,
+        direction: this.relationshipDirection,
         page_size: 1000,
       }, { skipCache: shouldSkipCache });
 
-      const following = followGraph.following || [];
-      this.followingBlogIds = following
+      const sourceEdges = this.isFollowerFeed
+        ? (followGraph.followers || [])
+        : (followGraph.following || []);
+      this.sourceBlogIds = sourceEdges
         .map((f) => (f as { blogId?: number; blog_id?: number }).blogId ?? (f as { blogId?: number; blog_id?: number }).blog_id)
         .filter((id): id is number => id !== undefined && id !== null);
-      this.followingCount = followGraph.followingCount || this.followingBlogIds.length;
+      this.sourceCount = this.isFollowerFeed
+        ? (followGraph.followersCount || this.sourceBlogIds.length)
+        : (followGraph.followingCount || this.sourceBlogIds.length);
 
-      if (this.followingBlogIds.length === 0) {
+      if (this.sourceBlogIds.length === 0) {
         this.timelineItems = [];
         this.resetState();
-        if (following.length === 0 && this.followingCount === 0) {
-          if (this.emptyFollowingAttempts === 0) {
+        if (sourceEdges.length === 0 && this.sourceCount === 0) {
+          if (this.emptySourceAttempts === 0) {
             this.statusMessage = '';
-            this.errorMessage = ErrorMessages.DATA.followDataEmptyRetryable(name, 'following');
+            this.errorMessage = ErrorMessages.DATA.followDataEmptyRetryable(name, this.relationshipLabel);
             this.isRetryableError = true;
             this.skipCacheOnNextResolve = true;
-            this.emptyFollowingAttempts++;
+            this.emptySourceAttempts++;
             this.resolving = false;
             return;
           }
 
-          this.statusMessage = ErrorMessages.STATUS.notFollowingAnyone(name);
+          this.statusMessage = this.emptyRelationshipStatus;
           if (followGraph.fromCache) {
             this.skipCacheOnNextResolve = true;
           }
 
-          this.statusMessage = ErrorMessages.STATUS.notFollowingAnyone(name);
+          this.statusMessage = this.emptyRelationshipStatus;
         } else {
           // FOL-008: API returned count but no usable blogIds - likely cached transient error
           // Invalidate the cache so retry can fetch fresh data
           console.warn(`FOL-008: Data mismatch for @${name} - invalidating follow graph cache`);
           apiClient.followGraph.invalidateCache(blogId);
           this.statusMessage = '';
-          this.errorMessage = ErrorMessages.DATA.followDataMismatch(name, 'following', this.followingCount);
+          this.errorMessage = ErrorMessages.DATA.followDataMismatch(name, this.relationshipLabel, this.sourceCount);
           this.isRetryableError = true;
           this.skipCacheOnNextResolve = true;
         }
@@ -332,11 +367,15 @@ export class ViewFeed extends LitElement {
 
       this.statusMessage = '';
       this.resolving = false;
-      this.emptyFollowingAttempts = 0;
+      this.emptySourceAttempts = 0;
 
       await this.loadPosts();
     } catch (e) {
-      this.errorMessage = getContextualErrorMessage(e, 'load_following', { blogName: this.blogNameInput });
+      this.errorMessage = getContextualErrorMessage(
+        e,
+        this.isFollowerFeed ? 'load_followers' : 'load_following',
+        { blogName: this.blogNameInput }
+      );
       const apiError = isApiError(e) ? e : toApiError(e);
       this.isRetryableError = apiError.isRetryable;
       this.skipCacheOnNextResolve = true;
@@ -364,7 +403,7 @@ export class ViewFeed extends LitElement {
   }
 
   private async loadPosts(): Promise<void> {
-    if (this.followingBlogIds.length === 0) return;
+    if (this.sourceBlogIds.length === 0) return;
     if (this.selectedTypes.length === 0) {
       this.statusMessage = ErrorMessages.VALIDATION.NO_TYPES_SELECTED;
       return;
@@ -384,7 +423,7 @@ export class ViewFeed extends LitElement {
   }
 
   private async fillPage(): Promise<void> {
-    if (this.followingBlogIds.length === 0) return;
+    if (this.sourceBlogIds.length === 0) return;
 
     const postBuffer: ProcessedPost[] = [];
     let backendFetches = 0;
@@ -401,7 +440,7 @@ export class ViewFeed extends LitElement {
         // FOL-009: Per API spec, pass sort_field: 0 (UNSPECIFIED) and limit_per_blog: 0 for merged FYP behavior
         // FOL-010: Use order: 2 for DESC (0=UNSPECIFIED, 1=ASC, 2=DESC)
         const resp = await apiClient.recentActivity.listCached({
-          blog_ids: this.followingBlogIds,
+          blog_ids: this.sourceBlogIds,
           post_types: this.selectedTypes,
           variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
           global_merge: true,
@@ -614,7 +653,7 @@ export class ViewFeed extends LitElement {
   private handleActivityKindsChange(e: CustomEvent): void {
     this.activityKinds = e.detail.kinds || ['post', 'reblog', 'like', 'comment'];
     setFollowingActivityKindsPreference(this.activityKinds);
-    if (this.followingBlogIds.length > 0) {
+    if (this.sourceBlogIds.length > 0) {
       this.loadPosts();
     }
   }
@@ -623,12 +662,12 @@ export class ViewFeed extends LitElement {
     return html`
       <div class="content">
         ${(() => {
-          const followingLink = this.resolvedBlogName
-            ? resolveLink('feed_following_list', { blog: this.resolvedBlogName })
+          const relationshipLink = this.resolvedBlogName
+            ? resolveLink(this.relationshipLinkContext, { blog: this.resolvedBlogName })
             : null;
           return html`
         <div class="blog-input-section">
-          <h2>View posts from blogs followed by:</h2>
+          <h2>${this.relationshipTitleCopy}</h2>
           <div class="input-row">
             <input
               type="text"
@@ -642,15 +681,15 @@ export class ViewFeed extends LitElement {
             </button>
           </div>
 
-          ${this.resolvedBlogName && this.followingBlogIds.length > 0
+          ${this.resolvedBlogName && this.sourceBlogIds.length > 0
             ? html`
                 <div class="blog-info">
                   ${this.blogData?.title ? html`<div style="margin-bottom: 4px;">${this.blogData.title}</div>` : ''}
                   Showing posts from
-                  ${followingLink
-                    ? html`<a href=${followingLink.href} target=${followingLink.target} rel=${followingLink.rel || ''}>${this.followingCount} blogs followed</a>`
-                    : html`${this.followingCount} blogs followed`}
-                  by
+                  ${relationshipLink
+                    ? html`<a href=${relationshipLink.href} target=${relationshipLink.target} rel=${relationshipLink.rel || ''}>${this.sourceCount} ${this.relationshipLabel}</a>`
+                    : html`${this.sourceCount} ${this.relationshipLabel}`}
+                  ${this.relationshipSummarySuffix}
                   <button class="name-copy" type="button" @click=${this.copyResolvedBlogName}>${this.resolvedBlogName}</button>
                 </div>
               `
@@ -688,7 +727,7 @@ export class ViewFeed extends LitElement {
             `
           : ''}
 
-        ${this.followingBlogIds.length > 0
+        ${this.sourceBlogIds.length > 0
           ? html`
               <activity-kind-pills
                 .selected=${this.activityKinds}
@@ -702,7 +741,7 @@ export class ViewFeed extends LitElement {
               <div class="feed-container">
                 <timeline-stream
                   .items=${this.timelineItems}
-                  page="feed"
+                  page=${this.isFollowerFeed ? 'follower-feed' : 'feed'}
                   .activityKinds=${this.activityKinds}
                   .showActorInCluster=${true}
                   @post-click=${this.handlePostClick}
@@ -711,7 +750,7 @@ export class ViewFeed extends LitElement {
 
               <load-footer
                 mode="activity"
-                pageName="following"
+                pageName=${this.isFollowerFeed ? 'followers' : 'following'}
                 .loading=${this.loading}
                 .exhausted=${this.exhausted}
                 .loadingCurrent=${this.loadingCurrent}

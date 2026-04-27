@@ -69,7 +69,7 @@ export class AppRoot extends LitElement {
     { path: '/post/:postId', render: ({ postId }) => html`<view-post .postId=${postId}></view-post>` },
     { path: '/clear-cache*', render: () => html`<view-clear-cache></view-clear-cache>` },
     { path: '/feed/for/:blogname', render: ({ blogname }) => html`<view-feed .blog=${this.resolveRouteBlogName(blogname || '')}></view-feed>` },
-    { path: '/follower-feed/:blogname', render: ({ blogname }) => html`<view-social .blog=${this.resolveRouteBlogName(blogname || '')}></view-social>` },
+    { path: '/follower-feed/:blogname', render: ({ blogname }) => html`<view-feed .blog=${this.resolveRouteBlogName(blogname || '')} .mode=${'followers'}></view-feed>` },
     { path: '/activity/:blogname', render: ({ blogname }) => html`<view-posts .blog=${this.resolveRouteBlogName(blogname || '')}></view-posts>` },
     { path: '/archive/:blogname', render: ({ blogname }) => html`<view-archive .blog=${this.resolveRouteBlogName(blogname || '')}></view-archive>` },
     { path: '/settings/you', render: () => html`<view-settings-user></view-settings-user>` },
