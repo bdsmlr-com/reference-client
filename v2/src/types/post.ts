@@ -128,6 +128,7 @@ export interface PresentationIdentity {
   postTypeIcon: string;
   permalink: ResolvedLink;
   originPostPermalink?: ResolvedLink | null;
+  originPostMissing?: boolean;
   viaPostPermalink?: ResolvedLink | null;
   originBlog?: ResolvedLink | null;
   viaBlog?: ResolvedLink | null;

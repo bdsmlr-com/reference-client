@@ -137,7 +137,8 @@ function buildIdentity(post: ProcessedPost) {
       : post.blogIdentityDecorations,
   );
   const viaBlogDecoration = pickInlineDecoration(post.blogIdentityDecorations);
-  const originPostPermalink = isReblog && post.originPostId
+  const originPostMissing = Boolean(isReblog && post.originPostMissing);
+  const originPostPermalink = isReblog && post.originPostId && !originPostMissing
     ? resolveLink('post_permalink', { postId: post.originPostId })
     : null;
   const viaPostPermalink = isReblog ? permalink : null;
@@ -153,6 +154,7 @@ function buildIdentity(post: ProcessedPost) {
     postTypeIcon: POST_TYPE_ICONS[post.type] || '❓',
     permalink,
     originPostPermalink,
+    originPostMissing,
     viaPostPermalink,
     originBlog,
     viaBlog,

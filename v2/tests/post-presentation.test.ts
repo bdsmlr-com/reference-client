@@ -90,6 +90,17 @@ describe('toPresentationModel', () => {
     expect(model.identity.viaPostPermalink?.href).toBe('/post/686683457');
   });
 
+  it('suppresses origin post permalink when the origin post is missing', () => {
+    const model = toPresentationModel(
+      makePost({ originBlogName: 'OriginBlog', originPostId: 123, originPostMissing: true }),
+      { surface: 'detail', page: 'post' },
+    );
+
+    expect(model.identity.isReblog).toBe(true);
+    expect(model.identity.originPostPermalink).toBeNull();
+    expect(model.identity.originPostMissing).toBe(true);
+  });
+
   it('selects the top inline identity decorations for origin and via blog identities', () => {
     const model = toPresentationModel(
       makePost({

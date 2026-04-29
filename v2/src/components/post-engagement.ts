@@ -31,6 +31,7 @@ export class PostEngagement extends LitElement {
       .lightbox-links a { color: var(--accent); text-decoration: none; font-weight: 600; }
       .post-id-link { display: inline-flex; align-items: center; gap: 4px; }
       .post-id-outlink { font-size: 12px; opacity: 0.75; }
+      .origin-post-missing { text-decoration: line-through; opacity: 0.75; }
       
       .meta { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
 
@@ -107,13 +108,14 @@ export class PostEngagement extends LitElement {
     if (presentation.identity.isReblog) {
       const originPostLink = presentation.identity.originPostPermalink || resolveLink('post_permalink', { postId: p.originPostId as number });
       const viaPostLink = presentation.identity.viaPostPermalink || presentation.identity.permalink;
-      const originPostLabel = originPostLink.label || String(p.originPostId);
       const viaPostLabel = viaPostLink.label || String(p.id);
-      const originPostIcon = originPostLink.icon || '↗';
       const viaPostIcon = viaPostLink.icon || '↗';
+      const originPostLabel = String(p.originPostId);
       return html`
         ${typeIcon} ${this.renderResolvedBlogIdentity(presentation.identity.originBlog, presentation.identity.originBlogLabel, presentation.identity.originBlogDecoration)} /
-        <a class="post-id-link" href=${originPostLink.href} target=${originPostLink.target} rel=${originPostLink.rel || nothing} title=${originPostLink.title || nothing}>${originPostLabel}<span class="post-id-outlink">${originPostIcon}</span></a>
+        ${presentation.identity.originPostMissing
+          ? html`<span class="origin-post-missing">${originPostLabel}</span>`
+          : html`<a class="post-id-link" href=${ originPostLink.href } target=${ originPostLink.target } rel=${originPostLink.rel || nothing} title=${originPostLink.title || nothing}>${originPostLink.label || originPostLabel}<span class="post-id-outlink">${originPostLink.icon || '↗'}</span></a>`}
         via ♻️ ${this.renderResolvedBlogIdentity(presentation.identity.viaBlog, presentation.identity.viaBlogLabel, presentation.identity.viaBlogDecoration)} /
         <a class="post-id-link" href=${viaPostLink.href} target=${viaPostLink.target} rel=${viaPostLink.rel || nothing} title=${viaPostLink.title || nothing}>${viaPostLabel}<span class="post-id-outlink">${viaPostIcon}</span></a>
       `;

@@ -74,6 +74,7 @@ export interface Post {
   reblog_variants?: ReblogVariant[];
   blogIdentityDecorations?: IdentityDecoration[];
   originBlogIdentityDecorations?: IdentityDecoration[];
+  originPostMissing?: boolean;
 }
 
 export interface InteractionCluster {

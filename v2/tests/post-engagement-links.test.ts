@@ -55,4 +55,13 @@ describe('post engagement links', () => {
 
     expect(src).toContain('this.renderResolvedBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, presentation.identity.primaryBlogLabel, presentation.identity.viaBlogDecoration || presentation.identity.originBlogDecoration)');
   });
+
+  it('renders missing origin post ids as non-linked tombstones', () => {
+    const src = readFileSync(FILE, 'utf8');
+
+    expect(src).toContain('presentation.identity.originPostMissing');
+    expect(src).toContain('origin-post-missing');
+    expect(src).toContain('text-decoration: line-through');
+    expect(src).not.toContain('href=${originPostLink.href}');
+  });
 });
