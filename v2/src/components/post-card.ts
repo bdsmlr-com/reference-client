@@ -7,6 +7,7 @@ import { isAdminMode } from '../services/blog-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { resolveRetrievalClickMode } from '../services/retrieval-presentation.js';
 import type { MediaRenderType } from '../services/media-resolver.js';
+import type { IdentityDecoration } from '../types/api.js';
 import './media-renderer.js';
 import './post-actions.js';
 
@@ -207,6 +208,11 @@ export class PostCard extends LitElement {
     this.handleClick();
   }
 
+  private renderIdentityLabel(label: string, decoration?: IdentityDecoration | null) {
+    const icon = decoration?.icon?.trim();
+    return icon ? `${label} ${icon}` : label;
+  }
+
   render() {
     const p = this.post;
     const presentation = toPresentationModel(p, { surface: 'card', page: this.page });
@@ -220,9 +226,15 @@ export class PostCard extends LitElement {
     const isTombstone = !rawUrl && !p.body;
     const isDeleted = Boolean(p.deletedAtUnix);
     const isOriginDeleted = Boolean(p.originDeletedAtUnix);
-    const renderBlogLink = (link: typeof presentation.identity.viaBlog, label: string, titleFallback: string) => {
+    const renderBlogLink = (
+      link: typeof presentation.identity.viaBlog,
+      label: string,
+      titleFallback: string,
+      decoration?: IdentityDecoration | null,
+    ) => {
+      const renderedLabel = this.renderIdentityLabel(label, decoration);
       if (!link) {
-        return html`<span class="blog-link">${label}</span>`;
+        return html`<span class="blog-link">${renderedLabel}</span>`;
       }
       return html`
         <a
@@ -232,7 +244,7 @@ export class PostCard extends LitElement {
           rel=${link.rel || nothing}
           title=${link.title || titleFallback}
           @click=${(event: Event) => event.stopPropagation()}
-        >${link.label || label}</a>
+        >${renderedLabel}</a>
       `;
     };
 
@@ -245,18 +257,21 @@ export class PostCard extends LitElement {
                 presentation.identity.originBlog,
                 presentation.identity.originBlogLabel,
                 `Original post by ${presentation.identity.originBlogLabel}`,
+                presentation.identity.originBlogDecoration,
               )}
               <span style="opacity: 0.5;">♻️ via</span>
               ${renderBlogLink(
                 presentation.identity.viaBlog,
                 presentation.identity.viaBlogLabel,
                 `Open ${presentation.identity.viaBlogLabel}`,
+                presentation.identity.viaBlogDecoration,
               )}
             ` : html`
               ${renderBlogLink(
                 presentation.identity.viaBlog,
                 presentation.identity.viaBlogLabel,
                 `Open ${presentation.identity.viaBlogLabel}`,
+                presentation.identity.viaBlogDecoration,
               )}
             `}
             ${rbCount > 0 ? html`<span class="reblog-badge" title="Aggregated reblogs">+${rbCount}</span>` : ''}

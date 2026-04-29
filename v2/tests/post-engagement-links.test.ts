@@ -28,6 +28,7 @@ describe('post engagement links', () => {
     expect(src).toContain('private normalizeBlogName');
     expect(src).toContain('private renderBlogIdentity');
     expect(src).toContain('private renderResolvedBlogIdentity');
+    expect(src).toContain('private renderIdentityLabel');
     expect(src).toContain('const presentation = toPresentationModel');
     expect(src).not.toContain('POST_TYPE_ICONS[p.type as PostType] ||');
     expect(src).toContain("resolveLink('post_permalink'");
@@ -35,6 +36,8 @@ describe('post engagement links', () => {
     expect(src).toContain("const label = normalized ? `@${normalized}` : '@unknown';");
     expect(src).not.toContain('href="/${p.originBlogName}/posts"');
     expect(src).not.toContain('href="/${p.blogName}/posts"');
+    expect(src).toContain('presentation.identity.viaBlogDecoration');
+    expect(src).toContain('presentation.identity.originBlogDecoration');
   });
 
   it('links both origin and via post ids in reblog lightbox details', () => {
@@ -42,14 +45,14 @@ describe('post engagement links', () => {
 
     expect(src).toContain("const originPostLink = presentation.identity.originPostPermalink || resolveLink('post_permalink', { postId: p.originPostId as number });");
     expect(src).toContain("const viaPostLink = presentation.identity.viaPostPermalink || presentation.identity.permalink;");
-    expect(src).toContain('via ♻️ ${this.renderResolvedBlogIdentity(presentation.identity.viaBlog, presentation.identity.viaBlogLabel)} /');
-    expect(src).toContain('${typeIcon} ${this.renderResolvedBlogIdentity(presentation.identity.originBlog, presentation.identity.originBlogLabel)} /');
+    expect(src).toContain('via ♻️ ${this.renderResolvedBlogIdentity(presentation.identity.viaBlog, presentation.identity.viaBlogLabel, presentation.identity.viaBlogDecoration)} /');
+    expect(src).toContain('${typeIcon} ${this.renderResolvedBlogIdentity(presentation.identity.originBlog, presentation.identity.originBlogLabel, presentation.identity.originBlogDecoration)} /');
     expect(src).toContain('href=${viaPostLink.href}');
   });
 
   it('keeps ordinary post metadata linked via the primary blog identity', () => {
     const src = readFileSync(FILE, 'utf8');
 
-    expect(src).toContain('this.renderResolvedBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, presentation.identity.primaryBlogLabel)');
+    expect(src).toContain('this.renderResolvedBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, presentation.identity.primaryBlogLabel, presentation.identity.viaBlogDecoration || presentation.identity.originBlogDecoration)');
   });
 });

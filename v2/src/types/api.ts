@@ -38,6 +38,16 @@ export interface ReblogVariant {
   blogName?: string;
 }
 
+export interface IdentityDecoration {
+  kind?: string;
+  token?: string;
+  label?: string;
+  icon?: string;
+  priority?: number;
+  visibility?: string[];
+  source?: string;
+}
+
 // Core entities
 export interface Post {
   id: number;
@@ -62,6 +72,8 @@ export interface Post {
   originDeletedAtUnix?: number;
   variant?: PostVariant;
   reblog_variants?: ReblogVariant[];
+  blogIdentityDecorations?: IdentityDecoration[];
+  originBlogIdentityDecorations?: IdentityDecoration[];
 }
 
 export interface InteractionCluster {
@@ -90,6 +102,39 @@ export interface Blog {
   backgroundColor?: string;
   textColor?: string;
   headerImageUrl?: string;
+  interests?: BlogPublicInterests;
+  personals?: BlogPublicPersonals;
+  privacy?: BlogPrivacy;
+  identityDecorations?: IdentityDecoration[];
+}
+
+export interface BlogPublicInterests {
+  maledom?: boolean;
+  femdom?: boolean;
+  lesbian?: boolean;
+  gay?: boolean;
+  sissy?: boolean;
+  latex?: boolean;
+  gifs?: boolean;
+  extreme?: boolean;
+  vanilla?: boolean;
+  vintage?: boolean;
+  art?: boolean;
+  funny?: boolean;
+  hentai?: boolean;
+  journal?: boolean;
+  quotes?: boolean;
+  cartoon?: boolean;
+  other?: boolean;
+}
+
+export interface BlogPublicPersonals {
+  labels?: Record<string, string>;
+}
+
+export interface BlogPrivacy {
+  isPrivate?: boolean;
+  isPublic?: boolean;
 }
 
 export interface User {

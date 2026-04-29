@@ -7,6 +7,7 @@ import { MAX_VISIBLE_TAGS } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import type { MediaRenderType } from '../services/media-resolver.js';
+import type { IdentityDecoration } from '../types/api.js';
 import './media-renderer.js';
 
 /**
@@ -198,6 +199,11 @@ export class PostFeedItem extends LitElement {
     }));
   }
 
+  private renderIdentityLabel(label: string, decoration?: IdentityDecoration | null) {
+    const icon = decoration?.icon?.trim();
+    return icon ? `${label} ${icon}` : label;
+  }
+
   render() {
     const post = this.post;
     const presentation = toPresentationModel(post, {
@@ -224,11 +230,16 @@ export class PostFeedItem extends LitElement {
       : post._activityKindOverride === 'comment'
         ? '💬 Self-commented'
         : '';
-    const renderBlogIdentity = (link: typeof presentation.identity.viaBlog, label: string) => {
+    const renderBlogIdentity = (
+      link: typeof presentation.identity.viaBlog,
+      label: string,
+      decoration?: IdentityDecoration | null,
+    ) => {
+      const renderedLabel = this.renderIdentityLabel(label, decoration);
       if (!link) {
-        return html`<span class="blog-name">${label}</span>`;
+        return html`<span class="blog-name">${renderedLabel}</span>`;
       }
-      return html`<a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>${link.label || label}</a>`;
+      return html`<a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>${renderedLabel}</a>`;
     };
 
     let mediaHtml;
@@ -254,12 +265,12 @@ export class PostFeedItem extends LitElement {
         <header class="card-header">
           <div class="blog-info">
             ${isReblog ? html`
-              ${renderBlogIdentity(presentation.identity.originBlog, originBlogLabel)}
+              ${renderBlogIdentity(presentation.identity.originBlog, originBlogLabel, presentation.identity.originBlogDecoration)}
               <span class="reblog-indicator">
-                ♻️ via ${renderBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, blogLabel)}
+                ♻️ via ${renderBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, blogLabel, presentation.identity.viaBlogDecoration)}
               </span>
             ` : html`
-              ${renderBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, blogLabel)}
+              ${renderBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, blogLabel, presentation.identity.viaBlogDecoration)}
             `}
             ${selfActivityBadge ? html`<span class="self-activity-badge">${selfActivityBadge}</span>` : ''}
           </div>

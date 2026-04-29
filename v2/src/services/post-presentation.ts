@@ -8,6 +8,7 @@ import {
   type PresentationContext,
   type ProcessedPost,
 } from '../types/post';
+import type { IdentityDecoration } from '../types/api.js';
 
 type NormalizedPresentationContext = Required<Pick<PresentationContext, 'surface' | 'page'>> & PresentationContext;
 
@@ -96,6 +97,25 @@ function buildActionSet(post: ProcessedPost, ctx: NormalizedPresentationContext,
   };
 }
 
+function pickInlineDecoration(decorations?: IdentityDecoration[] | null): IdentityDecoration | null {
+  const eligible = (decorations || []).filter((decoration) => {
+    if (!decoration) return false;
+    const visibility = decoration.visibility || [];
+    return visibility.length === 0 || visibility.includes('inline_name');
+  });
+  if (!eligible.length) {
+    return null;
+  }
+  eligible.sort((left, right) => {
+    const priorityDelta = (left.priority ?? Number.MAX_SAFE_INTEGER) - (right.priority ?? Number.MAX_SAFE_INTEGER);
+    if (priorityDelta !== 0) {
+      return priorityDelta;
+    }
+    return (left.token || '').localeCompare(right.token || '');
+  });
+  return eligible[0] || null;
+}
+
 function buildIdentity(post: ProcessedPost) {
   const permalink = resolveLink('post_permalink', { postId: post.id });
   const isReblog = Boolean(post.originPostId && post.originPostId !== post.id);
@@ -111,6 +131,12 @@ function buildIdentity(post: ProcessedPost) {
     : null;
   const originBlogLabel = originBlog?.label || `@${originBlogName || 'unknown'}`;
   const viaBlogLabel = viaBlog?.label || `@${viaBlogName || originBlogName || 'unknown'}`;
+  const originBlogDecoration = pickInlineDecoration(
+    post.originBlogIdentityDecorations?.length
+      ? post.originBlogIdentityDecorations
+      : post.blogIdentityDecorations,
+  );
+  const viaBlogDecoration = pickInlineDecoration(post.blogIdentityDecorations);
   const originPostPermalink = isReblog && post.originPostId
     ? resolveLink('post_permalink', { postId: post.originPostId })
     : null;
@@ -130,6 +156,8 @@ function buildIdentity(post: ProcessedPost) {
     viaPostPermalink,
     originBlog,
     viaBlog,
+    originBlogDecoration,
+    viaBlogDecoration,
     originBlogLabel,
     viaBlogLabel,
     primaryBlogLabel,

@@ -90,6 +90,44 @@ describe('toPresentationModel', () => {
     expect(model.identity.viaPostPermalink?.href).toBe('/post/686683457');
   });
 
+  it('selects the top inline identity decorations for origin and via blog identities', () => {
+    const model = toPresentationModel(
+      makePost({
+        blogName: 'viaBlog',
+        originBlogName: 'originBlog',
+        originPostId: 123,
+        blogIdentityDecorations: [
+          {
+            kind: 'role',
+            token: 'moderator',
+            label: 'Moderator',
+            icon: '🛡️',
+            priority: 20,
+            visibility: ['inline_name'],
+            source: 'system',
+          },
+        ],
+        originBlogIdentityDecorations: [
+          {
+            kind: 'role',
+            token: 'administrator',
+            label: 'Administrator',
+            icon: '👮',
+            priority: 10,
+            visibility: ['inline_name'],
+            source: 'system',
+          },
+        ],
+      }),
+      { surface: 'detail', page: 'post' },
+    );
+
+    expect(model.identity.originBlogDecoration?.token).toBe('administrator');
+    expect(model.identity.originBlogDecoration?.icon).toBe('👮');
+    expect(model.identity.viaBlogDecoration?.token).toBe('moderator');
+    expect(model.identity.viaBlogDecoration?.icon).toBe('🛡️');
+  });
+
   it('exposes canonical-card eligibility for clustered activity promotion', () => {
     const model = toPresentationModel(
       makePost({ variant: 2 }),

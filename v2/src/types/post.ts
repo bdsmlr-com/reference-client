@@ -1,4 +1,4 @@
-import type { Post, PostContent, PostType } from './api.js';
+import type { IdentityDecoration, Post, PostContent, PostType } from './api.js';
 import type { ResolvedLink } from '../services/link-resolver.js';
 
 export interface MediaInfo {
@@ -131,6 +131,8 @@ export interface PresentationIdentity {
   viaPostPermalink?: ResolvedLink | null;
   originBlog?: ResolvedLink | null;
   viaBlog?: ResolvedLink | null;
+  originBlogDecoration?: IdentityDecoration | null;
+  viaBlogDecoration?: IdentityDecoration | null;
   originBlogLabel: string;
   viaBlogLabel: string;
   primaryBlogLabel: string;

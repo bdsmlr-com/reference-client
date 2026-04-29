@@ -21,6 +21,8 @@ describe('post card presentation', () => {
     expect(src).toContain('target=${link.target}');
     expect(src).toContain('presentation.identity.originBlogLabel');
     expect(src).toContain('presentation.identity.viaBlogLabel');
+    expect(src).toContain('presentation.identity.originBlogDecoration');
+    expect(src).toContain('presentation.identity.viaBlogDecoration');
     expect(src).toContain("@click=${(event: Event) => event.stopPropagation()}");
     expect(src).not.toContain('POST_TYPE_ICONS[p.type as PostType]');
   });
