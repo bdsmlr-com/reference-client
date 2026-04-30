@@ -62,4 +62,10 @@ describe('post route media behavior', () => {
     expect(src).toContain(".posterSrc=${media.type === 'video' ? media.url : undefined}");
     expect(src).toContain('.type=${mediaRenderType}');
   });
+
+  it('lightbox does not show a missing-media ghost for text posts with no files', () => {
+    const src = readFileSync(join(process.cwd(), 'src/components/post-lightbox.ts'), 'utf8');
+    expect(src).toContain("if (media.type === 'text' && mediaSources.length === 0) {");
+    expect(src).toContain('return nothing;');
+  });
 });

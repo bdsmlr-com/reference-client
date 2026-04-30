@@ -23,4 +23,14 @@ describe('post detail unification', () => {
     expect(postViewSrc).not.toContain('recommendationsMode=');
     expect(postViewSrc).not.toContain('engagementStandalone');
   });
+
+  it('falls back to title-bearing text payloads when html/body are empty', () => {
+    const detailSrc = readFileSync(join(ROOT, 'components/post-detail-content.ts'), 'utf8');
+
+    expect(detailSrc).toContain('const bodyHtml =');
+    expect(detailSrc).toContain('p.content?.html');
+    expect(detailSrc).toContain('p.body');
+    expect(detailSrc).toContain('p.content?.text');
+    expect(detailSrc).toContain('p.content?.title');
+  });
 });

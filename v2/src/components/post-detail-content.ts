@@ -56,10 +56,11 @@ export class PostDetailContent extends LitElement {
     const recommendationsMode = this.surface === 'lightbox' ? 'list' : 'grid';
     const engagementStandalone = this.surface !== 'lightbox';
     const tags = extractRenderableTags(p);
+    const bodyHtml = p.content?.html || p.body || p.content?.text || p.content?.title || '';
 
     return html`
       <div class="body-text">
-        ${unsafeHTML(sanitizeHtmlFragment(p.content?.html || p.body || ''))}
+        ${unsafeHTML(sanitizeHtmlFragment(bodyHtml))}
       </div>
 
       ${presentation.layout.showTags && tags.length > 0 ? html`

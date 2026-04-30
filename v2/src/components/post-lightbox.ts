@@ -253,6 +253,10 @@ export class PostLightbox extends LitElement {
     const isTombstone = !media.url && !this.post.body;
     const mediaSources = buildLightboxMediaSources(this.post);
 
+    if (media.type === 'text' && mediaSources.length === 0) {
+      return nothing;
+    }
+
     if (mediaSources.length === 0) {
       return this.renderGhost(media.type === 'video' ? '🎬' : '🖼️', isAdmin, isTombstone, 'Content Unavailable');
     }
