@@ -131,11 +131,7 @@ function buildIdentity(post: ProcessedPost) {
     : null;
   const originBlogLabel = originBlog?.label || `@${originBlogName || 'unknown'}`;
   const viaBlogLabel = viaBlog?.label || `@${viaBlogName || originBlogName || 'unknown'}`;
-  const originBlogDecoration = pickInlineDecoration(
-    post.originBlogIdentityDecorations?.length
-      ? post.originBlogIdentityDecorations
-      : post.blogIdentityDecorations,
-  );
+  const originBlogDecoration = pickInlineDecoration(post.originBlogIdentityDecorations);
   const viaBlogDecoration = pickInlineDecoration(post.blogIdentityDecorations);
   const originPostMissing = Boolean(isReblog && post.originPostMissing);
   const originPostPermalink = isReblog && post.originPostId && !originPostMissing

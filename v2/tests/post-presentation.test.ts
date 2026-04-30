@@ -139,6 +139,33 @@ describe('toPresentationModel', () => {
     expect(model.identity.viaBlogDecoration?.icon).toBe('🛡️');
   });
 
+  it('does not copy via-blog decorations onto an undecorated origin blog', () => {
+    const model = toPresentationModel(
+      makePost({
+        blogName: 'stokingtheflames',
+        originBlogName: 'diyrubberdollmaker',
+        originPostId: 838743153,
+        blogIdentityDecorations: [
+          {
+            kind: 'role',
+            token: 'contributor-qa',
+            label: 'Contributor',
+            icon: '🧪',
+            priority: 30,
+            visibility: ['inline_name'],
+            source: 'config',
+          },
+        ],
+        originBlogIdentityDecorations: [],
+      }),
+      { surface: 'detail', page: 'post' },
+    );
+
+    expect(model.identity.originBlogDecoration).toBeNull();
+    expect(model.identity.viaBlogDecoration?.token).toBe('contributor-qa');
+    expect(model.identity.viaBlogDecoration?.icon).toBe('🧪');
+  });
+
   it('exposes canonical-card eligibility for clustered activity promotion', () => {
     const model = toPresentationModel(
       makePost({ variant: 2 }),
