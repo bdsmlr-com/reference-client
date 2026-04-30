@@ -13,7 +13,10 @@ describe('blog identity integration', () => {
     expect(src).toContain("@property({ type: String }) blogName = '';");
     expect(src).toContain("@property({ type: String }) blogTitle = '';");
     expect(src).toContain("@property({ type: String }) avatarUrl = '';");
+    expect(src).toContain('@property({ attribute: false }) identityDecorations: IdentityDecoration[] = [];');
     expect(src).toContain("@property({ type: String, reflect: true }) variant: BlogIdentityVariant = 'header';");
+    expect(src).toContain('pickInlineDecoration(');
+    expect(src).toContain('name-decoration');
     expect(src).toContain('deriveAccentColor(');
     expect(src).toContain('avatar-fallback');
     expect(src).toContain("from '../services/avatar-url.js'");
@@ -30,10 +33,13 @@ describe('blog identity integration', () => {
     expect(headerSrc).toContain('<blog-identity');
     expect(headerSrc).toContain('.blogTitle=${this.blogTitle}');
     expect(headerSrc).toContain('.avatarUrl=${this.avatarUrl}');
+    expect(headerSrc).toContain('.identityDecorations=${this.identityDecorations}');
 
     expect(archiveSrc).toContain('.avatarUrl=${this.blogData?.avatarUrl || \'\'}');
+    expect(archiveSrc).toContain('.identityDecorations=${this.blogData?.identityDecorations || []}');
     expect(postsSrc).toContain('page="activity"');
     expect(postsSrc).toContain('.avatarUrl=${this.blogData?.avatarUrl || \'\'}');
+    expect(postsSrc).toContain('.identityDecorations=${this.blogData?.identityDecorations || []}');
   });
 
   it('reuses blog-identity in the shared-nav profile menu with compact menu variant', () => {

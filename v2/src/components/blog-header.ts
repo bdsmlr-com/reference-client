@@ -7,6 +7,7 @@ import {
 } from '../services/blog-resolver.js';
 import { BREAKPOINTS, SPACING } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
+import type { IdentityDecoration } from '../types/api.js';
 import './blog-identity.js';
 
 type PageName = 'archive' | 'timeline' | 'social' | 'following' | 'activity';
@@ -290,6 +291,11 @@ export class BlogHeader extends LitElement {
   @property({ type: String }) avatarUrl = '';
 
   /**
+   * Optional blog identity decorations.
+   */
+  @property({ attribute: false }) identityDecorations: IdentityDecoration[] = [];
+
+  /**
    * Whether the component is in edit mode.
    */
   @state() private editing = false;
@@ -459,6 +465,7 @@ export class BlogHeader extends LitElement {
                   .blogTitle=${this.blogTitle}
                   .blogDescription=${this.blogDescription}
                   .avatarUrl=${this.avatarUrl}
+                  .identityDecorations=${this.identityDecorations}
                 ></blog-identity>
                 <span class="chevron" aria-hidden="true">&#9662;</span>
               </button>

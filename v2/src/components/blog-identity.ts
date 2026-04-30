@@ -2,8 +2,18 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { handleAvatarImageError, normalizeAvatarUrl } from '../services/avatar-url.js';
+import type { IdentityDecoration } from '../types/api.js';
 
 type BlogIdentityVariant = 'header' | 'menu';
+
+function pickInlineDecoration(
+  decorations: IdentityDecoration[] | null | undefined,
+): IdentityDecoration | null {
+  const eligible = (decorations || [])
+    .filter((decoration) => (decoration.visibility || []).includes('inline_name'))
+    .sort((a, b) => (a.priority ?? Number.MAX_SAFE_INTEGER) - (b.priority ?? Number.MAX_SAFE_INTEGER));
+  return eligible[0] ?? null;
+}
 
 function normalizeBlogName(blogName: string): string {
   return blogName.trim().replace(/^@+/, '');
@@ -180,6 +190,18 @@ export class BlogIdentity extends LitElement {
         text-overflow: ellipsis;
       }
 
+      .name-row {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 0.35em;
+        min-width: 0;
+      }
+
+      .name-decoration {
+        color: var(--text-primary);
+        flex: 0 0 auto;
+      }
+
       .title {
         min-width: 0;
         color: var(--text-muted);
@@ -245,6 +267,7 @@ export class BlogIdentity extends LitElement {
   @property({ type: String }) blogTitle = '';
   @property({ type: String }) blogDescription = '';
   @property({ type: String }) avatarUrl = '';
+  @property({ attribute: false }) identityDecorations: IdentityDecoration[] = [];
   @property({ type: String, reflect: true }) variant: BlogIdentityVariant = 'header';
 
   private get normalizedBlogName(): string {
@@ -273,6 +296,7 @@ export class BlogIdentity extends LitElement {
     const avatarUrl = this.resolvedAvatarUrl;
     const title = this.blogTitle.trim();
     const description = this.blogDescription.trim();
+    const decoration = pickInlineDecoration(this.identityDecorations);
 
     return html`
       <div
@@ -293,7 +317,10 @@ export class BlogIdentity extends LitElement {
             : html`<span class="avatar-fallback">${initial}</span>`}
         </span>
         <span class="copy">
-          <span class="name">@${blogName}</span>
+          <span class="name-row">
+            <span class="name">@${blogName}</span>
+            ${decoration?.icon ? html`<span class="name-decoration" title=${decoration.label || nothing}>${decoration.icon}</span>` : nothing}
+          </span>
           ${title ? html`<span class="title">${title}</span>` : nothing}
           ${description ? html`<span class="description">${description}</span>` : nothing}
         </span>

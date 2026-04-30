@@ -512,6 +512,7 @@ export class ViewSocial extends LitElement {
                 page="social"
                 .blogName=${this.blog}
                 .blogTitle=${this.blogData?.title || ''}
+                .identityDecorations=${this.blogData?.identityDecorations || []}
               ></blog-header>
             `
           : ''}

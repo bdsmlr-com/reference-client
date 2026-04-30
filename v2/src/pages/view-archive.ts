@@ -342,6 +342,7 @@ export class ViewArchive extends LitElement {
           .blogTitle=${this.blogData?.title || ''}
           .blogDescription=${this.blogData?.description || ''}
           .avatarUrl=${this.blogData?.avatarUrl || ''}
+          .identityDecorations=${this.blogData?.identityDecorations || []}
         ></blog-header>
 
         ${this.initialLoading ? html`<loading-spinner message="Loading archive..."></loading-spinner>` : ''}
