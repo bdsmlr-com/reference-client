@@ -10,7 +10,7 @@ import { resolveLink } from '../services/link-resolver.js';
 import type { IdentityDecoration } from '../types/api.js';
 import './blog-identity.js';
 
-type PageName = 'archive' | 'timeline' | 'social' | 'following' | 'activity';
+type PageName = 'archive' | 'timeline' | 'social' | 'following' | 'activity' | 'feed' | 'follower-feed';
 
 /**
  * Unified blog header component (UX-001b).
@@ -46,6 +46,36 @@ export class BlogHeader extends LitElement {
         gap: ${SPACING.SM}px;
         padding: ${SPACING.SM}px ${SPACING.LG}px;
         flex-wrap: wrap;
+      }
+
+      .subnav {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        padding: 0 ${SPACING.LG}px;
+        margin-top: ${SPACING.XS}px;
+      }
+
+      .subnav-link {
+        padding: 6px 10px;
+        border-radius: 4px;
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+      }
+
+      .subnav-link:hover {
+        background: var(--bg-panel-alt);
+        color: var(--text-primary);
+        text-decoration: none;
+      }
+
+      .subnav-link.active {
+        background: var(--accent);
+        color: #fff;
       }
 
       /* Blog selector pill - the primary element */
@@ -363,9 +393,7 @@ export class BlogHeader extends LitElement {
       return;
     }
 
-    // Navigate to the new blog's page
-    const url = buildPageUrl(this.page, blogNameInput);
-    window.location.href = url;
+    window.location.href = this.getSubnavUrl(this.page, blogNameInput);
   }
 
   /**
@@ -373,9 +401,18 @@ export class BlogHeader extends LitElement {
    */
   private resetToPrimary(): void {
     if (this.primaryBlog) {
-      const url = buildPageUrl(this.page, this.primaryBlog);
-      window.location.href = url;
+      window.location.href = this.getSubnavUrl(this.page, this.primaryBlog);
     }
+  }
+
+  private getSubnavUrl(page: string, blogName: string): string {
+    // Keep these aligned with `app-root.ts` routes.
+    if (page === 'feed') return `/feed/for/${blogName}`;
+    if (page === 'follower-feed') return `/follower-feed/${blogName}`;
+    if (page === 'activity') return `/activity/${blogName}`;
+    if (page === 'archive') return `/archive/${blogName}`;
+    if (page === 'social') return `/social/${blogName}/followers`;
+    return buildPageUrl(page, blogName);
   }
 
   /**
@@ -416,9 +453,21 @@ export class BlogHeader extends LitElement {
     }
 
     const isOwnBlog = !this.isViewingDifferent;
+    const activePage =
+      this.page === 'timeline'
+        ? 'activity'
+        : (this.page === 'following' ? 'feed' : this.page);
+    const navPages = [
+      { name: 'feed', label: 'Feed' },
+      { name: 'follower-feed', label: "Followers' Feed" },
+      { name: 'activity', label: 'Activity' },
+      { name: 'archive', label: 'Archive' },
+      { name: 'social', label: 'Connections' },
+    ];
 
     return html`
-      <div class="header-container" role="region" aria-label="Blog header">
+      <div role="region" aria-label="Blog header">
+        <div class="header-container">
         ${this.editing
           ? html`
               <div class="edit-container">
@@ -509,6 +558,17 @@ export class BlogHeader extends LitElement {
                 </a>
               </div>
             `}
+        </div>
+        <nav class="subnav" aria-label="Blog navigation">
+          ${navPages.map((p) => {
+            const href = this.getSubnavUrl(p.name, this.blogName);
+            return html`
+              <a class="subnav-link ${activePage === p.name ? 'active' : ''}" href=${href}>
+                ${p.label}
+              </a>
+            `;
+          })}
+        </nav>
       </div>
     `;
   }

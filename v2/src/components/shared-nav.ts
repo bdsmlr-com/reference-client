@@ -498,25 +498,9 @@ export class SharedNav extends LitElement {
     return isDevMode() ? 'clear-cache.html' : '/clear-cache';
   }
 
-  private isViewingDifferentBlog(): boolean {
-    const primaryBlog = getPrimaryBlogName();
-    const viewedBlog = getViewedBlogName();
+  // (Previously used by the shared-nav viewing indicator.)
 
-    if (!primaryBlog || !viewedBlog) {
-      return false;
-    }
-
-    return primaryBlog.toLowerCase() !== viewedBlog.toLowerCase();
-  }
-
-  private handleBackToPrimary(): void {
-    const primaryBlog = getPrimaryBlogName();
-    if (primaryBlog) {
-      const page = this.currentPage === 'timeline' ? 'activity' : this.currentPage;
-      const url = buildPageUrl(page, primaryBlog);
-      window.location.href = url;
-    }
-  }
+  // (Previously used by the shared-nav viewing indicator.)
 
   private toggleProfileMenu(e: Event): void {
     e.stopPropagation();
@@ -722,15 +706,10 @@ export class SharedNav extends LitElement {
 
   render() {
     const pages = [
-      { name: 'activity', label: 'Activity', description: "A blog's full timeline including reblogs, likes, and comments" },
-      { name: 'archive', label: 'Archive', description: 'High-density matrix of all blog interactions' },
-      { name: 'social', label: 'Connections', description: 'View who follows a blog and who they follow' },
       { name: 'blogs', label: 'Discover', description: 'Discover blogs by name or description' },
       { name: 'search', label: 'Search', description: 'Search posts by tags with boolean syntax' },
     ];
 
-    const viewedBlog = getViewedBlogName();
-    const showViewingIndicator = this.isViewingDifferentBlog();
     const activePage =
       this.currentPage === 'following' || this.currentPage === 'follower-feed'
         ? ''
@@ -761,22 +740,7 @@ export class SharedNav extends LitElement {
             }
           )}
         </nav>
-        ${showViewingIndicator
-          ? html`
-              <span class="viewing-indicator" title="You're viewing another blog - nav links go to your primary blog">
-                <span aria-hidden="true">👁️</span>
-                <span class="blog-name">@${viewedBlog}</span>
-                <span
-                  class="reset-link"
-                  @click=${this.handleBackToPrimary}
-                  role="button"
-                  tabindex="0"
-                  aria-label="Go back to your primary blog"
-                  @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.handleBackToPrimary()}
-                >back</span>
-              </span>
-            `
-          : ''}
+        ${''}
         <div class="right-controls">
           <button
             class="theme-toggle"
