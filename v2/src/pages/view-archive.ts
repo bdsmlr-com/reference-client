@@ -5,6 +5,7 @@ import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
 import { getUrlParam, setUrlParams, isBlogInPath, isDefaultTypes, isAdminMode } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
+import { parsePostTypesParam, parseVariantsParam, serializePostTypesParam, serializeVariantsParam } from '../services/post-filter-url.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
   
@@ -140,10 +141,16 @@ export class ViewArchive extends LitElement {
       setArchiveSortPreference(resolvedSort);
     }
     if (types) {
-      this.selectedTypes = types.split(',').map((t) => parseInt(t, 10) as PostType);
+      const parsedTypes = parsePostTypesParam(types);
+      if (parsedTypes && parsedTypes.length > 0) {
+        this.selectedTypes = parsedTypes;
+      }
     }
     if (variants) {
-      this.selectedVariants = variants.split(',').map((v) => parseInt(v, 10) as PostVariant);
+      const parsedVariants = parseVariantsParam(variants);
+      if (parsedVariants) {
+        this.selectedVariants = parsedVariants;
+      }
     }
 
     if (!this.blog) {
@@ -191,8 +198,8 @@ export class ViewArchive extends LitElement {
 
     const params: Record<string, string> = {
       sort: this.sortValue,
-      types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','),
-      variants: this.selectedVariants.length > 0 ? this.selectedVariants.join(',') : '',
+      types: isDefaultTypes(this.selectedTypes) ? '' : serializePostTypesParam(this.selectedTypes),
+      variants: serializeVariantsParam(this.selectedVariants),
     };
     if (!isBlogInPath()) {
       params.blog = this.blog;

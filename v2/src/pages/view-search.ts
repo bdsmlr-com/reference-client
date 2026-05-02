@@ -11,6 +11,7 @@ import {
 } from '../services/storage.js';
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { PostType, PostSortField, Order, PostVariant, TimelineItem } from '../types/api.js';
+import { parsePostTypesParam, parseVariantsParam, serializePostTypesParam, serializeVariantsParam } from '../services/post-filter-url.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import {
   getGalleryMode,
@@ -315,10 +316,16 @@ export class ViewSearch extends LitElement {
       setSearchSortPreference(resolvedSort);
     }
     if (types) {
-      this.selectedTypes = types.split(',').map((t) => parseInt(t, 10) as PostType);
+      const parsedTypes = parsePostTypesParam(types);
+      if (parsedTypes && parsedTypes.length > 0) {
+        this.selectedTypes = parsedTypes;
+      }
     }
     if (variants) {
-      this.selectedVariants = variants.split(',').map((v) => parseInt(v, 10) as PostVariant);
+      const parsedVariants = parseVariantsParam(variants);
+      if (parsedVariants) {
+        this.selectedVariants = parsedVariants;
+      }
     }
 
     if (this.query) {
@@ -382,16 +389,16 @@ export class ViewSearch extends LitElement {
       q: this.query,
       sort: this.sortExplicitInUrl ? this.sortValue : '',
       match: routePerspectiveBlog && this.matchMode !== 'off' ? this.matchMode : '',
-      types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','),
-      variants: this.selectedVariants.length > 0 ? this.selectedVariants.join(',') : '',
+      types: isDefaultTypes(this.selectedTypes) ? '' : serializePostTypesParam(this.selectedTypes),
+      variants: serializeVariantsParam(this.selectedVariants, { emptyToken: 'all' }),
     };
     setUrlParams(params);
 
     this.paginationKey = generatePaginationCursorKey('search', {
       q: normalizedQuery,
       sort: this.sortValue,
-      types: this.selectedTypes.join(','),
-      variants: this.selectedVariants.join(','),
+      types: serializePostTypesParam(this.selectedTypes),
+      variants: serializeVariantsParam(this.selectedVariants, { emptyToken: 'all' }),
     });
     this.currentSearchSignature = this.paginationKey;
 

@@ -151,9 +151,9 @@ export class VariantPills extends LitElement {
   render() {
     return html`
       <div class="pill-group" role="group" aria-label="Filter by post variant">
-        ${this.renderButton('all', 'All', 'Show all posts')}
         ${this.renderButton('original', 'Original', 'Show only original posts')}
         ${this.renderButton('reblog', 'Reblog', 'Show only reblogged posts')}
+        ${this.renderButton('all', 'All', 'Show all posts')}
       </div>
     `;
   }

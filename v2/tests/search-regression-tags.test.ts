@@ -70,4 +70,25 @@ describe('search regression and tag visibility', () => {
     expect(src).toContain('@state() private selectedVariants: PostVariant[] = [1];');
     expect(src).toContain("variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined");
   });
+
+  it('writes readable type and variant tokens into search urls', () => {
+    const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+
+    expect(src).toContain('serializePostTypesParam(this.selectedTypes)');
+    expect(src).toContain("serializeVariantsParam(this.selectedVariants, { emptyToken: 'all' })");
+  });
+
+  it('renders variant pills in original, reblog, all order', () => {
+    const src = readFileSync(join(ROOT, 'components/variant-pills.ts'), 'utf8');
+
+    const originalIndex = src.indexOf("this.renderButton('original'");
+    const reblogIndex = src.indexOf("this.renderButton('reblog'");
+    const allIndex = src.indexOf("this.renderButton('all'");
+
+    expect(originalIndex).toBeGreaterThan(-1);
+    expect(reblogIndex).toBeGreaterThan(-1);
+    expect(allIndex).toBeGreaterThan(-1);
+    expect(originalIndex).toBeLessThan(reblogIndex);
+    expect(reblogIndex).toBeLessThan(allIndex);
+  });
 });
