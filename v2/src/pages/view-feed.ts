@@ -151,10 +151,6 @@ export class ViewFeed extends LitElement {
     return this.isFollowerFeed ? 'followers' : 'followed';
   }
 
-  private get relationshipTitleCopy(): string {
-    return this.isFollowerFeed ? 'View posts from followers of:' : 'View posts from blogs followed by:';
-  }
-
   private get relationshipSummarySuffix(): string {
     return this.isFollowerFeed ? 'of' : 'by';
   }
