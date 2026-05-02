@@ -22,11 +22,21 @@ describe('search regression and tag visibility', () => {
     expect(src).not.toContain('(resp.timelineItems || []).forEach');
   });
 
+  it('does not collapse search results by origin post or media url', () => {
+    const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+
+    expect(src).toContain('private seenIds = new Set<number>();');
+    expect(src).not.toContain('private renderedMediaKeys = new Set<string>();');
+    expect(src).not.toContain('const contentKey =');
+    expect(src).toContain('if (this.seenIds.has(post.id)) {');
+  });
+
   it('scopes cached search responses by build sha so deploys do not serve stale clear results', () => {
     const src = readFileSync(join(ROOT, 'services/api.ts'), 'utf8');
 
-    expect(src).toContain("const BUILD_SHA = import.meta.env.VITE_BUILD_SHA || 'dev@unknown/unknown';");
-    expect(src).toContain('`search:${BUILD_SHA}:${generateSearchCacheKey(req as unknown as Record<string, unknown>)}`');
+    expect(src).not.toContain('generateSearchCacheKey');
+    expect(src).not.toContain('getCachedSearchResult');
+    expect(src).not.toContain('setCachedSearchResult');
   });
 
   it('extracts fallback tags from body/html when API tags are missing', () => {
@@ -49,8 +59,8 @@ describe('search regression and tag visibility', () => {
   it('threads the search route perspective blog into the API request payload', () => {
     const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
 
-    expect(src).toContain("import { getBlogNameFromPath, getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';");
+    expect(src).toContain("import { buildPageUrl, getBlogNameFromPath, getPrimaryBlogName, getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';");
     expect(src).toContain('const routePerspectiveBlog = getBlogNameFromPath();');
-    expect(src).toContain('perspective_blog_name: routePerspectiveBlog || undefined');
+    expect(src).toContain('perspective_blog_name: perspectiveBlogName');
   });
 });

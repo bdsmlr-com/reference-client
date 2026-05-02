@@ -227,7 +227,6 @@ export class ViewSearch extends LitElement {
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
-  private renderedMediaKeys = new Set<string>(); // Authoritative uniqueness
   private paginationKey = '';
   private activeSearchToken = 0;
   private currentSearchSignature = '';
@@ -359,7 +358,6 @@ export class ViewSearch extends LitElement {
     this.backendCursor = null;
     this.exhausted = false;
     this.seenIds.clear();
-    this.renderedMediaKeys.clear();
     this.stats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
     this.timelineItems = [];
     this.statusMessage = '';
@@ -479,16 +477,12 @@ export class ViewSearch extends LitElement {
       (resp.posts || []).forEach(rawPost => {
         const post = rawPost as ProcessedPost;
         const media = extractMedia(post);
-        const mediaUrl = media.url || media.videoUrl || media.audioUrl;
-        const contentKey = post.originPostId ? `oid:${post.originPostId}` : (mediaUrl ? `url:${mediaUrl.split('?')[0]}` : `pid:${post.id}`);
-
-        if (this.seenIds.has(post.id) || this.renderedMediaKeys.has(contentKey)) {
+        if (this.seenIds.has(post.id)) {
           this.stats.dupes++;
           return;
         }
 
         this.seenIds.add(post.id);
-        this.renderedMediaKeys.add(contentKey);
         post._media = media;
         newItems.push({ type: 1, post });
       });
