@@ -221,6 +221,7 @@ export class PostFeedItem extends LitElement {
     const reblogCount = presentation.actions.reblog.count;
     const commentCount = presentation.actions.comment.count;
     const mediaRenderType = presentation.media.preset as MediaRenderType;
+    const bodyText = post.body || post.content?.text || post.content?.title || '';
     const rawUrl = media.type === 'video'
       ? (media.videoUrl || media.url)
       : (media.url || media.videoUrl || media.audioUrl);
@@ -279,7 +280,7 @@ export class PostFeedItem extends LitElement {
 
         ${mediaHtml}
 
-        ${post.body ? html`<div class="card-body">${post.body}</div>` : ''}
+        ${bodyText ? html`<div class="card-body">${bodyText}</div>` : ''}
 
         ${tags.length > 0 ? html`
           <div class="card-tags">

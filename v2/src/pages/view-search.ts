@@ -113,6 +113,45 @@ export class ViewSearch extends LitElement {
         cursor: wait;
       }
 
+      .match-box {
+        max-width: 600px;
+        margin: 0 auto 20px;
+        padding: 0 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .match-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .match-label {
+        color: var(--text-primary);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .match-help {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .match-select {
+        min-width: 120px;
+        padding: 8px 12px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        background: var(--bg-panel);
+        color: var(--text-primary);
+        font-size: 14px;
+        min-height: 32px;
+      }
+
       .type-pills-container {
         display: flex;
         justify-content: center;
@@ -151,12 +190,21 @@ export class ViewSearch extends LitElement {
         .search-box button {
           width: 100%;
         }
+
+        .match-box {
+          align-items: stretch;
+        }
+
+        .match-select {
+          width: 100%;
+        }
       }
     `,
   ];
 
   @state() private query = '';
   @state() private sortValue = 'newest';
+  @state() private matchMode: 'off' | 'soft' | 'hard' = 'off';
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
   @state() private selectedVariants: PostVariant[] = [];
   @state() private timelineItems: TimelineItem[] = [];
@@ -255,10 +303,12 @@ export class ViewSearch extends LitElement {
   private loadFromUrl(): void {
     const q = getUrlParam('q');
     const sort = getUrlParam('sort');
+    const match = getUrlParam('match');
     const types = getUrlParam('types');
     const variants = getUrlParam('variants');
 
     if (q) this.query = q;
+    if (match === 'soft' || match === 'hard' || match === 'off') this.matchMode = match;
     this.sortExplicitInUrl = !!sort;
     const resolvedSort = normalizeSortValue(sort || getSearchSortPreference());
     this.sortValue = resolvedSort;
@@ -328,10 +378,12 @@ export class ViewSearch extends LitElement {
     this.hasSearched = true;
     const searchToken = ++this.activeSearchToken;
     const normalizedQuery = this.query.trim();
+    const routePerspectiveBlog = getBlogNameFromPath();
 
     const params: Record<string, string> = {
       q: this.query,
       sort: this.sortExplicitInUrl ? this.sortValue : '',
+      match: routePerspectiveBlog && this.matchMode !== 'off' ? this.matchMode : '',
       types: isDefaultTypes(this.selectedTypes) ? '' : this.selectedTypes.join(','),
       variants: this.selectedVariants.length > 0 ? this.selectedVariants.join(',') : '',
     };
@@ -395,12 +447,17 @@ export class ViewSearch extends LitElement {
     const explicitSort = !!getUrlParam('sort');
     const facetTuning = this.parseDevFacetTuning();
     const hasFacetTuning = Object.keys(facetTuning).length > 0;
-    const perspectiveBlogName = (explicitSort && !hasFacetTuning) ? undefined : (routePerspectiveBlog || undefined);
+    const matchMode = routePerspectiveBlog ? this.matchMode : 'off';
+    const facetMode = matchMode === 'hard'
+      ? 'require'
+      : matchMode === 'soft' ? (explicitSort ? 'require' : 'boost') : undefined;
+    const perspectiveBlogName = (facetMode || hasFacetTuning) ? (routePerspectiveBlog || undefined) : undefined;
 
     try {
       const resp = await apiClient.posts.searchCached({
         tag_name: this.query,
         perspective_blog_name: perspectiveBlogName,
+        facetMode,
         sort_field: sortOpt.field as PostSortField,
         order: sortOpt.order as Order,
         post_types: this.selectedTypes,
@@ -459,6 +516,16 @@ export class ViewSearch extends LitElement {
     }
   }
 
+  private handleMatchChange(e: Event): void {
+    const value = (e.target as HTMLSelectElement).value;
+    if (value === 'soft' || value === 'hard' || value === 'off') {
+      this.matchMode = value;
+      if (this.hasSearched) {
+        this.search();
+      }
+    }
+  }
+
   private handleTypesChange(e: CustomEvent): void {
     this.selectedTypes = e.detail.types;
     if (this.hasSearched) {
@@ -510,6 +577,10 @@ export class ViewSearch extends LitElement {
   }
 
   render() {
+    const routePerspectiveBlog = getBlogNameFromPath();
+    const matchHelp = routePerspectiveBlog === 'you'
+      ? 'Use your profile to shape results.'
+      : routePerspectiveBlog ? `Use @${routePerspectiveBlog}'s profile to shape results.` : '';
     return html`
       <div class="content">
         <p class="help">
@@ -530,6 +601,20 @@ export class ViewSearch extends LitElement {
             ${this.searching ? 'Searching...' : 'Search'}
           </button>
         </div>
+
+        ${routePerspectiveBlog ? html`
+          <div class="match-box">
+            <div class="match-copy">
+              <div class="match-label">Match</div>
+              <div class="match-help">${matchHelp}</div>
+            </div>
+            <select class="match-select" .value=${this.matchMode} @change=${this.handleMatchChange}>
+              <option value="off">Off</option>
+              <option value="soft">Soft</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+        ` : ''}
 
         <filter-bar
           .selectedTypes=${this.selectedTypes}
