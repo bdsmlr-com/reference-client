@@ -7,9 +7,6 @@ import {
   setCachedBlogId,
   getCachedBlogName,
   setCachedBlogName,
-  generateSearchCacheKey,
-  getCachedSearchResult,
-  setCachedSearchResult,
   generateResponseCacheKey,
   getCachedResponse,
   setCachedResponse,
@@ -94,7 +91,6 @@ import type {
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 const AUTH_EMAIL = import.meta.env.VITE_AUTH_EMAIL || '';
 const AUTH_PASSWORD = import.meta.env.VITE_AUTH_PASSWORD || '';
-const BUILD_SHA = import.meta.env.VITE_BUILD_SHA || 'dev@unknown/unknown';
 
 // Default timeout for endpoints not in the timeout map
 const DEFAULT_REQUEST_TIMEOUT = 15000;
@@ -943,29 +939,8 @@ export async function searchPostsByTagCached(
   req: SearchPostsByTagRequest,
   options: { skipCache?: boolean } = {}
 ): Promise<SearchPostsByTagResponse & { fromCache: boolean }> {
-  const { skipCache = false } = options;
-
-  // Generate cache key from request parameters
-  const cacheKey = `search:${BUILD_SHA}:${generateSearchCacheKey(req as unknown as Record<string, unknown>)}`;
-
-  // Check cache first (unless skipping or paginating)
-  const hasPageToken = !!req.page?.page_token;
-  if (!skipCache && !hasPageToken) {
-    const cached = getCachedSearchResult<SearchPostsByTagResponse>(cacheKey);
-    if (cached) {
-      console.log(`Search cache hit for: ${req.tag_name}`);
-      return { ...cached, fromCache: true };
-    }
-  }
-
-  // Cache miss or pagination - fetch from API
+  void options;
   const response = await searchPostsByTag(req);
-
-  // Cache the result (only for first page)
-  if (!hasPageToken) {
-    setCachedSearchResult(cacheKey, response);
-    console.log(`Search cached: ${req.tag_name}`);
-  }
 
   return { ...response, fromCache: false };
 }
