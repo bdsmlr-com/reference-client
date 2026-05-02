@@ -206,7 +206,7 @@ export class ViewSearch extends LitElement {
   @state() private sortValue = 'newest';
   @state() private matchMode: 'off' | 'soft' | 'hard' = 'off';
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
-  @state() private selectedVariants: PostVariant[] = [];
+  @state() private selectedVariants: PostVariant[] = [1];
   @state() private timelineItems: TimelineItem[] = [];
   @state() private loading = false;
   @state() private searching = false;

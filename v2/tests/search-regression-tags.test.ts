@@ -63,4 +63,11 @@ describe('search regression and tag visibility', () => {
     expect(src).toContain('const routePerspectiveBlog = getBlogNameFromPath();');
     expect(src).toContain('perspective_blog_name: perspectiveBlogName');
   });
+
+  it('defaults search to original-post variants instead of all variants', () => {
+    const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+
+    expect(src).toContain('@state() private selectedVariants: PostVariant[] = [1];');
+    expect(src).toContain("variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined");
+  });
 });
