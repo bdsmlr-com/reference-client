@@ -393,6 +393,12 @@ export interface FollowEdge {
 export interface SearchPostsByTagResponse {
   posts?: Post[];
   page?: PageInfo;
+  sessionId?: string;
+  pageNumber?: number;
+  pageSize?: number;
+  totalVisibleSoFar?: number;
+  searchStatus?: 'warming' | 'ready' | 'exhausted' | 'failed' | string;
+  hasMore?: boolean;
   timelineItems?: TimelineItem[];
   error?: string;
 }
