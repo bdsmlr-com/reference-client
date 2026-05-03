@@ -8,6 +8,29 @@ export interface PageInfo {
   nextPageToken?: string;
 }
 
+export interface RetrievalPageInfo {
+  nextPageToken?: string;
+  effectiveWindowLimit?: number;
+  clearResultCount?: number;
+}
+
+export interface PostPresentationPolicy {
+  linkAllowed?: boolean;
+  clickAction?: string;
+  redactionMode?: string;
+  imageVariant?: string;
+  visibilityFraction?: number;
+  overrideReason?: string;
+}
+
+export interface SearchPolicyContract {
+  defaultResultWindowLimit?: number;
+  clearResultCount?: number;
+  ditherStrategy?: string;
+  imageVariants?: string[];
+  capabilities?: string[];
+}
+
 // Enums - API expects integer values, not strings!
 export type PostType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 // PostVariant: 0=UNSPECIFIED, 1=ORIGINAL, 2=REBLOG
@@ -392,7 +415,9 @@ export interface FollowEdge {
 // Response types
 export interface SearchPostsByTagResponse {
   posts?: Post[];
-  page?: PageInfo;
+  page?: RetrievalPageInfo;
+  postPolicies?: Record<string, PostPresentationPolicy>;
+  policy?: SearchPolicyContract;
   sessionId?: string;
   pageNumber?: number;
   pageSize?: number;
