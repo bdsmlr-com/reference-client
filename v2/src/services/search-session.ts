@@ -29,7 +29,7 @@ export function resolveSearchNavigationMode({
   page?: number;
   sessionId?: string;
 }): SearchNavigationMode {
-  if (page !== undefined || (sessionId || '').trim()) {
+  if ((page !== undefined && page > 1) || (sessionId || '').trim()) {
     return 'paginated';
   }
   return infinitePref ? 'infinite' : 'paginated';

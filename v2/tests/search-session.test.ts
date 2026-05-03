@@ -18,7 +18,11 @@ describe('search session navigation helpers', () => {
   it('forces paginated mode when url carries session/page state', () => {
     expect(resolveSearchNavigationMode({ infinitePref: true, page: 3, sessionId: '' })).toBe('paginated');
     expect(resolveSearchNavigationMode({ infinitePref: true, page: undefined, sessionId: 'sess-demo' })).toBe('paginated');
-    expect(resolveSearchNavigationMode({ infinitePref: true, page: 1, sessionId: 'sess-demo' })).toBe('paginated');
+    expect(resolveSearchNavigationMode({ infinitePref: true, page: 2, sessionId: 'sess-demo' })).toBe('paginated');
+  });
+
+  it('keeps page-one search in infinite mode when no session is present and pref is on', () => {
+    expect(resolveSearchNavigationMode({ infinitePref: true, page: 1, sessionId: '' })).toBe('infinite');
   });
 
   it('uses infinite mode when no explicit page/session state is present and pref is on', () => {
