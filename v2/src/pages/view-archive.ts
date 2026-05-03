@@ -172,6 +172,46 @@ export class ViewArchive extends LitElement {
     setUrlParams(this.buildArchiveUrlParams());
   }
 
+  private async fetchArchivePageResponse(pageToken: string | null) {
+    if (!this.blogId) {
+      return null;
+    }
+
+    const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
+    return apiClient.posts.list({
+      blog_id: this.blogId,
+      sort_field: sortOpt.field as PostSortField,
+      order: sortOpt.order as Order,
+      post_types: this.selectedTypes,
+      variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
+      activity_kinds: ['post', 'reblog'],
+      page: {
+        page_size: ARCHIVE_PAGE_SIZE,
+        page_token: pageToken || undefined,
+      },
+    });
+  }
+
+  private async resolveArchivePageCursor(targetPage: number): Promise<{ resolvedPage: number; resolvedCursor: string | null }> {
+    let resolvedPage = 1;
+    let resolvedCursor: string | null = null;
+
+    this.pageStartCursors = new Map([[1, null]]);
+
+    while (resolvedPage < targetPage) {
+      const resp = await this.fetchArchivePageResponse(resolvedCursor);
+      const nextCursor = resp?.page?.nextPageToken || null;
+      if (!nextCursor) {
+        break;
+      }
+      resolvedPage += 1;
+      resolvedCursor = nextCursor;
+      this.pageStartCursors.set(resolvedPage, resolvedCursor);
+    }
+
+    return { resolvedPage, resolvedCursor };
+  }
+
   private async loadFromUrl(): Promise<void> {
     const sort = getUrlParam('sort');
     const types = getUrlParam('types');
@@ -188,7 +228,7 @@ export class ViewArchive extends LitElement {
     this.archiveWhen = explicitWhen;
     this.forcedPaginatedFromUrl = hasExplicitPaginationState;
     this.navigationMode = hasExplicitPaginationState ? 'paginated' : (infinitePref ? 'infinite' : 'paginated');
-    this.currentPage = explicitPage ?? 1;
+    this.currentPage = explicitCursor ? (explicitPage ?? 1) : 1;
     this.currentPageCursor = explicitCursor || null;
     this.hasNextPage = false;
     this.pageStartCursors = new Map([[1, null]]);
@@ -229,6 +269,13 @@ export class ViewArchive extends LitElement {
       }
 
       this.blogId = blogId;
+      if (!explicitCursor && explicitPage && explicitPage > 1) {
+        const { resolvedPage, resolvedCursor } = await this.resolveArchivePageCursor(explicitPage);
+        this.currentPage = resolvedPage;
+        this.currentPageCursor = resolvedCursor;
+      } else {
+        this.currentPage = explicitPage ?? 1;
+      }
       await this.loadPosts({ preserveNavigationState: true });
     } catch (e) {
       this.errorMessage = getContextualErrorMessage(e, 'resolve_blog', { blogName: this.blog });
@@ -295,22 +342,13 @@ export class ViewArchive extends LitElement {
     if (!this.blogId) return;
 
     this.loading = true;
-    const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
     const isAdmin = isAdminMode();
 
     try {
-      const resp = await apiClient.posts.list({
-        blog_id: this.blogId,
-        sort_field: sortOpt.field as PostSortField,
-        order: sortOpt.order as Order,
-        post_types: this.selectedTypes,
-        variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
-        activity_kinds: ['post', 'reblog'],
-        page: {
-          page_size: ARCHIVE_PAGE_SIZE,
-          page_token: pageToken || undefined,
-        },
-      });
+      const resp = await this.fetchArchivePageResponse(pageToken);
+      if (!resp) {
+        return;
+      }
 
       this.backendCursor = resp.page?.nextPageToken || null;
       this.hasNextPage = !!this.backendCursor;
