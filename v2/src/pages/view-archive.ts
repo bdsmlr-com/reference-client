@@ -188,7 +188,7 @@ export class ViewArchive extends LitElement {
     this.archiveWhen = explicitWhen;
     this.forcedPaginatedFromUrl = hasExplicitPaginationState;
     this.navigationMode = hasExplicitPaginationState ? 'paginated' : (infinitePref ? 'infinite' : 'paginated');
-    this.currentPage = explicitCursor ? (explicitPage ?? 1) : 1;
+    this.currentPage = explicitPage ?? 1;
     this.currentPageCursor = explicitCursor || null;
     this.hasNextPage = false;
     this.pageStartCursors = new Map([[1, null]]);

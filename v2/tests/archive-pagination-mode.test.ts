@@ -15,6 +15,13 @@ describe('archive pagination mode', () => {
     expect(src).toContain("'paginated'");
   });
 
+  it('honors explicit archive page state even when no cursor is present', () => {
+    const src = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
+
+    expect(src).toContain('const explicitPage = parseArchivePageParam(getUrlParam(\'page\'))');
+    expect(src).toContain('this.currentPage = explicitPage ?? 1;');
+  });
+
   it('threads paginated archive mode into the shared footer controls', () => {
     const src = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
 
