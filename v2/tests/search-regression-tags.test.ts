@@ -90,7 +90,10 @@ describe('search regression and tag visibility', () => {
     expect(typeSrc).toContain('session_id?: string;');
     expect(typeSrc).toContain('page_number?: number;');
     expect(typeSrc).toContain('page_size?: number;');
-    expect(apiSrc).toContain('page_size: req.page_size ?? req.page?.page_size');
+    expect(apiSrc).toContain("session: session_id");
+    expect(apiSrc).toContain("page: page_number");
+    expect(apiSrc).toContain('const resolvedPageSize = req.page_size ?? req.page?.page_size;');
+    expect(apiSrc).toContain('page_size: page_size ?? page?.page_size');
   });
 
   it('supports paginated footer controls for search navigation', () => {

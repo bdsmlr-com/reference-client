@@ -918,20 +918,27 @@ export {
 export async function searchPostsByTag(
   req: SearchPostsByTagRequest
 ): Promise<SearchPostsByTagResponse> {
+  const {
+    session_id,
+    page_number,
+    page_size,
+    page,
+    ...rest
+  } = req;
   const resolvedPageSize = req.page_size ?? req.page?.page_size;
-  const payload: SearchPostsByTagRequest = {
-    ...req,
-    ...((req.page || resolvedPageSize)
+  const payload: Record<string, unknown> = {
+    ...rest,
+    ...((page && page_number === undefined)
       ? {
           page: {
-            ...(req.page || {}),
-            ...(resolvedPageSize ? { page_size: req.page_size ?? req.page?.page_size } : {}),
+            ...page,
+            ...(resolvedPageSize ? { page_size: page_size ?? page?.page_size } : {}),
           },
         }
       : {}),
-    ...(req.session_id ? { session_id: req.session_id } : {}),
-    ...(req.page_number ? { page_number: req.page_number } : {}),
-    ...(resolvedPageSize ? { page_size: req.page_size ?? req.page?.page_size } : {}),
+    ...(session_id ? { session: session_id } : {}),
+    ...(page_number ? { page: page_number } : {}),
+    ...(resolvedPageSize ? { page_size: page_size ?? page?.page_size } : {}),
   };
   return apiRequest<SearchPostsByTagResponse>(
     '/v2/public-read-api-v2/search-posts-by-tag',
