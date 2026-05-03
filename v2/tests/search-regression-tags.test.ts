@@ -64,6 +64,51 @@ describe('search regression and tag visibility', () => {
     expect(src).toContain('perspective_blog_name: perspectiveBlogName');
   });
 
+  it('adds search session url state and page-size defaults to the search route', () => {
+    const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+
+    expect(src).toContain('const SEARCH_PAGE_SIZE = 20;');
+    expect(src).toContain("@state() private searchSessionId = '';");
+    expect(src).toContain('@state() private currentPage = 1;');
+    expect(src).toContain("@state() private navigationMode: 'infinite' | 'paginated' = 'infinite';");
+    expect(src).toContain("const initialPage = parseSearchPageParam(getUrlParam('page'));");
+    expect(src).toContain("const initialSessionId = parseSearchSessionParam(getUrlParam('session') || getUrlParam('sessionId'));");
+    expect(src).toContain('this.navigationMode = resolveSearchNavigationMode({');
+    expect(src).toContain(".navigationMode=${this.navigationMode}");
+    expect(src).toContain(".currentPage=${this.currentPage}");
+    expect(src).toContain(".hasPreviousPage=${this.currentPage > 1}");
+  });
+
+  it('threads explicit search session pagination through the API payload contract', () => {
+    const searchSrc = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+    const apiSrc = readFileSync(join(ROOT, 'services/api.ts'), 'utf8');
+    const typeSrc = readFileSync(join(ROOT, 'types/api.ts'), 'utf8');
+
+    expect(searchSrc).toContain('session_id: this.searchSessionId || undefined');
+    expect(searchSrc).toContain('page_number: targetPage');
+    expect(searchSrc).toContain('page_size: SEARCH_PAGE_SIZE');
+    expect(typeSrc).toContain('session_id?: string;');
+    expect(typeSrc).toContain('page_number?: number;');
+    expect(typeSrc).toContain('page_size?: number;');
+    expect(apiSrc).toContain('page_size: req.page_size ?? req.page?.page_size');
+  });
+
+  it('supports paginated footer controls for search navigation', () => {
+    const src = readFileSync(join(ROOT, 'components/load-footer.ts'), 'utf8');
+    const eventSrc = readFileSync(join(ROOT, 'types/events.ts'), 'utf8');
+
+    expect(src).toContain("@property({ type: String }) navigationMode: 'infinite' | 'paginated' = 'infinite';");
+    expect(src).toContain('@property({ type: Number }) currentPage = 1;');
+    expect(src).toContain('@property({ type: Boolean }) hasPreviousPage = false;');
+    expect(src).toContain('@property({ type: Boolean }) hasNextPage = false;');
+    expect(src).toContain('Previous');
+    expect(src).toContain('Next');
+    expect(src).toContain('EventNames.PREVIOUS_PAGE');
+    expect(src).toContain('EventNames.NEXT_PAGE');
+    expect(eventSrc).toContain("PREVIOUS_PAGE: 'previous-page'");
+    expect(eventSrc).toContain("NEXT_PAGE: 'next-page'");
+  });
+
   it('defaults search to original-post variants instead of all variants', () => {
     const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
 

@@ -918,9 +918,24 @@ export {
 export async function searchPostsByTag(
   req: SearchPostsByTagRequest
 ): Promise<SearchPostsByTagResponse> {
+  const resolvedPageSize = req.page_size ?? req.page?.page_size;
+  const payload: SearchPostsByTagRequest = {
+    ...req,
+    ...((req.page || resolvedPageSize)
+      ? {
+          page: {
+            ...(req.page || {}),
+            ...(resolvedPageSize ? { page_size: req.page_size ?? req.page?.page_size } : {}),
+          },
+        }
+      : {}),
+    ...(req.session_id ? { session_id: req.session_id } : {}),
+    ...(req.page_number ? { page_number: req.page_number } : {}),
+    ...(resolvedPageSize ? { page_size: req.page_size ?? req.page?.page_size } : {}),
+  };
   return apiRequest<SearchPostsByTagResponse>(
     '/v2/public-read-api-v2/search-posts-by-tag',
-    req
+    payload
   );
 }
 

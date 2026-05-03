@@ -127,6 +127,10 @@ export class LoadFooter extends LitElement {
   @property({ type: Boolean }) infiniteScroll = false;
   @property({ type: Boolean }) persistSelection = true;
   @property({ type: String }) pageName = '';
+  @property({ type: String }) navigationMode: 'infinite' | 'paginated' = 'infinite';
+  @property({ type: Number }) currentPage = 1;
+  @property({ type: Boolean }) hasPreviousPage = false;
+  @property({ type: Boolean }) hasNextPage = false;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -149,6 +153,14 @@ export class LoadFooter extends LitElement {
     this.dispatchEvent(new CustomEvent(EventNames.LOAD_MORE));
   }
 
+  private handlePreviousPage(): void {
+    this.dispatchEvent(new CustomEvent(EventNames.PREVIOUS_PAGE));
+  }
+
+  private handleNextPage(): void {
+    this.dispatchEvent(new CustomEvent(EventNames.NEXT_PAGE));
+  }
+
   private handleInfiniteToggle(e: Event): void {
     const checked = (e.target as HTMLInputElement).checked;
     // Save preference (per-page if pageName is set)
@@ -163,6 +175,20 @@ export class LoadFooter extends LitElement {
   }
 
   private renderButton() {
+    if (this.navigationMode === 'paginated') {
+      return html`
+        <div class="footer-stats">
+          <button class="load-more" ?disabled=${this.loading || !this.hasPreviousPage} @click=${this.handlePreviousPage}>
+            Previous
+          </button>
+          <span class="count">Page <b>${this.currentPage}</b></span>
+          <button class="load-more" ?disabled=${this.loading || !this.hasNextPage} @click=${this.handleNextPage}>
+            Next
+          </button>
+        </div>
+      `;
+    }
+
     if (this.exhausted) {
       return html`<button class="load-more" disabled>No more results</button>`;
     }

@@ -7,11 +7,13 @@ import { buildPageUrl, getBlogNameFromPath, getPrimaryBlogName, getUrlParam, set
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
   generatePaginationCursorKey,
+  getInfiniteScrollPreference,
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { PostType, PostSortField, Order, PostVariant, TimelineItem } from '../types/api.js';
 import { parsePostTypesParam, parseVariantsParam, serializePostTypesParam, serializeVariantsParam } from '../services/post-filter-url.js';
+import { parseSearchPageParam, parseSearchSessionParam, resolveSearchNavigationMode, shouldReplaceSearchUrlOnPageChange } from '../services/search-session.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import {
   getGalleryMode,
@@ -36,7 +38,7 @@ import '../components/type-pills.js'; // Might still be used elsewhere or redund
 import '../components/render-card.js';
 import '../components/result-group.js';
 
-const PAGE_SIZE = 12;
+const SEARCH_PAGE_SIZE = 20;
 
 @customElement('view-search')
 export class ViewSearch extends LitElement {
@@ -215,6 +217,9 @@ export class ViewSearch extends LitElement {
   @state() private stats: ViewStats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
   @state() private loadingCurrent = 0;
   @state() private infiniteScroll = false;
+  @state() private searchSessionId = '';
+  @state() private currentPage = 1;
+  @state() private navigationMode: 'infinite' | 'paginated' = 'infinite';
   @state() private statusMessage = '';
   @state() private hasSearched = false;
   @state() private errorMessage = '';
@@ -224,6 +229,7 @@ export class ViewSearch extends LitElement {
   @state() private galleryMode: GalleryMode = getGalleryMode();
   @state() private teaserPosts: ProcessedPost[] = [];
   @state() private teaserLoading = false;
+  @state() private hasNextPage = false;
   private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('search', 'main_stream');
 
   private backendCursor: string | null = null;
@@ -232,6 +238,7 @@ export class ViewSearch extends LitElement {
   private activeSearchToken = 0;
   private currentSearchSignature = '';
   private sortExplicitInUrl = false;
+  private replaceSearchUrlOnPageBoundary = false;
 
   private parseDevFacetTuning(): Record<string, number | string> {
     if (ACTIVE_ENV !== 'dev') return {};
@@ -300,12 +307,38 @@ export class ViewSearch extends LitElement {
     }
   };
 
+  private syncSearchUrlState(): void {
+    setUrlParams({
+      page: this.navigationMode === 'paginated' || (this.replaceSearchUrlOnPageBoundary && this.currentPage > 1)
+        ? String(this.currentPage)
+        : '',
+      session: this.searchSessionId || '',
+    });
+  }
+
   private loadFromUrl(): void {
     const q = getUrlParam('q');
     const sort = getUrlParam('sort');
     const match = getUrlParam('match');
     const types = getUrlParam('types');
     const variants = getUrlParam('variants');
+    const initialPage = parseSearchPageParam(getUrlParam('page'));
+    const initialSessionId = parseSearchSessionParam(getUrlParam('session') || getUrlParam('sessionId'));
+    const infinitePref = getInfiniteScrollPreference('search');
+
+    this.infiniteScroll = infinitePref;
+    this.currentPage = initialPage ?? 1;
+    this.searchSessionId = initialSessionId;
+    this.navigationMode = resolveSearchNavigationMode({
+      infinitePref,
+      page: initialPage,
+      sessionId: initialSessionId,
+    });
+    this.replaceSearchUrlOnPageBoundary = shouldReplaceSearchUrlOnPageChange({
+      navigationMode: this.navigationMode,
+      explicitPage: initialPage,
+      explicitSessionId: initialSessionId,
+    });
 
     if (q) this.query = q;
     if (match === 'soft' || match === 'hard' || match === 'off') this.matchMode = match;
@@ -329,7 +362,7 @@ export class ViewSearch extends LitElement {
     }
 
     if (this.query) {
-      this.search();
+      void this.search({ preserveNavigationState: this.navigationMode === 'paginated' });
     }
   }
 
@@ -349,6 +382,9 @@ export class ViewSearch extends LitElement {
   }
 
   private observeSentinel(): void {
+    if (this.navigationMode !== 'infinite') {
+      return;
+    }
     requestAnimationFrame(() => {
       const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
       if (sentinel) {
@@ -364,6 +400,7 @@ export class ViewSearch extends LitElement {
   private resetState(): void {
     this.backendCursor = null;
     this.exhausted = false;
+    this.hasNextPage = false;
     this.seenIds.clear();
     this.stats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
     this.timelineItems = [];
@@ -371,14 +408,29 @@ export class ViewSearch extends LitElement {
     this.errorMessage = '';
   }
 
-  private async search(): Promise<void> {
+  private async search(options: { preserveNavigationState?: boolean } = {}): Promise<void> {
     if (!this.query.trim()) return;
     if (this.selectedTypes.length === 0) {
       this.statusMessage = ErrorMessages.VALIDATION.NO_TYPES_SELECTED;
       return;
     }
 
+    const preserveNavigationState = options.preserveNavigationState ?? false;
     this.searching = true;
+    if (!preserveNavigationState) {
+      this.currentPage = 1;
+      this.searchSessionId = '';
+      this.navigationMode = resolveSearchNavigationMode({
+        infinitePref: this.infiniteScroll,
+        page: undefined,
+        sessionId: '',
+      });
+      this.replaceSearchUrlOnPageBoundary = shouldReplaceSearchUrlOnPageChange({
+        navigationMode: this.navigationMode,
+        explicitPage: undefined,
+        explicitSessionId: '',
+      });
+    }
     this.resetState();
     this.hasSearched = true;
     const searchToken = ++this.activeSearchToken;
@@ -391,6 +443,8 @@ export class ViewSearch extends LitElement {
       match: routePerspectiveBlog && this.matchMode !== 'off' ? this.matchMode : '',
       types: isDefaultTypes(this.selectedTypes) ? '' : serializePostTypesParam(this.selectedTypes),
       variants: serializeVariantsParam(this.selectedVariants, { emptyToken: 'all' }),
+      page: this.navigationMode === 'paginated' ? String(this.currentPage) : '',
+      session: this.navigationMode === 'paginated' ? this.searchSessionId : '',
     };
     setUrlParams(params);
 
@@ -403,7 +457,7 @@ export class ViewSearch extends LitElement {
     this.currentSearchSignature = this.paginationKey;
 
     try {
-      await this.fillPage(searchToken, this.currentSearchSignature);
+      await this.fillPage(searchToken, this.currentSearchSignature, this.currentPage);
     } catch (e) {
       if (searchToken !== this.activeSearchToken) {
         return;
@@ -415,7 +469,9 @@ export class ViewSearch extends LitElement {
 
     if (searchToken === this.activeSearchToken) {
       this.searching = false;
-      this.observeSentinel();
+      if (this.navigationMode === 'infinite') {
+        this.observeSentinel();
+      }
     }
   }
 
@@ -445,7 +501,11 @@ export class ViewSearch extends LitElement {
     };
   }
 
-  private async fillPage(searchToken: number = this.activeSearchToken, signature: string = this.currentSearchSignature): Promise<void> {
+  private async fillPage(
+    searchToken: number = this.activeSearchToken,
+    signature: string = this.currentSearchSignature,
+    targetPage: number = this.currentPage,
+  ): Promise<void> {
     this.loading = true;
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
     const routePerspectiveBlog = getBlogNameFromPath();
@@ -461,6 +521,9 @@ export class ViewSearch extends LitElement {
     try {
       const resp = await apiClient.posts.searchCached({
         tag_name: this.query,
+        session_id: this.searchSessionId || undefined,
+        page_number: targetPage,
+        page_size: SEARCH_PAGE_SIZE,
         perspective_blog_name: perspectiveBlogName,
         facetMode,
         sort_field: sortOpt.field as PostSortField,
@@ -468,8 +531,7 @@ export class ViewSearch extends LitElement {
         post_types: this.selectedTypes,
         variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
         page: {
-          page_size: 48,
-          page_token: this.backendCursor || undefined,
+          page_size: SEARCH_PAGE_SIZE,
         },
         ...facetTuning,
       });
@@ -478,7 +540,10 @@ export class ViewSearch extends LitElement {
       }
 
       this.backendCursor = resp.page?.nextPageToken || null;
-      if (!this.backendCursor) this.exhausted = true;
+      this.searchSessionId = resp.sessionId || this.searchSessionId;
+      this.currentPage = resp.pageNumber || targetPage;
+      this.hasNextPage = !!resp.hasMore;
+      this.exhausted = !resp.hasMore;
 
       const newItems: TimelineItem[] = [];
       (resp.posts || []).forEach(rawPost => {
@@ -494,8 +559,17 @@ export class ViewSearch extends LitElement {
         newItems.push({ type: 1, post });
       });
 
-      this.timelineItems = [...this.timelineItems, ...newItems];
-      if (newItems.length === 0) this.exhausted = true;
+      if (this.navigationMode === 'paginated' || targetPage === 1) {
+        this.timelineItems = newItems;
+      } else {
+        this.timelineItems = [...this.timelineItems, ...newItems];
+      }
+
+      if (this.navigationMode === 'paginated') {
+        this.syncSearchUrlState();
+      } else if (this.replaceSearchUrlOnPageBoundary && this.currentPage > 1) {
+        this.syncSearchUrlState();
+      }
     } finally {
       if (searchToken === this.activeSearchToken && signature === this.currentSearchSignature) {
         this.loading = false;
@@ -504,8 +578,22 @@ export class ViewSearch extends LitElement {
   }
 
   private async loadMore(): Promise<void> {
-    if (this.loading || this.exhausted) return;
-    await this.fillPage(this.activeSearchToken, this.currentSearchSignature);
+    if (this.navigationMode !== 'infinite' || this.loading || this.exhausted) return;
+    await this.fillPage(this.activeSearchToken, this.currentSearchSignature, this.currentPage + 1);
+  }
+
+  private async handlePreviousPage(): Promise<void> {
+    if (this.loading || this.currentPage <= 1) return;
+    this.currentPage -= 1;
+    this.navigationMode = 'paginated';
+    await this.search({ preserveNavigationState: true });
+  }
+
+  private async handleNextPage(): Promise<void> {
+    if (this.loading || !this.hasNextPage) return;
+    this.currentPage += 1;
+    this.navigationMode = 'paginated';
+    await this.search({ preserveNavigationState: true });
   }
 
   private handleSortChange(e: CustomEvent): void {
@@ -566,7 +654,7 @@ export class ViewSearch extends LitElement {
 
   private handleInfiniteToggle(e: CustomEvent): void {
     this.infiniteScroll = e.detail.enabled;
-    if (this.infiniteScroll) {
+    if (this.navigationMode === 'infinite' && this.infiniteScroll) {
       this.observeSentinel();
     }
   }
@@ -699,9 +787,15 @@ export class ViewSearch extends LitElement {
                 .loading=${this.loading}
                 .exhausted=${this.exhausted}
                 .loadingCurrent=${this.loadingCurrent}
-                .loadingTarget=${PAGE_SIZE}
+                .loadingTarget=${SEARCH_PAGE_SIZE}
                 .infiniteScroll=${this.infiniteScroll}
+                .navigationMode=${this.navigationMode}
+                .currentPage=${this.currentPage}
+                .hasPreviousPage=${this.currentPage > 1}
+                .hasNextPage=${this.hasNextPage}
                 @load-more=${() => this.loadMore()}
+                @previous-page=${() => this.handlePreviousPage()}
+                @next-page=${() => this.handleNextPage()}
                 @infinite-toggle=${this.handleInfiniteToggle}
               ></load-footer>
             `

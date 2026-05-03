@@ -286,6 +286,9 @@ export interface CommentPostResponse {
 export interface SearchPostsByTagRequest {
   tag_name: string;
   page?: Pagination;
+  session_id?: string;
+  page_number?: number;
+  page_size?: number;
   sort_field?: PostSortField;
   order?: Order;
   post_types?: PostType[];

@@ -9,6 +9,7 @@ describe('search route perspective wiring', () => {
     const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
 
     expect(src).toContain("import { buildPageUrl, getBlogNameFromPath, getPrimaryBlogName, getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';");
+    expect(src).toContain("import { parseSearchPageParam, parseSearchSessionParam, resolveSearchNavigationMode, shouldReplaceSearchUrlOnPageChange } from '../services/search-session.js';");
     expect(src).toContain('perspective_blog_name');
     expect(src).toContain('const routePerspectiveBlog = getBlogNameFromPath();');
     expect(src).toContain("const explicitSort = !!getUrlParam('sort');");
@@ -17,6 +18,9 @@ describe('search route perspective wiring', () => {
     expect(src).toContain("matchMode === 'soft' ? (explicitSort ? 'require' : 'boost') : undefined");
     expect(src).toContain('const perspectiveBlogName = (facetMode || hasFacetTuning) ? (routePerspectiveBlog || undefined) : undefined;');
     expect(src).toContain('perspective_blog_name: perspectiveBlogName');
+    expect(src).toContain('session_id: this.searchSessionId || undefined');
+    expect(src).toContain('page_number: targetPage');
+    expect(src).toContain('page_size: SEARCH_PAGE_SIZE');
     expect(src).toContain('facetMode,');
     expect(src).toContain('tag_name: this.query');
   });

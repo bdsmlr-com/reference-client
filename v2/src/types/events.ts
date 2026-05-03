@@ -133,6 +133,16 @@ export interface InfiniteToggleDetail {
  */
 export type InfiniteToggleEvent = CustomEvent<InfiniteToggleDetail>;
 
+/**
+ * Event dispatched when the paginated footer moves to the previous page.
+ */
+export type PreviousPageEvent = CustomEvent<void>;
+
+/**
+ * Event dispatched when the paginated footer moves to the next page.
+ */
+export type NextPageEvent = CustomEvent<void>;
+
 // ============================================================================
 // Lightbox Events
 // ============================================================================
@@ -191,6 +201,8 @@ export const EventNames = {
   // Load footer events
   LOAD_MORE: 'load-more', // From load-footer
   INFINITE_TOGGLE: 'infinite-toggle', // From load-footer
+  PREVIOUS_PAGE: 'previous-page', // From load-footer
+  NEXT_PAGE: 'next-page', // From load-footer
 
   // Lightbox events
   LIGHTBOX_NAVIGATE: 'lightbox-navigate',
