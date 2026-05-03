@@ -8,8 +8,7 @@ import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { parsePostTypesParam, parseVariantsParam, serializePostTypesParam, serializeVariantsParam } from '../services/post-filter-url.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
-  
-  
+  getInfiniteScrollPreference,
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
@@ -34,6 +33,25 @@ import '../components/skeleton-loader.js';
 import '../components/error-state.js';
 import '../components/blog-header.js';
 import '../components/render-card.js';
+
+const ARCHIVE_PAGE_SIZE = 48;
+
+function parseArchivePageParam(raw: string | null): number | undefined {
+  const value = (raw || '').trim();
+  if (!value) {
+    return undefined;
+  }
+  const page = Number.parseInt(value, 10);
+  return Number.isFinite(page) && page > 0 ? page : undefined;
+}
+
+function parseArchiveCursorParam(raw: string | null): string {
+  return (raw || '').trim();
+}
+
+function parseArchiveWhenParam(raw: string | null): string {
+  return (raw || '').trim();
+}
 
 @customElement('view-archive')
 export class ViewArchive extends LitElement {
@@ -73,11 +91,13 @@ export class ViewArchive extends LitElement {
   @state() private loading = false;
   @state() private exhausted = false;
   @state() private stats: ViewStats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
-  
+  @state() private currentPage = 1;
   @state() private infiniteScroll = false;
+  @state() private navigationMode: 'infinite' | 'paginated' = 'infinite';
   @state() private statusMessage = '';
   @state() private errorMessage = '';
-  
+  @state() private hasNextPage = false;
+  @state() private archiveWhen = '';
   @state() private initialLoading = false;
   @state() private blogData: Blog | null = null;
   @state() private autoRetryAttempt = 0;
@@ -86,8 +106,11 @@ export class ViewArchive extends LitElement {
   private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('archive', 'main_stream');
 
   private backendCursor: string | null = null;
+  private currentPageCursor: string | null = null;
   private seenIds = new Set<number>();
   private renderedMediaKeys = new Set<string>(); // Authoritative uniqueness
+  private forcedPaginatedFromUrl = false;
+  private pageStartCursors = new Map<number, string | null>([[1, null]]);
   private paginationKey = '';
 
   protected updated(changedProperties: PropertyValues): void {
@@ -130,13 +153,48 @@ export class ViewArchive extends LitElement {
     }
   };
 
+  private buildArchiveUrlParams(): Record<string, string> {
+    const params: Record<string, string> = {
+      sort: this.sortValue,
+      types: isDefaultTypes(this.selectedTypes) ? '' : serializePostTypesParam(this.selectedTypes),
+      variants: serializeVariantsParam(this.selectedVariants),
+      page: this.navigationMode === 'paginated' ? String(this.currentPage) : '',
+      cursor: this.navigationMode === 'paginated' && this.currentPage > 1 ? this.currentPageCursor || '' : '',
+      when: this.archiveWhen,
+    };
+    if (!isBlogInPath()) {
+      params.blog = this.blog;
+    }
+    return params;
+  }
+
+  private syncArchiveUrlState(): void {
+    setUrlParams(this.buildArchiveUrlParams());
+  }
+
   private async loadFromUrl(): Promise<void> {
     const sort = getUrlParam('sort');
     const types = getUrlParam('types');
     const variants = getUrlParam('variants');
+    const explicitPage = parseArchivePageParam(getUrlParam('page'));
+    const explicitCursor = parseArchiveCursorParam(getUrlParam('cursor'));
+    const explicitWhen = parseArchiveWhenParam(getUrlParam('when'));
+    const infinitePref = getInfiniteScrollPreference('archive');
+    const hasExplicitPaginationState = explicitPage !== undefined || !!explicitCursor || !!explicitWhen;
 
     const resolvedSort = normalizeSortValue(sort || getArchiveSortPreference());
     this.sortValue = resolvedSort;
+    this.infiniteScroll = infinitePref;
+    this.archiveWhen = explicitWhen;
+    this.forcedPaginatedFromUrl = hasExplicitPaginationState;
+    this.navigationMode = hasExplicitPaginationState ? 'paginated' : (infinitePref ? 'infinite' : 'paginated');
+    this.currentPage = explicitCursor ? (explicitPage ?? 1) : 1;
+    this.currentPageCursor = explicitCursor || null;
+    this.hasNextPage = false;
+    this.pageStartCursors = new Map([[1, null]]);
+    if (explicitCursor) {
+      this.pageStartCursors.set(this.currentPage, explicitCursor);
+    }
     if (!sort) {
       setArchiveSortPreference(resolvedSort);
     }
@@ -171,7 +229,7 @@ export class ViewArchive extends LitElement {
       }
 
       this.blogId = blogId;
-      await this.loadPosts();
+      await this.loadPosts({ preserveNavigationState: true });
     } catch (e) {
       this.errorMessage = getContextualErrorMessage(e, 'resolve_blog', { blogName: this.blog });
       const apiError = isApiError(e) ? e : toApiError(e);
@@ -181,41 +239,46 @@ export class ViewArchive extends LitElement {
     }
   }
 
-  private async loadPosts(): Promise<void> {
+  private async loadPosts(options: { preserveNavigationState?: boolean } = {}): Promise<void> {
     if (!this.blogId) return;
     if (this.selectedTypes.length === 0) {
       this.statusMessage = ErrorMessages.VALIDATION.NO_TYPES_SELECTED;
       return;
     }
 
+    const preserveNavigationState = options.preserveNavigationState ?? false;
+    if (!preserveNavigationState) {
+      this.currentPage = 1;
+      this.currentPageCursor = null;
+      this.pageStartCursors = new Map([[1, null]]);
+      this.navigationMode = this.forcedPaginatedFromUrl ? 'paginated' : (this.infiniteScroll ? 'infinite' : 'paginated');
+    }
+
     this.backendCursor = null;
     this.exhausted = false;
+    this.hasNextPage = false;
     this.seenIds.clear();
     this.renderedMediaKeys.clear();
     this.stats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
-     this.posts = [];
+    this.posts = [];
     this.statusMessage = '';
-
-    const params: Record<string, string> = {
-      sort: this.sortValue,
-      types: isDefaultTypes(this.selectedTypes) ? '' : serializePostTypesParam(this.selectedTypes),
-      variants: serializeVariantsParam(this.selectedVariants),
-    };
-    if (!isBlogInPath()) {
-      params.blog = this.blog;
-    }
-    setUrlParams(params);
+    this.syncArchiveUrlState();
 
     try {
-      await this.fillPage();
+      await this.fillPage(this.currentPageCursor);
     } catch (e) {
       this.errorMessage = getContextualErrorMessage(e, 'load_posts', { blogName: this.blog });
     }
 
-    this.observeSentinel();
+    if (this.navigationMode === 'infinite') {
+      this.observeSentinel();
+    }
   }
 
   private observeSentinel(): void {
+    if (this.navigationMode !== 'infinite') {
+      return;
+    }
     requestAnimationFrame(() => {
       const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
       if (sentinel) {
@@ -228,7 +291,7 @@ export class ViewArchive extends LitElement {
     });
   }
 
-  private async fillPage(): Promise<void> {
+  private async fillPage(pageToken: string | null = this.currentPageCursor): Promise<void> {
     if (!this.blogId) return;
 
     this.loading = true;
@@ -244,19 +307,20 @@ export class ViewArchive extends LitElement {
         variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
         activity_kinds: ['post', 'reblog'],
         page: {
-          page_size: 48,
-          page_token: this.backendCursor || undefined,
+          page_size: ARCHIVE_PAGE_SIZE,
+          page_token: pageToken || undefined,
         },
       });
 
       this.backendCursor = resp.page?.nextPageToken || null;
+      this.hasNextPage = !!this.backendCursor;
       if (!this.backendCursor) this.exhausted = true;
 
-       const postPolicies = (resp as { postPolicies?: RetrievalPostPolicyMap }).postPolicies;
-       const retrievedPosts = applyRetrievalPostPolicies(
-         (resp.posts || []).map((rawPost) => rawPost as ProcessedPost),
-         postPolicies,
-       );
+      const postPolicies = (resp as { postPolicies?: RetrievalPostPolicyMap }).postPolicies;
+      const retrievedPosts = applyRetrievalPostPolicies(
+        (resp.posts || []).map((rawPost) => rawPost as ProcessedPost),
+        postPolicies,
+      );
 
       const newPosts: ProcessedPost[] = [];
       retrievedPosts.forEach(post => {
@@ -275,32 +339,46 @@ export class ViewArchive extends LitElement {
         newPosts.push(post);
       });
 
-      this.posts = [...this.posts, ...newPosts];
-      if (newPosts.length === 0) this.exhausted = true;
+      if (this.navigationMode === 'paginated') {
+        this.posts = newPosts;
+      } else {
+        this.posts = [...this.posts, ...newPosts];
+      }
+      if (newPosts.length === 0) {
+        this.exhausted = true;
+        this.hasNextPage = false;
+      }
+      if (this.navigationMode === 'paginated') {
+        this.pageStartCursors.set(this.currentPage, this.currentPageCursor);
+        if (this.backendCursor) {
+          this.pageStartCursors.set(this.currentPage + 1, this.backendCursor);
+        }
+        this.syncArchiveUrlState();
+      }
     } finally {
       this.loading = false;
     }
   }
 
   private async loadMore(): Promise<void> {
-    if (this.loading || this.exhausted) return;
-    await this.fillPage();
+    if (this.navigationMode !== 'infinite' || this.loading || this.exhausted) return;
+    await this.fillPage(this.backendCursor);
   }
 
   private handleSortChange(e: CustomEvent): void {
     this.sortValue = e.detail.value;
     setArchiveSortPreference(this.sortValue);
-    this.loadPosts();
+    void this.loadPosts();
   }
 
   private handleTypesChange(e: CustomEvent): void {
     this.selectedTypes = e.detail.types;
-    this.loadPosts();
+    void this.loadPosts();
   }
 
   private handleVariantChange(e: CustomEvent): void {
     this.selectedVariants = e.detail.variants || [];
-    this.loadPosts();
+    void this.loadPosts();
   }
 
   private handlePostClick(e: CustomEvent): void {
@@ -316,7 +394,40 @@ export class ViewArchive extends LitElement {
 
   private handleInfiniteToggle(e: CustomEvent): void {
     this.infiniteScroll = e.detail.enabled;
+    if (this.forcedPaginatedFromUrl) {
+      return;
+    }
+    const nextMode = this.infiniteScroll ? 'infinite' : 'paginated';
+    if (nextMode !== this.navigationMode) {
+      this.navigationMode = nextMode;
+      void this.loadPosts();
+      return;
+    }
     if (this.infiniteScroll) this.observeSentinel();
+  }
+
+  private async handlePreviousPage(): Promise<void> {
+    if (this.loading || this.currentPage <= 1) return;
+    const previousPage = this.currentPage - 1;
+    const previousCursor = this.pageStartCursors.get(previousPage);
+    if (previousPage > 1 && previousCursor === undefined) {
+      return;
+    }
+    this.currentPage = previousPage;
+    this.currentPageCursor = previousCursor ?? null;
+    await this.loadPosts({ preserveNavigationState: true });
+  }
+
+  private async handleNextPage(): Promise<void> {
+    if (this.loading || !this.hasNextPage) return;
+    const nextPage = this.currentPage + 1;
+    const nextCursor = this.pageStartCursors.get(nextPage) ?? this.backendCursor;
+    if (!nextCursor) {
+      return;
+    }
+    this.currentPage = nextPage;
+    this.currentPageCursor = nextCursor;
+    await this.loadPosts({ preserveNavigationState: true });
   }
 
   private toActivityItem(post: ProcessedPost): { post: ProcessedPost; type: 'post' | 'reblog' } {
@@ -400,7 +511,13 @@ export class ViewArchive extends LitElement {
           .loading=${this.loading}
           .exhausted=${this.exhausted}
           .infiniteScroll=${this.infiniteScroll}
+          .navigationMode=${this.navigationMode}
+          .currentPage=${this.currentPage}
+          .hasPreviousPage=${this.currentPage > 1 && (this.currentPage === 2 || this.pageStartCursors.has(this.currentPage - 1))}
+          .hasNextPage=${this.hasNextPage}
           @load-more=${() => this.loadMore()}
+          @previous-page=${() => this.handlePreviousPage()}
+          @next-page=${() => this.handleNextPage()}
           @infinite-toggle=${this.handleInfiniteToggle}
         ></load-footer>
 
