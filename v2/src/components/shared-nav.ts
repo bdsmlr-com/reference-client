@@ -26,6 +26,7 @@ import {
 import { apiClient } from '../services/client.js';
 import { getAuthUser, updateActiveBlog } from '../state/auth-state.js';
 import { setStoredActiveBlog, clearStoredActiveBlog } from '../utils/storage.js';
+import { getInfiniteScrollPreference, setInfiniteScrollPreference } from '../services/storage.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import { SORT_OPTIONS, normalizeSortValue } from '../types/post.js';
 import { resolveLink } from '../services/link-resolver.js';
@@ -338,6 +339,7 @@ export class SharedNav extends LitElement {
   @state() private profileBlogTitle: string | null = null;
   @state() private archiveSortPreference = normalizeSortValue(getArchiveSortPreference() || 'newest');
   @state() private searchSortPreference = normalizeSortValue(getSearchSortPreference() || 'newest');
+  @state() private infiniteScrollPref = getInfiniteScrollPreference();
   @state() private loginError: string | null = null;
   @state() private blogs: { id: number; name: string }[] = [];
   @state() private activeBlogId: number | null = null;
@@ -583,6 +585,12 @@ export class SharedNav extends LitElement {
     setSearchSortPreference(value);
   }
 
+  private handleInfiniteScrollPreferenceChange(e: Event): void {
+    const checked = (e.target as HTMLInputElement).checked;
+    setInfiniteScrollPreference(checked);
+    this.infiniteScrollPref = checked;
+  }
+
   private handleBlogSwitch(e: Event): void {
     const user = getAuthUser();
     if (!user) return;
@@ -656,6 +664,14 @@ export class SharedNav extends LitElement {
               <select class="menu-button" .value=${this.searchSortPreference} @change=${this.handleSearchSortPreferenceChange} @input=${this.handleSearchSortPreferenceChange}>
                 ${SORT_OPTIONS.map((opt) => html`<option value=${opt.value}>${opt.label}</option>`)}
               </select>
+              <label class="menu-button">
+                <input
+                  type="checkbox"
+                  .checked=${this.infiniteScrollPref}
+                  @change=${this.handleInfiniteScrollPreferenceChange}
+                />
+                <span>Infinite scroll</span>
+              </label>
               <a class="menu-button" href=${this.getClearCacheUrl()}>Clear cache</a>
               <button class="menu-button" @click=${this.handleLogout}>Log out</button>
               <div class="menu-build-tag" aria-label="Build tag">${BUILD_TAG}</div>
