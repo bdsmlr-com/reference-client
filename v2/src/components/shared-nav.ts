@@ -591,6 +591,19 @@ export class SharedNav extends LitElement {
     this.infiniteScrollPref = checked;
   }
 
+  private renderInfiniteScrollPreference() {
+    return html`
+      <label class="menu-button">
+        <input
+          type="checkbox"
+          .checked=${this.infiniteScrollPref}
+          @change=${this.handleInfiniteScrollPreferenceChange}
+        />
+        <span>Infinite scroll</span>
+      </label>
+    `;
+  }
+
   private handleBlogSwitch(e: Event): void {
     const user = getAuthUser();
     if (!user) return;
@@ -664,20 +677,14 @@ export class SharedNav extends LitElement {
               <select class="menu-button" .value=${this.searchSortPreference} @change=${this.handleSearchSortPreferenceChange} @input=${this.handleSearchSortPreferenceChange}>
                 ${SORT_OPTIONS.map((opt) => html`<option value=${opt.value}>${opt.label}</option>`)}
               </select>
-              <label class="menu-button">
-                <input
-                  type="checkbox"
-                  .checked=${this.infiniteScrollPref}
-                  @change=${this.handleInfiniteScrollPreferenceChange}
-                />
-                <span>Infinite scroll</span>
-              </label>
+              ${this.renderInfiniteScrollPreference()}
               <a class="menu-button" href=${this.getClearCacheUrl()}>Clear cache</a>
               <button class="menu-button" @click=${this.handleLogout}>Log out</button>
               <div class="menu-build-tag" aria-label="Build tag">${BUILD_TAG}</div>
             `
           : html`
               <div class="menu-section-title">Settings</div>
+              ${this.renderInfiniteScrollPreference()}
               <button class="menu-button" @click=${this.openLoginModal}>Log in</button>
               <a class="menu-button" href=${this.getClearCacheUrl()}>Clear cache</a>
               <div class="menu-build-tag" aria-label="Build tag">${BUILD_TAG}</div>

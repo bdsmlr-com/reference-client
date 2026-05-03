@@ -11,4 +11,12 @@ describe('shared nav preferences', () => {
     expect(src).toContain('Infinite scroll');
     expect(src).toContain('setInfiniteScrollPreference');
   });
+
+  it('keeps the infinite scroll toggle available in the logged-out settings menu path', () => {
+    const src = readFileSync(FILE, 'utf8');
+
+    expect(src).toMatch(
+      /: html`[\s\S]*?<div class="menu-section-title">Settings<\/div>[\s\S]*?\$\{this\.renderInfiniteScrollPreference\(\)\}[\s\S]*?Log in[\s\S]*?Clear cache/
+    );
+  });
 });
