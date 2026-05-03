@@ -94,7 +94,7 @@ export interface Post {
   deletedAtUnix?: number;
   originDeletedAtUnix?: number;
   variant?: PostVariant;
-  reblog_variants?: ReblogVariant[];
+  reblogVariants?: ReblogVariant[];
   blogIdentityDecorations?: IdentityDecoration[];
   originBlogIdentityDecorations?: IdentityDecoration[];
   originPostMissing?: boolean;
