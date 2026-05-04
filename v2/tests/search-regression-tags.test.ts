@@ -14,12 +14,15 @@ describe('search regression and tag visibility', () => {
     expect(src).toContain('if (searchToken !== this.activeSearchToken || signature !== this.currentSearchSignature)');
   });
 
-  it('treats posts as the canonical search payload instead of backend timelineItems', () => {
+  it('contains timeline semantics behind search-specific result units', () => {
     const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
 
-    expect(src).toContain('(resp.posts || []).forEach');
-    expect(src).toContain("newItems.push({ type: 1, post });");
-    expect(src).not.toContain('(resp.timelineItems || []).forEach');
+    expect(src).toContain("../services/search-result-units.js");
+    expect(src).not.toContain("import type { PostType, PostSortField, Order, PostVariant, TimelineItem }");
+    expect(src).toContain('@state() private resultUnits');
+    expect(src).not.toContain('@state() private timelineItems');
+    expect(src).toContain('materializeSearchResultUnits(resp)');
+    expect(src).toContain('prepareSearchResultUnit(unit)');
   });
 
   it('does not collapse search results by origin post or media url', () => {

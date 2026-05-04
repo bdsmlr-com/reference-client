@@ -1,0 +1,49 @@
+import { describe, expect, it } from 'vitest';
+import { materializeSearchResultUnits } from '../src/services/search-result-units.js';
+import type { SearchPostsByTagResponse } from '../src/types/api.js';
+
+describe('search result units', () => {
+  it('treats posts as canonical post result units', () => {
+    const response: SearchPostsByTagResponse = {
+      posts: [
+        { id: 101, type: 1, blogId: 1 },
+        { id: 102, type: 1, blogId: 1 },
+      ],
+    };
+
+    expect(materializeSearchResultUnits(response)).toEqual([
+      { kind: 'post', post: { id: 101, type: 1, blogId: 1 } },
+      { kind: 'post', post: { id: 102, type: 1, blogId: 1 } },
+    ]);
+  });
+
+  it('can adapt grouped backend items without exposing timeline naming to the route', () => {
+    const response: SearchPostsByTagResponse = {
+      timelineItems: [
+        {
+          type: 2,
+          cluster: {
+            label: 'Reblogs',
+            interactions: [
+              { id: 201, type: 1, blogId: 2 },
+              { id: 202, type: 1, blogId: 3 },
+            ],
+          },
+        },
+      ],
+    };
+
+    expect(materializeSearchResultUnits(response)).toEqual([
+      {
+        kind: 'result_group',
+        group: {
+          label: 'Reblogs',
+          posts: [
+            { id: 201, type: 1, blogId: 2 },
+            { id: 202, type: 1, blogId: 3 },
+          ],
+        },
+      },
+    ]);
+  });
+});

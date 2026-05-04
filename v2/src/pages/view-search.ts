@@ -11,9 +11,10 @@ import {
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
-import type { PostType, PostSortField, Order, PostVariant, TimelineItem } from '../types/api.js';
+import type { PostType, PostSortField, Order, PostVariant } from '../types/api.js';
 import { parsePostTypesParam, parseVariantsParam, serializePostTypesParam, serializeVariantsParam } from '../services/post-filter-url.js';
 import { parseSearchPageParam, parseSearchSessionParam, resolveSearchNavigationMode, shouldReplaceSearchUrlOnPageChange } from '../services/search-session.js';
+import { materializeSearchResultUnits, type SearchResultUnit } from '../services/search-result-units.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import {
   getGalleryMode,
@@ -210,7 +211,7 @@ export class ViewSearch extends LitElement {
   @state() private matchMode: 'off' | 'soft' | 'hard' = 'off';
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
   @state() private selectedVariants: PostVariant[] = [1];
-  @state() private timelineItems: TimelineItem[] = [];
+  @state() private resultUnits: SearchResultUnit[] = [];
   @state() private loading = false;
   @state() private searching = false;
   @state() private exhausted = false;
@@ -296,12 +297,12 @@ export class ViewSearch extends LitElement {
   };
 
   private savePaginationState = (): void => {
-    if (this.paginationKey && this.timelineItems.length > 0) {
+    if (this.paginationKey && this.resultUnits.length > 0) {
       setCachedPaginationCursor(
         this.paginationKey,
         this.backendCursor,
         window.scrollY,
-        this.timelineItems.length,
+        this.resultUnits.length,
         this.exhausted
       );
     }
@@ -403,7 +404,7 @@ export class ViewSearch extends LitElement {
     this.hasNextPage = false;
     this.seenIds.clear();
     this.stats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
-    this.timelineItems = [];
+    this.resultUnits = [];
     this.statusMessage = '';
     this.errorMessage = '';
   }
@@ -501,6 +502,107 @@ export class ViewSearch extends LitElement {
     };
   }
 
+  private prepareSearchResultUnit(unit: SearchResultUnit): SearchResultUnit | null {
+    if (unit.kind === 'post') {
+      const prepared = this.prepareSearchPost(unit.post as ProcessedPost);
+      return prepared ? { kind: 'post', post: prepared } : null;
+    }
+
+    const posts = unit.group.posts
+      .map((post) => this.prepareSearchPost(post as ProcessedPost))
+      .filter((post): post is ProcessedPost => post !== null);
+    if (posts.length === 0) return null;
+    return {
+      kind: 'result_group',
+      group: {
+        label: unit.group.label,
+        posts,
+      },
+    };
+  }
+
+  private prepareSearchPost(post: ProcessedPost): ProcessedPost | null {
+    if (this.seenIds.has(post.id)) {
+      this.stats.dupes++;
+      return null;
+    }
+
+    this.seenIds.add(post.id);
+    post._media = extractMedia(post);
+    return post;
+  }
+
+  private getSearchGridItems(units: SearchResultUnit[]): { post: ProcessedPost; type: 'post' | 'reblog' }[] {
+    return units.flatMap((unit) => {
+      if (unit.kind === 'post') {
+        return [this.toActivityItem(unit.post as ProcessedPost)];
+      }
+      return unit.group.posts.map((post) => this.toActivityItem(post as ProcessedPost));
+    });
+  }
+
+  private getAllResultPosts(): ProcessedPost[] {
+    return this.resultUnits.flatMap((unit) =>
+      unit.kind === 'post' ? [unit.post as ProcessedPost] : unit.group.posts.map((post) => post as ProcessedPost),
+    );
+  }
+
+  private renderSearchResultUnits() {
+    const sections: Array<
+      { kind: 'posts'; units: SearchResultUnit[] }
+      | { kind: 'group'; unit: Extract<SearchResultUnit, { kind: 'result_group' }> }
+    > = [];
+    let pendingPosts: SearchResultUnit[] = [];
+
+    const flushPosts = () => {
+      if (pendingPosts.length > 0) {
+        sections.push({ kind: 'posts', units: pendingPosts });
+        pendingPosts = [];
+      }
+    };
+
+    this.resultUnits.forEach((unit) => {
+      if (unit.kind === 'post') {
+        pendingPosts.push(unit);
+        return;
+      }
+      flushPosts();
+      sections.push({ kind: 'group', unit });
+    });
+    flushPosts();
+
+    return sections.map((section) => {
+      if (section.kind === 'posts') {
+        return html`
+          <div class="grid-container">
+            <activity-grid
+              .mode=${this.galleryMode}
+              .items=${this.getSearchGridItems(section.units)}
+              @activity-click=${this.handlePostClick}
+            ></activity-grid>
+          </div>
+        `;
+      }
+
+      return html`
+        <div class="grid-container">
+          <result-group
+            wide
+            .label=${section.unit.group.label}
+            .description=${`${section.unit.group.posts.length} posts`}
+          >
+            <activity-grid
+              compact
+              mode="grid"
+              .items=${this.getSearchGridItems([section.unit])}
+              @activity-click=${this.handlePostClick}
+            ></activity-grid>
+          </result-group>
+        </div>
+      `;
+    });
+  }
+
   private async fillPage(
     searchToken: number = this.activeSearchToken,
     signature: string = this.currentSearchSignature,
@@ -545,24 +647,14 @@ export class ViewSearch extends LitElement {
       this.hasNextPage = !!resp.hasMore;
       this.exhausted = !resp.hasMore;
 
-      const newItems: TimelineItem[] = [];
-      (resp.posts || []).forEach(rawPost => {
-        const post = rawPost as ProcessedPost;
-        const media = extractMedia(post);
-        if (this.seenIds.has(post.id)) {
-          this.stats.dupes++;
-          return;
-        }
-
-        this.seenIds.add(post.id);
-        post._media = media;
-        newItems.push({ type: 1, post });
-      });
+      const newUnits = materializeSearchResultUnits(resp)
+        .map((unit) => this.prepareSearchResultUnit(unit))
+        .filter((unit): unit is SearchResultUnit => unit !== null);
 
       if (this.navigationMode === 'paginated' || targetPage === 1) {
-        this.timelineItems = newItems;
+        this.resultUnits = newUnits;
       } else {
-        this.timelineItems = [...this.timelineItems, ...newItems];
+        this.resultUnits = [...this.resultUnits, ...newUnits];
       }
 
       if (this.navigationMode === 'paginated') {
@@ -631,17 +723,7 @@ export class ViewSearch extends LitElement {
 
   private handlePostClick(e: CustomEvent): void {
     const post = e.detail.post as ProcessedPost;
-    
-    const allPosts: ProcessedPost[] = [];
-    this.timelineItems.forEach(item => {
-      if (item.type === 1 && item.post) {
-        allPosts.push(item.post as ProcessedPost);
-      } else if (item.type === 2 && item.cluster) {
-        item.cluster.interactions?.forEach(p => {
-          allPosts.push(p as ProcessedPost);
-        });
-      }
-    });
+    const allPosts = this.getAllResultPosts();
 
     const index = allPosts.findIndex(p => p.id === post.id);
 
@@ -736,7 +818,7 @@ export class ViewSearch extends LitElement {
             `
           : ''}
 
-        ${this.searching && this.timelineItems.length === 0
+        ${this.searching && this.resultUnits.length === 0
           ? html`
               <div class="grid-container">
                 <render-card
@@ -763,23 +845,9 @@ export class ViewSearch extends LitElement {
 
         ${this.statusMessage && !this.searching && !this.errorMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
 
-        ${this.timelineItems.length > 0
+        ${this.resultUnits.length > 0
           ? html`
-              <div class="grid-container">
-                <activity-grid 
-                  .mode=${this.galleryMode}
-                  .items=${this.timelineItems.flatMap(entry => {
-                    if (entry.type === 1 && entry.post) {
-                      return [this.toActivityItem(entry.post as ProcessedPost)];
-                    } else if (entry.type === 2 && entry.cluster) {
-                      return (entry.cluster.interactions || []).map((post: any) => this.toActivityItem(post as ProcessedPost));
-                    }
-                    return [];
-                  })} 
-                  @activity-click=${this.handlePostClick}
-                ></activity-grid>
-              </div>
-
+              ${this.renderSearchResultUnits()}
               <load-footer
                 mode="search"
                 pageName="search"
