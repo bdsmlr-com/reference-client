@@ -21,6 +21,7 @@ describe('search route perspective wiring', () => {
     expect(src).toContain('session_id: this.searchSessionId || undefined');
     expect(src).toContain('page_number: targetPage');
     expect(src).toContain('page_size: SEARCH_PAGE_SIZE');
+    expect(src).toContain('when: this.searchWhen || undefined');
     expect(src).toContain('facetMode,');
     expect(src).toContain('tag_name: this.query');
   });

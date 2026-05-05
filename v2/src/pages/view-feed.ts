@@ -18,7 +18,7 @@ import type { RenderSlotConfig } from '../config.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
-import '../components/activity-kind-pills.js';
+import '../components/control-panel.js';
 import '../components/blog-header.js';
 import '../components/timeline-stream.js';
 import '../components/load-footer.js';
@@ -43,21 +43,6 @@ export class ViewFeed extends LitElement {
 
       .content {
         padding: 20px 0;
-      }
-
-      .filters-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 20px;
-        padding: 0 16px;
-      }
-
-      .pills-separator {
-        color: var(--text-muted);
-        font-size: 16px;
       }
 
       .status {
@@ -631,10 +616,13 @@ export class ViewFeed extends LitElement {
 
         ${this.sourceBlogIds.length > 0
           ? html`
-              <activity-kind-pills
-                .selected=${this.activityKinds}
+              <control-panel
+                .showSort=${false}
+                .showWhen=${false}
+                .showActivityKinds=${true}
+                .activityKinds=${this.activityKinds}
                 @activity-kinds-change=${this.handleActivityKindsChange}
-              ></activity-kind-pills>
+              ></control-panel>
             `
           : ''}
 

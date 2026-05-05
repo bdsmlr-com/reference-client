@@ -6,7 +6,6 @@ import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from
 import { getUrlParam, setUrlParams, isBlogInPath, isDefaultTypes, isAdminMode } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { parsePostTypesParam, parseVariantsParam, serializePostTypesParam, serializeVariantsParam } from '../services/post-filter-url.js';
-import { formatArchiveWhenLabel, getArchiveWhenDays, getArchiveWhenMonths, getArchiveWhenYears, normalizeArchiveWhenInput, splitArchiveWhenForControl, type ArchiveWhenGranularity } from '../services/archive-when.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
   getInfiniteScrollPreference,
@@ -26,7 +25,7 @@ import { getPageSlotConfig } from '../services/render-page.js';
 import { applyRetrievalPostPolicies, type RetrievalPostPolicyMap } from '../services/retrieval-presentation.js';
 import type { RenderSlotConfig } from '../config.js';
 
-import '../components/filter-bar.js';
+import '../components/control-panel.js';
 import '../components/activity-grid.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
@@ -80,106 +79,6 @@ export class ViewArchive extends LitElement {
         margin-bottom: 20px;
         padding: 0 16px;
       }
-
-      .archive-controls {
-        display: flex;
-        justify-content: center;
-        padding: 0 16px 20px;
-        position: relative;
-      }
-
-      .when-picker {
-        position: relative;
-      }
-
-      .when-trigger {
-        min-height: 36px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        background: var(--surface-raised, var(--surface-primary, #fff));
-        color: var(--text-primary);
-        padding: 0 14px;
-        font: inherit;
-        cursor: pointer;
-      }
-
-      .when-popover {
-        position: absolute;
-        top: calc(100% + 8px);
-        left: 50%;
-        transform: translateX(-50%);
-        min-width: 280px;
-        max-width: min(92vw, 360px);
-        padding: 12px;
-        border-radius: 16px;
-        border: 1px solid var(--border);
-        background: var(--surface-raised, var(--surface-primary, #fff));
-        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.12);
-        z-index: 30;
-      }
-
-      .when-breadcrumbs {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 6px;
-        margin-bottom: 10px;
-        color: var(--text-muted);
-        font-size: 12px;
-      }
-
-      .when-crumb {
-        border: 0;
-        background: transparent;
-        color: inherit;
-        cursor: pointer;
-        font: inherit;
-        padding: 0;
-      }
-
-      .when-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 8px;
-      }
-
-      .when-cell {
-        min-height: 40px;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        background: var(--surface-primary, #fff);
-        color: var(--text-primary);
-        font: inherit;
-        cursor: pointer;
-        padding: 0 8px;
-      }
-
-      .when-cell[data-kind='all'] {
-        grid-column: 1 / -1;
-      }
-
-      .when-actions {
-        display: flex;
-        justify-content: flex-end;
-        margin-top: 10px;
-      }
-
-      .when-close {
-        min-height: 36px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        background: var(--surface-raised, var(--surface-primary, #fff));
-        color: var(--text-primary);
-        padding: 0 14px;
-        font: inherit;
-        cursor: pointer;
-      }
-
-      @media (max-width: 600px) {
-        .when-grid {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-      }
     `,
   ];
 
@@ -200,11 +99,6 @@ export class ViewArchive extends LitElement {
   @state() private errorMessage = '';
   @state() private hasNextPage = false;
   @state() private archiveWhen = '';
-  @state() private archiveWhenGranularity: ArchiveWhenGranularity = 'month';
-  @state() private archiveWhenInput = '';
-  @state() private whenPopoverOpen = false;
-  @state() private pickerYear: number | null = null;
-  @state() private pickerMonth: number | null = null;
   @state() private initialLoading = false;
   @state() private blogData: Blog | null = null;
   @state() private autoRetryAttempt = 0;
@@ -230,7 +124,6 @@ export class ViewArchive extends LitElement {
     super.connectedCallback();
     window.addEventListener('beforeunload', this.savePaginationState);
     window.addEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
-    window.addEventListener('click', this.handleWindowClick);
   }
 
   disconnectedCallback(): void {
@@ -242,20 +135,11 @@ export class ViewArchive extends LitElement {
       scrollObserver.unobserve(sentinel);
     }
     window.removeEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
-    window.removeEventListener('click', this.handleWindowClick);
     clearBlogTheme();
   }
 
   private handleGalleryModeChanged = (): void => {
     this.galleryMode = getGalleryMode();
-  };
-
-  private handleWindowClick = (event: Event): void => {
-    if (!this.whenPopoverOpen) return;
-    const path = event.composedPath();
-    if (!path.includes(this)) {
-      this.whenPopoverOpen = false;
-    }
   };
 
   private savePaginationState = (): void => {
@@ -344,10 +228,6 @@ export class ViewArchive extends LitElement {
     this.sortValue = resolvedSort;
     this.infiniteScroll = infinitePref;
     this.archiveWhen = explicitWhen;
-    const whenControl = splitArchiveWhenForControl(explicitWhen);
-    this.archiveWhenGranularity = whenControl.granularity;
-    this.archiveWhenInput = whenControl.value;
-    this.syncPickerToCurrentWhen();
     this.forcedPaginatedFromUrl = hasExplicitPaginationState;
     this.navigationMode = hasExplicitPaginationState ? 'paginated' : (infinitePref ? 'infinite' : 'paginated');
     this.currentPage = explicitCursor ? (explicitPage ?? 1) : 1;
@@ -541,122 +421,15 @@ export class ViewArchive extends LitElement {
     void this.loadPosts();
   }
 
-  private async applyArchiveWhen(): Promise<void> {
-    this.archiveWhen = normalizeArchiveWhenInput(this.archiveWhenGranularity, this.archiveWhenInput);
-    this.archiveWhenInput = this.archiveWhen;
-    this.whenPopoverOpen = false;
-    this.syncPickerToCurrentWhen();
-    await this.loadPosts();
-  }
-
-  private async clearArchiveWhen(): Promise<void> {
-    this.archiveWhen = '';
-    this.archiveWhenGranularity = 'month';
-    this.archiveWhenInput = '';
-    this.whenPopoverOpen = false;
-    this.syncPickerToCurrentWhen();
-    await this.loadPosts();
-  }
-
-  private archiveBounds(): { min?: string; max?: string } {
-    return {
-      min: this.blogData?.archiveMinDate,
-      max: this.blogData?.archiveMaxDate,
-    };
-  }
-
-  private syncPickerToCurrentWhen(): void {
-    const value = this.archiveWhen;
-    if (/^\d{4}$/.test(value)) {
-      this.pickerYear = Number.parseInt(value, 10);
-      this.pickerMonth = null;
-      return;
-    }
-    if (/^\d{4}-\d{2}$/.test(value)) {
-      this.pickerYear = Number.parseInt(value.slice(0, 4), 10);
-      this.pickerMonth = Number.parseInt(value.slice(5, 7), 10);
-      return;
-    }
-    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      this.pickerYear = Number.parseInt(value.slice(0, 4), 10);
-      this.pickerMonth = Number.parseInt(value.slice(5, 7), 10);
-      return;
-    }
-    this.pickerYear = null;
-    this.pickerMonth = null;
-  }
-
-  private toggleWhenPopover(e: Event): void {
-    e.stopPropagation();
-    this.syncPickerToCurrentWhen();
-    this.whenPopoverOpen = !this.whenPopoverOpen;
-  }
-
-  private async selectAllTime(): Promise<void> {
-    this.archiveWhen = '';
-    this.archiveWhenGranularity = 'month';
-    this.archiveWhenInput = '';
-    await this.clearArchiveWhen();
-  }
-
-  private async selectYear(year: number): Promise<void> {
-    this.pickerYear = year;
-    this.pickerMonth = null;
-    this.archiveWhenGranularity = 'year';
-    this.archiveWhenInput = String(year);
-    await this.applyArchiveWhen();
-    this.whenPopoverOpen = true;
-  }
-
-  private async selectMonth(month: number): Promise<void> {
-    if (!this.pickerYear) return;
-    this.pickerMonth = month;
-    this.archiveWhenGranularity = 'month';
-    this.archiveWhenInput = `${this.pickerYear}-${String(month).padStart(2, '0')}`;
-    await this.applyArchiveWhen();
-    this.whenPopoverOpen = true;
-  }
-
-  private async selectDay(day: number): Promise<void> {
-    if (!this.pickerYear || !this.pickerMonth) return;
-    this.archiveWhenGranularity = 'day';
-    this.archiveWhenInput = `${this.pickerYear}-${String(this.pickerMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    await this.applyArchiveWhen();
-  }
-
-  private closeWhenPopover(): void {
-    this.whenPopoverOpen = false;
-  }
-
-  private renderWhenCells() {
-    const bounds = this.archiveBounds();
-    if (this.pickerYear == null) {
-      return html`
-        <button class="when-cell" data-kind="all" @click=${() => this.selectAllTime()}>All time</button>
-        ${getArchiveWhenYears(bounds).map((year: number) => html`
-          <button class="when-cell" @click=${() => this.selectYear(year)}>${year}</button>
-        `)}
-      `;
-    }
-    if (this.pickerMonth == null) {
-      return html`${getArchiveWhenMonths(this.pickerYear, bounds).map((month: number) => html`
-        <button class="when-cell" @click=${() => this.selectMonth(month)}>${String(month).padStart(2, '0')}</button>
-      `)}`;
-    }
-    return html`${getArchiveWhenDays(this.pickerYear, this.pickerMonth, bounds).map((day: number) => html`
-      <button class="when-cell" @click=${() => this.selectDay(day)}>${String(day).padStart(2, '0')}</button>
-    `)}`;
-  }
-
-  private setPickerLevel(level: 'root' | 'year' | 'month'): void {
-    if (level === 'root') {
-      this.pickerYear = null;
-      this.pickerMonth = null;
-      return;
-    }
-    if (level === 'year') {
-      this.pickerMonth = null;
-    }
+  private handleWhenChange(e: CustomEvent<{ value: string }>): void {
+    this.archiveWhen = parseArchiveWhenParam(e.detail.value);
+    this.forcedPaginatedFromUrl = this.archiveWhen.length > 0;
+    this.currentPage = 1;
+    this.currentPageCursor = null;
+    this.hasNextPage = false;
+    this.pageStartCursors = new Map([[1, null]]);
+    this.navigationMode = this.forcedPaginatedFromUrl ? 'paginated' : (this.infiniteScroll ? 'infinite' : 'paginated');
+    void this.loadPosts();
   }
 
   private handlePostClick(e: CustomEvent): void {
@@ -744,41 +517,23 @@ export class ViewArchive extends LitElement {
         ${this.initialLoading ? html`<loading-spinner message="Loading archive..."></loading-spinner>` : ''}
 
         ${this.blogId ? html`
-          <filter-bar
+          <control-panel
+            .pageName=${'archive'}
             .sortValue=${this.sortValue}
             .selectedTypes=${this.selectedTypes}
             .selectedVariants=${this.selectedVariants}
+            .whenValue=${this.archiveWhen}
+            .blog=${this.blogData}
             .showSort=${true}
+            .showTypes=${true}
             .showVariants=${true}
+            .showWhen=${true}
             .loading=${this.loading}
             @sort-change=${this.handleSortChange}
             @types-change=${this.handleTypesChange}
             @variant-change=${this.handleVariantChange}
-          ></filter-bar>
-          <div class="archive-controls">
-            <div class="when-picker">
-              <button class="when-trigger" @click=${this.toggleWhenPopover}>${formatArchiveWhenLabel(this.archiveWhen)}</button>
-              ${this.whenPopoverOpen ? html`
-                <div class="when-popover" @click=${(e: Event) => e.stopPropagation()}>
-                  <div class="when-breadcrumbs">
-                    <button class="when-crumb" @click=${() => this.setPickerLevel('root')}>All time</button>
-                    ${this.pickerYear != null ? html`
-                      <span>›</span>
-                      <button class="when-crumb" @click=${() => this.setPickerLevel('year')}>${this.pickerYear}</button>
-                    ` : ''}
-                    ${this.pickerMonth != null ? html`
-                      <span>›</span>
-                      <button class="when-crumb" @click=${() => this.setPickerLevel('month')}>${String(this.pickerMonth).padStart(2, '0')}</button>
-                    ` : ''}
-                  </div>
-                  <div class="when-grid">${this.renderWhenCells()}</div>
-                  <div class="when-actions">
-                    <button class="when-close" @click=${() => this.closeWhenPopover()}>Close</button>
-                  </div>
-                </div>
-              ` : ''}
-            </div>
-          </div>
+            @when-change=${this.handleWhenChange}
+          ></control-panel>
         ` : ''}
 
         ${this.errorMessage ? html`<error-state title="Error" message=${this.errorMessage} @retry=${this.handleRetry}></error-state>` : ''}

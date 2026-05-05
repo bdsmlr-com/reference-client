@@ -17,7 +17,7 @@ import {
 } from '../services/profile.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
-import '../components/activity-kind-pills.js';
+import '../components/control-panel.js';
 import '../components/timeline-stream.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
@@ -249,10 +249,11 @@ export class ViewPosts extends LitElement {
           .identityDecorations=${this.blogData?.identityDecorations || []}
         ></blog-header>
 
-        <activity-kind-pills
-          .selected=${this.activityKinds}
+        <control-panel
+          .showActivityKinds=${true}
+          .activityKinds=${this.activityKinds}
           @activity-kinds-change=${this.handleActivityKindsChange}
-        ></activity-kind-pills>
+        ></control-panel>
 
         ${this.errorMessage ? html`<error-state message=${this.errorMessage}></error-state>` : ''}
         ${this.loading && this.timelineItems.length === 0 && !this.errorMessage

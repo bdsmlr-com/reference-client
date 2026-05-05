@@ -291,6 +291,7 @@ export interface SearchPostsByTagRequest {
   session_id?: string;
   page_number?: number;
   page_size?: number;
+  when?: string;
   sort_field?: PostSortField;
   order?: Order;
   post_types?: PostType[];

@@ -4,6 +4,7 @@ import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
 import { buildPageUrl, getBlogNameFromPath, getPrimaryBlogName, getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';
+import { normalizeArchiveWhenValue } from '../services/archive-when.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
   generatePaginationCursorKey,
@@ -28,14 +29,13 @@ import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { ACTIVE_ENV } from '../config.js';
 import { materializeRecommendedPosts, recService } from '../services/recommendation-api.js';
-import '../components/filter-bar.js';
+import '../components/control-panel.js';
 import '../components/activity-grid.js';
 import '../components/post-grid.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
 import '../components/error-state.js';
-import '../components/type-pills.js'; // Might still be used elsewhere or redundant but keeping imports safe
 import '../components/render-card.js';
 import '../components/result-group.js';
 
@@ -214,6 +214,7 @@ export class ViewSearch extends LitElement {
   @state() private matchMode: 'off' | 'soft' | 'hard' = 'off';
   @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
   @state() private selectedVariants: PostVariant[] = [1];
+  @state() private searchWhen = '';
   @state() private resultUnits: SearchResultUnit[] = [];
   @state() private loading = false;
   @state() private searching = false;
@@ -312,7 +313,14 @@ export class ViewSearch extends LitElement {
   };
 
   private syncSearchUrlState(): void {
+    const routePerspectiveBlog = getBlogNameFromPath();
     setUrlParams({
+      q: this.query,
+      sort: this.sortExplicitInUrl ? this.sortValue : '',
+      match: routePerspectiveBlog && this.matchMode !== 'off' ? this.matchMode : '',
+      types: isDefaultTypes(this.selectedTypes) ? '' : serializePostTypesParam(this.selectedTypes),
+      variants: serializeVariantsParam(this.selectedVariants, { emptyToken: 'all' }),
+      when: this.searchWhen,
       page: this.navigationMode === 'paginated' || (this.replaceSearchUrlOnPageBoundary && this.currentPage > 1)
         ? String(this.currentPage)
         : '',
@@ -326,25 +334,28 @@ export class ViewSearch extends LitElement {
     const match = getUrlParam('match');
     const types = getUrlParam('types');
     const variants = getUrlParam('variants');
+    const when = normalizeArchiveWhenValue(getUrlParam('when') || '');
     const initialPage = parseSearchPageParam(getUrlParam('page'));
     const initialSessionId = parseSearchSessionParam(getUrlParam('session') || getUrlParam('sessionId'));
     const infinitePref = getInfiniteScrollPreference('search');
+    const hasExplicitWhen = !!when;
 
     this.infiniteScroll = infinitePref;
     this.currentPage = initialPage ?? 1;
     this.searchSessionId = initialSessionId;
     this.navigationMode = resolveSearchNavigationMode({
       infinitePref,
-      page: initialPage,
-      sessionId: initialSessionId,
+      page: initialPage ?? (hasExplicitWhen ? 1 : undefined),
+      sessionId: hasExplicitWhen ? '' : initialSessionId,
     });
     this.replaceSearchUrlOnPageBoundary = shouldReplaceSearchUrlOnPageChange({
       navigationMode: this.navigationMode,
-      explicitPage: initialPage,
-      explicitSessionId: initialSessionId,
+      explicitPage: initialPage ?? (hasExplicitWhen ? 1 : undefined),
+      explicitSessionId: hasExplicitWhen ? '' : initialSessionId,
     });
 
     if (q) this.query = q;
+    this.searchWhen = when;
     if (match === 'soft' || match === 'hard' || match === 'off') this.matchMode = match;
     this.sortExplicitInUrl = !!sort;
     const resolvedSort = normalizeSortValue(sort || getSearchSortPreference());
@@ -447,6 +458,7 @@ export class ViewSearch extends LitElement {
       match: routePerspectiveBlog && this.matchMode !== 'off' ? this.matchMode : '',
       types: isDefaultTypes(this.selectedTypes) ? '' : serializePostTypesParam(this.selectedTypes),
       variants: serializeVariantsParam(this.selectedVariants, { emptyToken: 'all' }),
+      when: this.searchWhen,
       page: this.navigationMode === 'paginated' ? String(this.currentPage) : '',
       session: this.navigationMode === 'paginated' ? this.searchSessionId : '',
     };
@@ -605,6 +617,7 @@ export class ViewSearch extends LitElement {
         order: sortOpt.order as Order,
         post_types: this.selectedTypes,
         variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
+        when: this.searchWhen || undefined,
         page: {
           page_size: SEARCH_PAGE_SIZE,
         },
@@ -667,6 +680,19 @@ export class ViewSearch extends LitElement {
     setSearchSortPreference(this.sortValue);
     if (this.hasSearched) {
       this.search();
+    }
+  }
+
+  private handleWhenChange(e: CustomEvent<{ value: string }>): void {
+    this.searchWhen = normalizeArchiveWhenValue(e.detail.value);
+    this.currentPage = 1;
+    this.searchSessionId = '';
+    this.navigationMode = 'paginated';
+    this.replaceSearchUrlOnPageBoundary = false;
+    if (this.hasSearched) {
+      void this.search({ preserveNavigationState: true });
+    } else {
+      this.syncSearchUrlState();
     }
   }
 
@@ -749,7 +775,6 @@ export class ViewSearch extends LitElement {
             @input=${(e: Event) => (this.query = (e.target as HTMLInputElement).value)}
             @keypress=${this.handleKeyPress}
           />
-          <sort-controls .value=${this.sortValue} @sort-change=${this.handleSortChange}></sort-controls>
           <button ?disabled=${this.searching} @click=${() => this.search()}>
             ${this.searching ? 'Searching...' : 'Search'}
           </button>
@@ -769,14 +794,22 @@ export class ViewSearch extends LitElement {
           </div>
         ` : ''}
 
-        <filter-bar
+        <control-panel
+          .pageName=${'search'}
+          .sortValue=${this.sortValue}
           .selectedTypes=${this.selectedTypes}
           .selectedVariants=${this.selectedVariants}
+          .whenValue=${this.searchWhen}
+          .showSort=${true}
+          .showTypes=${true}
           .showVariants=${true}
+          .showWhen=${true}
           .loading=${this.loading}
+          @sort-change=${this.handleSortChange}
           @types-change=${this.handleTypesChange}
           @variant-change=${this.handleVariantChange}
-        ></filter-bar>
+          @when-change=${this.handleWhenChange}
+        ></control-panel>
 
         ${!this.hasSearched
           ? html`

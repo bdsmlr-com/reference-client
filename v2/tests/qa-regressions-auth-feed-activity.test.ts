@@ -40,7 +40,8 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(feedSrc).toContain("private get relationshipDirection(): 1 | 2");
     expect(feedSrc).toContain("return this.isFollowerFeed ? 2 : 1;");
     expect(feedSrc).toContain("return this.isFollowerFeed ? 'followers' : 'following';");
-    expect(feedSrc).toContain("View posts from followers of:");
+    expect(feedSrc).toContain("Showing posts from");
+    expect(feedSrc).toContain("this.relationshipSummarySuffix");
     expect(feedSrc).toContain("page=${this.isFollowerFeed ? 'follower-feed' : 'feed'}");
     expect(appRootSrc).toContain("path: '/follower-feed/:blogname'");
     expect(appRootSrc).toContain("<view-feed .blog=${this.resolveRouteBlogName(blogname || '')} .mode=${'followers'}></view-feed>");
