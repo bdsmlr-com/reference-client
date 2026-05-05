@@ -40,6 +40,9 @@ import '../components/render-card.js';
 import '../components/result-group.js';
 
 const SEARCH_PAGE_SIZE = 20;
+type SearchGridItem =
+  | { post: ProcessedPost; type: 'post' | 'reblog' }
+  | { kind: 'result_group'; post: ProcessedPost; count: number; label: string };
 
 @customElement('view-search')
 export class ViewSearch extends LitElement {
@@ -535,13 +538,23 @@ export class ViewSearch extends LitElement {
     return post;
   }
 
-  private getSearchGridItems(units: SearchResultUnit[]): { post: ProcessedPost; type: 'post' | 'reblog' }[] {
-    return units.flatMap((unit) => {
+  private getSearchGridItems(units: SearchResultUnit[]): SearchGridItem[] {
+    const items: SearchGridItem[] = [];
+    units.forEach((unit) => {
       if (unit.kind === 'post') {
-        return [this.toActivityItem(unit.post as ProcessedPost)];
+        items.push(this.toActivityItem(unit.post as ProcessedPost));
+        return;
       }
-      return unit.group.posts.map((post) => this.toActivityItem(post as ProcessedPost));
+      const representative = unit.group.posts[0] as ProcessedPost | undefined;
+      if (!representative) return;
+      items.push({
+        kind: 'result_group' as const,
+        post: representative,
+        count: unit.group.count || unit.group.posts.length,
+        label: unit.group.label,
+      });
     });
+    return items;
   }
 
   private getAllResultPosts(): ProcessedPost[] {
@@ -551,59 +564,15 @@ export class ViewSearch extends LitElement {
   }
 
   private renderSearchResultUnits() {
-    const sections: Array<
-      { kind: 'posts'; units: SearchResultUnit[] }
-      | { kind: 'group'; unit: Extract<SearchResultUnit, { kind: 'result_group' }> }
-    > = [];
-    let pendingPosts: SearchResultUnit[] = [];
-
-    const flushPosts = () => {
-      if (pendingPosts.length > 0) {
-        sections.push({ kind: 'posts', units: pendingPosts });
-        pendingPosts = [];
-      }
-    };
-
-    this.resultUnits.forEach((unit) => {
-      if (unit.kind === 'post') {
-        pendingPosts.push(unit);
-        return;
-      }
-      flushPosts();
-      sections.push({ kind: 'group', unit });
-    });
-    flushPosts();
-
-    return sections.map((section) => {
-      if (section.kind === 'posts') {
-        return html`
-          <div class="grid-container">
-            <activity-grid
-              .mode=${this.galleryMode}
-              .items=${this.getSearchGridItems(section.units)}
-              @activity-click=${this.handlePostClick}
-            ></activity-grid>
-          </div>
-        `;
-      }
-
-      return html`
-        <div class="grid-container">
-          <result-group
-            wide
-            .label=${section.unit.group.label}
-            .description=${`${section.unit.group.count || section.unit.group.posts.length} reblogs`}
-          >
-            <activity-grid
-              compact
-              mode="grid"
-              .items=${this.getSearchGridItems([section.unit])}
-              @activity-click=${this.handlePostClick}
-            ></activity-grid>
-          </result-group>
-        </div>
-      `;
-    });
+    return html`
+      <div class="grid-container">
+        <activity-grid
+          .mode=${this.galleryMode}
+          .items=${this.getSearchGridItems(this.resultUnits)}
+          @activity-click=${this.handlePostClick}
+        ></activity-grid>
+      </div>
+    `;
   }
 
   private async fillPage(

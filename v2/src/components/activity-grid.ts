@@ -6,6 +6,15 @@ import { formatDate } from '../services/date-formatter.js';
 import { getBlogNameFromPath, isAdminMode } from '../services/blog-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import './media-renderer.js';
+import './search-group-card.js';
+
+type ActivityGridItem =
+  | { post: ProcessedPost; type: any }
+  | { kind: 'result_group'; post: ProcessedPost; count: number; label: string };
+
+function isResultGroupItem(item: ActivityGridItem): item is Extract<ActivityGridItem, { kind: 'result_group' }> {
+  return 'kind' in item && item.kind === 'result_group';
+}
 
 @customElement('activity-item')
 export class ActivityItem extends LitElement {
@@ -281,7 +290,7 @@ export class ActivityGrid extends LitElement {
     `,
   ];
 
-  @property({ type: Array }) items: { post: ProcessedPost; type: any }[] = [];
+  @property({ type: Array }) items: ActivityGridItem[] = [];
   @property({ type: Boolean, reflect: true }) compact = false;
   @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
   @property({ type: Boolean }) showBlogChip = true;
@@ -302,7 +311,7 @@ export class ActivityGrid extends LitElement {
   render() {
     if (this.mode === 'masonry') {
       const colCount = this.compact ? 4 : this.getMasonryColumnCount();
-      const columns: { post: ProcessedPost; type: any }[][] = Array.from({ length: colCount }, () => []);
+      const columns: ActivityGridItem[][] = Array.from({ length: colCount }, () => []);
       this.items.forEach((item, i) => {
         columns[i % colCount].push(item);
       });
@@ -312,7 +321,9 @@ export class ActivityGrid extends LitElement {
           ${columns.map((column) => html`
             <div class="masonry-column">
               ${column.map((item) => html`
-                <activity-item .post=${item.post} .interactionType=${item.type} .showBlogChip=${this.showBlogChip} mode="masonry"></activity-item>
+                ${isResultGroupItem(item)
+                  ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label}></search-group-card>`
+                  : html`<activity-item .post=${item.post} .interactionType=${item.type} .showBlogChip=${this.showBlogChip} mode="masonry"></activity-item>`}
               `)}
             </div>
           `)}
@@ -323,7 +334,9 @@ export class ActivityGrid extends LitElement {
     return html`
       <section class="grid" aria-label="Activity grid">
         ${this.items.map((item) => html`
-          <activity-item .post=${item.post} .interactionType=${item.type} .showBlogChip=${this.showBlogChip} mode="grid"></activity-item>
+          ${isResultGroupItem(item)
+            ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label}></search-group-card>`
+            : html`<activity-item .post=${item.post} .interactionType=${item.type} .showBlogChip=${this.showBlogChip} mode="grid"></activity-item>`}
         `)}
       </section>
     `;
