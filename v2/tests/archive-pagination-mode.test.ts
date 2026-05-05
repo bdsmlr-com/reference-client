@@ -102,6 +102,7 @@ vi.mock('../src/components/blog-header.js', () => ({}));
 vi.mock('../src/components/render-card.js', () => ({}));
 
 const { ViewArchive } = await import('../src/pages/view-archive.js');
+const { apiClient } = await import('../src/services/client.js');
 
 describe('archive pagination mode', () => {
   it('forces paginated mode when explicit archive page, cursor, or when state is present', () => {
@@ -140,11 +141,39 @@ describe('archive pagination mode', () => {
     expect(view.pageStartCursors.get(3)).toBe('cursor-3');
   });
 
+  it('renders the archive-only when selector controls in the page itself', () => {
+    const archiveSrc = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
+
+    expect(archiveSrc).toContain('archiveWhenGranularity');
+    expect(archiveSrc).toContain('archiveWhenInput');
+    expect(archiveSrc).toContain('applyArchiveWhen');
+    expect(archiveSrc).toContain('clearArchiveWhen');
+    expect(archiveSrc).toContain('<select class="when-select"');
+    expect(archiveSrc).toContain('YYYY-MM-DD');
+  });
+
   it('threads paginated archive mode into the shared footer controls', () => {
     const src = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
 
     expect(src).toContain('.navigationMode=${this.navigationMode}');
     expect(src).toContain('@previous-page=${() => this.handlePreviousPage()}');
     expect(src).toContain('@next-page=${() => this.handleNextPage()}');
+  });
+
+  it('forwards when to archive list requests', async () => {
+    const listMock = vi.mocked(apiClient.posts.list);
+    listMock.mockResolvedValueOnce({ posts: [], page: { nextPageToken: null } } as never);
+
+    const view = Object.assign(Object.create(ViewArchive.prototype), {
+      blogId: 123,
+      sortValue: 'newest',
+      selectedTypes: [1, 2, 3],
+      selectedVariants: [],
+      archiveWhen: '2026-05',
+    });
+
+    await view.fetchArchivePageResponse(null);
+
+    expect(listMock).toHaveBeenCalledWith(expect.objectContaining({ when: '2026-05' }));
   });
 });

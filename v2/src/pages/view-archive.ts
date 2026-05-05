@@ -6,6 +6,7 @@ import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from
 import { getUrlParam, setUrlParams, isBlogInPath, isDefaultTypes, isAdminMode } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { parsePostTypesParam, parseVariantsParam, serializePostTypesParam, serializeVariantsParam } from '../services/post-filter-url.js';
+import { normalizeArchiveWhenInput, splitArchiveWhenForControl, type ArchiveWhenGranularity } from '../services/archive-when.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
   getInfiniteScrollPreference,
@@ -50,7 +51,8 @@ function parseArchiveCursorParam(raw: string | null): string {
 }
 
 function parseArchiveWhenParam(raw: string | null): string {
-  return (raw || '').trim();
+  const value = (raw || '').trim();
+  return /^\d{4}(?:-\d{2}(?:-\d{2})?)?$/.test(value) ? value : '';
 }
 
 @customElement('view-archive')
@@ -78,6 +80,56 @@ export class ViewArchive extends LitElement {
         margin-bottom: 20px;
         padding: 0 16px;
       }
+
+      .archive-controls {
+        display: flex;
+        justify-content: center;
+        padding: 0 16px 20px;
+      }
+
+      .when-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .when-label {
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+
+      .when-select,
+      .when-input {
+        min-height: 36px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--surface-raised, var(--surface-primary, #fff));
+        color: var(--text-primary);
+        padding: 0 12px;
+        font: inherit;
+      }
+
+      .when-input {
+        min-width: 168px;
+      }
+
+      .when-button {
+        min-height: 36px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--surface-raised, var(--surface-primary, #fff));
+        color: var(--text-primary);
+        padding: 0 14px;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .when-button[data-kind='primary'] {
+        background: var(--accent-warm, #dfe8ff);
+        border-color: color-mix(in srgb, var(--accent-warm, #dfe8ff) 55%, var(--border));
+      }
     `,
   ];
 
@@ -98,6 +150,8 @@ export class ViewArchive extends LitElement {
   @state() private errorMessage = '';
   @state() private hasNextPage = false;
   @state() private archiveWhen = '';
+  @state() private archiveWhenGranularity: ArchiveWhenGranularity = 'month';
+  @state() private archiveWhenInput = '';
   @state() private initialLoading = false;
   @state() private blogData: Blog | null = null;
   @state() private autoRetryAttempt = 0;
@@ -185,6 +239,7 @@ export class ViewArchive extends LitElement {
       post_types: this.selectedTypes,
       variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
       activity_kinds: ['post', 'reblog'],
+      when: this.archiveWhen || undefined,
       page: {
         page_size: ARCHIVE_PAGE_SIZE,
         page_token: pageToken || undefined,
@@ -226,6 +281,9 @@ export class ViewArchive extends LitElement {
     this.sortValue = resolvedSort;
     this.infiniteScroll = infinitePref;
     this.archiveWhen = explicitWhen;
+    const whenControl = splitArchiveWhenForControl(explicitWhen);
+    this.archiveWhenGranularity = whenControl.granularity;
+    this.archiveWhenInput = whenControl.value;
     this.forcedPaginatedFromUrl = hasExplicitPaginationState;
     this.navigationMode = hasExplicitPaginationState ? 'paginated' : (infinitePref ? 'infinite' : 'paginated');
     this.currentPage = explicitCursor ? (explicitPage ?? 1) : 1;
@@ -419,6 +477,51 @@ export class ViewArchive extends LitElement {
     void this.loadPosts();
   }
 
+  private handleWhenGranularityChange(e: Event): void {
+    const value = (e.target as HTMLSelectElement).value;
+    if (value === 'year' || value === 'month' || value === 'day') {
+      this.archiveWhenGranularity = value;
+      const normalized = normalizeArchiveWhenInput(value, this.archiveWhenInput);
+      this.archiveWhenInput = normalized || '';
+    }
+  }
+
+  private handleWhenInput(e: Event): void {
+    this.archiveWhenInput = (e.target as HTMLInputElement).value;
+  }
+
+  private handleWhenKeydown(e: KeyboardEvent): void {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      void this.applyArchiveWhen();
+    }
+  }
+
+  private async applyArchiveWhen(): Promise<void> {
+    this.archiveWhen = normalizeArchiveWhenInput(this.archiveWhenGranularity, this.archiveWhenInput);
+    this.archiveWhenInput = this.archiveWhen;
+    await this.loadPosts();
+  }
+
+  private async clearArchiveWhen(): Promise<void> {
+    this.archiveWhen = '';
+    this.archiveWhenGranularity = 'month';
+    this.archiveWhenInput = '';
+    await this.loadPosts();
+  }
+
+  private archiveWhenInputType(): 'number' | 'month' | 'date' {
+    if (this.archiveWhenGranularity === 'year') return 'number';
+    if (this.archiveWhenGranularity === 'day') return 'date';
+    return 'month';
+  }
+
+  private archiveWhenPlaceholder(): string {
+    if (this.archiveWhenGranularity === 'year') return 'YYYY';
+    if (this.archiveWhenGranularity === 'day') return 'YYYY-MM-DD';
+    return 'YYYY-MM';
+  }
+
   private handlePostClick(e: CustomEvent): void {
     const post = e.detail.post as ProcessedPost;
     const index = this.posts.findIndex((p) => p.id === post.id);
@@ -515,6 +618,26 @@ export class ViewArchive extends LitElement {
             @types-change=${this.handleTypesChange}
             @variant-change=${this.handleVariantChange}
           ></filter-bar>
+          <div class="archive-controls">
+            <div class="when-controls">
+              <span class="when-label">When</span>
+              <select class="when-select" .value=${this.archiveWhenGranularity} @change=${this.handleWhenGranularityChange}>
+                <option value="year">YYYY</option>
+                <option value="month">YYYY-MM</option>
+                <option value="day">YYYY-MM-DD</option>
+              </select>
+              <input
+                class="when-input"
+                .type=${this.archiveWhenInputType()}
+                .value=${this.archiveWhenInput}
+                placeholder=${this.archiveWhenPlaceholder()}
+                @input=${this.handleWhenInput}
+                @keydown=${this.handleWhenKeydown}
+              />
+              <button class="when-button" data-kind="primary" @click=${() => this.applyArchiveWhen()}>Apply</button>
+              ${this.archiveWhen ? html`<button class="when-button" @click=${() => this.clearArchiveWhen()}>Clear</button>` : ''}
+            </div>
+          </div>
         ` : ''}
 
         ${this.errorMessage ? html`<error-state title="Error" message=${this.errorMessage} @retry=${this.handleRetry}></error-state>` : ''}

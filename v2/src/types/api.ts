@@ -315,6 +315,7 @@ export interface ListBlogPostsRequest {
   post_types?: PostType[];
   variants?: PostVariant[];
   activity_kinds?: Array<'post' | 'reblog' | 'like' | 'comment'>;
+  when?: string;
 }
 
 export interface ResolveIdentifierRequest {

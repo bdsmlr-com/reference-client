@@ -21,7 +21,7 @@ describe('archive/search render contract usage', () => {
 
     expect(archiveSrc).toContain('applyRetrievalPostPolicies');
     expect(archiveSrc).toContain('(resp.posts || []).map');
-    expect(searchSrc).toContain('(resp.posts || []).forEach');
+    expect(searchSrc).toContain('materializeSearchResultUnits(resp)');
     expect(archiveSrc).toContain('postPolicies');
     expect(archiveSrc).not.toContain('(resp.timelineItems || []).forEach');
     expect(searchSrc).not.toContain('(resp.timelineItems || []).forEach');

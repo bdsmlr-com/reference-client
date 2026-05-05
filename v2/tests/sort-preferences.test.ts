@@ -38,6 +38,6 @@ describe('sort preference persistence', () => {
 
   it('feed route no longer highlights Activity tab', () => {
     const navSrc = readFileSync(join(ROOT, 'components/shared-nav.ts'), 'utf8');
-    expect(navSrc).toContain("const activePage = this.currentPage === 'following' ? '' :");
+    expect(navSrc).toContain("this.currentPage === 'following' || this.currentPage === 'follower-feed'");
   });
 });
