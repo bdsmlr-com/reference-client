@@ -10,7 +10,7 @@ import './search-group-card.js';
 
 type ActivityGridItem =
   | { post: ProcessedPost; type: any }
-  | { kind: 'result_group'; post: ProcessedPost; count: number; label: string };
+  | { kind: 'result_group'; post: ProcessedPost; count: number; label: string; originPostId: number };
 
 function isResultGroupItem(item: ActivityGridItem): item is Extract<ActivityGridItem, { kind: 'result_group' }> {
   return 'kind' in item && item.kind === 'result_group';
@@ -322,7 +322,7 @@ export class ActivityGrid extends LitElement {
             <div class="masonry-column">
               ${column.map((item) => html`
                 ${isResultGroupItem(item)
-                  ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label} mode="masonry"></search-group-card>`
+                  ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label} .originPostId=${item.originPostId} mode="masonry"></search-group-card>`
                   : html`<activity-item .post=${item.post} .interactionType=${item.type} .showBlogChip=${this.showBlogChip} mode="masonry"></activity-item>`}
               `)}
             </div>
@@ -335,7 +335,7 @@ export class ActivityGrid extends LitElement {
       <section class="grid" aria-label="Activity grid">
         ${this.items.map((item) => html`
           ${isResultGroupItem(item)
-            ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label} mode="grid"></search-group-card>`
+            ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label} .originPostId=${item.originPostId} mode="grid"></search-group-card>`
             : html`<activity-item .post=${item.post} .interactionType=${item.type} .showBlogChip=${this.showBlogChip} mode="grid"></activity-item>`}
         `)}
       </section>

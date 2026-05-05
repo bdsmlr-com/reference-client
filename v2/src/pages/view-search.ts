@@ -42,7 +42,7 @@ import '../components/result-group.js';
 const SEARCH_PAGE_SIZE = 20;
 type SearchGridItem =
   | { post: ProcessedPost; type: 'post' | 'reblog' }
-  | { kind: 'result_group'; post: ProcessedPost; count: number; label: string };
+  | { kind: 'result_group'; post: ProcessedPost; count: number; label: string; originPostId: number };
 
 @customElement('view-search')
 export class ViewSearch extends LitElement {
@@ -552,6 +552,7 @@ export class ViewSearch extends LitElement {
         post: representative,
         count: unit.group.count || unit.group.posts.length,
         label: unit.group.label,
+        originPostId: unit.group.originPostId || representative.originPostId || representative.id,
       });
     });
     return items;
@@ -706,6 +707,15 @@ export class ViewSearch extends LitElement {
     }));
   }
 
+  private handleSearchGroupClick(e: CustomEvent): void {
+    const originPostId = Number(e.detail?.originPostId || 0);
+    if (!originPostId) return;
+    window.location.href = buildPageUrl('search', undefined, {
+      q: `post:${originPostId}`,
+      variants: 'reblog',
+    });
+  }
+
   private handleInfiniteToggle(e: CustomEvent): void {
     this.infiniteScroll = e.detail.enabled;
     if (this.navigationMode === 'infinite' && this.infiniteScroll) {
@@ -819,7 +829,9 @@ export class ViewSearch extends LitElement {
 
         ${this.resultUnits.length > 0
           ? html`
-              ${this.renderSearchResultUnits()}
+              <div @search-group-click=${this.handleSearchGroupClick}>
+                ${this.renderSearchResultUnits()}
+              </div>
               <load-footer
                 mode="search"
                 pageName="search"

@@ -3,7 +3,6 @@ import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import type { ProcessedPost } from '../types/post.js';
 import { extractMedia } from '../types/post.js';
-import { toPresentationModel } from '../services/post-presentation.js';
 import './media-renderer.js';
 
 @customElement('search-group-card')
@@ -38,11 +37,13 @@ export class SearchGroupCard extends LitElement {
       .stack::before {
         transform: translateY(-8px) rotate(-1deg);
         opacity: 0.7;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
       }
 
       .stack::after {
         transform: translateY(-4px) rotate(1deg);
         opacity: 0.85;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
       }
 
       .card {
@@ -65,22 +66,6 @@ export class SearchGroupCard extends LitElement {
         aspect-ratio: auto;
       }
 
-      .badge {
-        position: absolute;
-        top: 0;
-        right: 0;
-        transform: translate(20%, -20%);
-        z-index: 3;
-        border-radius: 999px;
-        background: color-mix(in srgb, var(--accent) 78%, #ffffff 22%);
-        color: #111;
-        border: 1px solid color-mix(in srgb, var(--accent) 88%, #000 12%);
-        padding: 4px 8px;
-        font-size: 11px;
-        font-weight: 700;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
-      }
-
       .meta {
         padding: 8px 10px;
         display: flex;
@@ -89,13 +74,6 @@ export class SearchGroupCard extends LitElement {
       }
 
       .label {
-        font-size: 11px;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-      }
-
-      .title {
         font-size: 13px;
         color: var(--text-primary);
         font-weight: 600;
@@ -106,11 +84,12 @@ export class SearchGroupCard extends LitElement {
   @property({ type: Object }) post!: ProcessedPost;
   @property({ type: Number }) count = 1;
   @property({ type: String }) label = 'Reblogs';
+  @property({ type: Number }) originPostId = 0;
   @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
 
   private handleClick() {
-    this.dispatchEvent(new CustomEvent('activity-click', {
-      detail: { post: this.post },
+    this.dispatchEvent(new CustomEvent('search-group-click', {
+      detail: { originPostId: this.originPostId, post: this.post },
       bubbles: true,
       composed: true,
     }));
@@ -119,13 +98,13 @@ export class SearchGroupCard extends LitElement {
   render() {
     const media = this.post?._media || extractMedia(this.post);
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
-    const presentation = toPresentationModel(this.post, { surface: 'card', page: 'search', role: 'cluster' });
-    const chip = presentation.identity.chipBlogLabel;
+    const originLabel = this.post.originBlogName
+      ? `@${this.post.originBlogName}`
+      : (this.post.blogName ? `@${this.post.blogName}` : 'Unknown');
 
     return html`
       <div class="stack">
         <article class="card" @click=${this.handleClick}>
-          <div class="badge">${this.count}</div>
           <div class="media">
             <media-renderer
               .src=${rawUrl}
@@ -134,8 +113,7 @@ export class SearchGroupCard extends LitElement {
             ></media-renderer>
           </div>
           <div class="meta">
-            <div class="label">${this.label}</div>
-            <div class="title">${chip ? `via ${chip}` : 'Grouped reblogs'}</div>
+            <div class="label">♻️ ${this.count} ${originLabel}</div>
           </div>
         </article>
       </div>
