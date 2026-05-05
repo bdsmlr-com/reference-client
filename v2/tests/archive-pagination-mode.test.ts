@@ -145,11 +145,12 @@ describe('archive pagination mode', () => {
     const archiveSrc = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
 
     expect(archiveSrc).toContain('archiveWhenGranularity');
-    expect(archiveSrc).toContain('archiveWhenInput');
+    expect(archiveSrc).toContain('whenPopoverOpen');
     expect(archiveSrc).toContain('applyArchiveWhen');
     expect(archiveSrc).toContain('clearArchiveWhen');
-    expect(archiveSrc).toContain('<select class="when-select"');
-    expect(archiveSrc).toContain('YYYY-MM-DD');
+    expect(archiveSrc).toContain('when-trigger');
+    expect(archiveSrc).toContain('All time');
+    expect(archiveSrc).toContain('when-popover');
   });
 
   it('threads paginated archive mode into the shared footer controls', () => {

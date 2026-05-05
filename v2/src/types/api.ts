@@ -129,6 +129,8 @@ export interface Blog {
   interests?: BlogPublicInterests;
   personals?: BlogPublicPersonals;
   privacy?: BlogPrivacy;
+  archiveMinDate?: string;
+  archiveMaxDate?: string;
   identityDecorations?: IdentityDecoration[];
 }
 
