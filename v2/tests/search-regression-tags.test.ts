@@ -14,15 +14,19 @@ describe('search regression and tag visibility', () => {
     expect(src).toContain('if (searchToken !== this.activeSearchToken || signature !== this.currentSearchSignature)');
   });
 
-  it('keeps legacy grouped search fallback behind a temporary adapter seam', () => {
-    const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+  it('keeps search result rendering free of timeline item leakage', () => {
+    const searchSrc = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+    const unitsSrc = readFileSync(join(ROOT, 'services/search-result-units.ts'), 'utf8');
 
-    expect(src).toContain("../services/search-result-units.js");
-    expect(src).not.toContain("import type { PostType, PostSortField, Order, PostVariant, TimelineItem }");
-    expect(src).toContain('@state() private resultUnits');
-    expect(src).not.toContain('@state() private timelineItems');
-    expect(src).toContain('materializeSearchResultUnits(resp)');
-    expect(src).toContain('prepareSearchResultUnit(unit)');
+    expect(searchSrc).toContain("../services/search-result-units.js");
+    expect(searchSrc).not.toContain("import type { PostType, PostSortField, Order, PostVariant, TimelineItem }");
+    expect(searchSrc).toContain('@state() private resultUnits');
+    expect(searchSrc).not.toContain('@state() private timelineItems');
+    expect(searchSrc).toContain('materializeSearchResultUnits(resp)');
+    expect(searchSrc).toContain('prepareSearchResultUnit(unit)');
+    expect(unitsSrc).not.toContain('TimelineItem');
+    expect(unitsSrc).not.toContain('materializeLegacySearchResultUnits');
+    expect(unitsSrc).not.toContain('timelineItems');
   });
 
   it('keeps timelineItems out of the public search response contract', () => {

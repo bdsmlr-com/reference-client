@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { materializeLegacySearchResultUnits, materializeSearchResultUnits } from '../src/services/search-result-units.js';
+import { materializeSearchResultUnits } from '../src/services/search-result-units.js';
 import type { SearchPostsByTagResponse } from '../src/types/api.js';
 
 describe('search result units', () => {
@@ -42,33 +42,6 @@ describe('search result units', () => {
           originPostId: 1234,
           representativePostId: 201,
           posts: [{ id: 201, type: 1, blogId: 2 }],
-        },
-      },
-    ]);
-  });
-
-  it('adapts legacy grouped backend items through the temporary seam', () => {
-    expect(materializeLegacySearchResultUnits([
-      {
-        type: 2,
-        cluster: {
-          label: 'Reblogs',
-          interactions: [
-            { id: 201, type: 1, blogId: 2 },
-            { id: 202, type: 1, blogId: 3 },
-          ],
-        },
-      },
-    ])).toEqual([
-      {
-        kind: 'result_group',
-        group: {
-          label: 'Reblogs',
-          count: 2,
-          posts: [
-            { id: 201, type: 1, blogId: 2 },
-            { id: 202, type: 1, blogId: 3 },
-          ],
         },
       },
     ]);
