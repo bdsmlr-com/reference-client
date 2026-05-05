@@ -24,12 +24,15 @@ export class SearchGroupCard extends LitElement {
       .stack::after {
         content: '';
         position: absolute;
-        inset: 0 8px auto 8px;
-        height: calc(100% - 10px);
+        left: 8px;
+        right: 8px;
+        top: 0;
+        bottom: 6px;
         border-radius: 8px;
         border: 1px solid var(--border);
         background: var(--bg-panel-alt);
         pointer-events: none;
+        z-index: 0;
       }
 
       .stack::before {
@@ -50,11 +53,16 @@ export class SearchGroupCard extends LitElement {
         border: 1px solid var(--border);
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
         cursor: pointer;
+        z-index: 1;
       }
 
       .media {
         aspect-ratio: 1 / 1;
         background: #000;
+      }
+
+      :host([mode='masonry']) .media {
+        aspect-ratio: auto;
       }
 
       .badge {
@@ -97,6 +105,7 @@ export class SearchGroupCard extends LitElement {
   @property({ type: Object }) post!: ProcessedPost;
   @property({ type: Number }) count = 1;
   @property({ type: String }) label = 'Reblogs';
+  @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
 
   private handleClick() {
     this.dispatchEvent(new CustomEvent('activity-click', {
@@ -117,7 +126,11 @@ export class SearchGroupCard extends LitElement {
         <article class="card" @click=${this.handleClick}>
           <div class="badge">${this.count}</div>
           <div class="media">
-            <media-renderer .src=${rawUrl} .type=${'gallery-grid'} style="object-fit: cover;"></media-renderer>
+            <media-renderer
+              .src=${rawUrl}
+              .type=${this.mode === 'masonry' ? 'gallery-masonry' : 'gallery-grid'}
+              style="object-fit: ${this.mode === 'masonry' ? 'contain' : 'cover'};"
+            ></media-renderer>
           </div>
           <div class="meta">
             <div class="label">${this.label}</div>
