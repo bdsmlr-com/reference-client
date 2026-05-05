@@ -14,7 +14,7 @@ describe('search regression and tag visibility', () => {
     expect(src).toContain('if (searchToken !== this.activeSearchToken || signature !== this.currentSearchSignature)');
   });
 
-  it('contains timeline semantics behind search-specific result units', () => {
+  it('keeps legacy grouped search fallback behind a temporary adapter seam', () => {
     const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
 
     expect(src).toContain("../services/search-result-units.js");
@@ -23,6 +23,15 @@ describe('search regression and tag visibility', () => {
     expect(src).not.toContain('@state() private timelineItems');
     expect(src).toContain('materializeSearchResultUnits(resp)');
     expect(src).toContain('prepareSearchResultUnit(unit)');
+  });
+
+  it('keeps timelineItems out of the public search response contract', () => {
+    const src = readFileSync(join(ROOT, 'types/api.ts'), 'utf8');
+    const start = src.indexOf('export interface SearchPostsByTagResponse {');
+    const end = src.indexOf('export interface ListBlogPostsResponse {');
+    const searchContract = src.slice(start, end);
+
+    expect(searchContract).not.toContain('timelineItems?: TimelineItem[];');
   });
 
   it('does not collapse search results by origin post or media url', () => {

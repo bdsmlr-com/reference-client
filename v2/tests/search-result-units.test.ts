@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { materializeSearchResultUnits } from '../src/services/search-result-units.js';
+import { materializeLegacySearchResultUnits, materializeSearchResultUnits } from '../src/services/search-result-units.js';
 import type { SearchPostsByTagResponse } from '../src/types/api.js';
 
 describe('search result units', () => {
@@ -17,17 +17,17 @@ describe('search result units', () => {
     ]);
   });
 
-  it('can adapt grouped backend items without exposing timeline naming to the route', () => {
+  it('prefers canonical grouped result units over flat compatibility posts', () => {
     const response: SearchPostsByTagResponse = {
-      timelineItems: [
+      posts: [{ id: 999, type: 1, blogId: 9 }],
+      resultUnits: [
         {
-          type: 2,
-          cluster: {
+          reblogGroup: {
             label: 'Reblogs',
-            interactions: [
-              { id: 201, type: 1, blogId: 2 },
-              { id: 202, type: 1, blogId: 3 },
-            ],
+            originPostId: 1234,
+            representativePostId: 201,
+            count: 7,
+            posts: [{ id: 201, type: 1, blogId: 2 }],
           },
         },
       ],
@@ -38,6 +38,33 @@ describe('search result units', () => {
         kind: 'result_group',
         group: {
           label: 'Reblogs',
+          count: 7,
+          originPostId: 1234,
+          representativePostId: 201,
+          posts: [{ id: 201, type: 1, blogId: 2 }],
+        },
+      },
+    ]);
+  });
+
+  it('adapts legacy grouped backend items through the temporary seam', () => {
+    expect(materializeLegacySearchResultUnits([
+      {
+        type: 2,
+        cluster: {
+          label: 'Reblogs',
+          interactions: [
+            { id: 201, type: 1, blogId: 2 },
+            { id: 202, type: 1, blogId: 3 },
+          ],
+        },
+      },
+    ])).toEqual([
+      {
+        kind: 'result_group',
+        group: {
+          label: 'Reblogs',
+          count: 2,
           posts: [
             { id: 201, type: 1, blogId: 2 },
             { id: 202, type: 1, blogId: 3 },
@@ -45,5 +72,10 @@ describe('search result units', () => {
         },
       },
     ]);
+  });
+
+  it('keeps search responses flat and timeline-free at the contract layer', () => {
+    const response = {} as SearchPostsByTagResponse;
+    expect(materializeSearchResultUnits(response)).toEqual([]);
   });
 });

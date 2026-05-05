@@ -418,6 +418,7 @@ export interface FollowEdge {
 // Response types
 export interface SearchPostsByTagResponse {
   posts?: Post[];
+  resultUnits?: SearchResultUnit[];
   page?: RetrievalPageInfo;
   postPolicies?: Record<string, PostPresentationPolicy>;
   policy?: SearchPolicyContract;
@@ -427,8 +428,20 @@ export interface SearchPostsByTagResponse {
   totalVisibleSoFar?: number;
   searchStatus?: 'warming' | 'ready' | 'exhausted' | 'failed' | string;
   hasMore?: boolean;
-  timelineItems?: TimelineItem[];
   error?: string;
+}
+
+export interface SearchResultUnit {
+  post?: Post;
+  reblogGroup?: SearchReblogGroup;
+}
+
+export interface SearchReblogGroup {
+  label?: string;
+  originPostId?: number;
+  representativePostId?: number;
+  count?: number;
+  posts?: Post[];
 }
 
 export interface ListBlogPostsResponse {

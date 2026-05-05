@@ -516,6 +516,9 @@ export class ViewSearch extends LitElement {
       kind: 'result_group',
       group: {
         label: unit.group.label,
+        count: unit.group.count,
+        originPostId: unit.group.originPostId,
+        representativePostId: unit.group.representativePostId,
         posts,
       },
     };
@@ -589,7 +592,7 @@ export class ViewSearch extends LitElement {
           <result-group
             wide
             .label=${section.unit.group.label}
-            .description=${`${section.unit.group.posts.length} posts`}
+            .description=${`${section.unit.group.count || section.unit.group.posts.length} reblogs`}
           >
             <activity-grid
               compact
