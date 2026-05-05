@@ -67,17 +67,18 @@ export class SearchGroupCard extends LitElement {
 
       .badge {
         position: absolute;
-        top: 8px;
-        right: 8px;
-        z-index: 2;
+        top: 0;
+        right: 0;
+        transform: translate(20%, -20%);
+        z-index: 3;
         border-radius: 999px;
-        background: rgba(0, 0, 0, 0.82);
-        color: white;
-        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: color-mix(in srgb, var(--accent) 78%, #ffffff 22%);
+        color: #111;
+        border: 1px solid color-mix(in srgb, var(--accent) 88%, #000 12%);
         padding: 4px 8px;
         font-size: 11px;
         font-weight: 700;
-        backdrop-filter: blur(6px);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
       }
 
       .meta {
