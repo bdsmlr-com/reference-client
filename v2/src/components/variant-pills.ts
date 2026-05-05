@@ -1,5 +1,6 @@
 import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import type { PropertyValues } from 'lit';
 import { baseStyles } from '../styles/theme.js';
 import { getVariantPreference, setVariantPreference, type VariantSelection } from '../services/storage.js';
 import type { PostVariant } from '../types/api.js';
@@ -71,12 +72,18 @@ export class VariantPills extends LitElement {
   ];
 
   @property({ type: String }) selected: VariantSelection = 'all';
+  @property({ type: Array }) selectedVariants: PostVariant[] = [];
   @property({ type: String }) pageName = '';
   @property({ type: Boolean }) persistSelection = true;
   @property({ type: Boolean }) loading = false;
 
   connectedCallback(): void {
     super.connectedCallback();
+    const explicitSelection = this.selectionFromVariants(this.selectedVariants);
+    if (explicitSelection !== 'all') {
+      this.selected = explicitSelection;
+      return;
+    }
     // Load saved preference if not explicitly set via attribute
     if (this.persistSelection && this.selected === 'all') {
       const saved = getVariantPreference(this.pageName || undefined);
@@ -89,6 +96,12 @@ export class VariantPills extends LitElement {
           })
         );
       }
+    }
+  }
+
+  protected willUpdate(changed: PropertyValues<this>): void {
+    if (changed.has('selectedVariants')) {
+      this.selected = this.selectionFromVariants(this.selectedVariants);
     }
   }
 
@@ -116,6 +129,14 @@ export class VariantPills extends LitElement {
       default:
         return undefined; // All - no filter
     }
+  }
+
+  private selectionFromVariants(variants: PostVariant[] | undefined): VariantSelection {
+    const values = Array.isArray(variants) ? variants : [];
+    const unique = [...new Set(values)];
+    if (unique.length === 1 && unique[0] === 1) return 'original';
+    if (unique.length === 1 && unique[0] === 2) return 'reblog';
+    return 'all';
   }
 
   private getButtonClass(variant: VariantSelection): string {

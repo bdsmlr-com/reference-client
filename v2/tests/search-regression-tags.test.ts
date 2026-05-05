@@ -142,4 +142,13 @@ describe('search regression and tag visibility', () => {
     expect(originalIndex).toBeLessThan(reblogIndex);
     expect(reblogIndex).toBeLessThan(allIndex);
   });
+
+  it('syncs variant pill highlight from selectedVariants arrays', () => {
+    const src = readFileSync(join(ROOT, 'components/variant-pills.ts'), 'utf8');
+
+    expect(src).toContain("@property({ type: Array }) selectedVariants: PostVariant[] = [];");
+    expect(src).toContain("if (changed.has('selectedVariants')) {");
+    expect(src).toContain("if (unique.length === 1 && unique[0] === 1) return 'original';");
+    expect(src).toContain("if (unique.length === 1 && unique[0] === 2) return 'reblog';");
+  });
 });
