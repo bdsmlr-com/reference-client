@@ -42,8 +42,23 @@ export class ViewSettingsUser extends LitElement {
       const username = status.username || status.blog_name;
       if (!username) throw new Error('settings user request failed: missing username');
       const response = await getUserSettings(username);
+      const fallbackBlogs = (status.blogs || []).map((blog) => ({
+        id: blog.id,
+        name: blog.name,
+      }));
+      if (
+        fallbackBlogs.length === 0 &&
+        typeof status.blog_id === 'number' &&
+        status.blog_name
+      ) {
+        fallbackBlogs.push({
+          id: status.blog_id,
+          name: status.blog_name,
+        });
+      }
+      const resolvedBlogs = response.blogs && response.blogs.length > 0 ? response.blogs : fallbackBlogs;
       this.user = response.user;
-      this.blogs = response.blogs || [];
+      this.blogs = resolvedBlogs;
     } catch (err) {
       this.error = err instanceof Error ? err.message : 'settings user request failed';
     } finally {

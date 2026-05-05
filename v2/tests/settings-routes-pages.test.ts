@@ -33,6 +33,9 @@ describe('settings route pages', () => {
     expect(userSrc).toContain('getStatus, getUserSettings');
     expect(userSrc).toContain("customElement('view-settings-user')");
     expect(userSrc).toContain("buildPageUrl('settings',");
+    expect(userSrc).toContain('const fallbackBlogs = (status.blogs || []).map');
+    expect(userSrc).toContain('const resolvedBlogs = response.blogs && response.blogs.length > 0 ? response.blogs : fallbackBlogs;');
+    expect(userSrc).toContain("name: status.blog_name");
     expect(blogSrc).toContain('getBlogSettings');
     expect(blogSrc).toContain("customElement('view-settings-blog')");
   });
