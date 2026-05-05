@@ -94,6 +94,23 @@ export interface VariantChangeDetail {
 export type VariantChangeEvent = CustomEvent<VariantChangeDetail>;
 
 // ============================================================================
+// Archive When Events
+// ============================================================================
+
+/**
+ * Detail for archive when picker changes.
+ * Used by: archive-when-picker
+ */
+export interface WhenChangeDetail {
+  value: string;
+}
+
+/**
+ * Event dispatched when archive when selection changes.
+ */
+export type WhenChangeEvent = CustomEvent<WhenChangeDetail>;
+
+// ============================================================================
 // Sort Events
 // ============================================================================
 
@@ -196,6 +213,7 @@ export const EventNames = {
   // Filter events
   TYPES_CHANGE: 'types-change', // From type-pills
   VARIANT_CHANGE: 'variant-change', // From variant-pills
+  WHEN_CHANGE: 'when-change', // From archive-when-picker
   SORT_CHANGE: 'sort-change', // From sort-controls
 
   // Load footer events
