@@ -16,7 +16,10 @@ describe('post card presentation', () => {
     expect(src).toContain("presentation.media.type === 'video'");
     expect(src).toContain(".type=${mediaRenderType}");
     expect(src).toContain('href=${presentation.identity.permalink.href}');
-    expect(src).toContain('const renderBlogLink =');
+    expect(src).toContain("import './blog-identity.js';");
+    expect(src).toContain('private renderMicroBlogIdentity(');
+    expect(src).toContain('variant=\"micro\"');
+    expect(src).toContain('.showAvatar=${false}');
     expect(src).toContain('href=${link.href}');
     expect(src).toContain('target=${link.target}');
     expect(src).toContain('presentation.identity.originBlogLabel');

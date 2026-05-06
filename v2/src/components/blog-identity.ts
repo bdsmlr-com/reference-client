@@ -297,6 +297,7 @@ export class BlogIdentity extends LitElement {
   @property({ type: String }) blogTitle = '';
   @property({ type: String }) blogDescription = '';
   @property({ type: String }) avatarUrl = '';
+  @property({ type: Boolean }) showAvatar = true;
   @property({ attribute: false }) identityDecorations: IdentityDecoration[] = [];
   @property({ type: String, reflect: true }) variant: BlogIdentityVariant = 'header';
 
@@ -399,19 +400,21 @@ export class BlogIdentity extends LitElement {
         class="identity"
         style=${`--blog-identity-accent: ${this.accent}; --blog-identity-accent-foreground: ${this.accentForeground};`}
       >
-        <span class="avatar-stack" aria-hidden="true">
-          ${avatarUrl
-            ? html`
-                <img
-                  class="avatar"
-                  src=${avatarUrl}
-                  alt=${`Avatar for @${blogName}`}
-                  @error=${handleAvatarImageError}
-                />
-                <span class="avatar-fallback" style="display: none;">${initial}</span>
-              `
-            : html`<span class="avatar-fallback">${initial}</span>`}
-        </span>
+        ${this.showAvatar ? html`
+          <span class="avatar-stack" aria-hidden="true">
+            ${avatarUrl
+              ? html`
+                  <img
+                    class="avatar"
+                    src=${avatarUrl}
+                    alt=${`Avatar for @${blogName}`}
+                    @error=${handleAvatarImageError}
+                  />
+                  <span class="avatar-fallback" style="display: none;">${initial}</span>
+                `
+              : html`<span class="avatar-fallback">${initial}</span>`}
+          </span>
+        ` : nothing}
         <span class="copy">
           <span class="name-row">
             <span class="name">@${blogName}</span>

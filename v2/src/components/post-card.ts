@@ -10,6 +10,7 @@ import type { MediaRenderType } from '../services/media-resolver.js';
 import type { IdentityDecoration } from '../types/api.js';
 import './media-renderer.js';
 import './post-actions.js';
+import './blog-identity.js';
 
 @customElement('post-card')
 export class PostCard extends LitElement {
@@ -208,9 +209,38 @@ export class PostCard extends LitElement {
     this.handleClick();
   }
 
-  private renderIdentityLabel(label: string, decoration?: IdentityDecoration | null) {
-    const icon = decoration?.icon?.trim();
-    return icon ? `${label} ${icon}` : label;
+  private renderMicroBlogIdentity(
+    link: ReturnType<typeof toPresentationModel>['identity']['viaBlog'],
+    label: string,
+    titleFallback: string,
+    decoration?: IdentityDecoration | null,
+  ) {
+    const normalized = label.trim().replace(/^@+/, '');
+    const decorations = decoration ? [decoration] : [];
+    if (!normalized) {
+      return html`<span class="blog-link">@unknown</span>`;
+    }
+    const identity = html`
+      <blog-identity
+        variant="micro"
+        .blogName=${normalized}
+        .showAvatar=${false}
+        .identityDecorations=${decorations}
+      ></blog-identity>
+    `;
+    if (!link) {
+      return identity;
+    }
+    return html`
+      <a
+        class="blog-link"
+        href=${link.href}
+        target=${link.target}
+        rel=${link.rel || nothing}
+        title=${link.title || titleFallback}
+        @click=${(event: Event) => event.stopPropagation()}
+      >${identity}</a>
+    `;
   }
 
   render() {
@@ -226,48 +256,26 @@ export class PostCard extends LitElement {
     const isTombstone = !rawUrl && !p.body;
     const isDeleted = Boolean(p.deletedAtUnix);
     const isOriginDeleted = Boolean(p.originDeletedAtUnix);
-    const renderBlogLink = (
-      link: typeof presentation.identity.viaBlog,
-      label: string,
-      titleFallback: string,
-      decoration?: IdentityDecoration | null,
-    ) => {
-      const renderedLabel = this.renderIdentityLabel(label, decoration);
-      if (!link) {
-        return html`<span class="blog-link">${renderedLabel}</span>`;
-      }
-      return html`
-        <a
-          class="blog-link"
-          href=${link.href}
-          target=${link.target}
-          rel=${link.rel || nothing}
-          title=${link.title || titleFallback}
-          @click=${(event: Event) => event.stopPropagation()}
-        >${renderedLabel}</a>
-      `;
-    };
-
     return html`
       <article class="card" @click=${this.handleClick}>
         <div class="card-header">
           <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
             ${presentation.identity.isReblog ? html`
-              ${renderBlogLink(
+              ${this.renderMicroBlogIdentity(
                 presentation.identity.originBlog,
                 presentation.identity.originBlogLabel,
                 `Original post by ${presentation.identity.originBlogLabel}`,
                 presentation.identity.originBlogDecoration,
               )}
               <span style="opacity: 0.5;">♻️ via</span>
-              ${renderBlogLink(
+              ${this.renderMicroBlogIdentity(
                 presentation.identity.viaBlog,
                 presentation.identity.viaBlogLabel,
                 `Open ${presentation.identity.viaBlogLabel}`,
                 presentation.identity.viaBlogDecoration,
               )}
             ` : html`
-              ${renderBlogLink(
+              ${this.renderMicroBlogIdentity(
                 presentation.identity.viaBlog,
                 presentation.identity.viaBlogLabel,
                 `Open ${presentation.identity.viaBlogLabel}`,

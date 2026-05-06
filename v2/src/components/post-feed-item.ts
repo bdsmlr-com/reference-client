@@ -9,6 +9,7 @@ import { toPresentationModel } from '../services/post-presentation.js';
 import type { MediaRenderType } from '../services/media-resolver.js';
 import type { IdentityDecoration } from '../types/api.js';
 import './media-renderer.js';
+import './blog-identity.js';
 
 /**
  * Memoization helper: Determines if post property has meaningfully changed.
@@ -199,9 +200,28 @@ export class PostFeedItem extends LitElement {
     }));
   }
 
-  private renderIdentityLabel(label: string, decoration?: IdentityDecoration | null) {
-    const icon = decoration?.icon?.trim();
-    return icon ? `${label} ${icon}` : label;
+  private renderMicroBlogIdentity(
+    link: ReturnType<typeof resolveLink> | null | undefined,
+    label: string,
+    decoration?: IdentityDecoration | null,
+  ) {
+    const normalized = label.trim().replace(/^@+/, '');
+    const decorations = decoration ? [decoration] : [];
+    if (!normalized) {
+      return html`<span class="blog-name">@unknown</span>`;
+    }
+    const identity = html`
+      <blog-identity
+        variant="micro"
+        .blogName=${normalized}
+        .showAvatar=${false}
+        .identityDecorations=${decorations}
+      ></blog-identity>
+    `;
+    if (!link) {
+      return identity;
+    }
+    return html`<a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>${identity}</a>`;
   }
 
   render() {
@@ -231,18 +251,6 @@ export class PostFeedItem extends LitElement {
       : post._activityKindOverride === 'comment'
         ? '💬 Self-commented'
         : '';
-    const renderBlogIdentity = (
-      link: typeof presentation.identity.viaBlog,
-      label: string,
-      decoration?: IdentityDecoration | null,
-    ) => {
-      const renderedLabel = this.renderIdentityLabel(label, decoration);
-      if (!link) {
-        return html`<span class="blog-name">${renderedLabel}</span>`;
-      }
-      return html`<a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>${renderedLabel}</a>`;
-    };
-
     let mediaHtml;
     if (media.type === 'image' || media.type === 'video') {
       if (rawUrl) {
@@ -266,12 +274,12 @@ export class PostFeedItem extends LitElement {
         <header class="card-header">
           <div class="blog-info">
             ${isReblog ? html`
-              ${renderBlogIdentity(presentation.identity.originBlog, originBlogLabel, presentation.identity.originBlogDecoration)}
+              ${this.renderMicroBlogIdentity(presentation.identity.originBlog, originBlogLabel, presentation.identity.originBlogDecoration)}
               <span class="reblog-indicator">
-                ♻️ via ${renderBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, blogLabel, presentation.identity.viaBlogDecoration)}
+                ♻️ via ${this.renderMicroBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, blogLabel, presentation.identity.viaBlogDecoration)}
               </span>
             ` : html`
-              ${renderBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, blogLabel, presentation.identity.viaBlogDecoration)}
+              ${this.renderMicroBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, blogLabel, presentation.identity.viaBlogDecoration)}
             `}
             ${selfActivityBadge ? html`<span class="self-activity-badge">${selfActivityBadge}</span>` : ''}
           </div>
