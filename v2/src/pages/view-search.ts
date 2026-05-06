@@ -11,7 +11,7 @@ import {
   getInfiniteScrollPreference,
   setCachedPaginationCursor,
 } from '../services/storage.js';
-import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
+import { normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { PostType, PostSortField, Order, PostVariant } from '../types/api.js';
 import { parsePostTypesParam, parseVariantsParam, serializePostTypesParam, serializeVariantsParam } from '../services/post-filter-url.js';
 import {
@@ -21,6 +21,7 @@ import {
   parseSearchSessionParam,
 } from '../services/search-session.js';
 import { materializeSearchResultUnits, type SearchResultUnit } from '../services/search-result-units.js';
+import { contentGridItems, flattenContentResultPosts, prepareContentResultUnits } from '../services/content-results.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import {
   getGalleryMode,
@@ -29,7 +30,6 @@ import {
   getSearchSortPreference,
   setSearchSortPreference,
 } from '../services/profile.js';
-import { toPresentationModel } from '../services/post-presentation.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { ACTIVE_ENV } from '../config.js';
@@ -45,9 +45,6 @@ import '../components/render-card.js';
 import '../components/result-group.js';
 
 const SEARCH_PAGE_SIZE = 20;
-type SearchGridItem =
-  | { post: ProcessedPost; type: 'post' | 'reblog' }
-  | { kind: 'result_group'; post: ProcessedPost; count: number; label: string; originPostId: number };
 
 @customElement('view-search')
 export class ViewSearch extends LitElement {
@@ -641,79 +638,12 @@ export class ViewSearch extends LitElement {
     this.retrying = false;
   }
 
-  private toActivityItem(post: ProcessedPost): { post: ProcessedPost; type: 'post' | 'reblog' } {
-    const presentation = toPresentationModel(post, { surface: 'card', page: 'activity' });
-    return {
-      post,
-      type: presentation.identity.isReblog ? 'reblog' : 'post',
-    };
-  }
-
-  private prepareSearchResultUnit(unit: SearchResultUnit): SearchResultUnit | null {
-    if (unit.kind === 'post') {
-      const prepared = this.prepareSearchPost(unit.post as ProcessedPost);
-      return prepared ? { kind: 'post', post: prepared } : null;
-    }
-
-    const posts = unit.group.posts
-      .map((post) => this.prepareSearchPost(post as ProcessedPost))
-      .filter((post): post is ProcessedPost => post !== null);
-    if (posts.length === 0) return null;
-    return {
-      kind: 'result_group',
-      group: {
-        label: unit.group.label,
-        count: unit.group.count,
-        originPostId: unit.group.originPostId,
-        representativePostId: unit.group.representativePostId,
-        posts,
-      },
-    };
-  }
-
-  private prepareSearchPost(post: ProcessedPost): ProcessedPost | null {
-    if (this.seenIds.has(post.id)) {
-      this.stats.dupes++;
-      return null;
-    }
-
-    this.seenIds.add(post.id);
-    post._media = extractMedia(post);
-    return post;
-  }
-
-  private getSearchGridItems(units: SearchResultUnit[]): SearchGridItem[] {
-    const items: SearchGridItem[] = [];
-    units.forEach((unit) => {
-      if (unit.kind === 'post') {
-        items.push(this.toActivityItem(unit.post as ProcessedPost));
-        return;
-      }
-      const representative = unit.group.posts[0] as ProcessedPost | undefined;
-      if (!representative) return;
-      items.push({
-        kind: 'result_group' as const,
-        post: representative,
-        count: unit.group.count || unit.group.posts.length,
-        label: unit.group.label,
-        originPostId: unit.group.originPostId || representative.originPostId || representative.id,
-      });
-    });
-    return items;
-  }
-
-  private getAllResultPosts(): ProcessedPost[] {
-    return this.resultUnits.flatMap((unit) =>
-      unit.kind === 'post' ? [unit.post as ProcessedPost] : unit.group.posts.map((post) => post as ProcessedPost),
-    );
-  }
-
   private renderSearchResultUnits() {
     return html`
       <div class="grid-container">
         <activity-grid
           .mode=${this.galleryMode}
-          .items=${this.getSearchGridItems(this.resultUnits)}
+          .items=${contentGridItems(this.resultUnits)}
           @activity-click=${this.handlePostClick}
         ></activity-grid>
       </div>
@@ -765,9 +695,11 @@ export class ViewSearch extends LitElement {
       this.hasNextPage = !!resp.hasMore;
       this.exhausted = !resp.hasMore;
 
-      const newUnits = materializeSearchResultUnits(resp)
-        .map((unit) => this.prepareSearchResultUnit(unit))
-        .filter((unit): unit is SearchResultUnit => unit !== null);
+      const newUnits = prepareContentResultUnits({
+        units: materializeSearchResultUnits(resp),
+        seenIds: this.seenIds,
+        stats: this.stats,
+      });
 
       if (this.navigationMode === 'paginated' || targetPage === 1) {
         this.resultUnits = newUnits;
@@ -860,7 +792,7 @@ export class ViewSearch extends LitElement {
 
   private handlePostClick(e: CustomEvent): void {
     const post = e.detail.post as ProcessedPost;
-    const allPosts = this.getAllResultPosts();
+    const allPosts = flattenContentResultPosts(this.resultUnits);
 
     const index = allPosts.findIndex(p => p.id === post.id);
 

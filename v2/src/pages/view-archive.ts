@@ -11,7 +11,7 @@ import {
   getInfiniteScrollPreference,
   setCachedPaginationCursor,
 } from '../services/storage.js';
-import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
+import { normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { Blog, PostType, PostSortField, Order, PostVariant } from '../types/api.js';
 import {
   buildContentNavigationState,
@@ -19,6 +19,7 @@ import {
   parseSearchPageParam,
   parseSearchSessionParam,
 } from '../services/search-session.js';
+import { contentGridItems, flattenContentResultPosts, prepareContentResultUnits } from '../services/content-results.js';
 import {
   getGalleryMode,
   PROFILE_EVENTS,
@@ -26,7 +27,6 @@ import {
   getArchiveSortPreference,
   setArchiveSortPreference,
 } from '../services/profile.js';
-import { toPresentationModel } from '../services/post-presentation.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { generatePaginationCursorKey } from '../services/storage.js';
@@ -42,9 +42,6 @@ import '../components/blog-header.js';
 import '../components/render-card.js';
 
 const ARCHIVE_PAGE_SIZE = 20;
-type ArchiveGridItem =
-  | { post: ProcessedPost; type: 'post' | 'reblog' }
-  | { kind: 'result_group'; post: ProcessedPost; count: number; label: string; originPostId: number };
 
 function parseArchiveWhenParam(raw: string | null): string {
   const value = (raw || '').trim();
@@ -401,9 +398,12 @@ export class ViewArchive extends LitElement {
       this.hasNextPage = !!resp.hasMore;
       this.exhausted = !resp.hasMore;
 
-      const newUnits = materializeSearchResultUnits(resp)
-        .map((unit) => this.prepareArchiveResultUnit(unit))
-        .filter((unit): unit is SearchResultUnit => unit !== null);
+      const newUnits = prepareContentResultUnits({
+        units: materializeSearchResultUnits(resp),
+        seenIds: this.seenIds,
+        stats: this.stats,
+        allowDuplicateIds: isAdminMode(),
+      });
 
       if (this.navigationMode === 'paginated' || targetPage === 1) {
         this.resultUnits = newUnits;
@@ -470,7 +470,7 @@ export class ViewArchive extends LitElement {
 
   private handlePostClick(e: CustomEvent): void {
     const post = e.detail.post as ProcessedPost;
-    const allPosts = this.getAllResultPosts();
+    const allPosts = flattenContentResultPosts(this.resultUnits);
     const index = allPosts.findIndex((p) => p.id === post.id);
 
     this.dispatchEvent(new CustomEvent('post-click', {
@@ -506,72 +506,6 @@ export class ViewArchive extends LitElement {
     this.currentPage += 1;
     this.navigationMode = 'paginated';
     await this.loadPosts({ preserveNavigationState: true });
-  }
-
-  private prepareArchiveResultUnit(unit: SearchResultUnit): SearchResultUnit | null {
-    if (unit.kind === 'post') {
-      const prepared = this.prepareArchivePost(unit.post as ProcessedPost);
-      return prepared ? { kind: 'post', post: prepared } : null;
-    }
-
-    const posts = unit.group.posts
-      .map((post) => this.prepareArchivePost(post as ProcessedPost))
-      .filter((post): post is ProcessedPost => post !== null);
-    if (posts.length === 0) return null;
-    return {
-      kind: 'result_group',
-      group: {
-        label: unit.group.label,
-        count: unit.group.count,
-        originPostId: unit.group.originPostId,
-        representativePostId: unit.group.representativePostId,
-        posts,
-      },
-    };
-  }
-
-  private prepareArchivePost(post: ProcessedPost): ProcessedPost | null {
-    if (this.seenIds.has(post.id) && !isAdminMode()) {
-      this.stats.dupes++;
-      return null;
-    }
-    this.seenIds.add(post.id);
-    post._media = extractMedia(post);
-    return post;
-  }
-
-  private getArchiveGridItems(units: SearchResultUnit[]): ArchiveGridItem[] {
-    const items: ArchiveGridItem[] = [];
-    units.forEach((unit) => {
-      if (unit.kind === 'post') {
-        items.push(this.toActivityItem(unit.post as ProcessedPost));
-        return;
-      }
-      const representative = unit.group.posts[0] as ProcessedPost | undefined;
-      if (!representative) return;
-      items.push({
-        kind: 'result_group',
-        post: representative,
-        count: unit.group.count || unit.group.posts.length,
-        label: unit.group.label,
-        originPostId: unit.group.originPostId || representative.originPostId || representative.id,
-      });
-    });
-    return items;
-  }
-
-  private getAllResultPosts(): ProcessedPost[] {
-    return this.resultUnits.flatMap((unit) =>
-      unit.kind === 'post' ? [unit.post as ProcessedPost] : unit.group.posts.map((post) => post as ProcessedPost),
-    );
-  }
-
-  private toActivityItem(post: ProcessedPost): { post: ProcessedPost; type: 'post' | 'reblog' } {
-    const presentation = toPresentationModel(post, { surface: 'card', page: 'activity' });
-    return {
-      post,
-      type: presentation.identity.isReblog ? 'reblog' : 'post',
-    };
   }
 
   private async handleRetry(e?: CustomEvent): Promise<void> {
@@ -642,7 +576,7 @@ export class ViewArchive extends LitElement {
         <activity-grid 
           .mode=${this.galleryMode}
           .showBlogChip=${false}
-          .items=${this.getArchiveGridItems(this.resultUnits)}
+          .items=${contentGridItems(this.resultUnits)}
           @activity-click=${this.handlePostClick}
         ></activity-grid>
         </div>
