@@ -312,6 +312,7 @@ export interface SearchPostsByTagRequest {
 
 export interface ListBlogPostsRequest {
   blog_id: number;
+  q?: string;
   page?: Pagination;
   sort_field?: PostSortField;
   order?: Order;

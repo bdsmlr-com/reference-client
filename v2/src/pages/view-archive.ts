@@ -72,6 +72,53 @@ export class ViewArchive extends LitElement {
         margin-bottom: 20px;
         padding: 0 16px;
       }
+
+      .search-box {
+        max-width: 600px;
+        margin: 0 auto 20px;
+        padding: 0 16px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .search-box input {
+        flex: 1;
+        min-width: 200px;
+        max-width: 300px;
+        padding: 8px 12px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        background: var(--bg-panel);
+        color: var(--text-primary);
+        font-size: 14px;
+        min-height: 32px;
+      }
+
+      .search-box input:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+
+      .search-box button {
+        padding: 8px 16px;
+        border-radius: 4px;
+        background: var(--accent);
+        color: white;
+        font-size: 14px;
+        transition: background 0.2s;
+        min-height: 32px;
+      }
+
+      .search-box button:hover {
+        background: var(--accent-hover);
+      }
+
+      .search-box button:disabled {
+        background: var(--text-muted);
+        cursor: wait;
+      }
     `,
   ];
 
@@ -92,6 +139,7 @@ export class ViewArchive extends LitElement {
   @state() private errorMessage = '';
   @state() private hasNextPage = false;
   @state() private archiveWhen = '';
+  @state() private query = '';
   @state() private initialLoading = false;
   @state() private blogData: Blog | null = null;
   @state() private autoRetryAttempt = 0;
@@ -149,6 +197,7 @@ export class ViewArchive extends LitElement {
 
   private buildArchiveUrlParams(): Record<string, string> {
     const params: Record<string, string> = {
+      q: this.query,
       ...buildSharedContentRouteParams({
         sortValue: this.sortValue,
         selectedTypes: this.selectedTypes,
@@ -176,6 +225,7 @@ export class ViewArchive extends LitElement {
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
     return apiClient.posts.list({
       blog_id: this.blogId,
+      q: this.query || undefined,
       sort_field: sortOpt.field as PostSortField,
       order: sortOpt.order as Order,
       post_types: this.selectedTypes,
@@ -210,6 +260,7 @@ export class ViewArchive extends LitElement {
   }
 
   private async loadFromUrl(): Promise<void> {
+    const q = getUrlParam('q');
     const sort = getUrlParam('sort');
     const types = getUrlParam('types');
     const variants = getUrlParam('variants');
@@ -227,6 +278,7 @@ export class ViewArchive extends LitElement {
 
     const resolvedSort = normalizeSortValue(sort || getArchiveSortPreference());
     this.sortValue = resolvedSort;
+    this.query = q;
     this.infiniteScroll = infinitePref;
     this.archiveWhen = explicitWhen;
     this.forcedPaginatedFromUrl = hasExplicitPaginationState;
@@ -445,6 +497,16 @@ export class ViewArchive extends LitElement {
     void this.loadPosts();
   }
 
+  private handleArchiveQueryInput(e: Event): void {
+    this.query = (e.target as HTMLInputElement).value;
+  }
+
+  private handleArchiveQueryKeyPress(e: KeyboardEvent): void {
+    if (e.key === 'Enter') {
+      void this.loadPosts();
+    }
+  }
+
   private handlePostClick(e: CustomEvent): void {
     const post = e.detail.post as ProcessedPost;
     const index = this.posts.findIndex((p) => p.id === post.id);
@@ -530,6 +592,19 @@ export class ViewArchive extends LitElement {
         ${this.initialLoading ? html`<loading-spinner message="Loading archive..."></loading-spinner>` : ''}
 
         ${this.blogId ? html`
+          <div class="search-box">
+            <input
+              type="text"
+              placeholder="Filter this archive with blog:, tag:, media:, when..."
+              .value=${this.query}
+              @input=${this.handleArchiveQueryInput}
+              @keypress=${this.handleArchiveQueryKeyPress}
+            />
+            <button ?disabled=${this.loading} @click=${() => this.loadPosts()}>
+              ${this.loading ? 'Filtering...' : 'Filter'}
+            </button>
+          </div>
+
           <control-panel
             .pageName=${'archive'}
             .sortValue=${this.sortValue}

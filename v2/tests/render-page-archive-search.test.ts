@@ -26,4 +26,15 @@ describe('archive/search render contract usage', () => {
     expect(archiveSrc).not.toContain('(resp.timelineItems || []).forEach');
     expect(searchSrc).not.toContain('(resp.timelineItems || []).forEach');
   });
+
+  it('archive and search both expose q-driven content query inputs', () => {
+    const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
+    const searchSrc = readFileSync(join(process.cwd(), 'src/pages/view-search.ts'), 'utf8');
+
+    expect(archiveSrc).toContain("const q = getUrlParam('q');");
+    expect(archiveSrc).toContain('q: this.query');
+    expect(archiveSrc).toContain('placeholder="Filter this archive with blog:, tag:, media:, when..."');
+    expect(searchSrc).toContain("const q = getUrlParam('q');");
+    expect(searchSrc).toContain('tag_name: this.query');
+  });
 });
