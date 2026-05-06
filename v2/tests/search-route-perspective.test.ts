@@ -8,8 +8,11 @@ describe('search route perspective wiring', () => {
   it('threads the route blog perspective into the search request payload', () => {
     const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
 
-    expect(src).toContain("import { buildPageUrl, getBlogNameFromPath, getPrimaryBlogName, getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';");
-    expect(src).toContain("import { parseSearchPageParam, parseSearchSessionParam, resolveSearchNavigationMode, shouldReplaceSearchUrlOnPageChange } from '../services/search-session.js';");
+    expect(src).toContain("import { buildPageUrl, getBlogNameFromPath, getPrimaryBlogName, getUrlParam, setUrlParams } from '../services/blog-resolver.js';");
+    expect(src).toContain('buildContentNavigationState');
+    expect(src).toContain('buildSharedContentRouteParams');
+    expect(src).toContain('parseSearchPageParam');
+    expect(src).toContain('parseSearchSessionParam');
     expect(src).toContain('perspective_blog_name');
     expect(src).toContain('const routePerspectiveBlog = getBlogNameFromPath();');
     expect(src).toContain("const explicitSort = !!getUrlParam('sort');");
@@ -33,7 +36,7 @@ describe('search route perspective wiring', () => {
     expect(src).toContain('@state() private matchMode: \'off\' | \'soft\' | \'hard\' = \'off\';');
     expect(src).toContain('private sortExplicitInUrl = false;');
     expect(src).toContain("this.sortExplicitInUrl = !!sort;");
-    expect(src).toContain("sort: this.sortExplicitInUrl ? this.sortValue : ''");
+    expect(src).toContain('includeSort: this.sortExplicitInUrl');
     expect(src).toContain("match: routePerspectiveBlog && this.matchMode !== 'off' ? this.matchMode : ''");
     expect(src).toContain('this.sortExplicitInUrl = true;');
   });

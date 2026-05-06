@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { baseStyles } from '../styles/theme.js';
 import type { ProcessedPost } from '../types/post.js';
 import type { TimelineItem } from '../types/api.js';
-import type { ActivityKind } from '../services/profile.js';
+import { DEFAULT_ACTIVITY_KINDS, type ActivityKind } from '../services/profile.js';
 import { buildInteractionHandler } from '../services/render-interactions.js';
 import { loadRenderContract } from '../services/render-contract.js';
 import { toPresentationModel } from '../services/post-presentation.js';
@@ -43,9 +43,9 @@ export class TimelineStream extends LitElement {
   ];
 
   @property({ type: Array }) items: TimelineItem[] = [];
-  @property({ type: Array }) activityKinds: ActivityKind[] = ['post', 'reblog', 'like', 'comment'];
+  @property({ type: Array }) activityKinds: ActivityKind[] = [...DEFAULT_ACTIVITY_KINDS];
   @property({ type: Boolean }) showActorInCluster = false;
-  @property({ type: String }) page: 'feed' | 'activity' = 'feed';
+  @property({ type: String }) page: 'feed' | 'follower-feed' | 'activity' = 'feed';
   @state() private clusterVisibleCounts = new Map<string, number>();
   private readonly clusterPageSize = 12;
   private readonly openLightboxInteraction = buildInteractionHandler((loadRenderContract().interactions as any).open_lightbox_post);
@@ -54,7 +54,7 @@ export class TimelineStream extends LitElement {
     if (item.type === 1 && item.post) {
       const p = item.post as ProcessedPost;
       if (p._activityKindOverride) return p._activityKindOverride;
-      const presentation = toPresentationModel(p, { surface: 'timeline', page: this.page });
+      const presentation = toPresentationModel(p, { surface: 'timeline', page: this.presentationPage });
       return presentation.identity.isReblog ? 'reblog' : 'post';
     }
     if (item.type === 2 && item.cluster) {
@@ -107,9 +107,13 @@ export class TimelineStream extends LitElement {
     return (name || '').trim().toLowerCase();
   }
 
+  private get presentationPage(): 'feed' | 'activity' {
+    return this.page === 'follower-feed' ? 'feed' : this.page;
+  }
+
   private shouldSuppressSelfSameDayLike(post: ProcessedPost, kind: ActivityKind): boolean {
     if (kind !== 'like' || this.showActorInCluster) return false;
-    const presentation = toPresentationModel(post, { surface: 'timeline', page: this.page, interactionKind: kind });
+    const presentation = toPresentationModel(post, { surface: 'timeline', page: this.presentationPage, interactionKind: kind });
     if (!presentation.identity.allowSelfSameDayLikeSuppression) return false;
 
     const viewedBlog = this.getViewedBlogFromPath();

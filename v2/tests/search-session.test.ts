@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  buildContentNavigationState,
+  buildSharedContentRouteParams,
+  parseOpaqueParam,
+  parsePositivePageParam,
   parseSearchPageParam,
   parseSearchSessionParam,
   resolveSearchNavigationMode,
+  resolveContentNavigationMode,
+  shouldReplaceContentUrlOnPageChange,
   shouldReplaceSearchUrlOnPageChange,
 } from '../src/services/search-session.js';
 
@@ -34,12 +40,89 @@ describe('search session navigation helpers', () => {
     })).toBe(true);
   });
 
+  it('shares route-state resolution across search and archive style boundaries', () => {
+    expect(resolveContentNavigationMode({
+      infinitePref: true,
+      page: 1,
+      cursor: '',
+      sessionId: '',
+      forcePaginated: true,
+    })).toBe('paginated');
+    expect(resolveContentNavigationMode({
+      infinitePref: true,
+      page: undefined,
+      cursor: 'cursor-2',
+      sessionId: '',
+    })).toBe('paginated');
+    expect(shouldReplaceContentUrlOnPageChange({
+      navigationMode: 'infinite',
+      explicitPage: undefined,
+      explicitCursor: '',
+      explicitSessionId: '',
+    })).toBe(true);
+    expect(shouldReplaceContentUrlOnPageChange({
+      navigationMode: 'paginated',
+      explicitPage: 1,
+      explicitCursor: '',
+      explicitSessionId: '',
+      forcePaginated: true,
+    })).toBe(false);
+  });
+
+  it('builds normalized shared navigation state snapshots', () => {
+    expect(buildContentNavigationState({
+      infinitePref: true,
+      page: 3,
+      cursor: 'cursor-3',
+      sessionId: 'sess-demo',
+      forcePaginated: false,
+    })).toEqual({
+      currentPage: 3,
+      currentCursor: 'cursor-3',
+      sessionId: 'sess-demo',
+      navigationMode: 'paginated',
+      replaceUrlOnPageBoundary: false,
+    });
+
+    expect(buildContentNavigationState({
+      infinitePref: true,
+      page: undefined,
+      cursor: null,
+      sessionId: '',
+      forcePaginated: false,
+    })).toEqual({
+      currentPage: 1,
+      currentCursor: null,
+      sessionId: '',
+      navigationMode: 'infinite',
+      replaceUrlOnPageBoundary: true,
+    });
+  });
+
   it('parses page and session url values defensively', () => {
     expect(parseSearchPageParam('4')).toBe(4);
     expect(parseSearchPageParam('0')).toBeUndefined();
     expect(parseSearchPageParam('not-a-number')).toBeUndefined();
     expect(parseSearchSessionParam('sess-demo')).toBe('sess-demo');
     expect(parseSearchSessionParam('   ')).toBe('');
+    expect(parsePositivePageParam('7')).toBe(7);
+    expect(parseOpaqueParam(' cursor-7 ')).toBe('cursor-7');
+  });
+
+  it('builds shared content route params for common sort/filter/when controls', () => {
+    expect(buildSharedContentRouteParams({
+      sortValue: 'newest',
+      includeSort: false,
+      selectedTypes: [1, 2, 3],
+      selectedVariants: [],
+      whenValue: '2026-05',
+      emptyVariantsToken: 'all',
+    })).toEqual({
+      sort: '',
+      types: 'text,image,video',
+      variants: 'all',
+      when: '2026-05',
+    });
   });
 
   it('maps explicit session/page search requests onto the route wire aliases', async () => {

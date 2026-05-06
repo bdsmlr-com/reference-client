@@ -94,7 +94,11 @@ export class ControlPanel extends LitElement {
 
     if (this.showTypes) {
       sections.push(html`
-        <type-pills .selectedTypes=${this.selectedTypes} @types-change=${this.handleTypesChange}></type-pills>
+        <type-pills
+          .selectedTypes=${this.selectedTypes}
+          .pageName=${this.pageName}
+          @types-change=${this.handleTypesChange}
+        ></type-pills>
       `);
     }
 

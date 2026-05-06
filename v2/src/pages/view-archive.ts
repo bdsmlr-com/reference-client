@@ -3,9 +3,9 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
-import { getUrlParam, setUrlParams, isBlogInPath, isDefaultTypes, isAdminMode } from '../services/blog-resolver.js';
+import { getUrlParam, setUrlParams, isBlogInPath, isAdminMode } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
-import { parsePostTypesParam, parseVariantsParam, serializePostTypesParam, serializeVariantsParam } from '../services/post-filter-url.js';
+import { parsePostTypesParam, parseVariantsParam } from '../services/post-filter-url.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
   getInfiniteScrollPreference,
@@ -13,6 +13,12 @@ import {
 } from '../services/storage.js';
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { Blog, PostType, PostSortField, Order, PostVariant } from '../types/api.js';
+import {
+  buildContentNavigationState,
+  buildSharedContentRouteParams,
+  parseOpaqueParam,
+  parsePositivePageParam,
+} from '../services/search-session.js';
 import {
   getGalleryMode,
   PROFILE_EVENTS,
@@ -35,19 +41,6 @@ import '../components/blog-header.js';
 import '../components/render-card.js';
 
 const ARCHIVE_PAGE_SIZE = 48;
-
-function parseArchivePageParam(raw: string | null): number | undefined {
-  const value = (raw || '').trim();
-  if (!value) {
-    return undefined;
-  }
-  const page = Number.parseInt(value, 10);
-  return Number.isFinite(page) && page > 0 ? page : undefined;
-}
-
-function parseArchiveCursorParam(raw: string | null): string {
-  return (raw || '').trim();
-}
 
 function parseArchiveWhenParam(raw: string | null): string {
   const value = (raw || '').trim();
@@ -156,12 +149,14 @@ export class ViewArchive extends LitElement {
 
   private buildArchiveUrlParams(): Record<string, string> {
     const params: Record<string, string> = {
-      sort: this.sortValue,
-      types: isDefaultTypes(this.selectedTypes) ? '' : serializePostTypesParam(this.selectedTypes),
-      variants: serializeVariantsParam(this.selectedVariants),
+      ...buildSharedContentRouteParams({
+        sortValue: this.sortValue,
+        selectedTypes: this.selectedTypes,
+        selectedVariants: this.selectedVariants,
+        whenValue: this.archiveWhen,
+      }),
       page: this.navigationMode === 'paginated' ? String(this.currentPage) : '',
       cursor: this.navigationMode === 'paginated' && this.currentPage > 1 ? this.currentPageCursor || '' : '',
-      when: this.archiveWhen,
     };
     if (!isBlogInPath()) {
       params.blog = this.blog;
@@ -218,20 +213,26 @@ export class ViewArchive extends LitElement {
     const sort = getUrlParam('sort');
     const types = getUrlParam('types');
     const variants = getUrlParam('variants');
-    const explicitPage = parseArchivePageParam(getUrlParam('page'));
-    const explicitCursor = parseArchiveCursorParam(getUrlParam('cursor'));
+    const explicitPage = parsePositivePageParam(getUrlParam('page'));
+    const explicitCursor = parseOpaqueParam(getUrlParam('cursor'));
     const explicitWhen = parseArchiveWhenParam(getUrlParam('when'));
     const infinitePref = getInfiniteScrollPreference('archive');
     const hasExplicitPaginationState = explicitPage !== undefined || !!explicitCursor || !!explicitWhen;
+    const routeState = buildContentNavigationState({
+      infinitePref,
+      page: explicitPage,
+      cursor: explicitCursor,
+      forcePaginated: hasExplicitPaginationState,
+    });
 
     const resolvedSort = normalizeSortValue(sort || getArchiveSortPreference());
     this.sortValue = resolvedSort;
     this.infiniteScroll = infinitePref;
     this.archiveWhen = explicitWhen;
     this.forcedPaginatedFromUrl = hasExplicitPaginationState;
-    this.navigationMode = hasExplicitPaginationState ? 'paginated' : (infinitePref ? 'infinite' : 'paginated');
-    this.currentPage = explicitCursor ? (explicitPage ?? 1) : 1;
-    this.currentPageCursor = explicitCursor || null;
+    this.navigationMode = routeState.navigationMode;
+    this.currentPage = routeState.currentPage;
+    this.currentPageCursor = routeState.currentCursor;
     this.hasNextPage = false;
     this.pageStartCursors = new Map([[1, null]]);
     if (explicitCursor) {
@@ -297,10 +298,16 @@ export class ViewArchive extends LitElement {
 
     const preserveNavigationState = options.preserveNavigationState ?? false;
     if (!preserveNavigationState) {
-      this.currentPage = 1;
-      this.currentPageCursor = null;
+      const routeState = buildContentNavigationState({
+        infinitePref: this.infiniteScroll,
+        page: undefined,
+        cursor: null,
+        forcePaginated: this.forcedPaginatedFromUrl,
+      });
+      this.currentPage = routeState.currentPage;
+      this.currentPageCursor = routeState.currentCursor;
       this.pageStartCursors = new Map([[1, null]]);
-      this.navigationMode = this.forcedPaginatedFromUrl ? 'paginated' : (this.infiniteScroll ? 'infinite' : 'paginated');
+      this.navigationMode = routeState.navigationMode;
     }
 
     this.backendCursor = null;
@@ -424,11 +431,17 @@ export class ViewArchive extends LitElement {
   private handleWhenChange(e: CustomEvent<{ value: string }>): void {
     this.archiveWhen = parseArchiveWhenParam(e.detail.value);
     this.forcedPaginatedFromUrl = this.archiveWhen.length > 0;
-    this.currentPage = 1;
-    this.currentPageCursor = null;
+    const routeState = buildContentNavigationState({
+      infinitePref: this.infiniteScroll,
+      page: 1,
+      cursor: null,
+      forcePaginated: this.forcedPaginatedFromUrl,
+    });
+    this.currentPage = routeState.currentPage;
+    this.currentPageCursor = routeState.currentCursor;
     this.hasNextPage = false;
     this.pageStartCursors = new Map([[1, null]]);
-    this.navigationMode = this.forcedPaginatedFromUrl ? 'paginated' : (this.infiniteScroll ? 'infinite' : 'paginated');
+    this.navigationMode = routeState.navigationMode;
     void this.loadPosts();
   }
 

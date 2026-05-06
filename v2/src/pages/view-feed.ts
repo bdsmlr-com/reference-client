@@ -3,21 +3,26 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
-import { setUrlParams, isBlogInPath, isAdminMode } from '../services/blog-resolver.js';
+import { getUrlParam, setUrlParams, isBlogInPath, isAdminMode } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
 import type { PostType, PostVariant, Blog, TimelineItem } from '../types/api.js';
 import {
-  getFollowingActivityKindsPreference,
-  setFollowingActivityKindsPreference,
   type ActivityKind,
 } from '../services/profile.js';
+import {
+  buildTimelineRouteQueryParams,
+  getTimelineRouteDefinition,
+  readTimelineRouteQueryState,
+  shouldLoadMoreTimeline,
+} from '../services/timeline-route-controller.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
+import { ALL_POST_TYPES } from '../services/post-filter-url.js';
 import '../components/control-panel.js';
 import '../components/blog-header.js';
 import '../components/timeline-stream.js';
@@ -88,7 +93,7 @@ export class ViewFeed extends LitElement {
   @state() private sourceBlogIds: number[] = [];
   @state() private sourceCount = 0;
   @state() private resolving = false;
-  @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
+  @state() private selectedTypes: PostType[] = [...ALL_POST_TYPES];
   @state() private selectedVariants: PostVariant[] = [];
   @state() private timelineItems: TimelineItem[] = [];
   @state() private loading = false;
@@ -100,7 +105,7 @@ export class ViewFeed extends LitElement {
   @state() private retrying = false;
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
-  @state() private activityKinds: ActivityKind[] = getFollowingActivityKindsPreference();
+  @state() private activityKinds: ActivityKind[] = getTimelineRouteDefinition('following').readStoredActivityKinds();
   @state() private blogData: Blog | null = null;
   private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('feed', 'main_stream');
   private skipCacheOnNextResolve = false;
@@ -150,6 +155,10 @@ export class ViewFeed extends LitElement {
     return this.isFollowerFeed ? 'feed_followers_list' : 'feed_following_list';
   }
 
+  private get timelineRoute() {
+    return getTimelineRouteDefinition(this.isFollowerFeed ? 'followers' : 'following');
+  }
+
   connectedCallback(): void {
     super.connectedCallback();
     window.addEventListener('beforeunload', this.savePaginationState);
@@ -175,7 +184,12 @@ export class ViewFeed extends LitElement {
       const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
       if (sentinel) {
         scrollObserver.observe(sentinel, () => {
-          if (this.infiniteScroll && !this.loading && !this.exhausted && this.sourceBlogIds.length > 0) {
+          if (shouldLoadMoreTimeline({
+            infiniteScroll: this.infiniteScroll,
+            loading: this.loading,
+            exhausted: this.exhausted,
+            hasSourceData: this.sourceBlogIds.length > 0,
+          })) {
             this.loadMore();
           }
         });
@@ -320,8 +334,17 @@ export class ViewFeed extends LitElement {
 
   private async loadPosts(): Promise<void> {
     if (this.sourceBlogIds.length === 0) return;
+    const queryState = readTimelineRouteQueryState(this.isFollowerFeed ? 'followers' : 'following', {
+      types: getUrlParam('types'),
+      activity: getUrlParam('activity'),
+    });
+    this.selectedTypes = queryState.selectedTypes;
+    this.activityKinds = queryState.activityKinds;
+    setUrlParams(buildTimelineRouteQueryParams(queryState));
+
     if (this.selectedTypes.length === 0) {
       this.statusMessage = ErrorMessages.VALIDATION.NO_TYPES_SELECTED;
+      this.exhausted = true;
       return;
     }
 
@@ -551,9 +574,27 @@ export class ViewFeed extends LitElement {
     }
   }
 
+  private handleTypesChange(e: CustomEvent): void {
+    this.selectedTypes = e.detail.types || [];
+    setUrlParams(buildTimelineRouteQueryParams({
+      selectedTypes: this.selectedTypes,
+      activityKinds: this.activityKinds,
+    }));
+    if (this.sourceBlogIds.length > 0) {
+      this.loadPosts();
+    }
+  }
+
   private handleActivityKindsChange(e: CustomEvent): void {
-    this.activityKinds = e.detail.kinds || ['post', 'reblog', 'like', 'comment'];
-    setFollowingActivityKindsPreference(this.activityKinds);
+    this.activityKinds = readTimelineRouteQueryState(this.isFollowerFeed ? 'followers' : 'following', {
+      types: null,
+      activity: (e.detail.kinds || []).join(','),
+    }).activityKinds;
+    this.timelineRoute.writeStoredActivityKinds(this.activityKinds);
+    setUrlParams(buildTimelineRouteQueryParams({
+      selectedTypes: this.selectedTypes,
+      activityKinds: this.activityKinds,
+    }));
     if (this.sourceBlogIds.length > 0) {
       this.loadPosts();
     }
@@ -620,8 +661,12 @@ export class ViewFeed extends LitElement {
                 .showSort=${false}
                 .showWhen=${false}
                 .showActivityKinds=${true}
+                .showTypes=${true}
                 .activityKinds=${this.activityKinds}
+                .selectedTypes=${this.selectedTypes}
+                .pageName=${this.timelineRoute.controlPageName}
                 @activity-kinds-change=${this.handleActivityKindsChange}
+                @types-change=${this.handleTypesChange}
               ></control-panel>
             `
           : ''}
@@ -631,16 +676,16 @@ export class ViewFeed extends LitElement {
               <div class="feed-container">
                 <timeline-stream
                   .items=${this.timelineItems}
-                  page=${this.isFollowerFeed ? 'follower-feed' : 'feed'}
+                  .page=${this.timelineRoute.streamPage}
                   .activityKinds=${this.activityKinds}
-                  .showActorInCluster=${true}
+                  .showActorInCluster=${this.timelineRoute.showActorInCluster}
                   @post-click=${this.handlePostClick}
                 ></timeline-stream>
               </div>
 
               <load-footer
-                mode="activity"
-                pageName=${this.isFollowerFeed ? 'followers' : 'following'}
+                .mode=${this.timelineRoute.footerMode}
+                .pageName=${this.timelineRoute.footerPageName}
                 .loading=${this.loading}
                 .exhausted=${this.exhausted}
                 .loadingCurrent=${this.loadingCurrent}

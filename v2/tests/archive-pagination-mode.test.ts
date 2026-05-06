@@ -111,16 +111,16 @@ describe('archive pagination mode', () => {
     const src = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
 
     expect(src).toContain("private navigationMode: 'infinite' | 'paginated' = 'infinite'");
-    expect(src).toContain("getUrlParam('page')");
-    expect(src).toContain("getUrlParam('cursor')");
-    expect(src).toContain("getUrlParam('when')");
-    expect(src).toContain("'paginated'");
+    expect(src).toContain('buildContentNavigationState');
+    expect(src).toContain("parsePositivePageParam(getUrlParam('page'))");
+    expect(src).toContain("parseOpaqueParam(getUrlParam('cursor'))");
+    expect(src).toContain("const hasExplicitPaginationState = explicitPage !== undefined || !!explicitCursor || !!explicitWhen;");
   });
 
   it('walks archive cursors to resolve explicit page state when no cursor is present', () => {
     const src = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
 
-    expect(src).toContain('const explicitPage = parseArchivePageParam(getUrlParam(\'page\'))');
+    expect(src).toContain('const explicitPage = parsePositivePageParam(getUrlParam(\'page\'))');
     expect(src).toContain('resolveArchivePageCursor');
     expect(src).toContain('while (resolvedPage < targetPage)');
     expect(src).toContain('this.currentPageCursor = resolvedCursor;');

@@ -52,7 +52,7 @@ describe('QA regressions: auth, feed, activity semantics', () => {
 
     expect(postsSrc).not.toContain('sort: this.sortValue');
     expect(postsSrc).not.toContain('blog: this.blog');
-    expect(postsSrc).toContain('activity: this.activityKinds.join(\',\') === DEFAULT_ACTIVITY_KINDS.join(\',\') ? \'\' : this.activityKinds.join(\',\')');
+    expect(postsSrc).toContain('buildTimelineRouteQueryParams');
   });
 
   it('guards activity timeline state against stale async responses', () => {

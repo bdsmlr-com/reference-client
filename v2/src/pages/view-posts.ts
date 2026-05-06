@@ -2,21 +2,24 @@ import { LitElement, html, css, PropertyValues } from 'lit';
 import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
-import { getContextualErrorMessage } from '../services/api-error.js';
-import { getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';
+import { getContextualErrorMessage, ErrorMessages } from '../services/api-error.js';
+import { getUrlParam, setUrlParams } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { extractMedia, SORT_OPTIONS, type ProcessedPost } from '../types/post.js';
 import type { PostType, Blog, TimelineItem, PostSortField, Order } from '../types/api.js';
 import {
-  DEFAULT_ACTIVITY_KINDS,
-  getBlogActivityKindsPreference,
-  normalizeActivityKinds,
-  setBlogActivityKindsPreference,
   type ActivityKind,
 } from '../services/profile.js';
+import {
+  getTimelineRouteDefinition,
+  readTimelineRouteQueryState,
+  buildTimelineRouteQueryParams,
+  shouldLoadMoreTimeline,
+} from '../services/timeline-route-controller.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
+import { ALL_POST_TYPES } from '../services/post-filter-url.js';
 import '../components/control-panel.js';
 import '../components/timeline-stream.js';
 import '../components/load-footer.js';
@@ -26,24 +29,6 @@ import '../components/blog-header.js';
 import '../components/render-card.js';
 
 const PAGE_SIZE = 15;
-const TYPE_NAME_TO_ENUM: Record<string, PostType> = {
-  text: 1,
-  image: 2,
-  video: 3,
-  audio: 4,
-  link: 5,
-  chat: 6,
-  quote: 7,
-};
-const TYPE_ENUM_TO_NAME: Record<number, string> = {
-  1: 'text',
-  2: 'image',
-  3: 'video',
-  4: 'audio',
-  5: 'link',
-  6: 'chat',
-  7: 'quote',
-};
 
 @customElement('view-posts')
 export class ViewPosts extends LitElement {
@@ -53,6 +38,7 @@ export class ViewPosts extends LitElement {
       :host { display: block; min-height: 100vh; background: var(--blog-bg, var(--bg-primary)); }
       .content { padding: 20px 0; }
       .feed-container { margin-bottom: 20px; }
+      .status { text-align: center; color: var(--text-muted); padding: 40px 16px; }
     `,
   ];
 
@@ -60,15 +46,17 @@ export class ViewPosts extends LitElement {
 
   @state() private blogId: number | null = null;
   @state() private sortValue = 'newest';
-  @state() private selectedTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
+  @state() private selectedTypes: PostType[] = [...ALL_POST_TYPES];
   @state() private timelineItems: TimelineItem[] = [];
   @state() private loading = false;
   @state() private exhausted = false;
   @state() private infiniteScroll = false;
   @state() private errorMessage = '';
-  @state() private activityKinds: ActivityKind[] = getBlogActivityKindsPreference();
+  @state() private statusMessage = '';
+  @state() private activityKinds: ActivityKind[] = getTimelineRouteDefinition('activity').readStoredActivityKinds();
   @state() private blogData: Blog | null = null;
   private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('activity', 'main_stream');
+  private readonly timelineRoute = getTimelineRouteDefinition('activity');
 
   private backendCursor: string | null = null;
   private seenIds = new Set<number>();
@@ -105,26 +93,25 @@ export class ViewPosts extends LitElement {
     if (!this.blogId) return;
     this.resetState();
     const requestToken = ++this.activeRequestToken;
-    const types = getUrlParam('types');
-    const activity = getUrlParam('activity');
     this.sortValue = 'newest';
-    if (types) {
-      const parsed = types
-        .split(',')
-        .map((t) => t.trim().toLowerCase())
-        .map((t) => TYPE_NAME_TO_ENUM[t] ?? (parseInt(t, 10) as PostType))
-        .filter((t) => Number.isFinite(t));
-      if (parsed.length > 0) this.selectedTypes = parsed;
+    const queryState = readTimelineRouteQueryState('activity', {
+      types: getUrlParam('types'),
+      activity: getUrlParam('activity'),
+    });
+    this.selectedTypes = queryState.selectedTypes;
+    this.activityKinds = queryState.activityKinds;
+    this.statusMessage = '';
+
+    if (this.selectedTypes.length === 0) {
+      this.statusMessage = ErrorMessages.VALIDATION.NO_TYPES_SELECTED;
+      this.exhausted = true;
+      return;
     }
-    if (activity) this.activityKinds = normalizeActivityKinds(activity, DEFAULT_ACTIVITY_KINDS);
-    
+
     setUrlParams({
       sort: '',
       blog: '',
-      types: isDefaultTypes(this.selectedTypes)
-        ? ''
-        : this.selectedTypes.map((t) => TYPE_ENUM_TO_NAME[t] || String(t)).join(','),
-      activity: this.activityKinds.join(',') === DEFAULT_ACTIVITY_KINDS.join(',') ? '' : this.activityKinds.join(','),
+      ...buildTimelineRouteQueryParams(queryState),
     });
     await this.fillPage(requestToken);
     if (requestToken !== this.activeRequestToken) return;
@@ -137,6 +124,7 @@ export class ViewPosts extends LitElement {
     this.backendCursor = null;
     this.exhausted = false;
     this.errorMessage = '';
+    this.statusMessage = '';
   }
 
   private observeSentinel(): void {
@@ -144,7 +132,11 @@ export class ViewPosts extends LitElement {
       const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
       if (sentinel) {
         scrollObserver.observe(sentinel, () => {
-          if (this.infiniteScroll && !this.loading && !this.exhausted) this.loadMore();
+          if (shouldLoadMoreTimeline({
+            infiniteScroll: this.infiniteScroll,
+            loading: this.loading,
+            exhausted: this.exhausted,
+          })) this.loadMore();
         });
       }
     });
@@ -184,6 +176,9 @@ export class ViewPosts extends LitElement {
 
       this.timelineItems = [...this.timelineItems, ...newItems];
       if (newItems.length === 0) this.exhausted = true;
+      if (this.timelineItems.length === 0 && this.exhausted) {
+        this.statusMessage = 'No posts found';
+      }
     } finally {
       if (requestToken === this.activeRequestToken) {
         this.loading = false;
@@ -226,13 +221,32 @@ export class ViewPosts extends LitElement {
   }
 
   private handleActivityKindsChange(e: CustomEvent): void {
-    this.activityKinds = normalizeActivityKinds((e.detail.kinds || []).join(','), DEFAULT_ACTIVITY_KINDS);
+    this.activityKinds = readTimelineRouteQueryState('activity', {
+      types: null,
+      activity: (e.detail.kinds || []).join(','),
+    }).activityKinds;
     this.sortValue = 'newest';
-    setBlogActivityKindsPreference(this.activityKinds);
+    this.timelineRoute.writeStoredActivityKinds(this.activityKinds);
     setUrlParams({
       sort: '',
       blog: '',
-      activity: this.activityKinds.join(',') === DEFAULT_ACTIVITY_KINDS.join(',') ? '' : this.activityKinds.join(','),
+      ...buildTimelineRouteQueryParams({
+        selectedTypes: this.selectedTypes,
+        activityKinds: this.activityKinds,
+      }),
+    });
+    this.loadPosts();
+  }
+
+  private handleTypesChange(e: CustomEvent): void {
+    this.selectedTypes = e.detail.types || [];
+    setUrlParams({
+      sort: '',
+      blog: '',
+      ...buildTimelineRouteQueryParams({
+        selectedTypes: this.selectedTypes,
+        activityKinds: this.activityKinds,
+      }),
     });
     this.loadPosts();
   }
@@ -251,11 +265,16 @@ export class ViewPosts extends LitElement {
 
         <control-panel
           .showActivityKinds=${true}
+          .showTypes=${true}
           .activityKinds=${this.activityKinds}
+          .selectedTypes=${this.selectedTypes}
+          .pageName=${this.timelineRoute.controlPageName}
           @activity-kinds-change=${this.handleActivityKindsChange}
+          @types-change=${this.handleTypesChange}
         ></control-panel>
 
         ${this.errorMessage ? html`<error-state message=${this.errorMessage}></error-state>` : ''}
+        ${this.statusMessage && !this.errorMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
         ${this.loading && this.timelineItems.length === 0 && !this.errorMessage
           ? html`
               <render-card
@@ -269,16 +288,16 @@ export class ViewPosts extends LitElement {
         <div class="feed-container">
           <timeline-stream
             .items=${this.timelineItems}
-            page="activity"
+            .page=${this.timelineRoute.streamPage}
             .activityKinds=${this.activityKinds}
-            .showActorInCluster=${false}
+            .showActorInCluster=${this.timelineRoute.showActorInCluster}
             @post-click=${this.handlePostClick}
           ></timeline-stream>
         </div>
 
         <load-footer
-          mode="timeline"
-          pageName="timeline"
+          .mode=${this.timelineRoute.footerMode}
+          .pageName=${this.timelineRoute.footerPageName}
           .loading=${this.loading}
           .exhausted=${this.exhausted}
           .infiniteScroll=${this.infiniteScroll}

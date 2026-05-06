@@ -3,7 +3,7 @@ import { customElement, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
-import { buildPageUrl, getBlogNameFromPath, getPrimaryBlogName, getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';
+import { buildPageUrl, getBlogNameFromPath, getPrimaryBlogName, getUrlParam, setUrlParams } from '../services/blog-resolver.js';
 import { normalizeArchiveWhenValue } from '../services/archive-when.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
@@ -14,7 +14,12 @@ import {
 import { extractMedia, normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { PostType, PostSortField, Order, PostVariant } from '../types/api.js';
 import { parsePostTypesParam, parseVariantsParam, serializePostTypesParam, serializeVariantsParam } from '../services/post-filter-url.js';
-import { parseSearchPageParam, parseSearchSessionParam, resolveSearchNavigationMode, shouldReplaceSearchUrlOnPageChange } from '../services/search-session.js';
+import {
+  buildContentNavigationState,
+  buildSharedContentRouteParams,
+  parseSearchPageParam,
+  parseSearchSessionParam,
+} from '../services/search-session.js';
 import { materializeSearchResultUnits, type SearchResultUnit } from '../services/search-result-units.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import {
@@ -440,11 +445,15 @@ export class ViewSearch extends LitElement {
     const routePerspectiveBlog = getBlogNameFromPath();
     setUrlParams({
       q: this.query,
-      sort: this.sortExplicitInUrl ? this.sortValue : '',
+      ...buildSharedContentRouteParams({
+        sortValue: this.sortValue,
+        includeSort: this.sortExplicitInUrl,
+        selectedTypes: this.selectedTypes,
+        selectedVariants: this.selectedVariants,
+        whenValue: this.searchWhen,
+        emptyVariantsToken: 'all',
+      }),
       match: routePerspectiveBlog && this.matchMode !== 'off' ? this.matchMode : '',
-      types: isDefaultTypes(this.selectedTypes) ? '' : serializePostTypesParam(this.selectedTypes),
-      variants: serializeVariantsParam(this.selectedVariants, { emptyToken: 'all' }),
-      when: this.searchWhen,
       page: this.navigationMode === 'paginated' || (this.replaceSearchUrlOnPageBoundary && this.currentPage > 1)
         ? String(this.currentPage)
         : '',
@@ -463,20 +472,18 @@ export class ViewSearch extends LitElement {
     const initialSessionId = parseSearchSessionParam(getUrlParam('session') || getUrlParam('sessionId'));
     const infinitePref = getInfiniteScrollPreference('search');
     const hasExplicitWhen = !!when;
-
-    this.infiniteScroll = infinitePref;
-    this.currentPage = initialPage ?? 1;
-    this.searchSessionId = initialSessionId;
-    this.navigationMode = resolveSearchNavigationMode({
+    const routeState = buildContentNavigationState({
       infinitePref,
       page: initialPage ?? (hasExplicitWhen ? 1 : undefined),
       sessionId: hasExplicitWhen ? '' : initialSessionId,
+      forcePaginated: hasExplicitWhen,
     });
-    this.replaceSearchUrlOnPageBoundary = shouldReplaceSearchUrlOnPageChange({
-      navigationMode: this.navigationMode,
-      explicitPage: initialPage ?? (hasExplicitWhen ? 1 : undefined),
-      explicitSessionId: hasExplicitWhen ? '' : initialSessionId,
-    });
+
+    this.infiniteScroll = infinitePref;
+    this.currentPage = routeState.currentPage;
+    this.searchSessionId = routeState.sessionId;
+    this.navigationMode = routeState.navigationMode;
+    this.replaceSearchUrlOnPageBoundary = routeState.replaceUrlOnPageBoundary;
 
     if (q) this.query = q;
     this.searchWhen = when;
@@ -557,18 +564,15 @@ export class ViewSearch extends LitElement {
     const preserveNavigationState = options.preserveNavigationState ?? false;
     this.searching = true;
     if (!preserveNavigationState) {
-      this.currentPage = 1;
-      this.searchSessionId = '';
-      this.navigationMode = resolveSearchNavigationMode({
+      const routeState = buildContentNavigationState({
         infinitePref: this.infiniteScroll,
         page: undefined,
         sessionId: '',
       });
-      this.replaceSearchUrlOnPageBoundary = shouldReplaceSearchUrlOnPageChange({
-        navigationMode: this.navigationMode,
-        explicitPage: undefined,
-        explicitSessionId: '',
-      });
+      this.currentPage = routeState.currentPage;
+      this.searchSessionId = routeState.sessionId;
+      this.navigationMode = routeState.navigationMode;
+      this.replaceSearchUrlOnPageBoundary = routeState.replaceUrlOnPageBoundary;
     }
     this.resetState();
     this.hasSearched = true;
@@ -578,11 +582,15 @@ export class ViewSearch extends LitElement {
 
     const params: Record<string, string> = {
       q: this.query,
-      sort: this.sortExplicitInUrl ? this.sortValue : '',
+      ...buildSharedContentRouteParams({
+        sortValue: this.sortValue,
+        includeSort: this.sortExplicitInUrl,
+        selectedTypes: this.selectedTypes,
+        selectedVariants: this.selectedVariants,
+        whenValue: this.searchWhen,
+        emptyVariantsToken: 'all',
+      }),
       match: routePerspectiveBlog && this.matchMode !== 'off' ? this.matchMode : '',
-      types: isDefaultTypes(this.selectedTypes) ? '' : serializePostTypesParam(this.selectedTypes),
-      variants: serializeVariantsParam(this.selectedVariants, { emptyToken: 'all' }),
-      when: this.searchWhen,
       page: this.navigationMode === 'paginated' ? String(this.currentPage) : '',
       session: this.navigationMode === 'paginated' ? this.searchSessionId : '',
     };
@@ -809,10 +817,16 @@ export class ViewSearch extends LitElement {
 
   private handleWhenChange(e: CustomEvent<{ value: string }>): void {
     this.searchWhen = normalizeArchiveWhenValue(e.detail.value);
-    this.currentPage = 1;
-    this.searchSessionId = '';
-    this.navigationMode = 'paginated';
-    this.replaceSearchUrlOnPageBoundary = false;
+    const routeState = buildContentNavigationState({
+      infinitePref: this.infiniteScroll,
+      page: 1,
+      sessionId: '',
+      forcePaginated: true,
+    });
+    this.currentPage = routeState.currentPage;
+    this.searchSessionId = routeState.sessionId;
+    this.navigationMode = routeState.navigationMode;
+    this.replaceSearchUrlOnPageBoundary = routeState.replaceUrlOnPageBoundary;
     if (this.hasSearched) {
       void this.search({ preserveNavigationState: true });
     } else {

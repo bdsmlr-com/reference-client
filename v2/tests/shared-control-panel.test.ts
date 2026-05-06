@@ -43,8 +43,12 @@ describe('shared control panel', () => {
     expect(searchSrc).toContain('<control-panel');
 
     expect(feedSrc).toContain('.showActivityKinds=${true}');
+    expect(feedSrc).toContain('.showTypes=${true}');
     expect(feedSrc).toContain('.showSort=${false}');
     expect(feedSrc).toContain('.showWhen=${false}');
+
+    expect(activitySrc).toContain('.showActivityKinds=${true}');
+    expect(activitySrc).toContain('.showTypes=${true}');
 
     expect(archiveSrc).toContain('.showSort=${true}');
     expect(archiveSrc).toContain('.showVariants=${true}');

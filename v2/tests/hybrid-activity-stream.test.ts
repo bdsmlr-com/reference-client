@@ -34,16 +34,18 @@ describe('hybrid activity stream', () => {
 
     expect(feedSrc).toContain('<timeline-stream');
     expect(postsSrc).toContain('<timeline-stream');
-    expect(feedSrc).toContain('.showActorInCluster=${true}');
-    expect(postsSrc).toContain('.showActorInCluster=${false}');
+    expect(feedSrc).toContain('.showActorInCluster=${this.timelineRoute.showActorInCluster}');
+    expect(postsSrc).toContain('.showActorInCluster=${this.timelineRoute.showActorInCluster}');
   });
 
-  it('following view augments merged posts with interaction clusters and filter pills', () => {
+  it('following view augments merged posts with interaction clusters and shared control wiring', () => {
     const feedSrc = readFileSync(join(ROOT, 'pages/view-feed.ts'), 'utf8');
 
     expect(feedSrc).toContain('fetchInteractionClusters');
     expect(feedSrc).toContain('apiClient.posts.list({');
-    expect(feedSrc).toContain('<activity-kind-pills');
+    expect(feedSrc).toContain('<control-panel');
+    expect(feedSrc).toContain('.showActivityKinds=${true}');
+    expect(feedSrc).toContain('.showTypes=${true}');
   });
 
   it('timeline stream renders compact clusters and full posts', () => {
@@ -110,6 +112,6 @@ describe('hybrid activity stream', () => {
     const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
 
     expect(postsSrc).toContain("getUrlParam('activity')");
-    expect(postsSrc).toContain('activity:');
+    expect(postsSrc).toContain('buildTimelineRouteQueryParams');
   });
 });

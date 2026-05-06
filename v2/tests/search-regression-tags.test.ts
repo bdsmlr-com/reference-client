@@ -75,7 +75,7 @@ describe('search regression and tag visibility', () => {
   it('threads the search route perspective blog into the API request payload', () => {
     const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
 
-    expect(src).toContain("import { buildPageUrl, getBlogNameFromPath, getPrimaryBlogName, getUrlParam, setUrlParams, isDefaultTypes } from '../services/blog-resolver.js';");
+    expect(src).toContain("import { buildPageUrl, getBlogNameFromPath, getPrimaryBlogName, getUrlParam, setUrlParams } from '../services/blog-resolver.js';");
     expect(src).toContain('const routePerspectiveBlog = getBlogNameFromPath();');
     expect(src).toContain('perspective_blog_name: perspectiveBlogName');
   });
@@ -89,7 +89,8 @@ describe('search regression and tag visibility', () => {
     expect(src).toContain("@state() private navigationMode: 'infinite' | 'paginated' = 'infinite';");
     expect(src).toContain("const initialPage = parseSearchPageParam(getUrlParam('page'));");
     expect(src).toContain("const initialSessionId = parseSearchSessionParam(getUrlParam('session') || getUrlParam('sessionId'));");
-    expect(src).toContain('this.navigationMode = resolveSearchNavigationMode({');
+    expect(src).toContain('const routeState = buildContentNavigationState({');
+    expect(src).toContain('this.navigationMode = routeState.navigationMode;');
     expect(src).toContain(".navigationMode=${this.navigationMode}");
     expect(src).toContain(".currentPage=${this.currentPage}");
     expect(src).toContain(".hasPreviousPage=${this.currentPage > 1}");

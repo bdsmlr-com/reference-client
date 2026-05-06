@@ -43,10 +43,10 @@ describe('activity route alias', () => {
     expect(postsSrc).not.toContain("const sort = getUrlParam('sort');");
     expect(postsSrc).toContain("this.sortValue = 'newest';");
     expect(postsSrc).toContain('sort_field: sortOption.field');
-    expect(postsSrc).toContain('<activity-kind-pills');
+    expect(postsSrc).toContain('<control-panel');
     expect(postsSrc).not.toContain('<filter-bar');
     expect(postsSrc).toContain('activity_kinds: this.activityKinds');
-    expect(postsSrc).toContain('TYPE_ENUM_TO_NAME');
+    expect(postsSrc).toContain('buildTimelineRouteQueryParams');
     expect(postsSrc).not.toContain('VARIANT_ENUM_TO_NAME');
     expect(postsSrc).toContain('setUrlParams({');
     expect(postsSrc).not.toContain('sort: this.sortValue');
