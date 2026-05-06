@@ -2,9 +2,11 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { handleAvatarImageError, normalizeAvatarUrl } from '../services/avatar-url.js';
+import { getBlog } from '../services/api.js';
+import { getCachedAvatarUrl, setCachedAvatarUrl } from '../services/storage.js';
 import type { IdentityDecoration } from '../types/api.js';
 
-type BlogIdentityVariant = 'header' | 'menu';
+type BlogIdentityVariant = 'header' | 'menu' | 'micro';
 
 function pickInlineDecoration(
   decorations: IdentityDecoration[] | null | undefined,
@@ -260,15 +262,46 @@ export class BlogIdentity extends LitElement {
       :host([variant='menu']) .description {
         display: none;
       }
+
+      :host([variant='micro']) .identity {
+        gap: 6px;
+      }
+
+      :host([variant='micro']) .avatar,
+      :host([variant='micro']) .avatar-fallback {
+        width: 18px;
+        height: 18px;
+      }
+
+      :host([variant='micro']) .avatar-fallback {
+        font-size: 9px;
+      }
+
+      :host([variant='micro']) .copy {
+        gap: 0;
+      }
+
+      :host([variant='micro']) .name {
+        font-size: 12px;
+      }
+
+      :host([variant='micro']) .title,
+      :host([variant='micro']) .description {
+        display: none;
+      }
     `,
   ];
 
   @property({ type: String }) blogName = '';
+  @property({ type: Number }) blogId = 0;
   @property({ type: String }) blogTitle = '';
   @property({ type: String }) blogDescription = '';
   @property({ type: String }) avatarUrl = '';
   @property({ attribute: false }) identityDecorations: IdentityDecoration[] = [];
   @property({ type: String, reflect: true }) variant: BlogIdentityVariant = 'header';
+
+  private hydratedBlogId = 0;
+  private hydrationInFlight: Promise<void> | null = null;
 
   private get normalizedBlogName(): string {
     return normalizeBlogName(this.blogName);
@@ -284,6 +317,69 @@ export class BlogIdentity extends LitElement {
 
   private get resolvedAvatarUrl(): string | null {
     return normalizeAvatarUrl(this.avatarUrl);
+  }
+
+  protected updated(changedProperties: Map<string, unknown>) {
+    if (changedProperties.has('blogId') && changedProperties.get('blogId') !== this.blogId) {
+      this.hydratedBlogId = 0;
+    }
+    if (
+      this.variant === 'micro' &&
+      this.blogId > 0 &&
+      this.hydratedBlogId !== this.blogId &&
+      !this.hydrationInFlight
+    ) {
+      void this.hydrateBlogMeta();
+    }
+  }
+
+  private async hydrateBlogMeta(): Promise<void> {
+    if (this.blogId <= 0 || this.hydratedBlogId === this.blogId || this.hydrationInFlight) {
+      return;
+    }
+
+    this.hydrationInFlight = (async () => {
+      try {
+        const cachedAvatar = getCachedAvatarUrl(this.blogId);
+        if (cachedAvatar !== undefined && !this.avatarUrl) {
+          this.avatarUrl = cachedAvatar || '';
+        }
+
+        const response = await getBlog({ blog_id: this.blogId });
+        const blog = response.blog;
+        if (!blog) {
+          this.hydratedBlogId = this.blogId;
+          return;
+        }
+
+        if (!this.blogName && blog.name) {
+          this.blogName = blog.name;
+        }
+        if (!this.blogTitle && blog.title) {
+          this.blogTitle = blog.title;
+        }
+        if (!this.blogDescription && blog.description) {
+          this.blogDescription = blog.description;
+        }
+        if (!this.avatarUrl) {
+          this.avatarUrl = blog.avatarUrl || '';
+        }
+        if (!this.identityDecorations.length && blog.identityDecorations?.length) {
+          this.identityDecorations = blog.identityDecorations;
+        }
+
+        setCachedAvatarUrl(this.blogId, blog.avatarUrl || null);
+        this.hydratedBlogId = this.blogId;
+      } catch {
+        this.hydratedBlogId = this.blogId;
+      }
+    })();
+
+    try {
+      await this.hydrationInFlight;
+    } finally {
+      this.hydrationInFlight = null;
+    }
   }
 
   render() {

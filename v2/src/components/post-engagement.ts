@@ -10,6 +10,7 @@ import type { IdentityDecoration, Like, Comment, Reblog } from '../types/api.js'
 import { resolveLink, type ResolvedLink } from '../services/link-resolver.js';
 import './loading-spinner.js';
 import './post-actions.js';
+import './blog-identity.js';
 
 @customElement('post-engagement')
 export class PostEngagement extends LitElement {
@@ -112,18 +113,18 @@ export class PostEngagement extends LitElement {
       const viaPostIcon = viaPostLink.icon || '↗';
       const originPostLabel = String(p.originPostId);
       return html`
-        ${typeIcon} ${this.renderResolvedBlogIdentity(presentation.identity.originBlog, presentation.identity.originBlogLabel, presentation.identity.originBlogDecoration)} /
+        ${typeIcon} ${this.renderResolvedMicroBlogIdentity(presentation.identity.originBlog, presentation.identity.originBlogLabel, presentation.identity.originBlogDecoration, p.originBlogId)} /
         ${presentation.identity.originPostMissing
           ? html`<span class="origin-post-missing">${originPostLabel}</span>`
           : html`<a class="post-id-link" href=${ originPostLink.href } target=${ originPostLink.target } rel=${originPostLink.rel || nothing} title=${originPostLink.title || nothing}>${originPostLink.label || originPostLabel}<span class="post-id-outlink">${originPostLink.icon || '↗'}</span></a>`}
-        via ♻️ ${this.renderResolvedBlogIdentity(presentation.identity.viaBlog, presentation.identity.viaBlogLabel, presentation.identity.viaBlogDecoration)} /
+        via ♻️ ${this.renderResolvedMicroBlogIdentity(presentation.identity.viaBlog, presentation.identity.viaBlogLabel, presentation.identity.viaBlogDecoration, p.blogId)} /
         <a class="post-id-link" href=${viaPostLink.href} target=${viaPostLink.target} rel=${viaPostLink.rel || nothing} title=${viaPostLink.title || nothing}>${viaPostLabel}<span class="post-id-outlink">${viaPostIcon}</span></a>
       `;
     }
     const permalink = presentation.identity.permalink;
     const permalinkLabel = permalink.label || String(p.id);
     const permalinkIcon = permalink.icon || '↗';
-    return html`${typeIcon} ${this.renderResolvedBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, presentation.identity.primaryBlogLabel, presentation.identity.viaBlogDecoration || presentation.identity.originBlogDecoration)} / <a class="post-id-link" href=${permalink.href} target=${permalink.target} rel=${permalink.rel || nothing} title=${permalink.title || nothing}>${permalinkLabel}<span class="post-id-outlink">${permalinkIcon}</span></a>`;
+    return html`${typeIcon} ${this.renderResolvedMicroBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, presentation.identity.primaryBlogLabel, presentation.identity.viaBlogDecoration || presentation.identity.originBlogDecoration, p.blogId)} / <a class="post-id-link" href=${permalink.href} target=${permalink.target} rel=${permalink.rel || nothing} title=${permalink.title || nothing}>${permalinkLabel}<span class="post-id-outlink">${permalinkIcon}</span></a>`;
   }
 
   private normalizeBlogName(blogName: string | null | undefined): string | null {
@@ -131,27 +132,61 @@ export class PostEngagement extends LitElement {
     return normalized || null;
   }
 
-  private renderIdentityLabel(label: string, decoration?: IdentityDecoration | null) {
-    const icon = decoration?.icon?.trim();
-    return icon ? `${label} ${icon}` : label;
-  }
-
-  private renderBlogIdentity(blogName: string | null | undefined, contextId: 'post_origin_blog' | 'post_via_blog' = 'post_via_blog') {
+  private renderMicroBlogIdentity(
+    blogName: string | null | undefined,
+    blogId?: number | null,
+    decorations?: IdentityDecoration[] | null,
+    contextId: 'post_origin_blog' | 'post_via_blog' = 'post_via_blog',
+  ) {
     const normalized = this.normalizeBlogName(blogName);
     const label = normalized ? `@${normalized}` : '@unknown';
     if (!normalized) {
       return html`<span>${label}</span>`;
     }
     const link = resolveLink(contextId, { blog: normalized });
-    return html`<a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing}>${link.label || label}</a>`;
+    return html`
+      <a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing}>
+        <blog-identity
+          variant="micro"
+          .blogName=${normalized}
+          .blogId=${blogId || 0}
+          .identityDecorations=${decorations || []}
+        ></blog-identity>
+      </a>
+    `;
   }
 
-  private renderResolvedBlogIdentity(link: ResolvedLink | null | undefined, label: string, decoration?: IdentityDecoration | null) {
-    const renderedLabel = this.renderIdentityLabel(label, decoration);
-    if (!link) {
-      return html`<span>${renderedLabel}</span>`;
+  private renderResolvedMicroBlogIdentity(
+    link: ResolvedLink | null | undefined,
+    label: string,
+    decoration?: IdentityDecoration | null,
+    blogId?: number | null,
+  ) {
+    const normalized = this.normalizeBlogName(label);
+    if (!normalized) {
+      return html`<span>@unknown</span>`;
     }
-    return html`<a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing}>${renderedLabel}</a>`;
+    const decorations = decoration ? [decoration] : [];
+    if (!link) {
+      return html`
+        <blog-identity
+          variant="micro"
+          .blogName=${normalized}
+          .blogId=${blogId || 0}
+          .identityDecorations=${decorations}
+        ></blog-identity>
+      `;
+    }
+    return html`
+      <a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing}>
+        <blog-identity
+          variant="micro"
+          .blogName=${normalized}
+          .blogId=${blogId || 0}
+          .identityDecorations=${decorations}
+        ></blog-identity>
+      </a>
+    `;
   }
 
   private getActiveBlogId(): number | null {
@@ -200,13 +235,13 @@ export class PostEngagement extends LitElement {
     if (this.loadingDetails) return html`<loading-spinner message="Fetching details..."></loading-spinner>`;
     
     if (this.activeTab === 'likes' && this.likes) {
-      return this.renderPersonalizedList(this.likes, (l) => html`<div class="detail-item"><span>❤️ by ${this.renderBlogIdentity(l.blogName)}</span><span class="ts">${formatDate(l.createdAtUnix, 'friendly')}</span></div>`);
+      return this.renderPersonalizedList(this.likes, (l) => html`<div class="detail-item"><span>❤️ by ${this.renderMicroBlogIdentity(l.blogName, l.blogId)}</span><span class="ts">${formatDate(l.createdAtUnix, 'friendly')}</span></div>`);
     }
     if (this.activeTab === 'reblogs' && this.reblogs) {
-      return this.renderPersonalizedList(this.reblogs, (r) => html`<div class="detail-item"><span>♻️ by ${this.renderBlogIdentity(r.blogName, 'post_via_blog')}</span><span class="ts">${formatDate(r.createdAtUnix, 'friendly')}</span></div>`);
+      return this.renderPersonalizedList(this.reblogs, (r) => html`<div class="detail-item"><span>♻️ by ${this.renderMicroBlogIdentity(r.blogName, r.blogId, [], 'post_via_blog')}</span><span class="ts">${formatDate(r.createdAtUnix, 'friendly')}</span></div>`);
     }
     if (this.activeTab === 'comments' && this.comments) {
-      return this.renderPersonalizedList(this.comments, (c) => html`<div class="detail-item"><span>💬 <b>${this.normalizeBlogName(c.blogName) ? `@${this.normalizeBlogName(c.blogName)}` : '@unknown'}</b>: ${c.body}</span><span class="ts">${formatDate(c.createdAtUnix, 'friendly')}</span></div>`);
+      return this.renderPersonalizedList(this.comments, (c) => html`<div class="detail-item"><span>💬 ${this.renderMicroBlogIdentity(c.blogName, c.blogId)}: ${c.body}</span><span class="ts">${formatDate(c.createdAtUnix, 'friendly')}</span></div>`);
     }
     return nothing;
   }

@@ -25,4 +25,12 @@ describe('post engagement activity pane', () => {
     expect(src).toContain('myRows');
     expect(src).toContain('allRows');
   });
+
+  it('upgrades likes, reblogs, and comments rows to compact polymorphic blog identity rendering', () => {
+    const src = readFileSync(FILE, 'utf8');
+
+    expect(src).toContain('❤️ by ${this.renderMicroBlogIdentity(');
+    expect(src).toContain('♻️ by ${this.renderMicroBlogIdentity(');
+    expect(src).toContain('💬 ${this.renderMicroBlogIdentity(');
+  });
 });

@@ -29,7 +29,7 @@ describe('blog identity integration', () => {
     const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
 
     expect(headerSrc).toContain("import './blog-identity.js';");
-    expect(headerSrc).toContain("type PageName = 'archive' | 'timeline' | 'social' | 'following' | 'activity';");
+    expect(headerSrc).toContain("type PageName = 'archive' | 'timeline' | 'social' | 'following' | 'activity' | 'feed' | 'follower-feed';");
     expect(headerSrc).toContain('<blog-identity');
     expect(headerSrc).toContain('.blogTitle=${this.blogTitle}');
     expect(headerSrc).toContain('.avatarUrl=${this.avatarUrl}');
@@ -50,6 +50,18 @@ describe('blog identity integration', () => {
     expect(navSrc).toContain('<blog-identity');
     expect(navSrc).toContain('variant="menu"');
     expect(navSrc).toContain('.blogTitle=${this.profileBlogTitle ?? \'\'}');
+  });
+
+  it('supports a micro variant with lazy avatar and decoration hydration by blog id', () => {
+    const identitySrc = readFileSync(join(ROOT, 'components/blog-identity.ts'), 'utf8');
+
+    expect(identitySrc).toContain("type BlogIdentityVariant = 'header' | 'menu' | 'micro';");
+    expect(identitySrc).toContain("@property({ type: Number }) blogId = 0;");
+    expect(identitySrc).toContain('private async hydrateBlogMeta(): Promise<void>');
+    expect(identitySrc).toContain('const cachedAvatar = getCachedAvatarUrl(this.blogId);');
+    expect(identitySrc).toContain('const response = await getBlog({ blog_id: this.blogId });');
+    expect(identitySrc).toContain(":host([variant='micro']) .avatar");
+    expect(identitySrc).toContain(":host([variant='micro']) .name");
   });
 
   it('derives accent color locally instead of depending on backend accent fields', () => {

@@ -88,11 +88,9 @@ export class SearchGroupCard extends LitElement {
   @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
 
   private handleClick() {
-    this.dispatchEvent(new CustomEvent('search-group-click', {
-      detail: { originPostId: this.originPostId, post: this.post },
-      bubbles: true,
-      composed: true,
-    }));
+    if (this.originPostId > 0) {
+      window.location.href = `/post/${this.originPostId}`;
+    }
   }
 
   render() {
