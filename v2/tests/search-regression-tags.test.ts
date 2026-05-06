@@ -92,7 +92,7 @@ describe('search regression and tag visibility', () => {
     expect(src).toContain('@state() private currentPage = 1;');
     expect(src).toContain("@state() private navigationMode: 'infinite' | 'paginated' = 'infinite';");
     expect(src).toContain('readContentRouteUrlState({');
-    expect(src).toContain('resetContentRouteNavigation({');
+    expect(src).toContain('buildContentRouteLoadState({');
     expect(src).toContain('forcePaginatedContentRouteNavigation(this.infiniteScroll)');
     expect(src).toContain('this.navigationMode = routeState.navigationMode;');
     expect(src).toContain(".navigationMode=${this.navigationMode}");

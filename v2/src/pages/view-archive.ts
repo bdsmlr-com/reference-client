@@ -19,8 +19,8 @@ import { contentGridItems, flattenContentResultPosts, prepareContentResultUnits 
 import {
   forcePaginatedContentRouteNavigation,
   readContentRouteUrlState,
-  resetContentRouteNavigation,
 } from '../services/content-route-state.js';
+import { buildContentRouteLoadState } from '../services/content-route-controller.js';
 import {
   applyContentPageResponseState,
   mergeContentPageUnits,
@@ -333,23 +333,25 @@ export class ViewArchive extends LitElement {
     }
 
     const preserveNavigationState = options.preserveNavigationState ?? false;
-    if (!preserveNavigationState) {
-      const routeState = resetContentRouteNavigation({
-        infinitePref: this.infiniteScroll,
-        forcePaginated: this.forcedPaginatedFromUrl,
-      });
-      this.currentPage = routeState.currentPage;
-      this.searchSessionId = routeState.sessionId;
-      this.navigationMode = routeState.navigationMode;
-      this.replaceArchiveUrlOnPageBoundary = routeState.replaceUrlOnPageBoundary;
-    }
-
-    this.exhausted = false;
-    this.hasNextPage = false;
+    const nextLoadState = buildContentRouteLoadState({
+      preserveNavigationState,
+      infinitePref: this.infiniteScroll,
+      forcePaginated: this.forcedPaginatedFromUrl,
+      currentPage: this.currentPage,
+      currentSessionId: this.searchSessionId,
+      currentNavigationMode: this.navigationMode,
+      currentReplaceUrlOnPageBoundary: this.replaceArchiveUrlOnPageBoundary,
+    });
+    this.currentPage = nextLoadState.currentPage;
+    this.searchSessionId = nextLoadState.sessionId;
+    this.navigationMode = nextLoadState.navigationMode;
+    this.replaceArchiveUrlOnPageBoundary = nextLoadState.replaceUrlOnPageBoundary;
+    this.exhausted = nextLoadState.exhausted;
+    this.hasNextPage = nextLoadState.hasNextPage;
     this.seenIds.clear();
-    this.stats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
-    this.resultUnits = [];
-    this.statusMessage = '';
+    this.stats = nextLoadState.stats;
+    this.resultUnits = nextLoadState.resultUnits;
+    this.statusMessage = nextLoadState.statusMessage;
     this.syncArchiveUrlState();
     this.paginationKey = generatePaginationCursorKey('archive', {
       blog: this.blog,

@@ -115,7 +115,7 @@ describe('archive pagination mode', () => {
 
     expect(src).toContain("private navigationMode: 'infinite' | 'paginated' = 'infinite'");
     expect(src).toContain('readContentRouteUrlState({');
-    expect(src).toContain('resetContentRouteNavigation({');
+    expect(src).toContain('buildContentRouteLoadState({');
     expect(src).toContain('forcePaginatedContentRouteNavigation(this.infiniteScroll)');
     expect(src).toContain('this.forcedPaginatedFromUrl = forcePaginatedFromUrl;');
   });

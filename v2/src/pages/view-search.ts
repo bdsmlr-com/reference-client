@@ -21,8 +21,8 @@ import { contentGridItems, flattenContentResultPosts, prepareContentResultUnits 
 import {
   forcePaginatedContentRouteNavigation,
   readContentRouteUrlState,
-  resetContentRouteNavigation,
 } from '../services/content-route-state.js';
+import { buildContentRouteLoadState } from '../services/content-route-controller.js';
 import {
   applyContentPageResponseState,
   mergeContentPageUnits,
@@ -536,17 +536,6 @@ export class ViewSearch extends LitElement {
     });
   }
 
-  private resetState(): void {
-    this.backendCursor = null;
-    this.exhausted = false;
-    this.hasNextPage = false;
-    this.seenIds.clear();
-    this.stats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
-    this.resultUnits = [];
-    this.statusMessage = '';
-    this.errorMessage = '';
-  }
-
   private async search(options: { preserveNavigationState?: boolean } = {}): Promise<void> {
     if (!this.query.trim()) return;
     if (this.selectedTypes.length === 0) {
@@ -556,16 +545,26 @@ export class ViewSearch extends LitElement {
 
     const preserveNavigationState = options.preserveNavigationState ?? false;
     this.searching = true;
-    if (!preserveNavigationState) {
-      const routeState = resetContentRouteNavigation({
-        infinitePref: this.infiniteScroll,
-      });
-      this.currentPage = routeState.currentPage;
-      this.searchSessionId = routeState.sessionId;
-      this.navigationMode = routeState.navigationMode;
-      this.replaceSearchUrlOnPageBoundary = routeState.replaceUrlOnPageBoundary;
-    }
-    this.resetState();
+    const nextLoadState = buildContentRouteLoadState({
+      preserveNavigationState,
+      infinitePref: this.infiniteScroll,
+      currentPage: this.currentPage,
+      currentSessionId: this.searchSessionId,
+      currentNavigationMode: this.navigationMode,
+      currentReplaceUrlOnPageBoundary: this.replaceSearchUrlOnPageBoundary,
+    });
+    this.currentPage = nextLoadState.currentPage;
+    this.searchSessionId = nextLoadState.sessionId;
+    this.navigationMode = nextLoadState.navigationMode;
+    this.replaceSearchUrlOnPageBoundary = nextLoadState.replaceUrlOnPageBoundary;
+    this.backendCursor = null;
+    this.exhausted = nextLoadState.exhausted;
+    this.hasNextPage = nextLoadState.hasNextPage;
+    this.seenIds.clear();
+    this.stats = nextLoadState.stats;
+    this.resultUnits = nextLoadState.resultUnits;
+    this.statusMessage = nextLoadState.statusMessage;
+    this.errorMessage = '';
     this.hasSearched = true;
     const searchToken = ++this.activeSearchToken;
     const normalizedQuery = this.query.trim();
