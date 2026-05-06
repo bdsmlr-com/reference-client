@@ -67,10 +67,133 @@ export class ViewSearch extends LitElement {
         padding: 0 16px;
       }
 
-      .help code {
+      .help button {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+      }
+
+      .syntax-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        z-index: 1000;
+      }
+
+      .syntax-modal {
+        width: min(720px, 100%);
+        max-height: min(80vh, 760px);
+        overflow: auto;
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+        padding: 18px 18px 14px;
+      }
+
+      .syntax-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .syntax-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .syntax-close {
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--text-muted);
+        padding: 4px 10px;
+        font-size: 12px;
+      }
+
+      .syntax-grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .syntax-section {
+        display: grid;
+        gap: 8px;
+      }
+
+      .syntax-section h4 {
+        margin: 0;
+        font-size: 13px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+
+      .syntax-section p {
+        margin: 0;
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.4;
+      }
+
+      .syntax-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .syntax-row {
+        display: grid;
+        grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+      }
+
+      .syntax-row code,
+      .syntax-example code {
         background: var(--bg-panel-alt);
-        padding: 2px 6px;
-        border-radius: 4px;
+        padding: 4px 6px;
+        border-radius: 6px;
+        font-size: 12px;
+        color: var(--text-primary);
+        white-space: nowrap;
+      }
+
+      .syntax-row span,
+      .syntax-example span {
+        font-size: 13px;
+        color: var(--text-primary);
+        line-height: 1.4;
+      }
+
+      .syntax-example {
+        display: grid;
+        gap: 4px;
+        padding: 10px 12px;
+        border: 1px solid var(--border-subtle);
+        border-radius: 10px;
+        background: var(--bg-panel-alt);
+        text-decoration: none;
+      }
+
+      .syntax-example:hover {
+        border-color: var(--accent);
+      }
+
+      .syntax-example-label {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
       }
 
       .search-box {
@@ -235,6 +358,7 @@ export class ViewSearch extends LitElement {
   @state() private teaserPosts: ProcessedPost[] = [];
   @state() private teaserLoading = false;
   @state() private hasNextPage = false;
+  @state() private showSyntaxGuide = false;
   private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('search', 'main_stream');
 
   private backendCursor: string | null = null;
@@ -755,6 +879,86 @@ export class ViewSearch extends LitElement {
     }
   }
 
+  private renderSyntaxGuide() {
+    const examples = [
+      {
+        label: 'Open a specific post thread',
+        query: 'post:43110814',
+      },
+      {
+        label: 'Filter to a blog plus media kind',
+        query: 'blog:Inner-Indulgence media:image',
+      },
+      {
+        label: 'Exact legacy tag with spaces',
+        query: 'tag:"best served hot"',
+      },
+      {
+        label: 'Combine OR groups with implicit AND',
+        query: '(tag:latex | tag:rubber) (media:image | media:video)',
+      },
+      {
+        label: 'Phrase search with a calendar window',
+        query: '"best served hot" when:2024-12',
+      },
+    ];
+
+    return html`
+      <div class="syntax-backdrop" @click=${() => (this.showSyntaxGuide = false)}>
+        <section class="syntax-modal" role="dialog" aria-label="Search syntax" @click=${(e: Event) => e.stopPropagation()}>
+          <div class="syntax-header">
+            <div class="syntax-title">Search syntax</div>
+            <button class="syntax-close" @click=${() => (this.showSyntaxGuide = false)}>Close</button>
+          </div>
+
+          <div class="syntax-grid">
+            <div class="syntax-section">
+              <h4>Core rules</h4>
+              <div class="syntax-list">
+                <div class="syntax-row"><code>words here</code><span>Free text across post text fields and tags.</span></div>
+                <div class="syntax-row"><code>"exact phrase"</code><span>Phrase search across that same text space.</span></div>
+                <div class="syntax-row"><code>a b</code><span>Adjacent groups imply <strong>AND</strong>.</span></div>
+                <div class="syntax-row"><code>a | b</code><span>Use <strong>OR</strong> explicitly.</span></div>
+                <div class="syntax-row"><code>-term</code><span>Exclude a term or group with <strong>NOT</strong>.</span></div>
+                <div class="syntax-row"><code>(a | b) c</code><span>Parentheses group boolean logic.</span></div>
+              </div>
+            </div>
+
+            <div class="syntax-section">
+              <h4>Typed filters</h4>
+              <div class="syntax-list">
+                <div class="syntax-row"><code>post:43110814</code><span>Specific post or origin-post thread.</span></div>
+                <div class="syntax-row"><code>blog:SomeBlog</code><span>Posting blog, scoped further by the existing Original / Reblog / All controls.</span></div>
+                <div class="syntax-row"><code>tag:latex</code><span>Exact tag filter.</span></div>
+                <div class="syntax-row"><code>tag:"best served hot"</code><span>Exact legacy tag with spaces.</span></div>
+                <div class="syntax-row"><code>media:image</code><span>Media kind filter. Use <code>|</code> for multiple kinds.</span></div>
+                <div class="syntax-row"><code>when:2024</code><span>Year filter. Also supports <code>YYYY-MM</code> and <code>YYYY-MM-DD</code>.</span></div>
+              </div>
+            </div>
+
+            <div class="syntax-section">
+              <h4>Try it</h4>
+              <p>These open in a new tab so you can test-drive the language without losing your current search.</p>
+              <div class="syntax-list">
+                ${examples.map((example) => html`
+                  <a
+                    class="syntax-example"
+                    href=${buildPageUrl('search', undefined, { q: example.query })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <div class="syntax-example-label">${example.label}</div>
+                    <code>${example.query}</code>
+                  </a>
+                `)}
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
   render() {
     const routePerspectiveBlog = getBlogNameFromPath();
     const matchHelp = routePerspectiveBlog === 'you'
@@ -763,14 +967,13 @@ export class ViewSearch extends LitElement {
     return html`
       <div class="content">
         <p class="help">
-          Boolean: <code>tag1 tag2</code> = AND, <code>"exact phrase"</code> = literal,
-          <code>-tag</code> = NOT, <code>(a b) c</code> = groups
+          <button @click=${() => (this.showSyntaxGuide = true)}>Search syntax</button>
         </p>
 
         <div class="search-box">
           <input
             type="text"
-            placeholder="Enter tags..."
+            placeholder="Search posts, tags, blog:foo, media:image..."
             .value=${this.query}
             @input=${(e: Event) => (this.query = (e.target as HTMLInputElement).value)}
             @keypress=${this.handleKeyPress}
@@ -887,6 +1090,7 @@ export class ViewSearch extends LitElement {
           : ''}
 
         <div id="scroll-sentinel" style="height:1px;"></div>
+        ${this.showSyntaxGuide ? this.renderSyntaxGuide() : ''}
       </div>
     `;
   }
