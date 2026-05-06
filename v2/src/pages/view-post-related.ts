@@ -4,7 +4,6 @@ import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { getPrimaryBlogName } from '../services/blog-resolver.js';
 import type { Post } from '../types/api.js';
-import '../components/result-group.js';
 import '../components/post-recommendations.js';
 
 @customElement('view-post-related')
@@ -165,19 +164,12 @@ export class ViewPostRelated extends LitElement {
         )}
       </div>
 
-      <result-group
-        wide
-        ?bare=${true}
+      <post-recommendations
+        .postId=${id}
+        .mode=${'grid'}
+        .perspectiveBlogName=${this.perspectiveBlogName}
         .title=${this.title}
-        .description=${`Expanded related results for post ${id}`}
-      >
-        <post-recommendations
-          .postId=${id}
-          .mode=${'list'}
-          .perspectiveBlogName=${this.perspectiveBlogName}
-          .title=${''}
-        ></post-recommendations>
-      </result-group>
+      ></post-recommendations>
     `;
   }
 }

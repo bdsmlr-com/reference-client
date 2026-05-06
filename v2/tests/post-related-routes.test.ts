@@ -31,8 +31,8 @@ describe('post related routes', () => {
     expect(pageSrc).toContain('add(this.seedPost?.originBlogName');
     expect(pageSrc).toContain('add(this.seedPost?.blogName');
     expect(pageSrc).toContain('apiClient.posts.get(id)');
-    expect(pageSrc).toContain('<result-group');
-    expect(pageSrc).toContain(".description=${`Expanded related results for post ${id}`}");
+    expect(pageSrc).not.toContain('<result-group');
+    expect(pageSrc).toContain(".mode=${'grid'}");
   });
 
   it('recommendation API forwards perspective blog name when provided', () => {
