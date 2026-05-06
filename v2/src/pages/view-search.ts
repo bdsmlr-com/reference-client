@@ -8,20 +8,21 @@ import { normalizeArchiveWhenValue } from '../services/archive-when.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
   generatePaginationCursorKey,
-  getInfiniteScrollPreference,
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import { normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { PostType, PostSortField, Order, PostVariant } from '../types/api.js';
 import { parsePostTypesParam, parseVariantsParam, serializePostTypesParam, serializeVariantsParam } from '../services/post-filter-url.js';
 import {
-  buildContentNavigationState,
   buildSharedContentRouteParams,
-  parseSearchPageParam,
-  parseSearchSessionParam,
 } from '../services/search-session.js';
 import { materializeSearchResultUnits, type SearchResultUnit } from '../services/search-result-units.js';
 import { contentGridItems, flattenContentResultPosts, prepareContentResultUnits } from '../services/content-results.js';
+import {
+  forcePaginatedContentRouteNavigation,
+  readContentRouteUrlState,
+  resetContentRouteNavigation,
+} from '../services/content-route-state.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import {
   getGalleryMode,
@@ -459,22 +460,12 @@ export class ViewSearch extends LitElement {
   }
 
   private loadFromUrl(): void {
-    const q = getUrlParam('q');
-    const sort = getUrlParam('sort');
-    const match = getUrlParam('match');
-    const types = getUrlParam('types');
-    const variants = getUrlParam('variants');
-    const when = normalizeArchiveWhenValue(getUrlParam('when') || '');
-    const initialPage = parseSearchPageParam(getUrlParam('page'));
-    const initialSessionId = parseSearchSessionParam(getUrlParam('session') || getUrlParam('sessionId'));
-    const infinitePref = getInfiniteScrollPreference('search');
-    const hasExplicitWhen = !!when;
-    const routeState = buildContentNavigationState({
-      infinitePref,
-      page: initialPage ?? (hasExplicitWhen ? 1 : undefined),
-      sessionId: hasExplicitWhen ? '' : initialSessionId,
-      forcePaginated: hasExplicitWhen,
+    const { query, sort, types, variants, when, infinitePref, routeState } = readContentRouteUrlState({
+      pageName: 'search',
+      normalizeWhen: normalizeArchiveWhenValue,
+      forcePaginatedOnWhen: true,
     });
+    const match = getUrlParam('match');
 
     this.infiniteScroll = infinitePref;
     this.currentPage = routeState.currentPage;
@@ -482,7 +473,7 @@ export class ViewSearch extends LitElement {
     this.navigationMode = routeState.navigationMode;
     this.replaceSearchUrlOnPageBoundary = routeState.replaceUrlOnPageBoundary;
 
-    if (q) this.query = q;
+    if (query) this.query = query;
     this.searchWhen = when;
     if (match === 'soft' || match === 'hard' || match === 'off') this.matchMode = match;
     this.sortExplicitInUrl = !!sort;
@@ -561,10 +552,8 @@ export class ViewSearch extends LitElement {
     const preserveNavigationState = options.preserveNavigationState ?? false;
     this.searching = true;
     if (!preserveNavigationState) {
-      const routeState = buildContentNavigationState({
+      const routeState = resetContentRouteNavigation({
         infinitePref: this.infiniteScroll,
-        page: undefined,
-        sessionId: '',
       });
       this.currentPage = routeState.currentPage;
       this.searchSessionId = routeState.sessionId;
@@ -749,12 +738,7 @@ export class ViewSearch extends LitElement {
 
   private handleWhenChange(e: CustomEvent<{ value: string }>): void {
     this.searchWhen = normalizeArchiveWhenValue(e.detail.value);
-    const routeState = buildContentNavigationState({
-      infinitePref: this.infiniteScroll,
-      page: 1,
-      sessionId: '',
-      forcePaginated: true,
-    });
+    const routeState = forcePaginatedContentRouteNavigation(this.infiniteScroll);
     this.currentPage = routeState.currentPage;
     this.searchSessionId = routeState.sessionId;
     this.navigationMode = routeState.navigationMode;

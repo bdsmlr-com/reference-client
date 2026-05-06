@@ -30,10 +30,10 @@ describe('archive/search render contract usage', () => {
     const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
     const searchSrc = readFileSync(join(process.cwd(), 'src/pages/view-search.ts'), 'utf8');
 
-    expect(archiveSrc).toContain("const q = getUrlParam('q');");
+    expect(archiveSrc).toContain('readContentRouteUrlState({');
     expect(archiveSrc).toContain('tag_name: this.buildArchiveScopedQuery()');
     expect(archiveSrc).toContain('placeholder="Filter this archive with blog:, tag:, media:, when..."');
-    expect(searchSrc).toContain("const q = getUrlParam('q');");
+    expect(searchSrc).toContain('readContentRouteUrlState({');
     expect(searchSrc).toContain('tag_name: this.query');
   });
 

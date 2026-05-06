@@ -16,6 +16,7 @@ describe('search regression and tag visibility', () => {
 
   it('keeps search result rendering free of timeline item leakage', () => {
     const searchSrc = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+    const contentResultsSrc = readFileSync(join(ROOT, 'services/content-results.ts'), 'utf8');
     const unitsSrc = readFileSync(join(ROOT, 'services/search-result-units.ts'), 'utf8');
 
     expect(searchSrc).toContain("../services/search-result-units.js");
@@ -23,7 +24,9 @@ describe('search regression and tag visibility', () => {
     expect(searchSrc).toContain('@state() private resultUnits');
     expect(searchSrc).not.toContain('@state() private timelineItems');
     expect(searchSrc).toContain('materializeSearchResultUnits(resp)');
-    expect(searchSrc).toContain('prepareSearchResultUnit(unit)');
+    expect(searchSrc).toContain('prepareContentResultUnits({');
+    expect(contentResultsSrc).toContain("if (unit.kind === 'post')");
+    expect(contentResultsSrc).toContain("kind: 'result_group'");
     expect(unitsSrc).not.toContain('TimelineItem');
     expect(unitsSrc).not.toContain('materializeLegacySearchResultUnits');
     expect(unitsSrc).not.toContain('timelineItems');
@@ -39,12 +42,13 @@ describe('search regression and tag visibility', () => {
   });
 
   it('does not collapse search results by origin post or media url', () => {
-    const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+    const pageSrc = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+    const contentResultsSrc = readFileSync(join(ROOT, 'services/content-results.ts'), 'utf8');
 
-    expect(src).toContain('private seenIds = new Set<number>();');
-    expect(src).not.toContain('private renderedMediaKeys = new Set<string>();');
-    expect(src).not.toContain('const contentKey =');
-    expect(src).toContain('if (this.seenIds.has(post.id)) {');
+    expect(pageSrc).toContain('private seenIds = new Set<number>();');
+    expect(contentResultsSrc).not.toContain('renderedMediaKeys');
+    expect(contentResultsSrc).not.toContain('contentKey');
+    expect(contentResultsSrc).toContain('if (!allowDuplicateIds && seenIds.has(post.id)) {');
   });
 
   it('scopes cached search responses by build sha so deploys do not serve stale clear results', () => {
@@ -87,9 +91,9 @@ describe('search regression and tag visibility', () => {
     expect(src).toContain("@state() private searchSessionId = '';");
     expect(src).toContain('@state() private currentPage = 1;');
     expect(src).toContain("@state() private navigationMode: 'infinite' | 'paginated' = 'infinite';");
-    expect(src).toContain("const initialPage = parseSearchPageParam(getUrlParam('page'));");
-    expect(src).toContain("const initialSessionId = parseSearchSessionParam(getUrlParam('session') || getUrlParam('sessionId'));");
-    expect(src).toContain('const routeState = buildContentNavigationState({');
+    expect(src).toContain('readContentRouteUrlState({');
+    expect(src).toContain('resetContentRouteNavigation({');
+    expect(src).toContain('forcePaginatedContentRouteNavigation(this.infiniteScroll)');
     expect(src).toContain('this.navigationMode = routeState.navigationMode;');
     expect(src).toContain(".navigationMode=${this.navigationMode}");
     expect(src).toContain(".currentPage=${this.currentPage}");

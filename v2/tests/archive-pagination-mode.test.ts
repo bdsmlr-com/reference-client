@@ -114,10 +114,10 @@ describe('archive pagination mode', () => {
     const src = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
 
     expect(src).toContain("private navigationMode: 'infinite' | 'paginated' = 'infinite'");
-    expect(src).toContain('buildContentNavigationState');
-    expect(src).toContain("parseSearchPageParam(getUrlParam('page'))");
-    expect(src).toContain("parseSearchSessionParam(getUrlParam('session') || getUrlParam('sessionId'))");
-    expect(src).toContain("const hasExplicitPaginationState = explicitPage !== undefined || !!explicitSessionId || !!explicitWhen;");
+    expect(src).toContain('readContentRouteUrlState({');
+    expect(src).toContain('resetContentRouteNavigation({');
+    expect(src).toContain('forcePaginatedContentRouteNavigation(this.infiniteScroll)');
+    expect(src).toContain('this.forcedPaginatedFromUrl = forcePaginatedFromUrl;');
   });
 
   it('uses archive page/session state instead of the old cursor walk', () => {

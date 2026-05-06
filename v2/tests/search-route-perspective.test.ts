@@ -9,10 +9,8 @@ describe('search route perspective wiring', () => {
     const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
 
     expect(src).toContain("import { buildPageUrl, getBlogNameFromPath, getPrimaryBlogName, getUrlParam, setUrlParams } from '../services/blog-resolver.js';");
-    expect(src).toContain('buildContentNavigationState');
     expect(src).toContain('buildSharedContentRouteParams');
-    expect(src).toContain('parseSearchPageParam');
-    expect(src).toContain('parseSearchSessionParam');
+    expect(src).toContain('readContentRouteUrlState');
     expect(src).toContain('perspective_blog_name');
     expect(src).toContain('const routePerspectiveBlog = getBlogNameFromPath();');
     expect(src).toContain("const explicitSort = !!getUrlParam('sort');");
