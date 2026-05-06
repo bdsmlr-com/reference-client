@@ -23,7 +23,7 @@ vi.mock('../src/styles/theme.js', () => ({
 vi.mock('../src/services/client.js', () => ({
   apiClient: {
     identity: { resolveNameToId: vi.fn() },
-    posts: { list: vi.fn() },
+    posts: { searchCached: vi.fn() },
   },
 }));
 
@@ -67,6 +67,7 @@ vi.mock('../src/services/scroll-observer.js', () => ({
 vi.mock('../src/services/storage.js', () => ({
   getInfiniteScrollPreference: vi.fn(() => false),
   setCachedPaginationCursor: vi.fn(),
+  generatePaginationCursorKey: vi.fn(() => 'archive-key'),
 }));
 
 vi.mock('../src/services/profile.js', () => ({
@@ -84,12 +85,14 @@ vi.mock('../src/services/render-page.js', () => ({
   getPageSlotConfig: vi.fn(() => ({ loading: { cardType: '', count: 0 } })),
 }));
 
-vi.mock('../src/services/retrieval-presentation.js', () => ({
-  applyRetrievalPostPolicies: vi.fn((posts: unknown[]) => posts),
-}));
-
 vi.mock('../src/config.js', () => ({
   RenderSlotConfig: class {},
+}));
+
+vi.mock('../src/services/search-result-units.js', () => ({
+  materializeSearchResultUnits: vi.fn((resp: { posts?: unknown[] }) =>
+    (resp.posts || []).map((post) => ({ kind: 'post', post })),
+  ),
 }));
 
 vi.mock('../src/components/filter-bar.js', () => ({}));
@@ -112,35 +115,18 @@ describe('archive pagination mode', () => {
 
     expect(src).toContain("private navigationMode: 'infinite' | 'paginated' = 'infinite'");
     expect(src).toContain('buildContentNavigationState');
-    expect(src).toContain("parsePositivePageParam(getUrlParam('page'))");
-    expect(src).toContain("parseOpaqueParam(getUrlParam('cursor'))");
-    expect(src).toContain("const hasExplicitPaginationState = explicitPage !== undefined || !!explicitCursor || !!explicitWhen;");
+    expect(src).toContain("parseSearchPageParam(getUrlParam('page'))");
+    expect(src).toContain("parseSearchSessionParam(getUrlParam('session') || getUrlParam('sessionId'))");
+    expect(src).toContain("const hasExplicitPaginationState = explicitPage !== undefined || !!explicitSessionId || !!explicitWhen;");
   });
 
-  it('walks archive cursors to resolve explicit page state when no cursor is present', () => {
+  it('uses archive page/session state instead of the old cursor walk', () => {
     const src = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
 
-    expect(src).toContain('const explicitPage = parsePositivePageParam(getUrlParam(\'page\'))');
-    expect(src).toContain('resolveArchivePageCursor');
-    expect(src).toContain('while (resolvedPage < targetPage)');
-    expect(src).toContain('this.currentPageCursor = resolvedCursor;');
-  });
-
-  it('walks archive cursors at runtime until the requested page is reached', async () => {
-    const view = Object.assign(Object.create(ViewArchive.prototype), {
-      pageStartCursors: new Map([[1, null]]),
-      fetchArchivePageResponse: vi
-        .fn()
-        .mockResolvedValueOnce({ page: { nextPageToken: 'cursor-2' } })
-        .mockResolvedValueOnce({ page: { nextPageToken: 'cursor-3' } }),
-    });
-
-    const resolved = await view.resolveArchivePageCursor(3);
-
-    expect(resolved).toEqual({ resolvedPage: 3, resolvedCursor: 'cursor-3' });
-    expect(view.fetchArchivePageResponse).toHaveBeenCalledTimes(2);
-    expect(view.pageStartCursors.get(2)).toBe('cursor-2');
-    expect(view.pageStartCursors.get(3)).toBe('cursor-3');
+    expect(src).toContain('session: this.searchSessionId || \'\'');
+    expect(src).not.toContain('resolveArchivePageCursor');
+    expect(src).not.toContain('currentPageCursor');
+    expect(src).not.toContain('pageStartCursors');
   });
 
   it('renders the archive when control through the shared control panel', () => {
@@ -162,21 +148,23 @@ describe('archive pagination mode', () => {
     expect(src).toContain('@next-page=${() => this.handleNextPage()}');
   });
 
-  it('forwards when to archive list requests', async () => {
-    const listMock = vi.mocked(apiClient.posts.list);
-    listMock.mockResolvedValueOnce({ posts: [], page: { nextPageToken: null } } as never);
+  it('forwards when to archive search requests', async () => {
+    const searchMock = vi.mocked(apiClient.posts.searchCached);
+    searchMock.mockResolvedValueOnce({ posts: [], resultUnits: [], pageNumber: 1, hasMore: false } as never);
 
     const view = Object.assign(Object.create(ViewArchive.prototype), {
-      blogId: 123,
+      blog: 'demo-blog',
       sortValue: 'newest',
       selectedTypes: [1, 2, 3],
       selectedVariants: [],
       archiveWhen: '2026-05',
+      query: '',
+      searchSessionId: '',
     });
 
-    await view.fetchArchivePageResponse(null);
+    await view.fetchArchivePageResponse(1);
 
-    expect(listMock).toHaveBeenCalledWith(expect.objectContaining({ when: '2026-05' }));
+    expect(searchMock).toHaveBeenCalledWith(expect.objectContaining({ when: '2026-05' }));
   });
 
   it('changes archive when state and forces paginated reloads when the picker emits a new value', async () => {
@@ -185,9 +173,9 @@ describe('archive pagination mode', () => {
       forcedPaginatedFromUrl: false,
       infiniteScroll: true,
       currentPage: 4,
-      currentPageCursor: 'cursor-4',
+      searchSessionId: 'sess-archive',
       hasNextPage: true,
-      pageStartCursors: new Map([[1, null], [2, 'cursor-2']]),
+      replaceArchiveUrlOnPageBoundary: true,
       navigationMode: 'infinite',
       loadPosts: vi.fn().mockResolvedValue(undefined),
     });
@@ -197,9 +185,8 @@ describe('archive pagination mode', () => {
     expect(view.archiveWhen).toBe('2026-05-03');
     expect(view.forcedPaginatedFromUrl).toBe(true);
     expect(view.currentPage).toBe(1);
-    expect(view.currentPageCursor).toBeNull();
+    expect(view.searchSessionId).toBe('');
     expect(view.hasNextPage).toBe(false);
-    expect(view.pageStartCursors.get(1)).toBeNull();
     expect(view.navigationMode).toBe('paginated');
     expect(view.loadPosts).toHaveBeenCalledTimes(1);
   });
