@@ -22,6 +22,11 @@ import {
   resetContentRouteNavigation,
 } from '../services/content-route-state.js';
 import {
+  applyContentPageResponseState,
+  mergeContentPageUnits,
+  resolveToggledContentNavigationMode,
+} from '../services/content-route-pagination.js';
+import {
   getGalleryMode,
   PROFILE_EVENTS,
   type GalleryMode,
@@ -391,10 +396,17 @@ export class ViewArchive extends LitElement {
         return;
       }
 
-      this.searchSessionId = resp.sessionId || this.searchSessionId;
-      this.currentPage = resp.pageNumber || targetPage;
-      this.hasNextPage = !!resp.hasMore;
-      this.exhausted = !resp.hasMore;
+      const nextState = applyContentPageResponseState({
+        responseSessionId: resp.sessionId,
+        currentSessionId: this.searchSessionId,
+        responsePageNumber: resp.pageNumber,
+        targetPage,
+        hasMore: resp.hasMore,
+      });
+      this.searchSessionId = nextState.sessionId;
+      this.currentPage = nextState.currentPage;
+      this.hasNextPage = nextState.hasNextPage;
+      this.exhausted = nextState.exhausted;
 
       const newUnits = prepareContentResultUnits({
         units: materializeSearchResultUnits(resp),
@@ -403,11 +415,12 @@ export class ViewArchive extends LitElement {
         allowDuplicateIds: isAdminMode(),
       });
 
-      if (this.navigationMode === 'paginated' || targetPage === 1) {
-        this.resultUnits = newUnits;
-      } else {
-        this.resultUnits = [...this.resultUnits, ...newUnits];
-      }
+      this.resultUnits = mergeContentPageUnits({
+        navigationMode: this.navigationMode,
+        targetPage,
+        existingUnits: this.resultUnits,
+        newUnits,
+      });
       if (this.navigationMode === 'paginated') {
         this.syncArchiveUrlState();
       } else if (this.replaceArchiveUrlOnPageBoundary && this.currentPage > 1) {
@@ -475,10 +488,13 @@ export class ViewArchive extends LitElement {
 
   private handleInfiniteToggle(e: CustomEvent): void {
     this.infiniteScroll = e.detail.enabled;
+    const nextMode = resolveToggledContentNavigationMode({
+      infiniteEnabled: this.infiniteScroll,
+      forcedPaginatedFromUrl: this.forcedPaginatedFromUrl,
+    });
     if (this.forcedPaginatedFromUrl) {
       return;
     }
-    const nextMode = this.infiniteScroll ? 'infinite' : 'paginated';
     if (nextMode !== this.navigationMode) {
       this.navigationMode = nextMode;
       void this.loadPosts();

@@ -23,6 +23,11 @@ import {
   readContentRouteUrlState,
   resetContentRouteNavigation,
 } from '../services/content-route-state.js';
+import {
+  applyContentPageResponseState,
+  mergeContentPageUnits,
+  resolveToggledContentNavigationMode,
+} from '../services/content-route-pagination.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import {
   getGalleryMode,
@@ -679,10 +684,17 @@ export class ViewSearch extends LitElement {
       }
 
       this.backendCursor = resp.page?.nextPageToken || null;
-      this.searchSessionId = resp.sessionId || this.searchSessionId;
-      this.currentPage = resp.pageNumber || targetPage;
-      this.hasNextPage = !!resp.hasMore;
-      this.exhausted = !resp.hasMore;
+      const nextState = applyContentPageResponseState({
+        responseSessionId: resp.sessionId,
+        currentSessionId: this.searchSessionId,
+        responsePageNumber: resp.pageNumber,
+        targetPage,
+        hasMore: resp.hasMore,
+      });
+      this.searchSessionId = nextState.sessionId;
+      this.currentPage = nextState.currentPage;
+      this.hasNextPage = nextState.hasNextPage;
+      this.exhausted = nextState.exhausted;
 
       const newUnits = prepareContentResultUnits({
         units: materializeSearchResultUnits(resp),
@@ -690,11 +702,12 @@ export class ViewSearch extends LitElement {
         stats: this.stats,
       });
 
-      if (this.navigationMode === 'paginated' || targetPage === 1) {
-        this.resultUnits = newUnits;
-      } else {
-        this.resultUnits = [...this.resultUnits, ...newUnits];
-      }
+      this.resultUnits = mergeContentPageUnits({
+        navigationMode: this.navigationMode,
+        targetPage,
+        existingUnits: this.resultUnits,
+        newUnits,
+      });
 
       if (this.navigationMode === 'paginated') {
         this.syncSearchUrlState();
@@ -798,6 +811,10 @@ export class ViewSearch extends LitElement {
 
   private handleInfiniteToggle(e: CustomEvent): void {
     this.infiniteScroll = e.detail.enabled;
+    this.navigationMode = resolveToggledContentNavigationMode({
+      infiniteEnabled: this.infiniteScroll,
+      forcedPaginatedFromUrl: false,
+    });
     if (this.navigationMode === 'infinite' && this.infiniteScroll) {
       this.observeSentinel();
     }
