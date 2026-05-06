@@ -31,6 +31,7 @@ describe('post actions strip', () => {
     expect(src).toContain("dispatchEvent(new CustomEvent('engagement-open-tab'");
     expect(src).toContain('openEngagementTab');
     expect(src).toContain('count-chip-button');
+    expect(src).toContain('color: var(--text);');
     expect(src).toContain('like-active');
     expect(src).toContain('reblog-active');
     expect(src).toContain('comment-active');
@@ -47,6 +48,9 @@ describe('post actions strip', () => {
     expect(src).toContain('const likeCount = likeAction.count ?? 0;');
     expect(src).toContain('const reblogCount = reblogAction.count ?? 0;');
     expect(src).toContain('const commentCount = this.commentCount ?? commentAction.count ?? 0;');
+    expect(src).toContain("const shouldShowReblogCount = this.variant === 'detail' || reblogCount > 0;");
+    expect(src).toContain("const shouldShowCommentCount = this.variant === 'detail' || commentCount > 0;");
+    expect(src).toContain("const shouldShowLikeCount = this.variant === 'detail' || likeCount > 0;");
     expect(src).not.toContain('You reblogged');
   });
 

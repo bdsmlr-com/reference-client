@@ -116,7 +116,7 @@ export class PostCard extends LitElement {
 
       .tag {
         font-size: 10px;
-        color: var(--text-muted);
+        color: var(--text);
         background: transparent;
         border: 1px solid var(--border-subtle);
         padding: 1px 6px;

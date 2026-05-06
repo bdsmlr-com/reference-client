@@ -28,5 +28,7 @@ describe('post card presentation', () => {
     expect(src).toContain('presentation.identity.viaBlogDecoration');
     expect(src).toContain("@click=${(event: Event) => event.stopPropagation()}");
     expect(src).not.toContain('POST_TYPE_ICONS[p.type as PostType]');
+    expect(src).toContain('.tag {');
+    expect(src).toContain('color: var(--text);');
   });
 });

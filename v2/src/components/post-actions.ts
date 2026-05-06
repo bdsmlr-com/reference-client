@@ -60,7 +60,7 @@ export class PostActions extends LitElement {
         padding: 2px 8px;
         border-radius: 999px;
         font-size: 11px;
-        color: var(--text-muted);
+        color: var(--text);
         white-space: nowrap;
       }
 
@@ -446,6 +446,9 @@ export class PostActions extends LitElement {
     const likeCount = likeAction.count ?? 0;
     const reblogCount = reblogAction.count ?? 0;
     const commentCount = this.commentCount ?? commentAction.count ?? 0;
+    const shouldShowReblogCount = this.variant === 'detail' || reblogCount > 0;
+    const shouldShowCommentCount = this.variant === 'detail' || commentCount > 0;
+    const shouldShowLikeCount = this.variant === 'detail' || likeCount > 0;
     return html`
       <div class="actions-row">
         <div class="action-group">
@@ -459,9 +462,11 @@ export class PostActions extends LitElement {
           >
             ${this.reblogging ? '⟳' : reblogAction.icon}
           </button>
-          <button class="count-chip count-chip-button ${reblogCount > 0 ? 'reblog-active' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('reblogs', event)}>
-            ${reblogCount}
-          </button>
+          ${shouldShowReblogCount
+            ? html`<button class="count-chip count-chip-button ${reblogCount > 0 ? 'reblog-active' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('reblogs', event)}>
+                ${reblogCount}
+              </button>`
+            : nothing}
         </div>
         <div class="action-group">
           <button
@@ -473,9 +478,11 @@ export class PostActions extends LitElement {
           >
             ${commentAction.icon}
           </button>
-          <button class="count-chip count-chip-button ${commentCount > 0 ? 'comment-active' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('comments', event)}>
-            ${commentCount}
-          </button>
+          ${shouldShowCommentCount
+            ? html`<button class="count-chip count-chip-button ${commentCount > 0 ? 'comment-active' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('comments', event)}>
+                ${commentCount}
+              </button>`
+            : nothing}
         </div>
         <div class="action-group">
           <button
@@ -488,9 +495,11 @@ export class PostActions extends LitElement {
           >
             ${likeAction.icon}
           </button>
-          <button class="count-chip count-chip-button ${likeCount > 0 ? 'like-active' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('likes', event)}>
-            ${likeCount}
-          </button>
+          ${shouldShowLikeCount
+            ? html`<button class="count-chip count-chip-button ${likeCount > 0 ? 'like-active' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('likes', event)}>
+                ${likeCount}
+              </button>`
+            : nothing}
         </div>
       </div>
     `;
