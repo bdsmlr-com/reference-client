@@ -63,17 +63,15 @@ export class PostDetailContent extends LitElement {
         justify-content: center;
         align-items: center;
         max-height: min(78vh, 920px);
-        min-height: 220px;
-        padding: 10px;
-        background:
-          radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 55%),
-          #050505;
-        overflow: hidden;
+        min-height: 0;
+        padding: 0;
+        background: transparent;
+        overflow: visible;
       }
       .media-stage media-renderer {
-        width: min(100%, calc(100vw - 40px));
-        height: calc(min(78vh, 920px) - 20px);
-        max-width: 100%;
+        width: auto;
+        height: auto;
+        max-width: min(100%, calc(100vw - 40px));
         max-height: calc(min(78vh, 920px) - 20px);
         flex: 0 1 auto;
       }

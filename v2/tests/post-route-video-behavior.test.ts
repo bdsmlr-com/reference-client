@@ -56,8 +56,10 @@ describe('post route media behavior', () => {
     expect(src).toContain(".type=${'detail'}");
     expect(src).not.toContain(".type=${'post-detail'}");
     expect(src).toContain('.media-stage media-renderer {');
-    expect(src).toContain('height: calc(min(78vh, 920px) - 20px);');
-    expect(src).toContain('width: min(100%, calc(100vw - 40px));');
+    expect(src).toContain('width: auto;');
+    expect(src).toContain('height: auto;');
+    expect(src).toContain('max-width: min(100%, calc(100vw - 40px));');
+    expect(src).toContain('max-height: calc(min(78vh, 920px) - 20px);');
   });
 
   it('media-renderer keeps video as the only visible media surface (no overlay poster hack)', () => {
