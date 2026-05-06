@@ -142,9 +142,13 @@ describe('search regression and tag visibility', () => {
 
   it('writes readable type and variant tokens into search urls', () => {
     const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+    const serializationSrc = readFileSync(join(ROOT, 'services/content-route-serialization.ts'), 'utf8');
 
-    expect(src).toContain('serializePostTypesParam(this.selectedTypes)');
-    expect(src).toContain("serializeVariantsParam(this.selectedVariants, { emptyToken: 'all' })");
+    expect(src).toContain('buildContentRouteUrlParams({');
+    expect(src).toContain('buildContentPaginationSignature({');
+    expect(serializationSrc).toContain('serializePostTypesParam(selectedTypes)');
+    expect(serializationSrc).toContain('serializeVariantsParam(');
+    expect(serializationSrc).toContain("emptyVariantsToken ? { emptyToken: emptyVariantsToken } : undefined");
   });
 
   it('renders variant pills in original, reblog, all order', () => {

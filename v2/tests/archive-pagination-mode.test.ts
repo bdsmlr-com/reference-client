@@ -123,7 +123,8 @@ describe('archive pagination mode', () => {
   it('uses archive page/session state instead of the old cursor walk', () => {
     const src = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
 
-    expect(src).toContain('session: this.searchSessionId || \'\'');
+    expect(src).toContain('buildContentRouteUrlParams({');
+    expect(src).toContain('sessionId: this.searchSessionId');
     expect(src).not.toContain('resolveArchivePageCursor');
     expect(src).not.toContain('currentPageCursor');
     expect(src).not.toContain('pageStartCursors');

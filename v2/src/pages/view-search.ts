@@ -12,10 +12,7 @@ import {
 } from '../services/storage.js';
 import { normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { PostType, PostSortField, Order, PostVariant } from '../types/api.js';
-import { parsePostTypesParam, parseVariantsParam, serializePostTypesParam, serializeVariantsParam } from '../services/post-filter-url.js';
-import {
-  buildSharedContentRouteParams,
-} from '../services/search-session.js';
+import { parsePostTypesParam, parseVariantsParam } from '../services/post-filter-url.js';
 import { materializeSearchResultUnits, type SearchResultUnit } from '../services/search-result-units.js';
 import { contentGridItems, flattenContentResultPosts, prepareContentResultUnits } from '../services/content-results.js';
 import {
@@ -34,6 +31,10 @@ import {
   shouldObserveContentSentinel,
   shouldSyncContentUrlAfterPageLoad,
 } from '../services/content-route-behavior.js';
+import {
+  buildContentPaginationSignature,
+  buildContentRouteUrlParams,
+} from '../services/content-route-serialization.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import {
   getGalleryMode,
@@ -452,22 +453,20 @@ export class ViewSearch extends LitElement {
 
   private syncSearchUrlState(): void {
     const routePerspectiveBlog = getBlogNameFromPath();
-    setUrlParams({
-      q: this.query,
-      ...buildSharedContentRouteParams({
-        sortValue: this.sortValue,
-        includeSort: this.sortExplicitInUrl,
-        selectedTypes: this.selectedTypes,
-        selectedVariants: this.selectedVariants,
-        whenValue: this.searchWhen,
-        emptyVariantsToken: 'all',
-      }),
-      match: routePerspectiveBlog && this.matchMode !== 'off' ? this.matchMode : '',
-      page: this.navigationMode === 'paginated' || (this.replaceSearchUrlOnPageBoundary && this.currentPage > 1)
-        ? String(this.currentPage)
-        : '',
-      session: this.searchSessionId || '',
-    });
+    setUrlParams(buildContentRouteUrlParams({
+      query: this.query,
+      sortValue: this.sortValue,
+      includeSort: this.sortExplicitInUrl,
+      selectedTypes: this.selectedTypes,
+      selectedVariants: this.selectedVariants,
+      whenValue: this.searchWhen,
+      currentPage: this.currentPage,
+      navigationMode: this.navigationMode,
+      replaceUrlOnPageBoundary: this.replaceSearchUrlOnPageBoundary,
+      sessionId: this.searchSessionId,
+      matchValue: routePerspectiveBlog && this.matchMode !== 'off' ? this.matchMode : '',
+      emptyVariantsToken: 'all',
+    }));
   }
 
   private loadFromUrl(): void {
@@ -576,28 +575,28 @@ export class ViewSearch extends LitElement {
     const normalizedQuery = this.query.trim();
     const routePerspectiveBlog = getBlogNameFromPath();
 
-    const params: Record<string, string> = {
-      q: this.query,
-      ...buildSharedContentRouteParams({
-        sortValue: this.sortValue,
-        includeSort: this.sortExplicitInUrl,
-        selectedTypes: this.selectedTypes,
-        selectedVariants: this.selectedVariants,
-        whenValue: this.searchWhen,
-        emptyVariantsToken: 'all',
-      }),
-      match: routePerspectiveBlog && this.matchMode !== 'off' ? this.matchMode : '',
-      page: this.navigationMode === 'paginated' ? String(this.currentPage) : '',
-      session: this.navigationMode === 'paginated' ? this.searchSessionId : '',
-    };
-    setUrlParams(params);
+    setUrlParams(buildContentRouteUrlParams({
+      query: this.query,
+      sortValue: this.sortValue,
+      includeSort: this.sortExplicitInUrl,
+      selectedTypes: this.selectedTypes,
+      selectedVariants: this.selectedVariants,
+      whenValue: this.searchWhen,
+      currentPage: this.currentPage,
+      navigationMode: this.navigationMode,
+      replaceUrlOnPageBoundary: false,
+      sessionId: this.navigationMode === 'paginated' ? this.searchSessionId : '',
+      matchValue: routePerspectiveBlog && this.matchMode !== 'off' ? this.matchMode : '',
+      emptyVariantsToken: 'all',
+    }));
 
-    this.paginationKey = generatePaginationCursorKey('search', {
-      q: normalizedQuery,
-      sort: this.sortValue,
-      types: serializePostTypesParam(this.selectedTypes),
-      variants: serializeVariantsParam(this.selectedVariants, { emptyToken: 'all' }),
-    });
+    this.paginationKey = generatePaginationCursorKey('search', buildContentPaginationSignature({
+      query: normalizedQuery,
+      sortValue: this.sortValue,
+      selectedTypes: this.selectedTypes,
+      selectedVariants: this.selectedVariants,
+      emptyVariantsToken: 'all',
+    }));
     this.currentSearchSignature = this.paginationKey;
 
     try {

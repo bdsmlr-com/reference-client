@@ -12,9 +12,6 @@ import {
 } from '../services/storage.js';
 import { normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { Blog, PostType, PostSortField, Order, PostVariant } from '../types/api.js';
-import {
-  buildSharedContentRouteParams,
-} from '../services/search-session.js';
 import { contentGridItems, flattenContentResultPosts, prepareContentResultUnits } from '../services/content-results.js';
 import {
   forcePaginatedContentRouteNavigation,
@@ -32,6 +29,10 @@ import {
   shouldObserveContentSentinel,
   shouldSyncContentUrlAfterPageLoad,
 } from '../services/content-route-behavior.js';
+import {
+  buildContentPaginationSignature,
+  buildContentRouteUrlParams,
+} from '../services/content-route-serialization.js';
 import {
   getGalleryMode,
   PROFILE_EVENTS,
@@ -207,23 +208,18 @@ export class ViewArchive extends LitElement {
   };
 
   private buildArchiveUrlParams(): Record<string, string> {
-    const params: Record<string, string> = {
-      q: this.query,
-      ...buildSharedContentRouteParams({
-        sortValue: this.sortValue,
-        selectedTypes: this.selectedTypes,
-        selectedVariants: this.selectedVariants,
-        whenValue: this.archiveWhen,
-      }),
-      page: this.navigationMode === 'paginated' || (this.replaceArchiveUrlOnPageBoundary && this.currentPage > 1)
-        ? String(this.currentPage)
-        : '',
-      session: this.searchSessionId || '',
-    };
-    if (!isBlogInPath()) {
-      params.blog = this.blog;
-    }
-    return params;
+    return buildContentRouteUrlParams({
+      query: this.query,
+      sortValue: this.sortValue,
+      selectedTypes: this.selectedTypes,
+      selectedVariants: this.selectedVariants,
+      whenValue: this.archiveWhen,
+      currentPage: this.currentPage,
+      navigationMode: this.navigationMode,
+      replaceUrlOnPageBoundary: this.replaceArchiveUrlOnPageBoundary,
+      sessionId: this.searchSessionId,
+      extraParams: !isBlogInPath() ? { blog: this.blog } : {},
+    });
   }
 
   private syncArchiveUrlState(): void {
@@ -359,14 +355,14 @@ export class ViewArchive extends LitElement {
     this.resultUnits = nextLoadState.resultUnits;
     this.statusMessage = nextLoadState.statusMessage;
     this.syncArchiveUrlState();
-    this.paginationKey = generatePaginationCursorKey('archive', {
-      blog: this.blog,
-      q: this.buildArchiveScopedQuery(),
-      sort: this.sortValue,
-      types: this.selectedTypes.join(','),
-      variants: this.selectedVariants.join(','),
-      when: this.archiveWhen,
-    });
+    this.paginationKey = generatePaginationCursorKey('archive', buildContentPaginationSignature({
+      query: this.buildArchiveScopedQuery(),
+      sortValue: this.sortValue,
+      selectedTypes: this.selectedTypes,
+      selectedVariants: this.selectedVariants,
+      whenValue: this.archiveWhen,
+      extra: { blog: this.blog },
+    }));
 
     try {
       await this.fillPage(this.currentPage);
