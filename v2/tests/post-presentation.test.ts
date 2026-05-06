@@ -61,7 +61,7 @@ describe('toPresentationModel', () => {
     expect(detail.actions.some((action) => action.kind === 'permalink')).toBe(true);
   });
 
-  it('uses existing shared media-config preset names for each surface', () => {
+  it('uses canonical media families for each surface', () => {
     const post = makePost();
     const card = toPresentationModel(post, { surface: 'card', page: 'archive' });
     const lightbox = toPresentationModel(post, { surface: 'lightbox', page: 'archive' });
@@ -71,10 +71,10 @@ describe('toPresentationModel', () => {
       { surface: 'detail', page: 'post' },
     );
 
-    expect(card.media.preset).toBe('gallery-grid');
-    expect(lightbox.media.preset).toBe('lightbox');
-    expect(detail.media.preset).toBe('post-detail');
-    expect(videoDetail.media.preset).toBe('post-detail');
+    expect(card.media.preset).toBe('card');
+    expect(lightbox.media.preset).toBe('detail');
+    expect(detail.media.preset).toBe('detail');
+    expect(videoDetail.media.preset).toBe('detail');
   });
 
   it('marks reblog state in the shared identity descriptor', () => {

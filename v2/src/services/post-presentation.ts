@@ -178,11 +178,11 @@ function buildMediaDescriptor(post: ProcessedPost, ctx: NormalizedPresentationCo
 
   return {
     ...media,
-    preset: ctx.surface === 'lightbox'
-      ? 'lightbox'
-      : ctx.surface === 'detail'
-        ? 'post-detail'
-        : 'gallery-grid',
+    preset: ctx.surface === 'lightbox' || ctx.surface === 'detail'
+      ? 'detail'
+      : ctx.page === 'feed'
+        ? 'masonry'
+        : 'card',
   };
 }
 

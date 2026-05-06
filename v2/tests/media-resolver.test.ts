@@ -39,7 +39,7 @@ describe('Media Resolver', () => {
     CONFIG.imgproxyMode = 'fixed';
     CONFIG.mediaProxyBase = 'https://media.i.bdsmlr.com';
     const url = resolveMediaUrl('/uploads/foo.jpg', 'feed');
-    expect(url).toContain('media.i.bdsmlr.com/feed/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
+    expect(url).toContain('media.i.bdsmlr.com/masonry/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
   });
 
   describe('toS3Scheme', () => {
@@ -76,7 +76,7 @@ describe('Media Resolver', () => {
     it('should generate an unsafe URL in staging mode', () => {
       CONFIG.imgproxyMode = 'unsafe';
       const url = resolveMediaUrl('/uploads/foo.jpg', 'gallery-grid');
-      expect(url).toContain('imgproxy.i.bdsmlr.com/unsafe/g:sm/rs:fill:300:300/plain/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
+      expect(url).toContain('imgproxy.i.bdsmlr.com/unsafe/g:sm/rs:fill:400:400/plain/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
     });
 
     it('should strip signature params for unsafe/imgproxy URLs', () => {
@@ -102,15 +102,15 @@ describe('Media Resolver', () => {
       CONFIG.imgproxyMode = 'fixed';
       CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
       const url = resolveMediaUrl('/uploads/foo.jpg', 'lightbox');
-      // Should map 'lightbox' render type to the 'lightbox' alias
-      expect(url).toContain('media.bdsmlr.com/lightbox/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
+      // Should map lightbox-like detail surfaces to the canonical detail alias
+      expect(url).toContain('media.bdsmlr.com/detail/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
     });
 
     it('should resolve post-detail through the lightbox alias in fixed mode', () => {
       CONFIG.imgproxyMode = 'fixed';
       CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
       const url = resolveMediaUrl('/uploads/foo.jpg', 'post-detail');
-      expect(url).toContain('media.bdsmlr.com/lightbox/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
+      expect(url).toContain('media.bdsmlr.com/detail/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
     });
 
     it('should re-alias ergonomic s3 media URLs for lightbox', () => {
@@ -118,7 +118,7 @@ describe('Media Resolver', () => {
       CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
       const src = 'https://media.i.bdsmlr.com/gutter/s3://ocdn012.bdsmlr.com/uploads/foo.gif?e=123&t=abc';
       const url = resolveMediaUrl(src, 'lightbox');
-      expect(url).toContain('media.bdsmlr.com/lightbox/s3://ocdn012.bdsmlr.com/uploads/foo.gif?e=123&t=abc');
+      expect(url).toContain('media.bdsmlr.com/detail/s3://ocdn012.bdsmlr.com/uploads/foo.gif?e=123&t=abc');
     });
 
     it('should respect admin media_mode override', () => {

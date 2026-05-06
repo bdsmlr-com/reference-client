@@ -173,7 +173,7 @@ export class ActivityItem extends LitElement {
     const isTombstone = !rawUrl && !p.body;
     const isDeleted = Boolean(p.deletedAtUnix);
     const isOriginDeleted = Boolean(p.originDeletedAtUnix);
-    const renderType = this.mode === 'masonry' ? 'gallery-masonry' : 'gallery-grid';
+    const renderType = this.mode === 'masonry' ? 'masonry' : 'card';
     const tags = extractRenderableTags(p);
     const chipBlogName = presentation.identity.chipBlogLabel;
     const viewedBlog = this.normalizeBlogName(getBlogNameFromPath());

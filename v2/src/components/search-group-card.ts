@@ -106,7 +106,7 @@ export class SearchGroupCard extends LitElement {
           <div class="media">
             <media-renderer
               .src=${rawUrl}
-              .type=${this.mode === 'masonry' ? 'gallery-masonry' : 'gallery-grid'}
+              .type=${this.mode === 'masonry' ? 'masonry' : 'card'}
               style="object-fit: ${this.mode === 'masonry' ? 'contain' : 'cover'};"
             ></media-renderer>
           </div>

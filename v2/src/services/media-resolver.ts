@@ -6,11 +6,31 @@
 import { CONFIG, MEDIA_PRESETS } from '../config.js';
 import { isAdminMode } from './blog-resolver.js';
 
-export type MediaRenderType = 'gallery-grid' | 'gallery-masonry' | 'feed' | 'lightbox' | 'post-detail' | 'gutter' | 'poster';
+export type MediaRenderType = 'card' | 'masonry' | 'detail' | 'poster' | 'gallery-grid' | 'gallery-masonry' | 'feed' | 'lightbox' | 'post-detail' | 'gutter';
 
 // Consolidated media now lives on a single bucket; keep list to one to avoid
 // unnecessary failover/probing.
 export const BUCKET_LIST = ['ocdn012.bdsmlr.com'];
+
+function canonicalMediaType(type: MediaRenderType): 'card' | 'masonry' | 'detail' | 'poster' {
+  switch (type) {
+    case 'gallery-grid':
+    case 'gutter':
+    case 'card':
+      return 'card';
+    case 'gallery-masonry':
+    case 'feed':
+    case 'masonry':
+      return 'masonry';
+    case 'lightbox':
+    case 'post-detail':
+    case 'detail':
+      return 'detail';
+    case 'poster':
+    default:
+      return 'poster';
+  }
+}
 
 function mediaPathForDetection(url: string | undefined): string {
   if (!url) return '';
@@ -91,8 +111,9 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
   }
 
   const [s3Url, queryParams] = toS3Scheme(url);
-  const preset = MEDIA_PRESETS[type];
-  const aliasType = type === 'post-detail' ? 'lightbox' : type;
+  const canonicalType = canonicalMediaType(type);
+  const preset = MEDIA_PRESETS[canonicalType] || MEDIA_PRESETS[type];
+  const aliasType = canonicalType;
   
   if (!preset) {
     return url;

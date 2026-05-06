@@ -192,7 +192,7 @@ export class PostDetailContent extends LitElement {
             <media-renderer
               .src=${rawUrl}
               .posterSrc=${posterSrc}
-              .type=${'post-detail'}
+              .type=${'detail'}
               .autoplayVideo=${false}
               .controlsVideo=${true}
               .loopVideo=${true}

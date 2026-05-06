@@ -1,5 +1,23 @@
 {
   "presets": {
+    "card": {
+      "width": 400,
+      "height": 400,
+      "gravity": "gravity:sm",
+      "resize": "fill"
+    },
+    "masonry": {
+      "width": 400,
+      "height": 0,
+      "gravity": "gravity:sm",
+      "resize": "fit"
+    },
+    "detail": {
+      "width": 1200,
+      "height": 0,
+      "gravity": "gravity:sm",
+      "resize": "fit"
+    },
     "gallery-grid": {
       "width": 300,
       "height": 300,
@@ -175,7 +193,25 @@
       "imgproxyMode": "fixed"
     }
   },
-  "media_behavior": {
+    "media_behavior": {
+    "card": {
+      "autoplay": true,
+      "controls": false,
+      "loop": true,
+      "preload": "metadata"
+    },
+    "masonry": {
+      "autoplay": true,
+      "controls": false,
+      "loop": true,
+      "preload": "metadata"
+    },
+    "detail": {
+      "autoplay": true,
+      "controls": true,
+      "loop": true,
+      "preload": "metadata"
+    },
     "default": {
       "autoplay": false,
       "controls": false,
