@@ -71,8 +71,11 @@ export class PostDetailContent extends LitElement {
         overflow: hidden;
       }
       .media-stage media-renderer {
+        width: min(100%, calc(100vw - 40px));
+        height: calc(min(78vh, 920px) - 20px);
         max-width: 100%;
         max-height: calc(min(78vh, 920px) - 20px);
+        flex: 0 1 auto;
       }
       .body-text {
         border-bottom: 1px solid var(--border-subtle);

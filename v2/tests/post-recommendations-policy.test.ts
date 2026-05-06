@@ -94,4 +94,45 @@ describe('post recommendations policy', () => {
     expect(items[0].post_id).toBe(202);
     expect(items[0]._hydratedPost?._media.type).toBe('image');
   });
+
+  it('rehydrates canonical recommendation posts when identity fields are missing', async () => {
+    stubBrowserState();
+    const { materializeRecommendationItems } = await import('../src/components/post-recommendations.js');
+    const batchGetPosts = vi.fn().mockResolvedValue({
+      posts: [
+        {
+          id: 303,
+          blogName: 'gamma',
+          type: 2,
+          content: {
+            files: ['/uploads/gamma.jpg'],
+            thumbnail: '/uploads/gamma.jpg',
+          },
+        },
+      ],
+    });
+    const getPost = vi.fn();
+
+    const items = await materializeRecommendationItems(
+      {
+        posts: [
+          {
+            id: 303,
+            type: 2,
+            content: {
+              files: ['/uploads/gamma.jpg'],
+              thumbnail: '/uploads/gamma.jpg',
+            },
+          },
+        ],
+      } as any,
+      { batchGetPosts, getPost },
+    );
+
+    expect(batchGetPosts).toHaveBeenCalledTimes(1);
+    expect(batchGetPosts).toHaveBeenCalledWith([303]);
+    expect(getPost).not.toHaveBeenCalled();
+    expect(items).toHaveLength(1);
+    expect(items[0]._hydratedPost?.blogName).toBe('gamma');
+  });
 });

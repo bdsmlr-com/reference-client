@@ -43,6 +43,10 @@ function buildCanonicalRecommendationItems(
   })) as RecResult[];
 }
 
+function hasRecommendationIdentity(post: Post | ProcessedPost): boolean {
+  return Boolean(`${post.blogName || post.originBlogName || ''}`.trim());
+}
+
 async function hydrateLegacyRecommendationItems(
   recs: RecResult[],
   policies: RetrievalPostPolicyMap | undefined,
@@ -111,7 +115,36 @@ export async function materializeRecommendationItems(
   deps: RecommendationHydrationDeps,
 ): Promise<RecResult[]> {
   if (Array.isArray(response.posts) && response.posts.length > 0) {
-    return buildCanonicalRecommendationItems(response.posts, response.postPolicies);
+    const canonical = buildCanonicalRecommendationItems(response.posts, response.postPolicies);
+    const missingIdentityIds = canonical
+      .map((item) => (item as any)._hydratedPost as ProcessedPost | undefined)
+      .filter((post): post is ProcessedPost => !!post)
+      .filter((post) => !hasRecommendationIdentity(post))
+      .map((post) => post.id)
+      .filter((id, index, all) => all.indexOf(id) === index);
+
+    if (!missingIdentityIds.length) {
+      return canonical;
+    }
+
+    const batchResp = await deps.batchGetPosts(missingIdentityIds);
+    const hydratedMap = new Map<number, ProcessedPost>();
+    applyRetrievalPostPolicies(batchResp.posts || [], response.postPolicies).forEach((post) => {
+      const processed = post as ProcessedPost;
+      processed._media = extractMedia(processed);
+      hydratedMap.set(processed.id, processed);
+    });
+
+    return canonical.map((item) => {
+      if (!item.post_id) return item;
+      const hydrated = hydratedMap.get(item.post_id);
+      if (!hydrated) return item;
+      return {
+        ...item,
+        post_owner: hydrated.blogName || item.post_owner,
+        _hydratedPost: hydrated,
+      };
+    });
   }
 
   const legacy = response.similar_posts || response.recommendations || [];

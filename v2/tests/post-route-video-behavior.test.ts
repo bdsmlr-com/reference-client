@@ -55,6 +55,9 @@ describe('post route media behavior', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/post-detail-content.ts'), 'utf8');
     expect(src).toContain(".type=${'detail'}");
     expect(src).not.toContain(".type=${'post-detail'}");
+    expect(src).toContain('.media-stage media-renderer {');
+    expect(src).toContain('height: calc(min(78vh, 920px) - 20px);');
+    expect(src).toContain('width: min(100%, calc(100vw - 40px));');
   });
 
   it('media-renderer keeps video as the only visible media surface (no overlay poster hack)', () => {
