@@ -607,6 +607,7 @@ export class ViewArchive extends LitElement {
       <div class="grid-container">
         <activity-grid 
           .mode=${this.galleryMode}
+          .page=${'archive'}
           .showBlogChip=${false}
           .items=${contentGridItems(this.resultUnits)}
           @activity-click=${this.handlePostClick}

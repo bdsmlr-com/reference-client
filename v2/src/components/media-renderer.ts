@@ -150,7 +150,10 @@ export class MediaRenderer extends LitElement {
     const effectivePoster = posterUrl || resolvedUrl;
     const fillMode = this.type === 'gallery-grid' || this.type === 'gallery-masonry' || this.type === 'gutter' || this.type === 'lightbox';
     this.toggleAttribute('fill-mode', fillMode);
-    const mediaStyle = fillMode
+    const detailFitStyle = 'object-fit: contain; max-width: 100%; max-height: 100%; width: auto; height: auto; margin: 0 auto;';
+    const mediaStyle = this.type === 'post-detail'
+      ? detailFitStyle
+      : fillMode
       ? 'object-fit: inherit; width: 100%; height: 100%;'
       : 'object-fit: contain; width: 100%; height: auto;';
 
@@ -172,7 +175,9 @@ export class MediaRenderer extends LitElement {
       const effectivePreload = effectiveAutoplay && defaultPreload === 'none'
         ? 'metadata'
         : defaultPreload;
-      const nonFillVideoStyle = this.showPosterFrame
+      const nonFillVideoStyle = this.type === 'post-detail'
+        ? detailFitStyle
+        : this.showPosterFrame
         ? 'object-fit: contain; width: 100%; height: 100%; background: #000; position: absolute; inset: 0;'
         : 'object-fit: contain; width: 100%; height: auto; background: #000; position: static;';
       const videoStyle = fillMode ? mediaStyle : nonFillVideoStyle;

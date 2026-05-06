@@ -24,6 +24,7 @@ export class PostGrid extends LitElement {
     return html`
       <activity-grid
         .mode=${this.mode}
+        .page=${this.page}
         .items=${items}
         @activity-click=${this.handleActivityClick}
       ></activity-grid>

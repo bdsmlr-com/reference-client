@@ -3,10 +3,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 describe('post route media behavior', () => {
-  it('view-post keeps the top card non-clickable', () => {
+  it('view-post renders post-detail-content directly without the reused feed-card shell', () => {
     const src = readFileSync(join(process.cwd(), 'src/pages/view-post.ts'), 'utf8');
-    expect(src).toContain('<post-feed-item');
-    expect(src).toContain('.disableClick=${true}');
+    expect(src).toContain('<post-detail-content');
+    expect(src).not.toContain('<post-feed-item');
     expect(src).not.toContain('@post-click=${this.handlePostClick}');
   });
 
@@ -42,6 +42,7 @@ describe('post route media behavior', () => {
     expect(src).toContain('@loadeddata=${this.handleVideoReady}');
     expect(src).toContain('@play=${this.handleVideoReady}');
     expect(src).toContain("position: static;");
+    expect(src).toContain("const detailFitStyle = 'object-fit: contain; max-width: 100%; max-height: 100%; width: auto; height: auto; margin: 0 auto;';");
     expect(src).toContain('const isAnim = isAnimation(this.src);');
     expect(src).toContain("const isVideoSource = isAnim || isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');");
     expect(src).toContain('const behavior = getMediaBehavior(this.type);');

@@ -11,12 +11,15 @@ describe('post detail unification', () => {
     const engagementSrc = readFileSync(join(ROOT, 'components/post-engagement.ts'), 'utf8');
 
     expect(postViewSrc).toContain("import '../components/post-detail-content.js';");
+    expect(postViewSrc).not.toContain("import '../components/post-feed-item.js';");
     expect(detailSrc).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
+    expect(detailSrc).toContain("import './media-renderer.js';");
     expect(detailSrc).toContain("@property({ type: String }) surface: 'detail' | 'lightbox' = 'detail';");
     expect(detailSrc).toContain("const presentation = toPresentationModel(p, {");
     expect(detailSrc).toContain("const recommendationsMode = this.surface === 'lightbox' ? 'list' : 'grid';");
-    expect(detailSrc).toContain("const engagementStandalone = this.surface !== 'lightbox';");
+    expect(detailSrc).toContain("const engagementStandalone = false;");
     expect(postViewSrc).toContain('<post-detail-content');
+    expect(postViewSrc).not.toContain('<post-feed-item');
     expect(postViewSrc).not.toContain('recommendationsMode=');
     expect(postViewSrc).not.toContain('engagementStandalone');
     expect(engagementSrc).not.toContain('<div class="lightbox-links">');

@@ -143,6 +143,7 @@ export class ActivityItem extends LitElement {
   @property({ type: Object }) post!: ProcessedPost;
   @property({ type: String }) interactionType: 'post' | 'reblog' | 'like' | 'comment' = 'post';
   @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
+  @property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'activity';
   @property({ type: Boolean }) showBlogChip = true;
 
   private handleClick() {
@@ -162,7 +163,7 @@ export class ActivityItem extends LitElement {
     const media = p._media;
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
 
-    const presentation = toPresentationModel(p, { surface: 'card', page: 'activity', interactionKind: this.interactionType, role: 'cluster' });
+    const presentation = toPresentationModel(p, { surface: 'card', page: this.page, interactionKind: this.interactionType, role: 'cluster' });
     let typeIcon = presentation.identity.postTypeIcon || '📄';
     if (this.interactionType === 'reblog') typeIcon = '♻️';
     if (this.interactionType === 'like') typeIcon = '❤️';
@@ -182,9 +183,16 @@ export class ActivityItem extends LitElement {
       && !!viewedBlog
       && chipBlog === viewedBlog;
     const showBlogChip = this.showBlogChip
-      && (this.interactionType === 'like' || this.interactionType === 'comment' || this.interactionType === 'reblog')
-      && !shouldHideSelfInteractionChip
-      && !!chipBlogName;
+      && !!chipBlogName
+      && (
+        this.page === 'search'
+        || this.page === 'social'
+        || (
+          this.page === 'activity'
+          && (this.interactionType === 'like' || this.interactionType === 'comment' || this.interactionType === 'reblog')
+          && !shouldHideSelfInteractionChip
+        )
+      );
 
     return html`
       <article class="card" @click=${this.handleClick}>
@@ -293,6 +301,7 @@ export class ActivityGrid extends LitElement {
   @property({ type: Array }) items: ActivityGridItem[] = [];
   @property({ type: Boolean, reflect: true }) compact = false;
   @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
+  @property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'activity';
   @property({ type: Boolean }) showBlogChip = true;
 
   private getMasonryColumnCount(): number {
@@ -323,7 +332,7 @@ export class ActivityGrid extends LitElement {
               ${column.map((item) => html`
                 ${isResultGroupItem(item)
                   ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label} .originPostId=${item.originPostId} mode="masonry"></search-group-card>`
-                  : html`<activity-item .post=${item.post} .interactionType=${item.type} .showBlogChip=${this.showBlogChip} mode="masonry"></activity-item>`}
+                  : html`<activity-item .post=${item.post} .interactionType=${item.type} .page=${this.page} .showBlogChip=${this.showBlogChip} mode="masonry"></activity-item>`}
               `)}
             </div>
           `)}
@@ -336,7 +345,7 @@ export class ActivityGrid extends LitElement {
         ${this.items.map((item) => html`
           ${isResultGroupItem(item)
             ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label} .originPostId=${item.originPostId} mode="grid"></search-group-card>`
-            : html`<activity-item .post=${item.post} .interactionType=${item.type} .showBlogChip=${this.showBlogChip} mode="grid"></activity-item>`}
+            : html`<activity-item .post=${item.post} .interactionType=${item.type} .page=${this.page} .showBlogChip=${this.showBlogChip} mode="grid"></activity-item>`}
         `)}
       </section>
     `;

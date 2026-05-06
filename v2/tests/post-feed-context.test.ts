@@ -34,11 +34,21 @@ describe('post feed context', () => {
     expect(feedSrc).toContain('const isCanonicalPostCard = presentation.identity.isCanonicalCard;');
     expect(postsSrc).toContain('<timeline-stream');
     expect(postsSrc).toContain('page="activity"');
-    expect(postSrc).toContain('<post-feed-item');
-    expect(postSrc).toContain('page="post"');
+    expect(postSrc).toContain('<post-detail-content');
+    expect(postSrc).not.toContain('<post-feed-item');
     expect(streamSrc).toContain("@property({ type: String }) page: 'feed' | 'follower-feed' | 'activity' = 'feed';");
     expect(streamSrc).toContain("@post-select=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}");
     expect(streamSrc).toContain("detail: { post, posts, index: index >= 0 ? index : 0, from },");
+  });
+
+  it('threads explicit page context into activity-grid for search and archive surfaces', () => {
+    const searchSrc = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+    const archiveSrc = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
+    const gridSrc = readFileSync(join(ROOT, 'components/activity-grid.ts'), 'utf8');
+
+    expect(searchSrc).toContain(".page=${'search'}");
+    expect(archiveSrc).toContain(".page=${'archive'}");
+    expect(gridSrc).toContain("@property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'activity';");
   });
 
   it('uses a simplified shell on the post route instead of repeating body, tags, and footer metadata', () => {

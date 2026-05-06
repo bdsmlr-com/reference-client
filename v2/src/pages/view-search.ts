@@ -641,6 +641,7 @@ export class ViewSearch extends LitElement {
       <div class="grid-container">
         <activity-grid
           .mode=${this.galleryMode}
+          .page=${'search'}
           .items=${contentGridItems(this.resultUnits)}
           @activity-click=${this.handlePostClick}
         ></activity-grid>

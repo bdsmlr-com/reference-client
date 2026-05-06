@@ -9,10 +9,9 @@ import { repeat } from 'lit/directives/repeat.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { resolveLink } from '../services/link-resolver.js';
-import { toPresentationModel } from '../services/post-presentation.js';
 import { applyRetrievalPostPolicies, resolveRetrievalClickMode, type RetrievalPostPolicyMap } from '../services/retrieval-presentation.js';
 import type { PostRouteSource } from '../services/post-route-context.js';
-import './media-renderer.js';
+import './post-grid.js';
 import './load-footer.js';
 import './loading-spinner.js';
 
@@ -171,6 +170,9 @@ export class PostRecommendations extends LitElement {
         background: var(--bg-panel-alt);
         border-radius: 8px;
         animation: pulse 2s infinite;
+      }
+      .flat-results {
+        margin: 0 -16px;
       }
       #scroll-sentinel {
         height: 20px;
@@ -375,29 +377,42 @@ export class PostRecommendations extends LitElement {
       
       ${this.error ? html`<div class="error-text" style="color: var(--error); font-size: 13px; margin-bottom: 16px;">${this.error}</div>` : ''}
 
-      <div class="gutter-grid">
-        ${repeat(this.relatedPosts, r => r.post_id, r => {
-          const h = (r as any)._hydratedPost;
-          if (!h) return html`<div class="gutter-skeleton"></div>`;
-          const postLink = resolveLink('recommendation_post', { postId: h.id });
-          const presentation = toPresentationModel(h, { surface: 'card', page: 'post' });
-          
-          const raw = h._media?.url || h._media?.videoUrl || h.content?.thumbnail;
-          return html`
-            <div class="gutter-item" @click=${(event: Event) => this.navigateToRelated(r, event)}>
-              <div class="rec-media">
-                <media-renderer .src=${raw} .type=${'gutter'}></media-renderer>
-              </div>
-              <div class="rec-meta">
-                <span class="rec-blog">${presentation.identity.viaBlogLabel}</span>
-                <span title=${presentation.identity.permalink.title || postLink.title || nothing}>${presentation.identity.permalink.label || postLink.label || h.id}${presentation.identity.permalink.icon || postLink.icon ? ` ${presentation.identity.permalink.icon || postLink.icon}` : ''}</span>
-              </div>
+      ${this.mode === 'grid'
+        ? html`
+            <div class="flat-results">
+              <post-grid
+                .posts=${this.relatedPosts
+                  .map((r) => (r as any)._hydratedPost as ProcessedPost | undefined)
+                  .filter((post): post is ProcessedPost => !!post)}
+                .page=${'search'}
+                .mode=${'grid'}
+              ></post-grid>
             </div>
-          `;
-        })}
-        ${this.loading && this.relatedPosts.length === 0 ? 
-          Array(6).fill(0).map(() => html`<div class="gutter-skeleton"></div>`) : nothing}
-      </div>
+          `
+        : html`
+            <div class="gutter-grid">
+              ${repeat(this.relatedPosts, r => r.post_id, r => {
+                const h = (r as any)._hydratedPost;
+                if (!h) return html`<div class="gutter-skeleton"></div>`;
+                const postLink = resolveLink('recommendation_post', { postId: h.id });
+                const raw = h._media?.url || h._media?.videoUrl || h.content?.thumbnail;
+                const blogLabel = `${h.blogName || h.originBlogName || ''}`.trim();
+                return html`
+                  <div class="gutter-item" @click=${(event: Event) => this.navigateToRelated(r, event)}>
+                    <div class="rec-media">
+                      <media-renderer .src=${raw} .type=${'gutter'}></media-renderer>
+                    </div>
+                    <div class="rec-meta">
+                      ${blogLabel ? html`<span class="rec-blog">@${blogLabel.replace(/^@+/, '')}</span>` : html`<span></span>`}
+                      <span title=${postLink.title || nothing}>${postLink.label || h.id}${postLink.icon ? ` ${postLink.icon}` : ''}</span>
+                    </div>
+                  </div>
+                `;
+              })}
+              ${this.loading && this.relatedPosts.length === 0 ? 
+                Array(6).fill(0).map(() => html`<div class="gutter-skeleton"></div>`) : nothing}
+            </div>
+          `}
 
       <load-footer
         .mode=${this.mode}
