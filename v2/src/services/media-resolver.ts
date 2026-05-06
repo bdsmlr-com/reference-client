@@ -92,6 +92,7 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
 
   const [s3Url, queryParams] = toS3Scheme(url);
   const preset = MEDIA_PRESETS[type];
+  const aliasType = type === 'post-detail' ? 'lightbox' : type;
   
   if (!preset) {
     return url;
@@ -112,7 +113,7 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
     // Pattern: /media.i.bdsmlr.com/<type>/s3://bucket/path?sig
     const base = CONFIG.mediaProxyBase.replace('imgproxy.i.', 'media.i.');
     // Note: We use the 'type' (e.g. 'lightbox', 'feed') directly as the Nginx alias
-    return `${base}/${type}/${s3Url}${queryString}`;
+    return `${base}/${aliasType}/${s3Url}${queryString}`;
   }
 
   // UNSAFE MODE: Dynamic transformations

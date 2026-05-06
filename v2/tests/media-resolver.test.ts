@@ -106,6 +106,13 @@ describe('Media Resolver', () => {
       expect(url).toContain('media.bdsmlr.com/lightbox/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
     });
 
+    it('should resolve post-detail through the lightbox alias in fixed mode', () => {
+      CONFIG.imgproxyMode = 'fixed';
+      CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
+      const url = resolveMediaUrl('/uploads/foo.jpg', 'post-detail');
+      expect(url).toContain('media.bdsmlr.com/lightbox/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
+    });
+
     it('should re-alias ergonomic s3 media URLs for lightbox', () => {
       CONFIG.imgproxyMode = 'fixed';
       CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
