@@ -28,6 +28,12 @@ import {
   mergeContentPageUnits,
   resolveToggledContentNavigationMode,
 } from '../services/content-route-pagination.js';
+import {
+  canLoadMoreContentPage,
+  getAdjacentContentPageTarget,
+  shouldObserveContentSentinel,
+  shouldSyncContentUrlAfterPageLoad,
+} from '../services/content-route-behavior.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
 import {
   getGalleryMode,
@@ -521,7 +527,7 @@ export class ViewSearch extends LitElement {
   }
 
   private observeSentinel(): void {
-    if (this.navigationMode !== 'infinite') {
+    if (!shouldObserveContentSentinel(this.navigationMode)) {
       return;
     }
     requestAnimationFrame(() => {
@@ -708,9 +714,11 @@ export class ViewSearch extends LitElement {
         newUnits,
       });
 
-      if (this.navigationMode === 'paginated') {
-        this.syncSearchUrlState();
-      } else if (this.replaceSearchUrlOnPageBoundary && this.currentPage > 1) {
+      if (shouldSyncContentUrlAfterPageLoad({
+        navigationMode: this.navigationMode,
+        replaceUrlOnPageBoundary: this.replaceSearchUrlOnPageBoundary,
+        currentPage: this.currentPage,
+      })) {
         this.syncSearchUrlState();
       }
     } finally {
@@ -721,20 +729,36 @@ export class ViewSearch extends LitElement {
   }
 
   private async loadMore(): Promise<void> {
-    if (this.navigationMode !== 'infinite' || this.loading || this.exhausted) return;
+    if (!canLoadMoreContentPage({
+      navigationMode: this.navigationMode,
+      loading: this.loading,
+      exhausted: this.exhausted,
+    })) return;
     await this.fillPage(this.activeSearchToken, this.currentSearchSignature, this.currentPage + 1);
   }
 
   private async handlePreviousPage(): Promise<void> {
-    if (this.loading || this.currentPage <= 1) return;
-    this.currentPage -= 1;
+    const targetPage = getAdjacentContentPageTarget({
+      direction: 'previous',
+      currentPage: this.currentPage,
+      hasNextPage: this.hasNextPage,
+      loading: this.loading,
+    });
+    if (targetPage === null) return;
+    this.currentPage = targetPage;
     this.navigationMode = 'paginated';
     await this.search({ preserveNavigationState: true });
   }
 
   private async handleNextPage(): Promise<void> {
-    if (this.loading || !this.hasNextPage) return;
-    this.currentPage += 1;
+    const targetPage = getAdjacentContentPageTarget({
+      direction: 'next',
+      currentPage: this.currentPage,
+      hasNextPage: this.hasNextPage,
+      loading: this.loading,
+    });
+    if (targetPage === null) return;
+    this.currentPage = targetPage;
     this.navigationMode = 'paginated';
     await this.search({ preserveNavigationState: true });
   }

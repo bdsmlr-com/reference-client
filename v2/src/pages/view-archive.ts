@@ -27,6 +27,12 @@ import {
   resolveToggledContentNavigationMode,
 } from '../services/content-route-pagination.js';
 import {
+  canLoadMoreContentPage,
+  getAdjacentContentPageTarget,
+  shouldObserveContentSentinel,
+  shouldSyncContentUrlAfterPageLoad,
+} from '../services/content-route-behavior.js';
+import {
   getGalleryMode,
   PROFILE_EVENTS,
   type GalleryMode,
@@ -374,7 +380,7 @@ export class ViewArchive extends LitElement {
   }
 
   private observeSentinel(): void {
-    if (this.navigationMode !== 'infinite') {
+    if (!shouldObserveContentSentinel(this.navigationMode)) {
       return;
     }
     requestAnimationFrame(() => {
@@ -423,9 +429,11 @@ export class ViewArchive extends LitElement {
         existingUnits: this.resultUnits,
         newUnits,
       });
-      if (this.navigationMode === 'paginated') {
-        this.syncArchiveUrlState();
-      } else if (this.replaceArchiveUrlOnPageBoundary && this.currentPage > 1) {
+      if (shouldSyncContentUrlAfterPageLoad({
+        navigationMode: this.navigationMode,
+        replaceUrlOnPageBoundary: this.replaceArchiveUrlOnPageBoundary,
+        currentPage: this.currentPage,
+      })) {
         this.syncArchiveUrlState();
       }
     } finally {
@@ -434,7 +442,11 @@ export class ViewArchive extends LitElement {
   }
 
   private async loadMore(): Promise<void> {
-    if (this.navigationMode !== 'infinite' || this.loading || this.exhausted) return;
+    if (!canLoadMoreContentPage({
+      navigationMode: this.navigationMode,
+      loading: this.loading,
+      exhausted: this.exhausted,
+    })) return;
     await this.fillPage(this.currentPage + 1);
   }
 
@@ -506,15 +518,27 @@ export class ViewArchive extends LitElement {
   }
 
   private async handlePreviousPage(): Promise<void> {
-    if (this.loading || this.currentPage <= 1) return;
-    this.currentPage -= 1;
+    const targetPage = getAdjacentContentPageTarget({
+      direction: 'previous',
+      currentPage: this.currentPage,
+      hasNextPage: this.hasNextPage,
+      loading: this.loading,
+    });
+    if (targetPage === null) return;
+    this.currentPage = targetPage;
     this.navigationMode = 'paginated';
     await this.loadPosts({ preserveNavigationState: true });
   }
 
   private async handleNextPage(): Promise<void> {
-    if (this.loading || !this.hasNextPage) return;
-    this.currentPage += 1;
+    const targetPage = getAdjacentContentPageTarget({
+      direction: 'next',
+      currentPage: this.currentPage,
+      hasNextPage: this.hasNextPage,
+      loading: this.loading,
+    });
+    if (targetPage === null) return;
+    this.currentPage = targetPage;
     this.navigationMode = 'paginated';
     await this.loadPosts({ preserveNavigationState: true });
   }
