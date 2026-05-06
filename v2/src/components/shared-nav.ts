@@ -266,36 +266,6 @@ export class SharedNav extends LitElement {
         gap: 8px;
       }
 
-      .viewing-indicator {
-        font-size: 11px;
-        color: var(--text-muted);
-        background: var(--bg-panel-alt);
-        padding: 2px 8px;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        white-space: nowrap;
-      }
-
-      .viewing-indicator .blog-name {
-        color: var(--accent);
-        max-width: 120px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .viewing-indicator .reset-link {
-        color: var(--text-muted);
-        text-decoration: underline;
-        cursor: pointer;
-        font-size: 10px;
-      }
-
-      .viewing-indicator .reset-link:hover {
-        color: var(--accent);
-      }
-
       @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE)}px) {
         .nav-container {
           flex-wrap: wrap;
@@ -729,7 +699,6 @@ export class SharedNav extends LitElement {
 
   render() {
     const pages = [
-      { name: 'blogs', label: 'Discover', description: 'Discover blogs by name or description' },
       { name: 'search', label: 'Search', description: 'Search posts by tags with boolean syntax' },
     ];
 

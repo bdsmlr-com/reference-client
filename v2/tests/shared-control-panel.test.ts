@@ -58,4 +58,20 @@ describe('shared control panel', () => {
     expect(searchSrc).toContain('.showVariants=${true}');
     expect(searchSrc).toContain('.showWhen=${true}');
   });
+
+  it('uses compact popover selectors for shared type and variant filters', () => {
+    const typeSrc = readFileSync(join(ROOT, 'components/type-pills.ts'), 'utf8');
+    const variantSrc = readFileSync(join(ROOT, 'components/variant-pills.ts'), 'utf8');
+
+    expect(typeSrc).toContain('All media');
+    expect(typeSrc).toContain('selectedTypeSummary');
+    expect(typeSrc).toContain('aria-haspopup="dialog"');
+    expect(typeSrc).toContain('role="dialog"');
+
+    expect(variantSrc).toContain('All posts');
+    expect(variantSrc).toContain('Original posts');
+    expect(variantSrc).toContain('Reblogged posts');
+    expect(variantSrc).toContain('aria-haspopup="dialog"');
+    expect(variantSrc).toContain('role="dialog"');
+  });
 });

@@ -97,7 +97,7 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     const detailSrc = readFileSync(join(ROOT, 'components/post-detail-content.ts'), 'utf8');
 
     expect(detailSrc).toContain('class="post-tags"');
-    expect(detailSrc).toContain("resolveLink('search_tag'");
+    expect(detailSrc).toContain('buildContextualTagSearchHref');
   });
 
   it('shows self-activity badge on promoted full cards', () => {

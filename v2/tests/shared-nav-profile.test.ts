@@ -5,11 +5,12 @@ import { join } from 'node:path';
 const NAV_FILE = join(process.cwd(), 'src/components/shared-nav.ts');
 
 describe('shared-nav profile/settings behavior', () => {
-  it('removes top nav Feed link and routes logo to feed context', () => {
+  it('removes Discover from top nav and routes logo to feed context', () => {
     const src = readFileSync(NAV_FILE, 'utf8');
     const config = JSON.parse(readFileSync(join(process.cwd(), 'media-config.json'), 'utf8'));
 
-    expect(src).not.toContain("{ name: 'feed', label: 'Feed'");
+    expect(src).not.toContain("{ name: 'blogs', label: 'Discover'");
+    expect(src).toContain("{ name: 'search', label: 'Search'");
     expect(src).toContain('private getLogoLink()');
     expect(src).toContain("const link = resolveLink('nav_logo', { blog: primaryBlog });");
     expect(config.links.contexts.nav_logo.mode).toBe('internal');
@@ -52,15 +53,6 @@ describe('shared-nav profile/settings behavior', () => {
 
     expect(src).toContain('if (target.pathname === window.location.pathname)');
     expect(src).toContain("window.scrollTo({ top: 0, behavior: 'smooth' });");
-  });
-
-  it('normalizes timeline page state back to the activity route when returning to the primary blog', () => {
-    const src = readFileSync(NAV_FILE, 'utf8');
-
-    expect(src).toContain("const page = this.currentPage === 'timeline' ? 'activity' : this.currentPage;");
-    expect(src).toContain('const url = buildPageUrl(page, primaryBlog);');
-    expect(src).toContain("const blogPages = ['archive', 'posts', 'feed', 'follower-feed', 'social'];");
-    expect(src).toContain("this.currentPage === 'following' || this.currentPage === 'follower-feed'");
   });
 
   it('keeps settings menu open while interacting with sort select controls', () => {

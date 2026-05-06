@@ -5,8 +5,6 @@ import { baseStyles } from '../styles/theme.js';
 import type { ProcessedPost } from '../types/post.js';
 import type { TimelineItem } from '../types/api.js';
 import { DEFAULT_ACTIVITY_KINDS, type ActivityKind } from '../services/profile.js';
-import { buildInteractionHandler } from '../services/render-interactions.js';
-import { loadRenderContract } from '../services/render-contract.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import '../components/post-feed-item.js';
 import '../components/activity-grid.js';
@@ -48,7 +46,6 @@ export class TimelineStream extends LitElement {
   @property({ type: String }) page: 'feed' | 'follower-feed' | 'activity' = 'feed';
   @state() private clusterVisibleCounts = new Map<string, number>();
   private readonly clusterPageSize = 12;
-  private readonly openLightboxInteraction = buildInteractionHandler((loadRenderContract().interactions as any).open_lightbox_post);
 
   private inferItemKind(item: TimelineItem): ActivityKind {
     if (item.type === 1 && item.post) {
@@ -81,10 +78,12 @@ export class TimelineStream extends LitElement {
   private handlePostClick(post: ProcessedPost): void {
     const posts = this.getAllPosts();
     const index = posts.findIndex((p) => p.id === post.id);
-    this.openLightboxInteraction({
-      host: this,
-      payload: { post, posts, index: index >= 0 ? index : 0 },
-    });
+    const from = this.page === 'follower-feed' ? 'follower-feed' : this.page;
+    this.dispatchEvent(new CustomEvent('post-click', {
+      detail: { post, posts, index: index >= 0 ? index : 0, from },
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   private getDateKey(post: ProcessedPost): string {
@@ -261,8 +260,7 @@ export class TimelineStream extends LitElement {
               <post-feed-item
                 .post=${item.post}
                 .page=${this.page}
-                @post-click=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}
-                @click=${() => this.handlePostClick(item.post)}
+                @post-select=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}
               ></post-feed-item>
             `;
           }

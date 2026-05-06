@@ -810,13 +810,14 @@ export class ViewSearch extends LitElement {
   }
 
   private handlePostClick(e: CustomEvent): void {
+    e.stopPropagation();
     const post = e.detail.post as ProcessedPost;
     const allPosts = flattenContentResultPosts(this.resultUnits);
 
     const index = allPosts.findIndex(p => p.id === post.id);
 
     this.dispatchEvent(new CustomEvent('post-click', {
-      detail: { post, posts: allPosts, index: index >= 0 ? index : 0 },
+      detail: { post, posts: allPosts, index: index >= 0 ? index : 0, from: e.detail?.from || 'search' },
       bubbles: true,
       composed: true
     }));
@@ -985,7 +986,6 @@ export class ViewSearch extends LitElement {
 
         ${!this.hasSearched
           ? html`
-              <div class="status">Enter a query to begin searching.</div>
               ${this.teaserPosts.length > 0
                 ? html`
                     <result-group

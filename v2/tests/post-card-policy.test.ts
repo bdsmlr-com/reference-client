@@ -58,7 +58,7 @@ describe('post card retrieval click policy', () => {
     expect(event.preventDefault).toHaveBeenCalledTimes(1);
     expect(event.stopPropagation).toHaveBeenCalledTimes(1);
     expect(dispatchEvent).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'post-click',
+      type: 'post-select',
     }));
   });
 });

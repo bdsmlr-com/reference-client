@@ -264,17 +264,17 @@ export class BlogIdentity extends LitElement {
       }
 
       :host([variant='micro']) .identity {
-        gap: 6px;
+        gap: 0.35em;
       }
 
       :host([variant='micro']) .avatar,
       :host([variant='micro']) .avatar-fallback {
-        width: 18px;
-        height: 18px;
+        width: 1.2em;
+        height: 1.2em;
       }
 
       :host([variant='micro']) .avatar-fallback {
-        font-size: 9px;
+        font-size: 0.6em;
       }
 
       :host([variant='micro']) .copy {
@@ -282,7 +282,8 @@ export class BlogIdentity extends LitElement {
       }
 
       :host([variant='micro']) .name {
-        font-size: 12px;
+        font-size: inherit;
+        line-height: inherit;
       }
 
       :host([variant='micro']) .title,

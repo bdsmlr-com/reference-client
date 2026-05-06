@@ -557,11 +557,13 @@ export class ViewFeed extends LitElement {
   }
 
   private handlePostClick(e: CustomEvent): void {
+    e.stopPropagation();
     const post = e.detail.post as ProcessedPost;
+    const from = e.detail?.from || (this.isFollowerFeed ? 'follower-feed' : 'feed');
     this.dispatchEvent(new CustomEvent('post-click', {
       detail: e.detail?.posts
-        ? e.detail
-        : { post, posts: this.timelineItems.flatMap((it) => it.type === 1 && it.post ? [it.post as ProcessedPost] : ((it.cluster?.interactions as ProcessedPost[]) || [])), index: 0 },
+        ? { ...e.detail, from: e.detail?.from || from }
+        : { post, posts: this.timelineItems.flatMap((it) => it.type === 1 && it.post ? [it.post as ProcessedPost] : ((it.cluster?.interactions as ProcessedPost[]) || [])), index: 0, from },
       bubbles: true,
       composed: true
     }));

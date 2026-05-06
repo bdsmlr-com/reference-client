@@ -16,10 +16,8 @@ import './pages/view-settings-user.js';
 import './pages/view-settings-blog.js';
 import './components/shared-nav.js';
 import './components/offline-banner.js';
-import './components/post-lightbox.js';
 import './components/contract-error-screen.js';
 import { initTheme, injectGlobalStyles, baseStyles } from './styles/theme.js';
-import type { ProcessedPost } from './types/post.js';
 import { getPrimaryBlogName, getViewedBlogName, isAdminMode, syncAdminModeFromUrl } from './services/blog-resolver.js';
 import { loadRenderContract } from './services/render-contract.js';
 import { validateRenderContract } from './services/render-contract-validator.js';
@@ -28,6 +26,7 @@ import { setAuthUser, clearAuthUser } from './state/auth-state.js';
 import { setCurrentUsername } from './services/profile.js';
 import { setStoredBlogName } from './services/blog-resolver.js';
 import { getStoredActiveBlog, setStoredActiveBlog } from './utils/storage.js';
+import { buildPostHref, inferPostSourceFromPath } from './services/post-route-context.js';
 import './components/auth-gate.js';
 
 @customElement('app-root')
@@ -68,7 +67,10 @@ export class AppRoot extends LitElement {
     { path: '/for/:blogname', render: ({ blogname }) => html`<view-discover .blog=${this.resolveRouteBlogName(blogname || '')}></view-discover>` },
     { path: '/blogs*', render: () => html`<view-blogs></view-blogs>` },
     { path: '/discover*', render: () => html`<view-discover></view-discover>` },
-    { path: '/post/:postId', render: ({ postId }) => html`<view-post .postId=${postId}></view-post>` },
+    {
+      path: '/post/:postId',
+      render: ({ postId }) => html`<view-post .postId=${postId} .from=${new URLSearchParams(window.location.search).get('from') || 'direct'}></view-post>`,
+    },
     {
       path: '/post/:postId/related',
       render: ({ postId }) => html`<view-post-related .postId=${postId} .title=${'More like this ✨'}></view-post-related>`,
@@ -102,10 +104,6 @@ export class AppRoot extends LitElement {
     { path: '/:blog/social', render: ({ blog }) => html`<view-social .blog=${blog}></view-social>` },
   ]);
 
-  @state() private lightboxOpen = false;
-  @state() private lightboxPost: ProcessedPost | null = null;
-  @state() private lightboxPosts: ProcessedPost[] = [];
-  @state() private lightboxIndex = -1;
   @state() private contractErrors: string[] = [];
   @state() private authError: string | null = null;
   @state() private authenticated = false;
@@ -183,22 +181,10 @@ export class AppRoot extends LitElement {
   }
 
   private handlePostClick(e: CustomEvent) {
-    const { post, posts, index } = e.detail;
-    const safePost = post as ProcessedPost | null;
-    const safePosts = Array.isArray(posts) && posts.length > 0 ? posts : (safePost ? [safePost] : []);
-    const safeIndex = Number.isFinite(index) ? index : 0;
-    this.lightboxPost = safePost;
-    this.lightboxPosts = safePosts;
-    this.lightboxIndex = safeIndex;
-    this.lightboxOpen = true;
-  }
-
-  private handleLightboxNavigate(e: CustomEvent) {
-    const { index } = e.detail;
-    if (index >= 0 && index < this.lightboxPosts.length) {
-      this.lightboxPost = this.lightboxPosts[index];
-      this.lightboxIndex = index;
-    }
+    const post = e.detail?.post;
+    if (!post?.id) return;
+    const from = e.detail?.from || inferPostSourceFromPath(window.location.pathname);
+    window.location.assign(buildPostHref(post.id, from));
   }
 
   render() {
@@ -235,15 +221,6 @@ export class AppRoot extends LitElement {
       <offline-banner></offline-banner>
       <shared-nav .currentPage=${currentPage}></shared-nav>
       <main>${this._router.outlet()}</main>
-      <post-lightbox
-        .open=${this.lightboxOpen}
-        .post=${this.lightboxPost}
-        .posts=${this.lightboxPosts}
-        .currentIndex=${this.lightboxIndex}
-        @lightbox-close=${() => this.lightboxOpen = false}
-        @lightbox-navigate=${this.handleLightboxNavigate}
-      ></post-lightbox>
-
     `;
   }
 

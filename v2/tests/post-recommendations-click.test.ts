@@ -60,6 +60,7 @@ describe('post recommendations retrieval click policy', () => {
     expect(event.stopPropagation).toHaveBeenCalledTimes(1);
     expect(dispatchEvent).toHaveBeenCalledWith(expect.objectContaining({
       type: 'post-click',
+      detail: expect.objectContaining({ from: 'direct' }),
     }));
   });
 });

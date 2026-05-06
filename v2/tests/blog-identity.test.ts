@@ -23,7 +23,7 @@ describe('blog identity integration', () => {
     expect(avatarSrc).toContain('export function normalizeAvatarUrl');
   });
 
-  it('renders blog-identity in blog-header and passes title and avatar props through archive and activity pages', () => {
+  it('renders blog-identity in blog-header and keeps the header chrome minimal', () => {
     const headerSrc = readFileSync(join(ROOT, 'components/blog-header.ts'), 'utf8');
     const archiveSrc = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
     const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
@@ -34,6 +34,11 @@ describe('blog identity integration', () => {
     expect(headerSrc).toContain('.blogTitle=${this.blogTitle}');
     expect(headerSrc).toContain('.avatarUrl=${this.avatarUrl}');
     expect(headerSrc).toContain('.identityDecorations=${this.identityDecorations}');
+    expect(headerSrc).not.toContain('context-badge');
+    expect(headerSrc).not.toContain('return-action');
+    expect(headerSrc).not.toContain('edit-container');
+    expect(headerSrc).not.toContain('external-link');
+    expect(headerSrc).not.toContain('blog-input');
 
     expect(archiveSrc).toContain('.avatarUrl=${this.blogData?.avatarUrl || \'\'}');
     expect(archiveSrc).toContain('.identityDecorations=${this.blogData?.identityDecorations || []}');
@@ -62,6 +67,8 @@ describe('blog identity integration', () => {
     expect(identitySrc).toContain('const response = await getBlog({ blog_id: this.blogId });');
     expect(identitySrc).toContain(":host([variant='micro']) .avatar");
     expect(identitySrc).toContain(":host([variant='micro']) .name");
+    expect(identitySrc).toContain('font-size: inherit;');
+    expect(identitySrc).toContain('line-height: inherit;');
   });
 
   it('derives accent color locally instead of depending on backend accent fields', () => {

@@ -20,6 +20,7 @@
 
 import type { ProcessedPost } from './post.js';
 import type { Blog, PostType, PostVariant } from './api.js';
+import type { PostRouteSource } from '../services/post-route-context.js';
 
 // ============================================================================
 // Post Events
@@ -31,6 +32,7 @@ import type { Blog, PostType, PostVariant } from './api.js';
  */
 export interface PostSelectDetail {
   post: ProcessedPost;
+  from?: PostRouteSource;
 }
 
 /**

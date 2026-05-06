@@ -192,9 +192,11 @@ export class ViewPosts extends LitElement {
   }
 
   private handlePostClick(e: CustomEvent) {
+    e.stopPropagation();
     const post = e.detail.post as ProcessedPost;
+    const from = e.detail?.from || 'activity';
     
-    // Extract all posts from the timeline for the lightbox navigation stack
+    // Extract all posts from the timeline for explicit post navigation context
     const allPosts: ProcessedPost[] = [];
     this.timelineItems.forEach(item => {
       if (item.type === 1 && item.post) {
@@ -209,7 +211,7 @@ export class ViewPosts extends LitElement {
     const index = allPosts.findIndex(p => p.id === post.id);
 
     this.dispatchEvent(new CustomEvent('post-click', {
-      detail: { post, posts: allPosts, index: index >= 0 ? index : 0 },
+      detail: { post, posts: allPosts, index: index >= 0 ? index : 0, from },
       bubbles: true,
       composed: true
     }));

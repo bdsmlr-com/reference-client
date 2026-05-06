@@ -2,10 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-describe('app-root lightbox click normalization', () => {
-  it('normalizes post-click payload when posts/index are missing', () => {
+describe('app-root post navigation', () => {
+  it('routes post-click events into /post URLs with explicit provenance', () => {
     const src = readFileSync(join(process.cwd(), 'src/app-root.ts'), 'utf8');
-    expect(src).toContain('const safePosts = Array.isArray(posts) && posts.length > 0 ? posts : (safePost ? [safePost] : []);');
-    expect(src).toContain('const safeIndex = Number.isFinite(index) ? index : 0;');
+
+    expect(src).toContain("import { buildPostHref, inferPostSourceFromPath } from './services/post-route-context.js';");
+    expect(src).toContain("const from = e.detail?.from || inferPostSourceFromPath(window.location.pathname);");
+    expect(src).toContain('window.location.assign(buildPostHref(post.id, from));');
+    expect(src).not.toContain("import './components/post-lightbox.js';");
+    expect(src).not.toContain('@state() private lightboxOpen');
+    expect(src).not.toContain('<post-lightbox');
   });
 });

@@ -11,8 +11,10 @@ export class PostGrid extends LitElement {
   @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
 
   private handleActivityClick(e: CustomEvent<{ post: ProcessedPost }>): void {
+    e.stopPropagation();
+    const from = this.page === 'post' ? 'direct' : this.page;
     this.dispatchEvent(
-      new CustomEvent<PostSelectDetail>(EventNames.POST_CLICK, { detail: e.detail })
+      new CustomEvent<PostSelectDetail>(EventNames.POST_CLICK, { detail: { ...e.detail, from } })
     );
   }
 

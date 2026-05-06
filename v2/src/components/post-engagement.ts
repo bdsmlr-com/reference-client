@@ -3,11 +3,11 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { formatDate } from '../services/date-formatter.js';
-import { toPresentationModel } from '../services/post-presentation.js';
 import { getCachedBlogId, getCurrentBlog } from '../services/storage.js';
 import { type ProcessedPost } from '../types/post.js';
 import type { IdentityDecoration, Like, Comment, Reblog } from '../types/api.js';
-import { resolveLink, type ResolvedLink } from '../services/link-resolver.js';
+import { resolveLink } from '../services/link-resolver.js';
+import type { PostRouteSource } from '../services/post-route-context.js';
 import './loading-spinner.js';
 import './post-actions.js';
 import './blog-identity.js';
@@ -20,12 +20,13 @@ export class PostEngagement extends LitElement {
       :host { display: block; }
 
       .engagement-section {
-        background: var(--bg-panel);
+        background: color-mix(in srgb, var(--bg-panel) 92%, white 8%);
         padding: 24px;
-        border-radius: 8px;
+        border-radius: 14px;
         border: 1px solid var(--border);
         width: 100%;
         margin-top: 16px;
+        box-shadow: 0 18px 36px rgba(0, 0, 0, 0.12);
       }
 
       .lightbox-links { font-size: 16px; margin-bottom: 12px; color: var(--text-muted); }
@@ -43,13 +44,12 @@ export class PostEngagement extends LitElement {
       .detail-item:last-child { border-bottom: none; }
       .detail-item a { color: var(--accent); text-decoration: none; }
 
-      .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
-      .tag { background: var(--bg-panel-alt); padding: 4px 12px; border-radius: 16px; font-size: 13px; color: var(--text); border: 1px solid var(--border); }
     `,
   ];
 
   @property({ type: Object }) post: ProcessedPost | null = null;
   @property({ type: Boolean }) standalone = false;
+  @property({ type: String }) from: PostRouteSource = 'direct';
 
   @state() private activeTab: 'likes' | 'reblogs' | 'comments' | null = null;
   @state() private likes: Like[] | null = null;
@@ -100,33 +100,6 @@ export class PostEngagement extends LitElement {
     void this.toggleTab(event.detail.tab);
   }
 
-  private renderLinks() {
-    if (!this.post) return nothing;
-    const p = this.post;
-    const presentation = toPresentationModel(p, { surface: 'detail', page: 'post' });
-    const typeIcon = presentation.identity.postTypeIcon || '📄';
-
-    if (presentation.identity.isReblog) {
-      const originPostLink = presentation.identity.originPostPermalink || resolveLink('post_permalink', { postId: p.originPostId as number });
-      const viaPostLink = presentation.identity.viaPostPermalink || presentation.identity.permalink;
-      const viaPostLabel = viaPostLink.label || String(p.id);
-      const viaPostIcon = viaPostLink.icon || '↗';
-      const originPostLabel = String(p.originPostId);
-      return html`
-        ${typeIcon} ${this.renderResolvedMicroBlogIdentity(presentation.identity.originBlog, presentation.identity.originBlogLabel, presentation.identity.originBlogDecoration, p.originBlogId)} /
-        ${presentation.identity.originPostMissing
-          ? html`<span class="origin-post-missing">${originPostLabel}</span>`
-          : html`<a class="post-id-link" href=${ originPostLink.href } target=${ originPostLink.target } rel=${originPostLink.rel || nothing} title=${originPostLink.title || nothing}>${originPostLink.label || originPostLabel}<span class="post-id-outlink">${originPostLink.icon || '↗'}</span></a>`}
-        via ♻️ ${this.renderResolvedMicroBlogIdentity(presentation.identity.viaBlog, presentation.identity.viaBlogLabel, presentation.identity.viaBlogDecoration, p.blogId)} /
-        <a class="post-id-link" href=${viaPostLink.href} target=${viaPostLink.target} rel=${viaPostLink.rel || nothing} title=${viaPostLink.title || nothing}>${viaPostLabel}<span class="post-id-outlink">${viaPostIcon}</span></a>
-      `;
-    }
-    const permalink = presentation.identity.permalink;
-    const permalinkLabel = permalink.label || String(p.id);
-    const permalinkIcon = permalink.icon || '↗';
-    return html`${typeIcon} ${this.renderResolvedMicroBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, presentation.identity.primaryBlogLabel, presentation.identity.viaBlogDecoration || presentation.identity.originBlogDecoration, p.blogId)} / <a class="post-id-link" href=${permalink.href} target=${permalink.target} rel=${permalink.rel || nothing} title=${permalink.title || nothing}>${permalinkLabel}<span class="post-id-outlink">${permalinkIcon}</span></a>`;
-  }
-
   private normalizeBlogName(blogName: string | null | undefined): string | null {
     const normalized = (blogName || '').trim();
     return normalized || null;
@@ -151,39 +124,6 @@ export class PostEngagement extends LitElement {
           .blogName=${normalized}
           .blogId=${blogId || 0}
           .identityDecorations=${decorations || []}
-        ></blog-identity>
-      </a>
-    `;
-  }
-
-  private renderResolvedMicroBlogIdentity(
-    link: ResolvedLink | null | undefined,
-    label: string,
-    decoration?: IdentityDecoration | null,
-    blogId?: number | null,
-  ) {
-    const normalized = this.normalizeBlogName(label);
-    if (!normalized) {
-      return html`<span>@unknown</span>`;
-    }
-    const decorations = decoration ? [decoration] : [];
-    if (!link) {
-      return html`
-        <blog-identity
-          variant="micro"
-          .blogName=${normalized}
-          .blogId=${blogId || 0}
-          .identityDecorations=${decorations}
-        ></blog-identity>
-      `;
-    }
-    return html`
-      <a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing}>
-        <blog-identity
-          variant="micro"
-          .blogName=${normalized}
-          .blogId=${blogId || 0}
-          .identityDecorations=${decorations}
         ></blog-identity>
       </a>
     `;
@@ -248,18 +188,12 @@ export class PostEngagement extends LitElement {
 
   render() {
     if (!this.post) return nothing;
-    const p = this.post;
 
     return html`
       <div class="${this.standalone ? 'engagement-section' : ''}">
-        <div class="lightbox-links">${this.renderLinks()}</div>
-        <div class="meta">Posted ${formatDate(p.createdAtUnix, 'friendly')}</div>
-        
-        <post-actions variant="detail" .post=${p} @engagement-open-tab=${this.handleOpenTab}></post-actions>
+        <post-actions variant="detail" .post=${this.post} @engagement-open-tab=${this.handleOpenTab}></post-actions>
 
         ${this.renderEngagementDetail()}
-
-        <div class="tags">${(p.tags || []).map(t => html`<span class="tag">#${t}</span>`)}</div>
       </div>
     `;
   }

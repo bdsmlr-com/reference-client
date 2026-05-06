@@ -7,6 +7,7 @@ import { getContextualErrorMessage } from '../services/api-error.js';
 import '../components/skeleton-loader.js';
 import '../components/post-feed-item.js';
 import '../components/post-detail-content.js';
+import type { PostRouteSource } from '../services/post-route-context.js';
 
 @customElement('view-post')
 export class ViewPost extends LitElement {
@@ -15,8 +16,8 @@ export class ViewPost extends LitElement {
     css`
       :host {
         display: block;
-        padding: 40px 20px;
-        max-width: 800px;
+        padding: 28px 12px 56px;
+        max-width: min(980px, calc(100vw - 20px));
         margin: 0 auto;
         min-height: 100vh;
       }
@@ -27,31 +28,21 @@ export class ViewPost extends LitElement {
         gap: 20px;
         padding: 100px 0;
       }
-      .back-nav {
-        margin-bottom: 24px;
-      }
-      .back-link {
-        color: var(--text-muted);
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 14px;
-        transition: color 0.2s;
-      }
-      .back-link:hover {
-        color: var(--accent);
-      }
-      .separator {
-        text-align: center;
-        margin: 32px 0;
-        font-size: 24px;
-        opacity: 0.5;
+      .post-shell {
+        display: grid;
+        gap: 18px;
+        padding: 18px;
+        border-radius: 24px;
+        border: 1px solid var(--border);
+        background: color-mix(in srgb, var(--bg-panel) 86%, transparent);
+        box-shadow: 0 28px 68px rgba(0, 0, 0, 0.28);
+        backdrop-filter: blur(14px);
       }
     `
   ];
 
   @property({ type: String }) postId = '';
+  @property({ type: String }) from = 'direct';
 
   @state() private loading = true;
   @state() private error = '';
@@ -110,22 +101,23 @@ export class ViewPost extends LitElement {
     if (!this.post) return nothing;
 
     return html`
-      <div class="back-nav">
-        <a href="/" class="back-link">← Back to Feed</a>
+      <div class="post-shell">
+        <post-feed-item
+          style="width: 100%; max-width: none; margin: 0;"
+          .post=${this.post}
+          page="post"
+          .disableClick=${true}
+          .videoAutoplay=${false}
+          .videoControls=${true}
+          .videoLoop=${true}
+        ></post-feed-item>
+
+        <post-detail-content
+          style="width: 100%;"
+          .post=${this.post}
+          .from=${this.from as PostRouteSource}
+        ></post-detail-content>
       </div>
-
-      <post-feed-item
-        .post=${this.post}
-        page="post"
-        .disableClick=${true}
-        .videoAutoplay=${false}
-        .videoControls=${true}
-        .videoLoop=${true}
-      ></post-feed-item>
-
-      <post-detail-content
-        .post=${this.post}
-      ></post-detail-content>
     `;
   }
 }

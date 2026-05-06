@@ -485,12 +485,13 @@ export class ViewArchive extends LitElement {
   }
 
   private handlePostClick(e: CustomEvent): void {
+    e.stopPropagation();
     const post = e.detail.post as ProcessedPost;
     const allPosts = flattenContentResultPosts(this.resultUnits);
     const index = allPosts.findIndex((p) => p.id === post.id);
 
     this.dispatchEvent(new CustomEvent('post-click', {
-      detail: { post, posts: allPosts, index: index >= 0 ? index : 0 },
+      detail: { post, posts: allPosts, index: index >= 0 ? index : 0, from: e.detail?.from || 'archive' },
       bubbles: true,
       composed: true
     }));

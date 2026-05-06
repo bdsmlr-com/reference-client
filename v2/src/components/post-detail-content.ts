@@ -4,8 +4,8 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { baseStyles } from '../styles/theme.js';
 import { extractRenderableTags, type ProcessedPost } from '../types/post.js';
 import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
-import { resolveLink } from '../services/link-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
+import { buildContextualTagSearchHref, type PostRouteSource } from '../services/post-route-context.js';
 import './post-engagement.js';
 import './post-recommendations.js';
 
@@ -45,6 +45,7 @@ export class PostDetailContent extends LitElement {
 
   @property({ type: Object }) post: ProcessedPost | null = null;
   @property({ type: String }) surface: 'detail' | 'lightbox' = 'detail';
+  @property({ type: String }) from = 'direct';
 
   render() {
     if (!this.post) return nothing;
@@ -66,16 +67,16 @@ export class PostDetailContent extends LitElement {
       ${presentation.layout.showTags && tags.length > 0 ? html`
         <div class="post-tags">
           ${tags.map((tag) => {
-            const link = resolveLink('search_tag', { tag });
-            return html`<a class="tag-chip" href=${link.href} target=${link.target} rel=${link.rel || ''} title=${link.title || ''}>${link.label || `#${tag}`}</a>`;
+            const href = buildContextualTagSearchHref(tag, p, this.from as PostRouteSource);
+            return html`<a class="tag-chip" href=${href}>#${tag}</a>`;
           })}
         </div>
       ` : nothing}
 
-      <post-engagement .post=${p} ?standalone=${engagementStandalone}></post-engagement>
+      <post-engagement .post=${p} .from=${this.from as PostRouteSource} ?standalone=${engagementStandalone}></post-engagement>
 
       ${presentation.layout.showRecommendations
-        ? html`<post-recommendations .postId=${p.id} .mode=${recommendationsMode} .showBrowseLink=${true}></post-recommendations>`
+        ? html`<post-recommendations .postId=${p.id} .mode=${recommendationsMode} .showBrowseLink=${true} .from=${this.from as PostRouteSource}></post-recommendations>`
         : nothing}
     `;
   }

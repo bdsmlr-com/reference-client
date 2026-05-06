@@ -5,7 +5,7 @@ import { baseStyles } from '../styles/theme.js';
 import { getVariantPreference, setVariantPreference, type VariantSelection } from '../services/storage.js';
 import type { PostVariant } from '../types/api.js';
 import { EventNames, type VariantChangeDetail } from '../types/events.js';
-import { BREAKPOINTS, SPACING, PILL_SPACING, CONTAINER_SPACING } from '../types/ui-constants.js';
+import { BREAKPOINTS, SPACING, PILL_SPACING } from '../types/ui-constants.js';
 import './loading-spinner.js';
 
 @customElement('variant-pills')
@@ -14,21 +14,71 @@ export class VariantPills extends LitElement {
     baseStyles,
     css`
       :host {
-        display: block;
-        /* UIC-021: Use standardized container spacing */
-        padding: 0 ${unsafeCSS(CONTAINER_SPACING.HORIZONTAL)}px;
+        display: inline-flex;
+        position: relative;
+        min-width: 0;
+      }
+
+      .selector {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 36px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--bg-panel-alt);
+        color: var(--text-primary);
+        font-size: 12px;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.2s, border-color 0.2s;
+      }
+
+      .trigger:hover {
+        background: var(--border-strong);
+      }
+
+      .trigger.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+
+      .trigger-summary {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .popover {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(92vw, 420px);
+        padding: 12px;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background: var(--surface-raised, var(--surface-primary, #fff));
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.12);
+        z-index: 30;
       }
 
       .pill-group {
         display: flex;
-        /* UIC-021: Use standardized spacing scale */
         gap: ${unsafeCSS(SPACING.XS)}px;
         justify-content: center;
         flex-wrap: wrap;
       }
 
       .variant-pill {
-        /* UIC-021: Use standardized pill spacing */
         padding: ${unsafeCSS(PILL_SPACING.VERTICAL)}px ${unsafeCSS(PILL_SPACING.HORIZONTAL)}px;
         border-radius: ${unsafeCSS(SPACING.MD)}px;
         background: var(--bg-panel-alt);
@@ -62,8 +112,12 @@ export class VariantPills extends LitElement {
 
       /* Mobile: max-width below BREAKPOINTS.MOBILE */
       @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE - 1)}px) {
+        .trigger {
+          font-size: 11px;
+          padding: 0 12px;
+        }
+
         .variant-pill {
-          /* UIC-021: Use standardized mobile pill spacing */
           padding: ${unsafeCSS(PILL_SPACING.VERTICAL)}px ${unsafeCSS(PILL_SPACING.HORIZONTAL_MOBILE)}px;
           font-size: 11px;
         }
@@ -77,19 +131,20 @@ export class VariantPills extends LitElement {
   @property({ type: Boolean }) persistSelection = true;
   @property({ type: Boolean }) loading = false;
 
+  private open = false;
+
   connectedCallback(): void {
     super.connectedCallback();
+    window.addEventListener('click', this.handleWindowClick);
     const explicitSelection = this.selectionFromVariants(this.selectedVariants);
     if (explicitSelection !== 'all') {
       this.selected = explicitSelection;
       return;
     }
-    // Load saved preference if not explicitly set via attribute
     if (this.persistSelection && this.selected === 'all') {
       const saved = getVariantPreference(this.pageName || undefined);
       if (saved && saved !== 'all') {
         this.selected = saved;
-        // Emit initial change event so parent knows about saved preference
         this.dispatchEvent(
           new CustomEvent<VariantChangeDetail>(EventNames.VARIANT_CHANGE, {
             detail: { selection: saved, variants: this.getVariants(saved) },
@@ -99,17 +154,27 @@ export class VariantPills extends LitElement {
     }
   }
 
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener('click', this.handleWindowClick);
+  }
+
   protected willUpdate(changed: PropertyValues<this>): void {
     if (changed.has('selectedVariants')) {
       this.selected = this.selectionFromVariants(this.selectedVariants);
     }
   }
 
-  private setSelection(selection: VariantSelection): void {
-    // Update internal state to reflect button highlight
-    this.selected = selection;
+  private handleWindowClick = (event: Event): void => {
+    if (!this.open) return;
+    const path = event.composedPath();
+    if (!path.includes(this)) {
+      this.open = false;
+    }
+  };
 
-    // Save preference if persistence is enabled
+  private setSelection(selection: VariantSelection): void {
+    this.selected = selection;
     if (this.persistSelection) {
       setVariantPreference(selection, this.pageName || undefined);
     }
@@ -118,16 +183,17 @@ export class VariantPills extends LitElement {
         detail: { selection, variants: this.getVariants(selection) },
       })
     );
+    this.open = false;
   }
 
   private getVariants(selection: VariantSelection): PostVariant[] | undefined {
     switch (selection) {
       case 'original':
-        return [1]; // POST_VARIANT_ORIGINAL = 1
+        return [1];
       case 'reblog':
-        return [2]; // POST_VARIANT_REBLOG = 2
+        return [2];
       default:
-        return undefined; // All - no filter
+        return undefined;
     }
   }
 
@@ -137,6 +203,17 @@ export class VariantPills extends LitElement {
     if (unique.length === 1 && unique[0] === 1) return 'original';
     if (unique.length === 1 && unique[0] === 2) return 'reblog';
     return 'all';
+  }
+
+  private variantSummary(): string {
+    switch (this.selected) {
+      case 'original':
+        return 'Original posts';
+      case 'reblog':
+        return 'Reblogged posts';
+      default:
+        return 'All posts';
+    }
   }
 
   private getButtonClass(variant: VariantSelection): string {
@@ -154,6 +231,7 @@ export class VariantPills extends LitElement {
     const isActiveAndLoading = this.selected === variant && this.loading;
     return html`
       <button
+        type="button"
         class=${this.getButtonClass(variant)}
         @click=${() => this.setSelection(variant)}
         ?disabled=${this.loading}
@@ -169,12 +247,36 @@ export class VariantPills extends LitElement {
     `;
   }
 
+  private toggleSelector(e: Event): void {
+    e.stopPropagation();
+    this.open = !this.open;
+  }
+
   render() {
     return html`
-      <div class="pill-group" role="group" aria-label="Filter by post variant">
-        ${this.renderButton('original', 'Original', 'Show only original posts')}
-        ${this.renderButton('reblog', 'Reblog', 'Show only reblogged posts')}
-        ${this.renderButton('all', 'All', 'Show all posts')}
+      <div class="selector">
+        <button
+          type="button"
+          class="trigger ${this.open || this.selected !== 'all' ? 'active' : ''}"
+          @click=${this.toggleSelector}
+          aria-haspopup="dialog"
+          aria-expanded=${this.open ? 'true' : 'false'}
+          aria-label=${`Filter post variants: ${this.variantSummary()}`}
+        >
+          <span class="trigger-summary">${this.variantSummary()}</span>
+        </button>
+        ${this.open ? html`
+          <div class="popover" role="dialog" aria-label="Choose post variants" @click=${(event: Event) => event.stopPropagation()}>
+            <div class="pill-group" role="group" aria-label="Filter by post variant">
+              ${this.renderButton('original', 'Original', 'Show only original posts')}
+              ${this.renderButton('reblog', 'Reblog', 'Show only reblogged posts')}
+              ${this.renderButton('all', 'All', 'Show all posts')}
+            </div>
+            <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+              <button type="button" class="trigger" @click=${() => (this.open = false)}>Close</button>
+            </div>
+          </div>
+        ` : ''}
       </div>
     `;
   }

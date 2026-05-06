@@ -8,6 +8,7 @@ import { toPresentationModel } from '../services/post-presentation.js';
 import { resolveRetrievalClickMode } from '../services/retrieval-presentation.js';
 import type { MediaRenderType } from '../services/media-resolver.js';
 import type { IdentityDecoration } from '../types/api.js';
+import type { PostRouteSource } from '../services/post-route-context.js';
 import './media-renderer.js';
 import './post-actions.js';
 import './blog-identity.js';
@@ -32,6 +33,7 @@ export class PostCard extends LitElement {
         display: flex;
         flex-direction: column;
         height: 100%;
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.18);
       }
 
       .card:hover {
@@ -181,17 +183,10 @@ export class PostCard extends LitElement {
   @property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'archive';
 
   private handleClick(): void {
-    const detail = { post: this.post };
+    const from: PostRouteSource = this.page === 'post' ? 'direct' : this.page;
+    const detail = { post: this.post, from };
     this.dispatchEvent(
       new CustomEvent<PostSelectDetail>(EventNames.POST_SELECT, {
-        detail,
-        bubbles: true,
-        composed: true
-      })
-    );
-    // Compatibility while consumers migrate to a single click contract.
-    this.dispatchEvent(
-      new CustomEvent('post-click', {
         detail,
         bubbles: true,
         composed: true

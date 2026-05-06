@@ -2,10 +2,12 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { extractRenderableTags, type ProcessedPost } from '../types/post.js';
+import { EventNames, type PostSelectDetail } from '../types/events.js';
 import { formatDateShort, getTooltipDate } from '../services/date-formatter.js';
 import { MAX_VISIBLE_TAGS } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
+import type { PostRouteSource } from '../services/post-route-context.js';
 import type { MediaRenderType } from '../services/media-resolver.js';
 import type { IdentityDecoration } from '../types/api.js';
 import './media-renderer.js';
@@ -41,16 +43,18 @@ export class PostFeedItem extends LitElement {
         border-radius: 8px;
         overflow: hidden;
         cursor: pointer;
-        transition: box-shadow 0.2s;
+        transition: box-shadow 0.2s, transform 0.2s ease;
         border: 1px solid var(--border);
         margin-bottom: 16px;
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.18);
       }
       .card.non-interactive {
         cursor: default;
       }
 
       .card:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 22px 40px rgba(0, 0, 0, 0.22);
+        transform: translateY(-2px);
       }
 
       .card-header {
@@ -104,6 +108,17 @@ export class PostFeedItem extends LitElement {
         width: 100%;
         background: #000;
         line-height: 0;
+      }
+
+      .card.post-shell .media-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        max-height: min(68vh, 760px);
+        padding: 10px;
+        background:
+          radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 55%),
+          #050505;
       }
 
       .card-body {
@@ -193,8 +208,10 @@ export class PostFeedItem extends LitElement {
 
   private handlePostClick(): void {
     if (this.disableClick) return;
-    this.dispatchEvent(new CustomEvent('post-click', {
-      detail: { post: this.post },
+    const from: PostRouteSource = this.page === 'post' ? 'direct' : this.page;
+    const detail: PostSelectDetail = { post: this.post, from };
+    this.dispatchEvent(new CustomEvent<PostSelectDetail>(EventNames.POST_SELECT, {
+      detail,
       bubbles: true,
       composed: true
     }));
@@ -242,6 +259,7 @@ export class PostFeedItem extends LitElement {
     const commentCount = presentation.actions.comment.count;
     const mediaRenderType = presentation.media.preset as MediaRenderType;
     const bodyText = post.body || post.content?.text || post.content?.title || '';
+    const isPostShell = this.page === 'post';
     const rawUrl = media.type === 'video'
       ? (media.videoUrl || media.url)
       : (media.url || media.videoUrl || media.audioUrl);
@@ -270,7 +288,7 @@ export class PostFeedItem extends LitElement {
     }
 
     return html`
-      <article class="card ${this.disableClick ? 'non-interactive' : ''}" @click=${this.handlePostClick}>
+      <article class="card ${this.disableClick ? 'non-interactive' : ''} ${isPostShell ? 'post-shell' : ''}" @click=${this.handlePostClick}>
         <header class="card-header">
           <div class="blog-info">
             ${isReblog ? html`
@@ -288,9 +306,9 @@ export class PostFeedItem extends LitElement {
 
         ${mediaHtml}
 
-        ${bodyText ? html`<div class="card-body">${bodyText}</div>` : ''}
+        ${!isPostShell && bodyText ? html`<div class="card-body">${bodyText}</div>` : ''}
 
-        ${tags.length > 0 ? html`
+        ${!isPostShell && tags.length > 0 ? html`
           <div class="card-tags">
             ${tags.slice(0, MAX_VISIBLE_TAGS).map(tag => html`
               ${(() => {
@@ -301,14 +319,16 @@ export class PostFeedItem extends LitElement {
           </div>
         ` : ''}
 
-        <footer class="card-footer">
-          <div class="card-stats">
-            ${likeCount ? html`<span class="stat">${presentation.actions.like.icon} ${likeCount}</span>` : ''}
-            ${reblogCount ? html`<span class="stat">${presentation.actions.reblog.icon} ${reblogCount}</span>` : ''}
-            ${commentCount ? html`<span class="stat">${presentation.actions.comment.icon} ${commentCount}</span>` : ''}
-          </div>
-          <div class="post-type-icon">${presentation.identity.postTypeIcon}</div>
-        </footer>
+        ${!isPostShell ? html`
+          <footer class="card-footer">
+            <div class="card-stats">
+              ${likeCount ? html`<span class="stat">${presentation.actions.like.icon} ${likeCount}</span>` : ''}
+              ${reblogCount ? html`<span class="stat">${presentation.actions.reblog.icon} ${reblogCount}</span>` : ''}
+              ${commentCount ? html`<span class="stat">${presentation.actions.comment.icon} ${commentCount}</span>` : ''}
+            </div>
+            <div class="post-type-icon">${presentation.identity.postTypeIcon}</div>
+          </footer>
+        ` : ''}
       </article>
     `;
   }

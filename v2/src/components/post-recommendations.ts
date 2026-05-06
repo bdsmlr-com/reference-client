@@ -11,6 +11,7 @@ import { isAdminMode } from '../services/blog-resolver.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { applyRetrievalPostPolicies, resolveRetrievalClickMode, type RetrievalPostPolicyMap } from '../services/retrieval-presentation.js';
+import type { PostRouteSource } from '../services/post-route-context.js';
 import './media-renderer.js';
 import './load-footer.js';
 import './loading-spinner.js';
@@ -188,6 +189,7 @@ export class PostRecommendations extends LitElement {
   @property({ type: String }) perspectiveBlogName = '';
   @property({ type: String }) title = 'More like this ✨';
   @property({ type: Boolean }) showBrowseLink = false;
+  @property({ type: String }) from: PostRouteSource = 'direct';
 
   @state() private relatedPosts: RecResult[] = [];
   @state() private loading = false;
@@ -333,7 +335,7 @@ export class PostRecommendations extends LitElement {
       event?.stopPropagation();
       if (hydrated) {
         this.dispatchEvent(new CustomEvent('post-click', {
-          detail: { post: hydrated, posts: [hydrated], index: 0 },
+          detail: { post: hydrated, posts: [hydrated], index: 0, from: this.from },
           bubbles: true,
           composed: true,
         }));

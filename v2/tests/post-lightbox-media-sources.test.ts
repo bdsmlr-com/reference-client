@@ -15,10 +15,11 @@ function makePost(overrides: Partial<ProcessedPost> = {}): ProcessedPost {
 }
 
 describe('buildLightboxMediaSources', () => {
-  it('post-card dispatches both legacy and new click events for compatibility', () => {
+  it('post-card dispatches explicit provenance with post-select', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/post-card.ts'), 'utf8');
     expect(src).toContain('EventNames.POST_SELECT');
-    expect(src).toContain("new CustomEvent('post-click'");
+    expect(src).toContain('const from: PostRouteSource = this.page === \'post\' ? \'direct\' : this.page;');
+    expect(src).toContain('detail: { post: this.post, from },');
   });
 
   it('falls back to preview URL for deleted posts with dead file URLs', () => {
