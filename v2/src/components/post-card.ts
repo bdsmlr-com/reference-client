@@ -184,10 +184,9 @@ export class PostCard extends LitElement {
 
   private handleClick(): void {
     const from: PostRouteSource = this.page === 'post' ? 'direct' : this.page;
-    const detail = { post: this.post, from };
     this.dispatchEvent(
       new CustomEvent<PostSelectDetail>(EventNames.POST_SELECT, {
-        detail,
+        detail: { post: this.post, from },
         bubbles: true,
         composed: true
       })

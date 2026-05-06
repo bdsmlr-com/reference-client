@@ -26,7 +26,7 @@ import { setAuthUser, clearAuthUser } from './state/auth-state.js';
 import { setCurrentUsername } from './services/profile.js';
 import { setStoredBlogName } from './services/blog-resolver.js';
 import { getStoredActiveBlog, setStoredActiveBlog } from './utils/storage.js';
-import { buildPostHref, inferPostSourceFromPath } from './services/post-route-context.js';
+import { buildPostHref } from './services/post-route-context.js';
 import './components/auth-gate.js';
 
 @customElement('app-root')
@@ -183,7 +183,7 @@ export class AppRoot extends LitElement {
   private handlePostClick(e: CustomEvent) {
     const post = e.detail?.post;
     if (!post?.id) return;
-    const from = e.detail?.from || inferPostSourceFromPath(window.location.pathname);
+    const from = e.detail?.from || 'direct';
     window.location.assign(buildPostHref(post.id, from));
   }
 

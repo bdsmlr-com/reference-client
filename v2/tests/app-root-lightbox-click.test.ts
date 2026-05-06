@@ -6,8 +6,8 @@ describe('app-root post navigation', () => {
   it('routes post-click events into /post URLs with explicit provenance', () => {
     const src = readFileSync(join(process.cwd(), 'src/app-root.ts'), 'utf8');
 
-    expect(src).toContain("import { buildPostHref, inferPostSourceFromPath } from './services/post-route-context.js';");
-    expect(src).toContain("const from = e.detail?.from || inferPostSourceFromPath(window.location.pathname);");
+    expect(src).toContain("import { buildPostHref } from './services/post-route-context.js';");
+    expect(src).toContain("const from = e.detail?.from || 'direct';");
     expect(src).toContain('window.location.assign(buildPostHref(post.id, from));');
     expect(src).not.toContain("import './components/post-lightbox.js';");
     expect(src).not.toContain('@state() private lightboxOpen');

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 describe('post route media behavior', () => {
-  it('view-post disables lightbox click path for the top card', () => {
+  it('view-post keeps the top card non-clickable', () => {
     const src = readFileSync(join(process.cwd(), 'src/pages/view-post.ts'), 'utf8');
     expect(src).toContain('<post-feed-item');
     expect(src).toContain('.disableClick=${true}');

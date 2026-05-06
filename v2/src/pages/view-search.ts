@@ -868,6 +868,10 @@ export class ViewSearch extends LitElement {
         query: '(tag:latex | tag:rubber) (media:image | media:video)',
       },
       {
+        label: 'Require both text ideas explicitly',
+        query: 'bikini & ddlg',
+      },
+      {
         label: 'Phrase search with a calendar window',
         query: '"best served hot" when:2024-12',
       },
@@ -887,7 +891,8 @@ export class ViewSearch extends LitElement {
               <div class="syntax-list">
                 <div class="syntax-row"><code>words here</code><span>Free text across post text fields and tags.</span></div>
                 <div class="syntax-row"><code>"exact phrase"</code><span>Phrase search across that same text space.</span></div>
-                <div class="syntax-row"><code>a b</code><span>Adjacent groups imply <strong>AND</strong>.</span></div>
+                <div class="syntax-row"><code>a b</code><span>Bare text stays broad and relevance-ranked.</span></div>
+                <div class="syntax-row"><code>a &amp; b</code><span>Require both sides explicitly.</span></div>
                 <div class="syntax-row"><code>a | b</code><span>Use <strong>OR</strong> explicitly.</span></div>
                 <div class="syntax-row"><code>-term</code><span>Exclude a term or group with <strong>NOT</strong>.</span></div>
                 <div class="syntax-row"><code>(a | b) c</code><span>Parentheses group boolean logic.</span></div>

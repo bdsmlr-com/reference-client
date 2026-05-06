@@ -50,6 +50,7 @@ describe('post recommendations retrieval click policy', () => {
     const component = Object.create(PostRecommendations.prototype) as InstanceType<typeof PostRecommendations>;
 
     (component as any).dispatchEvent = dispatchEvent;
+    Object.defineProperty(component, 'from', { value: 'direct', configurable: true, writable: true });
     (component as any).navigateToRelated({
       post_id: 601,
       similarity_score: 0,
@@ -58,9 +59,9 @@ describe('post recommendations retrieval click policy', () => {
 
     expect(event.preventDefault).toHaveBeenCalledTimes(1);
     expect(event.stopPropagation).toHaveBeenCalledTimes(1);
-    expect(dispatchEvent).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'post-click',
-      detail: expect.objectContaining({ from: 'direct' }),
-    }));
+    const dispatched = dispatchEvent.mock.calls[0]?.[0] as CustomEvent | undefined;
+    expect(dispatched).toBeTruthy();
+    expect(dispatched?.type).toBe('post-click');
+    expect(dispatched?.detail).toEqual(expect.objectContaining({ from: 'direct' }));
   });
 });

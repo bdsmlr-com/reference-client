@@ -209,9 +209,8 @@ export class PostFeedItem extends LitElement {
   private handlePostClick(): void {
     if (this.disableClick) return;
     const from: PostRouteSource = this.page === 'post' ? 'direct' : this.page;
-    const detail: PostSelectDetail = { post: this.post, from };
     this.dispatchEvent(new CustomEvent<PostSelectDetail>(EventNames.POST_SELECT, {
-      detail,
+      detail: { post: this.post, from },
       bubbles: true,
       composed: true
     }));

@@ -10,6 +10,8 @@ describe('search query guide', () => {
 
     expect(src).toContain('Search syntax');
     expect(src).toContain('target="_blank"');
+    expect(src).toContain('a &amp; b');
+    expect(src).toContain('Require both sides explicitly.');
     expect(src).toContain('post:43110814');
     expect(src).toContain('blog:');
     expect(src).toContain('tag:"best served hot"');

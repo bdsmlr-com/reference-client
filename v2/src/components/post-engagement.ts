@@ -3,10 +3,11 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { formatDate } from '../services/date-formatter.js';
+import { toPresentationModel } from '../services/post-presentation.js';
 import { getCachedBlogId, getCurrentBlog } from '../services/storage.js';
 import { type ProcessedPost } from '../types/post.js';
 import type { IdentityDecoration, Like, Comment, Reblog } from '../types/api.js';
-import { resolveLink } from '../services/link-resolver.js';
+import { resolveLink, type ResolvedLink } from '../services/link-resolver.js';
 import type { PostRouteSource } from '../services/post-route-context.js';
 import './loading-spinner.js';
 import './post-actions.js';
@@ -98,6 +99,56 @@ export class PostEngagement extends LitElement {
 
   private handleOpenTab(event: CustomEvent<{ tab: 'likes' | 'reblogs' | 'comments' }>) {
     void this.toggleTab(event.detail.tab);
+  }
+
+  renderLinks() {
+    if (!this.post) return nothing;
+    const p = this.post;
+    const presentation = toPresentationModel(p, { surface: 'detail', page: 'post' });
+    const typeIcon = presentation.identity.postTypeIcon || '📄';
+
+    if (presentation.identity.isReblog) {
+      const originPostLink = presentation.identity.originPostPermalink || resolveLink('post_permalink', { postId: p.originPostId as number });
+      const viaPostLink = presentation.identity.viaPostPermalink || presentation.identity.permalink;
+      const viaPostLabel = viaPostLink.label || String(p.id);
+      const viaPostIcon = viaPostLink.icon || '↗';
+      const originPostLabel = String(p.originPostId);
+      return html`
+        ${typeIcon} ${this.renderResolvedMicroBlogIdentity(presentation.identity.originBlog, presentation.identity.originBlogLabel, presentation.identity.originBlogDecoration, p.originBlogId)} /
+        ${presentation.identity.originPostMissing
+          ? html`<span class="origin-post-missing">${originPostLabel}</span>`
+          : html`<a class="post-id-link" href=${ originPostLink.href } target=${ originPostLink.target } rel=${originPostLink.rel || nothing} title=${originPostLink.title || nothing}>${originPostLink.label || originPostLabel}<span class="post-id-outlink">${originPostLink.icon || '↗'}</span></a>`}
+        via ♻️ ${this.renderResolvedMicroBlogIdentity(presentation.identity.viaBlog, presentation.identity.viaBlogLabel, presentation.identity.viaBlogDecoration, p.blogId)} /
+        <a class="post-id-link" href=${viaPostLink.href} target=${viaPostLink.target} rel=${viaPostLink.rel || nothing} title=${viaPostLink.title || nothing}>${viaPostLabel}<span class="post-id-outlink">${viaPostIcon}</span></a>
+      `;
+    }
+    const permalink = presentation.identity.permalink;
+    const permalinkLabel = permalink.label || String(p.id);
+    const permalinkIcon = permalink.icon || '↗';
+    return html`${typeIcon} ${this.renderResolvedMicroBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, presentation.identity.primaryBlogLabel, presentation.identity.viaBlogDecoration || presentation.identity.originBlogDecoration, p.blogId)} / <a class="post-id-link" href=${permalink.href} target=${permalink.target} rel=${permalink.rel || nothing} title=${permalink.title || nothing}>${permalinkLabel}<span class="post-id-outlink">${permalinkIcon}</span></a>`;
+  }
+
+  private renderResolvedMicroBlogIdentity(
+    link: ResolvedLink | null | undefined,
+    label: string,
+    decoration?: IdentityDecoration | null,
+    blogId?: number | null,
+  ) {
+    void label;
+    const normalized = `${label || link?.label || ''}`.trim().replace(/^@+/, '');
+    if (!normalized) {
+      return html`<span>@unknown</span>`;
+    }
+    return html`
+      <a href=${link?.href || '#'} target=${link?.target || '_self'} rel=${link?.rel || nothing} title=${link?.title || nothing}>
+        <blog-identity
+          variant="micro"
+          .blogName=${normalized}
+          .blogId=${blogId || 0}
+          .identityDecorations=${decoration ? [decoration] : []}
+        ></blog-identity>
+      </a>
+    `;
   }
 
   private normalizeBlogName(blogName: string | null | undefined): string | null {

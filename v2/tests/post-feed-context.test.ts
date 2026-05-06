@@ -37,6 +37,7 @@ describe('post feed context', () => {
     expect(postSrc).toContain('<post-feed-item');
     expect(postSrc).toContain('page="post"');
     expect(streamSrc).toContain("@property({ type: String }) page: 'feed' | 'follower-feed' | 'activity' = 'feed';");
+    expect(streamSrc).toContain("@post-select=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}");
     expect(streamSrc).toContain("detail: { post, posts, index: index >= 0 ? index : 0, from },");
   });
 
