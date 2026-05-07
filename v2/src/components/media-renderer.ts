@@ -20,6 +20,14 @@ export class MediaRenderer extends LitElement {
       overflow: hidden;
     }
 
+    :host([detail-mode]) {
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      background: transparent;
+      overflow: visible;
+    }
+
     :host([fill-mode]) {
       height: 100%;
     }
@@ -157,6 +165,7 @@ export class MediaRenderer extends LitElement {
     this.toggleAttribute('fill-mode', fillMode);
     const detailFitStyle = 'object-fit: contain; max-width: 100%; max-height: 100%; width: auto; height: auto; margin: 0 auto;';
     const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';
+    this.toggleAttribute('detail-mode', isDetailSurface);
     const mediaStyle = isDetailSurface
       ? detailFitStyle
       : fillMode

@@ -135,4 +135,55 @@ describe('post recommendations policy', () => {
     expect(items).toHaveLength(1);
     expect(items[0]._hydratedPost?.blogName).toBe('gamma');
   });
+
+  it('falls back to per-post hydration when batch hydration is still sparse', async () => {
+    stubBrowserState();
+    const { materializeRecommendationItems } = await import('../src/components/post-recommendations.js');
+    const batchGetPosts = vi.fn().mockResolvedValue({
+      posts: [
+        {
+          id: 404,
+          type: 2,
+          content: {
+            files: ['/uploads/delta.jpg'],
+            thumbnail: '/uploads/delta.jpg',
+          },
+        },
+      ],
+    });
+    const getPost = vi.fn().mockResolvedValue({
+      post: {
+        id: 404,
+        blogName: 'delta',
+        type: 2,
+        content: {
+          files: ['/uploads/delta.jpg'],
+          thumbnail: '/uploads/delta.jpg',
+        },
+      },
+    });
+
+    const items = await materializeRecommendationItems(
+      {
+        posts: [
+          {
+            id: 404,
+            type: 2,
+            content: {
+              files: ['/uploads/delta.jpg'],
+              thumbnail: '/uploads/delta.jpg',
+            },
+          },
+        ],
+      } as any,
+      { batchGetPosts, getPost },
+    );
+
+    expect(batchGetPosts).toHaveBeenCalledTimes(1);
+    expect(batchGetPosts).toHaveBeenCalledWith([404]);
+    expect(getPost).toHaveBeenCalledTimes(1);
+    expect(getPost).toHaveBeenCalledWith(404);
+    expect(items).toHaveLength(1);
+    expect(items[0]._hydratedPost?.blogName).toBe('delta');
+  });
 });

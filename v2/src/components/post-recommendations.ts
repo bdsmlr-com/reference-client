@@ -127,13 +127,46 @@ export async function materializeRecommendationItems(
       return canonical;
     }
 
-    const batchResp = await deps.batchGetPosts(missingIdentityIds);
     const hydratedMap = new Map<number, ProcessedPost>();
-    applyRetrievalPostPolicies(batchResp.posts || [], response.postPolicies).forEach((post) => {
-      const processed = post as ProcessedPost;
-      processed._media = extractMedia(processed);
-      hydratedMap.set(processed.id, processed);
+    try {
+      const batchResp = await deps.batchGetPosts(missingIdentityIds);
+      applyRetrievalPostPolicies(batchResp.posts || [], response.postPolicies).forEach((post) => {
+        const processed = post as ProcessedPost;
+        processed._media = extractMedia(processed);
+        hydratedMap.set(processed.id, processed);
+      });
+    } catch {
+      // Fall through to per-post hydration below.
+    }
+
+    const stillMissingIdentityIds = missingIdentityIds.filter((postId) => {
+      const hydrated = hydratedMap.get(postId);
+      return !hydrated || !hasRecommendationIdentity(hydrated);
     });
+
+    if (stillMissingIdentityIds.length) {
+      const postResults = await Promise.allSettled(
+        stillMissingIdentityIds.map(async (postId) => {
+          const resp = await deps.getPost(postId);
+          const post = resp.post as ProcessedPost | undefined;
+          if (!post) return null;
+          post._media = extractMedia(post);
+          return post;
+        }),
+      );
+
+      applyRetrievalPostPolicies(
+        postResults
+          .filter((result): result is PromiseFulfilledResult<ProcessedPost | null> => result.status === 'fulfilled')
+          .map((result) => result.value)
+          .filter((post): post is ProcessedPost => !!post),
+        response.postPolicies,
+      ).forEach((post) => {
+        const processed = post as ProcessedPost;
+        processed._media = extractMedia(processed);
+        hydratedMap.set(processed.id, processed);
+      });
+    }
 
     return canonical.map((item) => {
       if (!item.post_id) return item;
