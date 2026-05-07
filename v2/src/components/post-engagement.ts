@@ -134,19 +134,25 @@ export class PostEngagement extends LitElement {
     decoration?: IdentityDecoration | null,
     blogId?: number | null,
   ) {
-    void label;
-    const normalized = `${label || link?.label || ''}`.trim().replace(/^@+/, '');
-    if (!normalized) {
+    const raw = `${label || link?.label || ''}`.trim().replace(/^@+/, '');
+    const normalized = raw.toLowerCase() === 'unknown' && (blogId || 0) > 0 ? '' : raw;
+    if (!normalized && !(blogId || 0)) {
       return html`<span>@unknown</span>`;
     }
+    const identity = html`
+      <blog-identity
+        variant="micro"
+        .blogName=${normalized}
+        .blogId=${blogId || 0}
+        .identityDecorations=${decoration ? [decoration] : []}
+      ></blog-identity>
+    `;
+    if (!link) {
+      return identity;
+    }
     return html`
-      <a href=${link?.href || '#'} target=${link?.target || '_self'} rel=${link?.rel || nothing} title=${link?.title || nothing}>
-        <blog-identity
-          variant="micro"
-          .blogName=${normalized}
-          .blogId=${blogId || 0}
-          .identityDecorations=${decoration ? [decoration] : []}
-        ></blog-identity>
+      <a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing}>
+        ${identity}
       </a>
     `;
   }
@@ -163,19 +169,24 @@ export class PostEngagement extends LitElement {
     contextId: 'post_origin_blog' | 'post_via_blog' = 'post_via_blog',
   ) {
     const normalized = this.normalizeBlogName(blogName);
-    const label = normalized ? `@${normalized}` : '@unknown';
+    if (!normalized && !(blogId || 0)) {
+      return html`<span>@unknown</span>`;
+    }
+    const identity = html`
+      <blog-identity
+        variant="micro"
+        .blogName=${normalized || ''}
+        .blogId=${blogId || 0}
+        .identityDecorations=${decorations || []}
+      ></blog-identity>
+    `;
     if (!normalized) {
-      return html`<span>${label}</span>`;
+      return identity;
     }
     const link = resolveLink(contextId, { blog: normalized });
     return html`
       <a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing}>
-        <blog-identity
-          variant="micro"
-          .blogName=${normalized}
-          .blogId=${blogId || 0}
-          .identityDecorations=${decorations || []}
-        ></blog-identity>
+        ${identity}
       </a>
     `;
   }

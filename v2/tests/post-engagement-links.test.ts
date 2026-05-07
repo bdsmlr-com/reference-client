@@ -20,7 +20,7 @@ describe('post engagement links', () => {
     expect(link.isExternal).toBe(false);
   });
 
-  it('guards empty blog names and falls back to @unknown text', () => {
+  it('keeps identity structured when names are sparse and only falls back to @unknown without ids', () => {
     const src = readFileSync(FILE, 'utf8');
 
     expect(src).toContain("import { resolveLink, type ResolvedLink } from '../services/link-resolver.js';");
@@ -31,8 +31,9 @@ describe('post engagement links', () => {
     expect(src).toContain('const presentation = toPresentationModel');
     expect(src).not.toContain('POST_TYPE_ICONS[p.type as PostType] ||');
     expect(src).toContain("resolveLink('post_permalink'");
-    expect(src).toContain("const normalized = (blogName || '').trim();");
-    expect(src).toContain("const label = normalized ? `@${normalized}` : '@unknown';");
+    expect(src).toContain("const normalized = this.normalizeBlogName(blogName);");
+    expect(src).toContain("if (!normalized && !(blogId || 0)) {");
+    expect(src).toContain(".blogName=${normalized || ''}");
     expect(src).not.toContain('href="/${p.originBlogName}/posts"');
     expect(src).not.toContain('href="/${p.blogName}/posts"');
     expect(src).toContain('presentation.identity.viaBlogDecoration');
@@ -63,6 +64,7 @@ describe('post engagement links', () => {
     expect(src).toContain('variant="micro"');
     expect(src).toContain('.blogId=${blogId || 0}');
     expect(src).toContain('.identityDecorations=${decorations || []}');
+    expect(src).toContain("const normalized = raw.toLowerCase() === 'unknown' && (blogId || 0) > 0 ? '' : raw;");
   });
 
   it('renders missing origin post ids as non-linked tombstones', () => {
