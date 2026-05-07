@@ -9,7 +9,7 @@ describe('post recommendations presentation', () => {
     const src = readFileSync(FILE, 'utf8');
 
     expect(src).toContain("import './post-grid.js';");
-    expect(src).toContain(".page=${'search'}");
+    expect(src).toContain(".page=${'post'}");
     expect(src).toContain(".mode=${'grid'}");
     expect(src).not.toContain('presentation.identity.viaBlogLabel');
     expect(src).toContain("const blogLabel = `${h.blogName || h.originBlogName || ''}`.trim();");

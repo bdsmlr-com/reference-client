@@ -163,7 +163,7 @@ export class MediaRenderer extends LitElement {
       this.type === 'gutter' ||
       this.type === 'lightbox';
     this.toggleAttribute('fill-mode', fillMode);
-    const detailFitStyle = 'object-fit: contain; max-width: 100%; max-height: 100%; width: auto; height: auto; margin: 0 auto;';
+    const detailFitStyle = 'object-fit: contain; max-width: min(100%, calc(100vw - 40px)); max-height: calc(min(78vh, 920px) - 20px); width: auto; height: auto; margin: 0 auto;';
     const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';
     this.toggleAttribute('detail-mode', isDetailSurface);
     const mediaStyle = isDetailSurface

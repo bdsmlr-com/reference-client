@@ -42,7 +42,7 @@ describe('post route media behavior', () => {
     expect(src).toContain('@loadeddata=${this.handleVideoReady}');
     expect(src).toContain('@play=${this.handleVideoReady}');
     expect(src).toContain("position: static;");
-    expect(src).toContain("const detailFitStyle = 'object-fit: contain; max-width: 100%; max-height: 100%; width: auto; height: auto; margin: 0 auto;';");
+    expect(src).toContain("const detailFitStyle = 'object-fit: contain; max-width: min(100%, calc(100vw - 40px)); max-height: calc(min(78vh, 920px) - 20px); width: auto; height: auto; margin: 0 auto;';");
     expect(src).toContain("const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';");
     expect(src).toContain('const isAnim = isAnimation(this.src);');
     expect(src).toContain("const isVideoSource = isAnim || isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');");

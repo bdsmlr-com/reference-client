@@ -20,6 +20,7 @@ const RECS_PAGE_SIZE = 20;
 export interface RecommendationHydrationDeps {
   batchGetPosts: (postIds: number[]) => Promise<{ posts?: ProcessedPost[] }>;
   getPost: (postId: number) => Promise<{ post?: ProcessedPost }>;
+  searchPosts?: (query: string) => Promise<{ posts?: ProcessedPost[]; postPolicies?: RetrievalPostPolicyMap }>;
 }
 
 function buildCanonicalRecommendationItems(
@@ -144,9 +145,30 @@ export async function materializeRecommendationItems(
       return !hydrated || !hasRecommendationIdentity(hydrated);
     });
 
-    if (stillMissingIdentityIds.length) {
+    if (stillMissingIdentityIds.length && deps.searchPosts) {
+      const searchResults = await Promise.allSettled(
+        stillMissingIdentityIds.map((postId) => deps.searchPosts!(`post:${postId}`)),
+      );
+
+      searchResults.forEach((result) => {
+        if (result.status !== 'fulfilled') return;
+        const searchResponse = result.value;
+        applyRetrievalPostPolicies(searchResponse.posts || [], searchResponse.postPolicies || response.postPolicies).forEach((post) => {
+          const processed = post as ProcessedPost;
+          processed._media = extractMedia(processed);
+          hydratedMap.set(processed.id, processed);
+        });
+      });
+    }
+
+    const finalMissingIdentityIds = missingIdentityIds.filter((postId) => {
+      const hydrated = hydratedMap.get(postId);
+      return !hydrated || !hasRecommendationIdentity(hydrated);
+    });
+
+    if (finalMissingIdentityIds.length) {
       const postResults = await Promise.allSettled(
-        stillMissingIdentityIds.map(async (postId) => {
+        finalMissingIdentityIds.map(async (postId) => {
           const resp = await deps.getPost(postId);
           const post = resp.post as ProcessedPost | undefined;
           if (!post) return null;
@@ -359,6 +381,10 @@ export class PostRecommendations extends LitElement {
           const batchResp = await apiClient.posts.batchGet({ post_ids: postIds });
           return { posts: batchResp.posts as ProcessedPost[] | undefined };
         },
+        searchPosts: async (query) => {
+          const resp = await apiClient.posts.search({ tag_name: query, page_size: 1, page_number: 1 });
+          return { posts: resp.posts as ProcessedPost[] | undefined, postPolicies: resp.postPolicies };
+        },
         getPost: async (postId) => {
           const resp = await apiClient.posts.get(postId);
           return { post: resp.post as ProcessedPost | undefined };
@@ -450,7 +476,7 @@ export class PostRecommendations extends LitElement {
                 .posts=${this.relatedPosts
                   .map((r) => (r as any)._hydratedPost as ProcessedPost | undefined)
                   .filter((post): post is ProcessedPost => !!post)}
-                .page=${'search'}
+                .page=${'post'}
                 .mode=${'grid'}
               ></post-grid>
             </div>

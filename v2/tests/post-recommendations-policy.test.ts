@@ -21,6 +21,7 @@ describe('post recommendations policy', () => {
     const { materializeRecommendationItems } = await import('../src/components/post-recommendations.js');
     const batchGetPosts = vi.fn();
     const getPost = vi.fn();
+    const searchPosts = vi.fn();
 
     const items = await materializeRecommendationItems(
       {
@@ -45,7 +46,7 @@ describe('post recommendations policy', () => {
           },
         },
       } as any,
-      { batchGetPosts, getPost },
+      { batchGetPosts, getPost, searchPosts },
     );
 
     expect(batchGetPosts).not.toHaveBeenCalled();
@@ -74,6 +75,7 @@ describe('post recommendations policy', () => {
       ],
     });
     const getPost = vi.fn();
+    const searchPosts = vi.fn();
 
     const items = await materializeRecommendationItems(
       {
@@ -84,7 +86,7 @@ describe('post recommendations policy', () => {
           },
         ],
       } as any,
-      { batchGetPosts, getPost },
+      { batchGetPosts, getPost, searchPosts },
     );
 
     expect(batchGetPosts).toHaveBeenCalledTimes(1);
@@ -112,6 +114,7 @@ describe('post recommendations policy', () => {
       ],
     });
     const getPost = vi.fn();
+    const searchPosts = vi.fn();
 
     const items = await materializeRecommendationItems(
       {
@@ -126,7 +129,7 @@ describe('post recommendations policy', () => {
           },
         ],
       } as any,
-      { batchGetPosts, getPost },
+      { batchGetPosts, getPost, searchPosts },
     );
 
     expect(batchGetPosts).toHaveBeenCalledTimes(1);
@@ -136,7 +139,7 @@ describe('post recommendations policy', () => {
     expect(items[0]._hydratedPost?.blogName).toBe('gamma');
   });
 
-  it('falls back to per-post hydration when batch hydration is still sparse', async () => {
+  it('falls back to search hydration when batch hydration is still sparse', async () => {
     stubBrowserState();
     const { materializeRecommendationItems } = await import('../src/components/post-recommendations.js');
     const batchGetPosts = vi.fn().mockResolvedValue({
@@ -151,16 +154,19 @@ describe('post recommendations policy', () => {
         },
       ],
     });
-    const getPost = vi.fn().mockResolvedValue({
-      post: {
-        id: 404,
-        blogName: 'delta',
-        type: 2,
-        content: {
-          files: ['/uploads/delta.jpg'],
-          thumbnail: '/uploads/delta.jpg',
+    const getPost = vi.fn();
+    const searchPosts = vi.fn().mockResolvedValue({
+      posts: [
+        {
+          id: 404,
+          blogName: 'delta',
+          type: 2,
+          content: {
+            files: ['/uploads/delta.jpg'],
+            thumbnail: '/uploads/delta.jpg',
+          },
         },
-      },
+      ],
     });
 
     const items = await materializeRecommendationItems(
@@ -176,13 +182,14 @@ describe('post recommendations policy', () => {
           },
         ],
       } as any,
-      { batchGetPosts, getPost },
+      { batchGetPosts, getPost, searchPosts },
     );
 
     expect(batchGetPosts).toHaveBeenCalledTimes(1);
     expect(batchGetPosts).toHaveBeenCalledWith([404]);
-    expect(getPost).toHaveBeenCalledTimes(1);
-    expect(getPost).toHaveBeenCalledWith(404);
+    expect(getPost).not.toHaveBeenCalled();
+    expect(searchPosts).toHaveBeenCalledTimes(1);
+    expect(searchPosts).toHaveBeenCalledWith('post:404');
     expect(items).toHaveLength(1);
     expect(items[0]._hydratedPost?.blogName).toBe('delta');
   });
