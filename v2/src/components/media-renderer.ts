@@ -148,7 +148,12 @@ export class MediaRenderer extends LitElement {
     const posterSource = this.posterSrc || this.src;
     const posterUrl = resolveMediaUrl(posterSource, 'poster');
     const effectivePoster = posterUrl || resolvedUrl;
-    const fillMode = this.type === 'gallery-grid' || this.type === 'gallery-masonry' || this.type === 'gutter' || this.type === 'lightbox';
+    const fillMode =
+      this.type === 'card' ||
+      this.type === 'gallery-grid' ||
+      this.type === 'gallery-masonry' ||
+      this.type === 'gutter' ||
+      this.type === 'lightbox';
     this.toggleAttribute('fill-mode', fillMode);
     const detailFitStyle = 'object-fit: contain; max-width: 100%; max-height: 100%; width: auto; height: auto; margin: 0 auto;';
     const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';

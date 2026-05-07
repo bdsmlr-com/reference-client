@@ -49,6 +49,8 @@ describe('post route media behavior', () => {
     expect(src).toContain('const behavior = getMediaBehavior(this.type);');
     expect(src).toContain('const effectiveAutoplay = this.autoplayVideo ?? behavior.autoplay;');
     expect(src).toContain("const defaultPreload = behavior.preload ?? 'none';");
+    expect(src).toContain("this.type === 'card' ||");
+    expect(src).toContain("this.type === 'gallery-grid' ||");
   });
 
   it('post-detail-content emits the canonical detail media family', () => {
