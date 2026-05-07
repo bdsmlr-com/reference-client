@@ -21,6 +21,8 @@ describe('post related routes', () => {
     expect(detailSrc).toContain('.showBrowseLink=${true}');
     expect(recommendationsSrc).toContain('href="/post/${id}/related"');
     expect(recommendationsSrc).toContain('@property({ type: String }) perspectiveBlogName = \'\'');
+    expect(recommendationsSrc).toContain('@post-click=${this.handleGridPostClick}');
+    expect(recommendationsSrc).toContain('window.location.href = buildPostHref(post.id, this.from);');
   });
 
   it('related page renders perspective tabs for default, you, and blog-scoped variants', () => {

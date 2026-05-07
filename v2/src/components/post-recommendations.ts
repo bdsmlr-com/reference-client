@@ -10,7 +10,8 @@ import { scrollObserver } from '../services/scroll-observer.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { applyRetrievalPostPolicies, resolveRetrievalClickMode, type RetrievalPostPolicyMap } from '../services/retrieval-presentation.js';
-import type { PostRouteSource } from '../services/post-route-context.js';
+import { buildPostHref, type PostRouteSource } from '../services/post-route-context.js';
+import type { PostClickEvent } from '../types/events.js';
 import './post-grid.js';
 import './load-footer.js';
 import './loading-spinner.js';
@@ -422,6 +423,13 @@ export class PostRecommendations extends LitElement {
     window.location.href = link.href;
   }
 
+  private handleGridPostClick(e: PostClickEvent): void {
+    e.stopPropagation();
+    const post = e.detail.post;
+    if (!post?.id) return;
+    window.location.href = buildPostHref(post.id, this.from);
+  }
+
   render() {
     const id = this.getNormalizedPostId();
     if (!id) return nothing;
@@ -452,6 +460,7 @@ export class PostRecommendations extends LitElement {
                   .filter((post): post is ProcessedPost => !!post)}
                 .page=${'post'}
                 .mode=${'grid'}
+                @post-click=${this.handleGridPostClick}
               ></post-grid>
             </div>
           `
