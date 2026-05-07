@@ -14,4 +14,10 @@ describe('post recommendations presentation', () => {
     expect(src).not.toContain('presentation.identity.viaBlogLabel');
     expect(src).toContain("const blogLabel = `${h.blogName || h.originBlogName || ''}`.trim();");
   });
+
+  it('activity grid still shows the blog chip on post-context recommendation cards', () => {
+    const src = readFileSync(join(process.cwd(), 'src/components/activity-grid.ts'), 'utf8');
+
+    expect(src).toContain("this.page === 'post'");
+  });
 });

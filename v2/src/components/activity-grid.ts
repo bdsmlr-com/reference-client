@@ -186,6 +186,7 @@ export class ActivityItem extends LitElement {
       && !!chipBlogName
       && (
         this.page === 'search'
+        || this.page === 'post'
         || this.page === 'social'
         || (
           this.page === 'activity'
