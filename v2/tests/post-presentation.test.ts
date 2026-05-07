@@ -174,4 +174,21 @@ describe('toPresentationModel', () => {
 
     expect(model.identity.isCanonicalCard).toBe(true);
   });
+
+  it('does not synthesize unknown labels when ids exist but names are sparse', () => {
+    const model = toPresentationModel(
+      makePost({
+        blogId: 200714,
+        blogName: '',
+        originBlogId: 200714,
+        originBlogName: '',
+        originPostId: 686683457,
+      }),
+      { surface: 'card', page: 'post' },
+    );
+
+    expect(model.identity.originBlogLabel).toBe('');
+    expect(model.identity.viaBlogLabel).toBe('');
+    expect(model.identity.chipBlogLabel).toBe('');
+  });
 });

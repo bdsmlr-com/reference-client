@@ -7,6 +7,7 @@ import { getBlogNameFromPath, isAdminMode } from '../services/blog-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import './media-renderer.js';
 import './search-group-card.js';
+import './blog-identity.js';
 
 type ActivityGridItem =
   | { post: ProcessedPost; type: any }
@@ -85,6 +86,11 @@ export class ActivityItem extends LitElement {
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 100%;
+      }
+
+      .blog-chip blog-identity {
+        font: inherit;
+        color: inherit;
       }
 
       .stats-line {
@@ -176,14 +182,22 @@ export class ActivityItem extends LitElement {
     const renderType = this.mode === 'masonry' ? 'masonry' : 'card';
     const tags = extractRenderableTags(p);
     const chipBlogName = presentation.identity.chipBlogLabel;
+    const chipBlogId = presentation.identity.isReblog ? p.originBlogId : p.blogId;
+    const normalizedChipBlogName = (() => {
+      const raw = `${chipBlogName || ''}`.trim().replace(/^@+/, '');
+      if (raw.toLowerCase() === 'unknown' && (chipBlogId || 0) > 0) {
+        return '';
+      }
+      return raw;
+    })();
     const viewedBlog = this.normalizeBlogName(getBlogNameFromPath());
-    const chipBlog = this.normalizeBlogName(chipBlogName);
+    const chipBlog = this.normalizeBlogName(normalizedChipBlogName || chipBlogName);
     const shouldHideSelfInteractionChip =
       (this.interactionType === 'like' || this.interactionType === 'comment')
       && !!viewedBlog
       && chipBlog === viewedBlog;
     const showBlogChip = this.showBlogChip
-      && !!chipBlogName
+      && (!!chipBlogName || !!chipBlogId)
       && (
         this.page === 'search'
         || this.page === 'post'
@@ -213,7 +227,16 @@ export class ActivityItem extends LitElement {
         <div class="card-info">
           <div class="meta-line">
             <span>${typeIcon}</span>
-            ${showBlogChip ? html`<span class="blog-chip">${chipBlogName.startsWith('@') ? chipBlogName : `@${chipBlogName}`}</span>` : html`<span>${formatDate(p.createdAtUnix, 'date')}</span>`}
+            ${showBlogChip ? html`
+              <span class="blog-chip">
+                <blog-identity
+                  variant="micro"
+                  .blogName=${normalizedChipBlogName}
+                  .blogId=${chipBlogId || 0}
+                  .showAvatar=${false}
+                ></blog-identity>
+              </span>
+            ` : html`<span>${formatDate(p.createdAtUnix, 'date')}</span>`}
           </div>
           <div class="stats-line">
             ${presentation.actions.like.count ? html`<div class="stat-item">${presentation.actions.like.icon} ${presentation.actions.like.count}</div>` : ''}

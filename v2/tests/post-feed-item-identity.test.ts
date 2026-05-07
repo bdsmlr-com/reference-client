@@ -11,6 +11,7 @@ describe('post feed item identity rendering', () => {
     expect(src).toContain("import './blog-identity.js';");
     expect(src).toContain('private renderMicroBlogIdentity(');
     expect(src).toContain('variant="micro"');
+    expect(src).toContain('.blogId=${blogId || 0}');
     expect(src).toContain('.showAvatar=${false}');
     expect(src).toContain('♻️ via ${this.renderMicroBlogIdentity(');
   });

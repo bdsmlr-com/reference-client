@@ -220,16 +220,19 @@ export class PostFeedItem extends LitElement {
     link: ReturnType<typeof resolveLink> | null | undefined,
     label: string,
     decoration?: IdentityDecoration | null,
+    blogId?: number | null,
   ) {
-    const normalized = label.trim().replace(/^@+/, '');
+    const raw = label.trim().replace(/^@+/, '');
+    const normalized = raw.toLowerCase() === 'unknown' && (blogId || 0) > 0 ? '' : raw;
     const decorations = decoration ? [decoration] : [];
-    if (!normalized) {
+    if (!normalized && !(blogId || 0)) {
       return html`<span class="blog-name">@unknown</span>`;
     }
     const identity = html`
       <blog-identity
         variant="micro"
         .blogName=${normalized}
+        .blogId=${blogId || 0}
         .showAvatar=${false}
         .identityDecorations=${decorations}
       ></blog-identity>
@@ -291,12 +294,12 @@ export class PostFeedItem extends LitElement {
         <header class="card-header">
           <div class="blog-info">
             ${isReblog ? html`
-              ${this.renderMicroBlogIdentity(presentation.identity.originBlog, originBlogLabel, presentation.identity.originBlogDecoration)}
+              ${this.renderMicroBlogIdentity(presentation.identity.originBlog, originBlogLabel, presentation.identity.originBlogDecoration, post.originBlogId)}
               <span class="reblog-indicator">
-                ♻️ via ${this.renderMicroBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, blogLabel, presentation.identity.viaBlogDecoration)}
+                ♻️ via ${this.renderMicroBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, blogLabel, presentation.identity.viaBlogDecoration, post.blogId)}
               </span>
             ` : html`
-              ${this.renderMicroBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, blogLabel, presentation.identity.viaBlogDecoration)}
+              ${this.renderMicroBlogIdentity(presentation.identity.viaBlog || presentation.identity.originBlog, blogLabel, presentation.identity.viaBlogDecoration, post.blogId)}
             `}
             ${selfActivityBadge ? html`<span class="self-activity-badge">${selfActivityBadge}</span>` : ''}
           </div>

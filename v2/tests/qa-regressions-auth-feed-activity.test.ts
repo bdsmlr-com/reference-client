@@ -73,6 +73,8 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(gridSrc).toContain('const shouldHideSelfInteractionChip =');
     expect(gridSrc).toContain("this.interactionType === 'like' || this.interactionType === 'comment'");
     expect(gridSrc).toContain('const chipBlogName = presentation.identity.chipBlogLabel;');
+    expect(gridSrc).toContain('const chipBlogId = presentation.identity.isReblog ? p.originBlogId : p.blogId;');
+    expect(gridSrc).toContain('<blog-identity');
   });
 
   it('feed interaction clusters request only likes/comments, reject reblogs, and promote self-interactions to full cards', () => {

@@ -35,7 +35,7 @@ describe('gallery mode wiring', () => {
     expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
     expect(src).toContain("@property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';");
     expect(src).toContain(":host([mode='masonry'])");
-    expect(src).toContain("const presentation = toPresentationModel(p, { surface: 'card', page: 'activity', interactionKind: this.interactionType, role: 'cluster' });");
+    expect(src).toContain("const presentation = toPresentationModel(p, { surface: 'card', page: this.page, interactionKind: this.interactionType, role: 'cluster' });");
     expect(src).toContain('let typeIcon = presentation.identity.postTypeIcon || \'📄\'');
     expect(src).not.toContain('POST_TYPE_ICONS[p.type as PostType] ||');
   });
@@ -66,9 +66,13 @@ describe('gallery mode wiring', () => {
   it('activity cards use origin-aware blog chip logic for like/comment/reblog interactions', () => {
     const src = readFileSync(join(ROOT, 'components/activity-grid.ts'), 'utf8');
 
+    expect(src).toContain("import './blog-identity.js';");
     expect(src).toContain('const chipBlogName = presentation.identity.chipBlogLabel;');
+    expect(src).toContain('const chipBlogId = presentation.identity.isReblog ? p.originBlogId : p.blogId;');
+    expect(src).toContain('<blog-identity');
+    expect(src).toContain('.blogId=${chipBlogId || 0}');
     expect(src).toContain('white-space: nowrap;');
     expect(src).toContain('text-overflow: ellipsis;');
-    expect(src).not.toContain('reblog-variant-badge');
+    expect(src).not.toContain('<span class="blog-chip">${chipBlogName.startsWith(\'@\') ? chipBlogName : `@${chipBlogName}`}</span>');
   });
 });

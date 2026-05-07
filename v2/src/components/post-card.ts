@@ -208,16 +208,19 @@ export class PostCard extends LitElement {
     label: string,
     titleFallback: string,
     decoration?: IdentityDecoration | null,
+    blogId?: number | null,
   ) {
-    const normalized = label.trim().replace(/^@+/, '');
+    const raw = label.trim().replace(/^@+/, '');
+    const normalized = raw.toLowerCase() === 'unknown' && (blogId || 0) > 0 ? '' : raw;
     const decorations = decoration ? [decoration] : [];
-    if (!normalized) {
+    if (!normalized && !(blogId || 0)) {
       return html`<span class="blog-link">@unknown</span>`;
     }
     const identity = html`
       <blog-identity
         variant="micro"
         .blogName=${normalized}
+        .blogId=${blogId || 0}
         .showAvatar=${false}
         .identityDecorations=${decorations}
       ></blog-identity>
@@ -260,6 +263,7 @@ export class PostCard extends LitElement {
                 presentation.identity.originBlogLabel,
                 `Original post by ${presentation.identity.originBlogLabel}`,
                 presentation.identity.originBlogDecoration,
+                p.originBlogId,
               )}
               <span style="opacity: 0.5;">♻️ via</span>
               ${this.renderMicroBlogIdentity(
@@ -267,6 +271,7 @@ export class PostCard extends LitElement {
                 presentation.identity.viaBlogLabel,
                 `Open ${presentation.identity.viaBlogLabel}`,
                 presentation.identity.viaBlogDecoration,
+                p.blogId,
               )}
             ` : html`
               ${this.renderMicroBlogIdentity(
@@ -274,6 +279,7 @@ export class PostCard extends LitElement {
                 presentation.identity.viaBlogLabel,
                 `Open ${presentation.identity.viaBlogLabel}`,
                 presentation.identity.viaBlogDecoration,
+                p.blogId,
               )}
             `}
             ${rbCount > 0 ? html`<span class="reblog-badge" title="Aggregated reblogs">+${rbCount}</span>` : ''}

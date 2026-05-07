@@ -112,8 +112,9 @@ export class PostDetailContent extends LitElement {
     decoration?: IdentityDecoration | null,
     blogId?: number | null,
   ) {
-    const normalized = `${label || link?.label || ''}`.trim().replace(/^@+/, '');
-    if (!normalized) return nothing;
+    const raw = `${label || link?.label || ''}`.trim().replace(/^@+/, '');
+    const normalized = raw.toLowerCase() === 'unknown' && (blogId || 0) > 0 ? '' : raw;
+    if (!normalized && !(blogId || 0)) return nothing;
     const identity = html`
       <blog-identity
         variant="micro"
