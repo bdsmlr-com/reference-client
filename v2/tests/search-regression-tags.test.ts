@@ -76,6 +76,13 @@ describe('search regression and tag visibility', () => {
     expect(detailSrc).toContain('class="post-tags"');
   });
 
+  it('uses global post reblog counts on grouped archive/search cards', () => {
+    const src = readFileSync(join(ROOT, 'components/search-group-card.ts'), 'utf8');
+
+    expect(src).toContain('const reblogCount = this.post.reblogsCount ?? this.count;');
+    expect(src).toContain('♻️ ${reblogCount}');
+  });
+
   it('threads the search route perspective blog into the API request payload', () => {
     const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
 

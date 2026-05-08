@@ -1,5 +1,5 @@
 import { LitElement, html, css, unsafeCSS } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import type { PropertyValues } from 'lit';
 import { baseStyles } from '../styles/theme.js';
 import { getTypePreference, setTypePreference } from '../services/storage.js';
@@ -125,7 +125,7 @@ export class TypePills extends LitElement {
   @property({ type: Boolean }) persistSelection = true;
 
   private allTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
-  private open = false;
+  @state() private open = false;
 
   connectedCallback(): void {
     super.connectedCallback();

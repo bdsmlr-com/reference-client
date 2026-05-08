@@ -1,5 +1,5 @@
 import { LitElement, css, html } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { getGalleryMode, setGalleryMode, type GalleryMode } from '../services/profile.js';
 
@@ -82,7 +82,7 @@ export class GalleryModePicker extends LitElement {
   @property({ type: String }) pageName = '';
   @property({ type: Boolean }) persistSelection = true;
 
-  private open = false;
+  @state() private open = false;
 
   connectedCallback(): void {
     super.connectedCallback();

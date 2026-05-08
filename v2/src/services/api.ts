@@ -118,24 +118,24 @@ const TIMEOUT_SAMPLE_BOOST = 1.1; // Push timeouts slightly above the configured
  */
 const ENDPOINT_TIMEOUTS: Record<string, number> = {
   // Fast endpoints (5s) - simple lookups, single record
-  '/v2/public-read-api-v2/resolve-identifier': 5000,
-  '/v2/public-read-api-v2/get-blog': 5000,
-  '/v2/public-read-api-v2/sign-url': 5000,
+  '/v2/resolve-identifier': 5000,
+  '/v2/get-blog': 5000,
+  '/v2/sign-url': 5000,
 
   // Medium endpoints (15s) - standard list queries
-  '/v2/public-read-api-v2/list-blog-activity': 15000,
-  '/v2/public-read-api-v2/list-post-likes': 15000,
-  '/v2/public-read-api-v2/list-post-comments': 15000,
-  '/v2/public-read-api-v2/list-post-reblogs': 15000,
-  '/v2/public-read-api-v2/batch-get-reblog-states': 15000,
+  '/v2/list-blog-activity': 15000,
+  '/v2/list-post-likes': 15000,
+  '/v2/list-post-comments': 15000,
+  '/v2/list-post-reblogs': 15000,
+  '/v2/batch-get-reblog-states': 15000,
 
   // Slow endpoints (30s) - complex queries with large result sets
-  '/v2/public-read-api-v2/search-posts-by-tag': 30000,
-  '/v2/public-read-api-v2/search-blogs': 30000,
-  '/v2/public-read-api-v2/blog-follow-graph': 30000,
+  '/v2/search-posts-by-tag': 30000,
+  '/v2/search-blogs': 30000,
+  '/v2/blog-follow-graph': 30000,
 
   // Extra slow endpoints (45s) - server-side merge operations
-  '/v2/public-read-api-v2/list-blogs-recent-activity': 45000,
+  '/v2/list-blogs-recent-activity': 45000,
 };
 
 type EndpointTimingStats = {
@@ -352,11 +352,8 @@ async function apiRequest<T>(
 ): Promise<T> {
   syncAdminModeFromUrl();
 
-  // Normalize endpoint path for new layered architecture
+  // Normalize endpoint path for auth aliases during the route migration.
   let normalizedEndpoint = endpoint;
-  if (normalizedEndpoint.includes('/v2/public-read-api-v2/')) {
-    normalizedEndpoint = normalizedEndpoint.replace('/v2/public-read-api-v2/', '/v2/');
-  }
   if (normalizedEndpoint.includes('/v2/auth/')) {
     normalizedEndpoint = normalizedEndpoint.replace('/v2/auth/', '/v2/');
   }
@@ -800,7 +797,7 @@ export async function listBlogPostsSWR(
   }
 ): Promise<SWRResult<ListBlogPostsResponse>> {
   return apiRequestWithSWR<ListBlogPostsResponse>(
-    '/v2/public-read-api-v2/list-blog-activity',
+    '/v2/list-blog-activity',
     req,
     options
   );
@@ -820,7 +817,7 @@ export async function searchPostsByTagSWR(
   }
 ): Promise<SWRResult<SearchPostsByTagResponse>> {
   return apiRequestWithSWR<SearchPostsByTagResponse>(
-    '/v2/public-read-api-v2/search-posts-by-tag',
+    '/v2/search-posts-by-tag',
     req,
     options
   );
@@ -840,7 +837,7 @@ export async function searchBlogsSWR(
   }
 ): Promise<SWRResult<SearchBlogsResponse>> {
   return apiRequestWithSWR<SearchBlogsResponse>(
-    '/v2/public-read-api-v2/search-blogs',
+    '/v2/search-blogs',
     req,
     options
   );
@@ -864,7 +861,7 @@ export async function blogFollowGraphSWR(
     direction: normalizeFollowDirection(req.direction),
   };
   return apiRequestWithSWR<BlogFollowGraphResponse>(
-    '/v2/public-read-api-v2/blog-follow-graph',
+    '/v2/blog-follow-graph',
     payload,
     options
   );
@@ -884,7 +881,7 @@ export async function listBlogsRecentActivitySWR(
   }
 ): Promise<SWRResult<ListBlogsRecentActivityResponse>> {
   return apiRequestWithSWR<ListBlogsRecentActivityResponse>(
-    '/v2/public-read-api-v2/list-blogs-recent-activity',
+    '/v2/list-blogs-recent-activity',
     req,
     options
   );
@@ -904,7 +901,7 @@ export async function getBlogSWR(
   }
 ): Promise<SWRResult<GetBlogResponse>> {
   return apiRequestWithSWR<GetBlogResponse>(
-    '/v2/public-read-api-v2/get-blog',
+    '/v2/get-blog',
     req,
     options
   );
@@ -943,7 +940,7 @@ export async function searchPostsByTag(
     ...(resolvedPageSize ? { page_size: page_size ?? page?.page_size } : {}),
   };
   return apiRequest<SearchPostsByTagResponse>(
-    '/v2/public-read-api-v2/search-posts-by-tag',
+    '/v2/search-posts-by-tag',
     payload
   );
 }
@@ -973,7 +970,7 @@ export async function listBlogPosts(
   req: ListBlogPostsRequest
 ): Promise<ListBlogPostsResponse> {
   return apiRequest<ListBlogPostsResponse>(
-    '/v2/public-read-api-v2/list-blog-activity',
+    '/v2/list-blog-activity',
     req
   );
 }
@@ -1056,7 +1053,7 @@ export async function listPostLikes(
   pageSize = 100
 ): Promise<ListPostLikesResponse> {
   return apiRequest<ListPostLikesResponse>(
-    '/v2/public-read-api-v2/list-post-likes',
+    '/v2/list-post-likes',
     { post_id: postId, page: { page_size: pageSize } }
   );
 }
@@ -1066,7 +1063,7 @@ export async function listPostComments(
   pageSize = 100
 ): Promise<ListPostCommentsResponse> {
   return apiRequest<ListPostCommentsResponse>(
-    '/v2/public-read-api-v2/list-post-comments',
+    '/v2/list-post-comments',
     { post_id: postId, page: { page_size: pageSize } }
   );
 }
@@ -1076,7 +1073,7 @@ export async function listPostReblogs(
   pageSize = 100
 ): Promise<ListPostReblogsResponse> {
   return apiRequest<ListPostReblogsResponse>(
-    '/v2/public-read-api-v2/list-post-reblogs',
+    '/v2/list-post-reblogs',
     { post_id: postId, page: { page_size: pageSize } }
   );
 }
@@ -1085,7 +1082,7 @@ export async function batchGetLikeStates(
   req: BatchGetLikeStatesRequest
 ): Promise<BatchGetLikeStatesResponse> {
   return apiRequest<BatchGetLikeStatesResponse>(
-    '/v2/public-read-api-v2/batch-get-like-states',
+    '/v2/batch-get-like-states',
     req
   );
 }
@@ -1094,7 +1091,7 @@ export async function batchGetReblogStates(
   req: BatchGetReblogStatesRequest
 ): Promise<BatchGetReblogStatesResponse> {
   return apiRequest<BatchGetReblogStatesResponse>(
-    '/v2/public-read-api-v2/batch-get-reblog-states',
+    '/v2/batch-get-reblog-states',
     req
   );
 }
@@ -1140,7 +1137,7 @@ export async function getPostDetail(
 ): Promise<GetPostResponse> {
   const req: GetPostRequest = { post_id: postId };
   return apiRequest<GetPostResponse>(
-    '/v2/public-read-api-v2/get-post-detail',
+    '/v2/get-post-detail',
     req
   );
 }
@@ -1156,7 +1153,7 @@ export async function batchGetPosts(
 
 export async function signUrl(url: string): Promise<string> {
   const data = await apiRequest<{ url?: string }>(
-    '/v2/public-read-api-v2/sign-url',
+    '/v2/sign-url',
     { url }
   );
   return data.url || url;
@@ -1178,7 +1175,7 @@ export async function searchBlogs(
   req: SearchBlogsRequest
 ): Promise<SearchBlogsResponse> {
   return apiRequest<SearchBlogsResponse>(
-    '/v2/public-read-api-v2/search-blogs',
+    '/v2/search-blogs',
     req
   );
 }
@@ -1270,7 +1267,7 @@ export async function blogFollowGraph(
   else if (dir === 2) dirStr = 'followers';
 
   return apiRequest<BlogFollowGraphResponse>(
-    '/v2/public-read-api-v2/blog-follow-graph',
+    '/v2/blog-follow-graph',
     {
       ...req,
       direction: dirStr,
@@ -1362,7 +1359,7 @@ export async function listBlogsRecentActivity(
   req: ListBlogsRecentActivityRequest
 ): Promise<ListBlogsRecentActivityResponse> {
   return apiRequest<ListBlogsRecentActivityResponse>(
-    '/v2/public-read-api-v2/list-blogs-recent-activity',
+    '/v2/list-blogs-recent-activity',
     req
   );
 }
@@ -1448,7 +1445,7 @@ export async function getBlog(
   req: GetBlogRequest
 ): Promise<GetBlogResponse> {
   return apiRequest<GetBlogResponse>(
-    '/v2/public-read-api-v2/get-blog',
+    '/v2/get-blog',
     req
   );
 }
@@ -1457,7 +1454,7 @@ export async function listBlogTopTags(
   req: ListBlogTopTagsRequest
 ): Promise<ListBlogTopTagsResponse> {
   return apiRequest<ListBlogTopTagsResponse>(
-    '/v2/public-read-api-v2/list-blog-top-tags',
+    '/v2/list-blog-top-tags',
     req
   );
 }
@@ -1573,7 +1570,7 @@ export async function listBlogPostsWithFallback(
   req: ListBlogPostsRequest
 ): Promise<StaleDataResult<ListBlogPostsResponse>> {
   return apiRequestWithStaleFallback<ListBlogPostsResponse>(
-    '/v2/public-read-api-v2/list-blog-activity',
+    '/v2/list-blog-activity',
     req
   );
 }
@@ -1586,7 +1583,7 @@ export async function searchPostsByTagWithFallback(
   req: SearchPostsByTagRequest
 ): Promise<StaleDataResult<SearchPostsByTagResponse>> {
   return apiRequestWithStaleFallback<SearchPostsByTagResponse>(
-    '/v2/public-read-api-v2/search-posts-by-tag',
+    '/v2/search-posts-by-tag',
     req
   );
 }
@@ -1599,7 +1596,7 @@ export async function searchBlogsWithFallback(
   req: SearchBlogsRequest
 ): Promise<StaleDataResult<SearchBlogsResponse>> {
   return apiRequestWithStaleFallback<SearchBlogsResponse>(
-    '/v2/public-read-api-v2/search-blogs',
+    '/v2/search-blogs',
     req
   );
 }
@@ -1616,7 +1613,7 @@ export async function blogFollowGraphWithFallback(
     direction: normalizeFollowDirection(req.direction),
   };
   return apiRequestWithStaleFallback<BlogFollowGraphResponse>(
-    '/v2/public-read-api-v2/blog-follow-graph',
+    '/v2/blog-follow-graph',
     payload
   );
 }
@@ -1629,7 +1626,7 @@ export async function listBlogsRecentActivityWithFallback(
   req: ListBlogsRecentActivityRequest
 ): Promise<StaleDataResult<ListBlogsRecentActivityResponse>> {
   return apiRequestWithStaleFallback<ListBlogsRecentActivityResponse>(
-    '/v2/public-read-api-v2/list-blogs-recent-activity',
+    '/v2/list-blogs-recent-activity',
     req
   );
 }
@@ -1642,7 +1639,7 @@ export async function getBlogWithFallback(
   req: GetBlogRequest
 ): Promise<StaleDataResult<GetBlogResponse>> {
   return apiRequestWithStaleFallback<GetBlogResponse>(
-    '/v2/public-read-api-v2/get-blog',
+    '/v2/get-blog',
     req
   );
 }
@@ -1912,11 +1909,11 @@ async function readResponseWithPartialRecovery(
  * These endpoints return array data that can be partially extracted.
  */
 const PARTIAL_RECOVERY_ENDPOINTS: Record<string, string> = {
-  '/v2/public-read-api-v2/list-blog-activity': 'posts',
-  '/v2/public-read-api-v2/search-posts-by-tag': 'posts',
-  '/v2/public-read-api-v2/blog-follow-graph': 'followers', // Also handles 'following'
-  '/v2/public-read-api-v2/list-blogs-recent-activity': 'posts',
-  '/v2/public-read-api-v2/search-blogs': 'blogs',
+  '/v2/list-blog-activity': 'posts',
+  '/v2/search-posts-by-tag': 'posts',
+  '/v2/blog-follow-graph': 'followers', // Also handles 'following'
+  '/v2/list-blogs-recent-activity': 'posts',
+  '/v2/search-blogs': 'blogs',
 };
 
 /**
@@ -2015,7 +2012,7 @@ export async function apiRequestWithPartialRecovery<T>(
 
     // Try blog-follow-graph with 'following' field if 'followers' didn't work
     let partialData = parsePartialArrayResponse<Record<string, unknown>>(text, arrayField);
-    if (!partialData && endpoint === '/v2/public-read-api-v2/blog-follow-graph') {
+    if (!partialData && endpoint === '/v2/blog-follow-graph') {
       partialData = parsePartialArrayResponse<Record<string, unknown>>(text, 'following');
     }
 
@@ -2077,7 +2074,7 @@ export async function listBlogPostsWithPartialRecovery(
   req: ListBlogPostsRequest
 ): Promise<PartialResponseResult<ListBlogPostsResponse>> {
   return apiRequestWithPartialRecovery<ListBlogPostsResponse>(
-    '/v2/public-read-api-v2/list-blog-activity',
+    '/v2/list-blog-activity',
     req
   );
 }
@@ -2090,7 +2087,7 @@ export async function searchPostsByTagWithPartialRecovery(
   req: SearchPostsByTagRequest
 ): Promise<PartialResponseResult<SearchPostsByTagResponse>> {
   return apiRequestWithPartialRecovery<SearchPostsByTagResponse>(
-    '/v2/public-read-api-v2/search-posts-by-tag',
+    '/v2/search-posts-by-tag',
     req
   );
 }
@@ -2107,7 +2104,7 @@ export async function blogFollowGraphWithPartialRecovery(
     direction: normalizeFollowDirection(req.direction),
   };
   return apiRequestWithPartialRecovery<BlogFollowGraphResponse>(
-    '/v2/public-read-api-v2/blog-follow-graph',
+    '/v2/blog-follow-graph',
     payload
   );
 }
@@ -2120,7 +2117,7 @@ export async function listBlogsRecentActivityWithPartialRecovery(
   req: ListBlogsRecentActivityRequest
 ): Promise<PartialResponseResult<ListBlogsRecentActivityResponse>> {
   return apiRequestWithPartialRecovery<ListBlogsRecentActivityResponse>(
-    '/v2/public-read-api-v2/list-blogs-recent-activity',
+    '/v2/list-blogs-recent-activity',
     req
   );
 }
@@ -2133,7 +2130,7 @@ export async function searchBlogsWithPartialRecovery(
   req: SearchBlogsRequest
 ): Promise<PartialResponseResult<SearchBlogsResponse>> {
   return apiRequestWithPartialRecovery<SearchBlogsResponse>(
-    '/v2/public-read-api-v2/search-blogs',
+    '/v2/search-blogs',
     req
   );
 }

@@ -96,6 +96,7 @@ export class SearchGroupCard extends LitElement {
   render() {
     const media = this.post?._media || extractMedia(this.post);
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
+    const reblogCount = this.post.reblogsCount ?? this.count;
     const originLabel = this.post.originBlogName
       ? `@${this.post.originBlogName}`
       : (this.post.blogName ? `@${this.post.blogName}` : 'Unknown');
@@ -111,7 +112,7 @@ export class SearchGroupCard extends LitElement {
             ></media-renderer>
           </div>
           <div class="meta">
-            <div class="label">♻️ ${this.count} ${originLabel}</div>
+            <div class="label">♻️ ${reblogCount} ${originLabel}</div>
           </div>
         </article>
       </div>

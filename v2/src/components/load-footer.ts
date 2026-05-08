@@ -142,6 +142,24 @@ export class LoadFooter extends LitElement {
       `;
     }
 
+    if (this.infiniteScroll) {
+      if (this.loading) {
+        return html`
+          <div class="footer-stats" role="status" aria-live="polite">
+            <span class="count">Loading more…</span>
+          </div>
+        `;
+      }
+      if (this.exhausted) {
+        return html`<button class="load-more" disabled>No more results</button>`;
+      }
+      return html`
+        <div class="footer-stats" role="status" aria-live="polite">
+          <span class="count">∞ scroll on</span>
+        </div>
+      `;
+    }
+
     if (this.exhausted) {
       return html`<button class="load-more" disabled>No more results</button>`;
     }

@@ -1,5 +1,5 @@
 import { LitElement, html, css, unsafeCSS } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import type { PropertyValues } from 'lit';
 import { baseStyles } from '../styles/theme.js';
 import { getVariantPreference, setVariantPreference, type VariantSelection } from '../services/storage.js';
@@ -131,7 +131,7 @@ export class VariantPills extends LitElement {
   @property({ type: Boolean }) persistSelection = true;
   @property({ type: Boolean }) loading = false;
 
-  private open = false;
+  @state() private open = false;
 
   connectedCallback(): void {
     super.connectedCallback();

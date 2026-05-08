@@ -1,5 +1,5 @@
 import { LitElement, html, css, unsafeCSS } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import type { ActivityKind } from '../services/profile.js';
 import { BREAKPOINTS, PILL_SPACING, SPACING } from '../types/ui-constants.js';
@@ -121,7 +121,7 @@ export class ActivityKindPills extends LitElement {
 
   @property({ type: Array }) selected: ActivityKind[] = [...ALL_KINDS];
 
-  private open = false;
+  @state() private open = false;
 
   connectedCallback(): void {
     super.connectedCallback();

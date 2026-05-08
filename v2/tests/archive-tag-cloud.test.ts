@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 vi.mock('lit', () => ({
   LitElement: class LitElement {},
@@ -92,6 +93,16 @@ const { ViewArchive } = await import('../src/pages/view-archive.js');
 const { apiClient } = await import('../src/services/client.js');
 
 describe('archive tag cloud', () => {
+  it('uses direct /v2 blog endpoints instead of public-read-api-v2 shims', () => {
+    const apiSrc = readFileSync(new URL('../src/services/api.ts', import.meta.url), 'utf8');
+
+    expect(apiSrc).toContain("'/v2/get-blog'");
+    expect(apiSrc).toContain("'/v2/search-blogs'");
+    expect(apiSrc).toContain("'/v2/blog-follow-graph'");
+    expect(apiSrc).toContain("'/v2/list-blog-top-tags'");
+    expect(apiSrc).not.toContain('/v2/public-read-api-v2/list-blog-top-tags');
+  });
+
   it('loads top tags for the current archive blog', async () => {
     const getTopTags = vi.mocked(apiClient.blogs.getTopTags);
     getTopTags.mockResolvedValueOnce({

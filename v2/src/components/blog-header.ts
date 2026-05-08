@@ -161,8 +161,8 @@ export class BlogHeader extends LitElement {
 
       .modal-avatar,
       .modal-avatar-fallback {
-        width: 88px;
-        height: 88px;
+        width: min(320px, 68vw);
+        height: min(320px, 68vw);
         border-radius: 999px;
         overflow: hidden;
         margin: 0 auto;
@@ -179,7 +179,7 @@ export class BlogHeader extends LitElement {
         justify-content: center;
         background: var(--bg-panel-alt);
         color: var(--text-primary);
-        font-size: 30px;
+        font-size: 96px;
         font-weight: 700;
         text-transform: uppercase;
       }
