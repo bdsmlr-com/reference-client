@@ -51,6 +51,16 @@ describe('post feed context', () => {
     expect(gridSrc).toContain("@property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'activity';");
   });
 
+  it('uses canonical /activity/:blog links for post identity blog routes', () => {
+    const configSrc = readFileSync(join(process.cwd(), 'media-config.json'), 'utf8');
+
+    expect(configSrc).toContain('"post_origin_blog"');
+    expect(configSrc).toContain('"post_via_blog"');
+    expect(configSrc).toContain('"activity_actor_blog"');
+    expect(configSrc).toContain('"/activity/{blog}"');
+    expect(configSrc).not.toContain('"/{blog}/activity"');
+  });
+
   it('uses a simplified shell on the post route instead of repeating body, tags, and footer metadata', () => {
     const feedItemSrc = readFileSync(join(ROOT, 'components/post-feed-item.ts'), 'utf8');
     const detailSrc = readFileSync(join(ROOT, 'components/post-detail-content.ts'), 'utf8');
