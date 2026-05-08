@@ -18,10 +18,14 @@ describe('post contextual navigation', () => {
 
   it('uses contextual tag search links on the post page', () => {
     const detailSrc = readFileSync(join(ROOT, 'components/post-detail-content.ts'), 'utf8');
+    const routeCtxSrc = readFileSync(join(ROOT, 'services/post-route-context.ts'), 'utf8');
 
     expect(detailSrc).toContain('buildContextualTagSearchHref');
+    expect(detailSrc).toContain('buildScopedReblogDetailTagHref');
     expect(detailSrc).toContain("@property({ type: String }) from = 'direct';");
     expect(detailSrc).toContain('const href = buildContextualTagSearchHref(tag, p, this.from as PostRouteSource);');
     expect(detailSrc).toContain('.from=${this.from as PostRouteSource}');
+    expect(routeCtxSrc).toContain('export function buildScopedReblogDetailTagHref(');
+    expect(routeCtxSrc).toContain("return `${buildPageUrl('archive', normalizedBlog)}?q=${encodeURIComponent(tagExpr)}`;");
   });
 });

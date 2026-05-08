@@ -1,4 +1,5 @@
 import type { ProcessedPost } from '../types/post.js';
+import { buildPageUrl } from './blog-resolver.js';
 
 export type PostRouteSource =
   | 'search'
@@ -89,4 +90,19 @@ export function buildContextualTagSearchHref(
   }
 
   return encodeQuery(tagExpr);
+}
+
+export function buildScopedReblogDetailTagHref(
+  tag: string,
+  blogName: string | null | undefined,
+  from: PostRouteSource,
+): string {
+  const tagExpr = buildTagExpression(tag);
+  const normalizedBlog = `${blogName || ''}`.trim().replace(/^@+/, '');
+
+  if (from === 'search' || !normalizedBlog) {
+    return encodeQuery(tagExpr);
+  }
+
+  return `${buildPageUrl('archive', normalizedBlog)}?q=${encodeURIComponent(tagExpr)}`;
 }

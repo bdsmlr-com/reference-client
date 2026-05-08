@@ -7,7 +7,11 @@ import { formatDateShort, getTooltipDate } from '../services/date-formatter.js';
 import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { resolveLink } from '../services/link-resolver.js';
-import { buildContextualTagSearchHref, type PostRouteSource } from '../services/post-route-context.js';
+import {
+  buildContextualTagSearchHref,
+  buildScopedReblogDetailTagHref,
+  type PostRouteSource,
+} from '../services/post-route-context.js';
 import type { IdentityDecoration } from '../types/api.js';
 import './media-renderer.js';
 import './blog-identity.js';
@@ -167,6 +171,8 @@ export class PostDetailContent extends LitElement {
     const posterSrc = media?.type === 'video' && media.url && media.url !== rawUrl ? media.url : undefined;
     const permalink = presentation.identity.permalink;
     const typeIcon = presentation.identity.postTypeIcon || '📄';
+    const viaBlogName = `${p.blogName || presentation.identity.viaBlogLabel || ''}`.trim().replace(/^@+/, '');
+    const originBlogName = `${p.originBlogName || presentation.identity.originBlogLabel || ''}`.trim().replace(/^@+/, '');
 
     return html`
       <section class="post-page">
@@ -234,10 +240,10 @@ export class PostDetailContent extends LitElement {
                 ${reblogTags.length > 0
                   ? html`
                       <div class="tag-section">
-                        <div class="tag-section-label">RP tags</div>
+                        <div class="tag-section-label">${viaBlogName || 'Reblogger'} tagged:</div>
                         <div class="post-tags">
                           ${reblogTags.map((tag) => {
-                            const href = buildContextualTagSearchHref(tag, p, this.from as PostRouteSource);
+                            const href = buildScopedReblogDetailTagHref(tag, viaBlogName, this.from as PostRouteSource);
                             return html`<a class="tag-chip" href=${href}>#${tag}</a>`;
                           })}
                         </div>
@@ -247,10 +253,10 @@ export class PostDetailContent extends LitElement {
                 ${originTags.length > 0
                   ? html`
                       <div class="tag-section">
-                        <div class="tag-section-label">OP tags</div>
+                        <div class="tag-section-label">${originBlogName || 'Origin'} tagged:</div>
                         <div class="post-tags">
                           ${originTags.map((tag) => {
-                            const href = buildContextualTagSearchHref(tag, p, this.from as PostRouteSource);
+                            const href = buildScopedReblogDetailTagHref(tag, originBlogName, this.from as PostRouteSource);
                             return html`<a class="tag-chip" href=${href}>#${tag}</a>`;
                           })}
                         </div>
