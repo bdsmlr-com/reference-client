@@ -5,7 +5,7 @@ import { join } from 'node:path';
 const ROOT = join(process.cwd(), 'src');
 
 describe('blog identity integration', () => {
-  it('adds a shared blog-identity component with deterministic accent and avatar fallback', () => {
+  it('adds a shared blog-identity component with neutral text and deterministic avatar fallback', () => {
     const src = readFileSync(join(ROOT, 'components/blog-identity.ts'), 'utf8');
     const avatarSrc = readFileSync(join(ROOT, 'services/avatar-url.ts'), 'utf8');
 
@@ -19,20 +19,26 @@ describe('blog identity integration', () => {
     expect(src).toContain('name-decoration');
     expect(src).toContain('deriveAccentColor(');
     expect(src).toContain('avatar-fallback');
+    expect(src).toContain('.name {');
+    expect(src).toContain('color: inherit;');
     expect(src).toContain("from '../services/avatar-url.js'");
     expect(avatarSrc).toContain('export function normalizeAvatarUrl');
   });
 
-  it('renders blog-identity in blog-header and keeps the header chrome minimal', () => {
+  it('renders a compact clickable summary card in blog-header and keeps the header chrome minimal', () => {
     const headerSrc = readFileSync(join(ROOT, 'components/blog-header.ts'), 'utf8');
     const archiveSrc = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
     const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
 
     expect(headerSrc).toContain("import './blog-identity.js';");
     expect(headerSrc).toContain("type PageName = 'archive' | 'timeline' | 'social' | 'following' | 'activity' | 'feed' | 'follower-feed';");
+    expect(headerSrc).toContain('summary-card');
+    expect(headerSrc).toContain('summary-description');
+    expect(headerSrc).toContain('[more...]');
+    expect(headerSrc).toContain('modal-backdrop');
+    expect(headerSrc).toContain('modal-avatar');
     expect(headerSrc).toContain('<blog-identity');
-    expect(headerSrc).toContain('.blogTitle=${this.blogTitle}');
-    expect(headerSrc).toContain('.avatarUrl=${this.avatarUrl}');
+    expect(headerSrc).toContain('.showAvatar=${false}');
     expect(headerSrc).toContain('.identityDecorations=${this.identityDecorations}');
     expect(headerSrc).not.toContain('context-badge');
     expect(headerSrc).not.toContain('return-action');
@@ -71,7 +77,7 @@ describe('blog identity integration', () => {
     expect(identitySrc).toContain('line-height: inherit;');
   });
 
-  it('derives accent color locally instead of depending on backend accent fields', () => {
+  it('keeps deterministic avatar fallback color without driving text color from backend accent fields', () => {
     const navSrc = readFileSync(join(ROOT, 'components/shared-nav.ts'), 'utf8');
     const archiveSrc = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
     const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
@@ -87,5 +93,6 @@ describe('blog identity integration', () => {
     expect(identitySrc).not.toContain('const explicit = this.accentColor.trim();');
     expect(headerSrc).not.toContain("@property({ type: String }) accentColor = '';");
     expect(headerSrc).not.toContain('.accentColor=${this.accentColor}');
+    expect(identitySrc).toContain('color: inherit;');
   });
 });

@@ -184,7 +184,7 @@ export class BlogIdentity extends LitElement {
 
       .name {
         min-width: 0;
-        color: var(--blog-identity-accent);
+        color: inherit;
         font-weight: 700;
         line-height: 1.15;
         white-space: nowrap;

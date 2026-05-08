@@ -32,8 +32,8 @@ describe('activity route alias', () => {
 
     expect(navSrc).toContain("if (page === 'activity')");
     expect(navSrc).toContain("return buildPageUrl('activity', activeBlog);");
-    expect(headerSrc).toContain("import { resolveLink } from '../services/link-resolver.js';");
-    expect(headerSrc).toContain("resolveLink('blog_header_external_blog'");
+    expect(headerSrc).toContain("import { buildPageUrl } from '../services/blog-resolver.js';");
+    expect(headerSrc).toContain("if (page === 'activity') return `/activity/${blogName}`;");
     expect(resolverSrc).toContain("const BLOG_PAGES = ['search', 'feed', 'follower-feed', 'activity', 'archive', 'settings', 'social'];");
   });
 
@@ -53,9 +53,11 @@ describe('activity route alias', () => {
     expect(postsSrc).not.toContain('blog: this.blog');
   });
 
-  it('activity kind pills include all + posts/reblogs/likes/comments in one row', () => {
+  it('activity kind selector exposes all + posts/reblogs/likes/comments through a collapsed popover', () => {
     const pillsSrc = readFileSync(join(ROOT, 'components/activity-kind-pills.ts'), 'utf8');
-    expect(pillsSrc).toContain('>All</button>');
+    expect(pillsSrc).toContain('All activity');
+    expect(pillsSrc).toContain('aria-haspopup="dialog"');
+    expect(pillsSrc).toContain('role="dialog"');
     expect(pillsSrc).toContain("label: 'Posts'");
     expect(pillsSrc).toContain("label: 'Reblogs'");
     expect(pillsSrc).toContain("label: 'Likes'");

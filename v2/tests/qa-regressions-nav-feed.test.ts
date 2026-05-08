@@ -5,7 +5,7 @@ import { join } from 'node:path';
 describe('QA regressions: feed/nav/archive/lightbox', () => {
   it('adds click fallback for feed post cards in timeline stream', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/timeline-stream.ts'), 'utf8');
-    expect(src).toContain('@click=${() => this.handlePostClick(item.post)}');
+    expect(src).toContain('@post-select=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}');
   });
 
   it('consolidates feed activity chips by removing legacy filter bar row', () => {
@@ -16,13 +16,14 @@ describe('QA regressions: feed/nav/archive/lightbox', () => {
   it('consolidates blog activity chips into a single row by removing filter-bar from activity page', () => {
     const src = readFileSync(join(process.cwd(), 'src/pages/view-posts.ts'), 'utf8');
     expect(src).not.toContain('<filter-bar');
-    expect(src).toContain('<activity-kind-pills');
+    expect(src).toContain('<control-panel');
+    expect(src).toContain('.showActivityKinds=${true}');
   });
 
   it('uses viewed blog fallback for Activity nav route', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/shared-nav.ts'), 'utf8');
-    expect(src).toContain('const viewedBlog = getViewedBlogName();');
-    expect(src).toContain('const blogName = primaryBlog || viewedBlog;');
+    expect(src).toContain('getViewedBlogName()');
+    expect(src).toContain('const activeBlog = this.currentUsername || getPrimaryBlogName() || getViewedBlogName();');
   });
 
   it('scrolls to top when clicking current nav tab', () => {

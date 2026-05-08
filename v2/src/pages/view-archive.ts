@@ -419,6 +419,14 @@ export class ViewArchive extends LitElement {
         allowDuplicateIds: isAdminMode(),
       });
 
+      if (targetPage === 1) {
+        this.statusMessage = newUnits.length === 0 ? 'No posts found' : '';
+        if (newUnits.length === 0) {
+          this.hasNextPage = false;
+          this.exhausted = true;
+        }
+      }
+
       this.resultUnits = mergeContentPageUnits({
         navigationMode: this.navigationMode,
         targetPage,
@@ -571,7 +579,7 @@ export class ViewArchive extends LitElement {
           <div class="search-box">
             <input
               type="text"
-              placeholder="Filter this archive with blog:, tag:, media:, when..."
+              placeholder="Filter this archive with free text or tag:..."
               .value=${this.query}
               @input=${this.handleArchiveQueryInput}
               @keypress=${this.handleArchiveQueryKeyPress}

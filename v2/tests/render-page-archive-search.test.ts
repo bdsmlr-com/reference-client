@@ -32,7 +32,7 @@ describe('archive/search render contract usage', () => {
 
     expect(archiveSrc).toContain('readContentRouteUrlState({');
     expect(archiveSrc).toContain('tag_name: this.buildArchiveScopedQuery()');
-    expect(archiveSrc).toContain('placeholder="Filter this archive with blog:, tag:, media:, when..."');
+    expect(archiveSrc).toContain('placeholder="Filter this archive with free text or tag:..."');
     expect(searchSrc).toContain('readContentRouteUrlState({');
     expect(searchSrc).toContain('tag_name: this.query');
   });

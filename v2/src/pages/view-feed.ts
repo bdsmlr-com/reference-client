@@ -23,6 +23,7 @@ import { BREAKPOINTS } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { ALL_POST_TYPES } from '../services/post-filter-url.js';
+import { buildPageUrl } from '../services/blog-resolver.js';
 import '../components/control-panel.js';
 import '../components/blog-header.js';
 import '../components/timeline-stream.js';
@@ -623,7 +624,10 @@ export class ViewFeed extends LitElement {
               <a href=${relationshipLink.href} target=${relationshipLink.target} rel=${relationshipLink.rel || ''}>
                 <strong>${this.sourceCount}</strong> ${this.relationshipLabelParticaple}
               </a>
-              ${this.relationshipSummarySuffix} <strong>@${this.resolvedBlogName}</strong>
+              ${this.relationshipSummarySuffix}
+              <a href=${buildPageUrl('social', this.resolvedBlogName)}>
+                <strong>@${this.resolvedBlogName}</strong>
+              </a>
             </div>
           `;
         })()}
