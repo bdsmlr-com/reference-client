@@ -66,8 +66,10 @@ describe('QA regressions: auth, feed, activity semantics', () => {
   it('hides self-like/comment actor chips in activity matrices and preserves reblog origin chips', () => {
     const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
     const gridSrc = readFileSync(join(ROOT, 'components/activity-grid.ts'), 'utf8');
+    const timelineServiceSrc = readFileSync(join(ROOT, 'services/timeline-rendering.ts'), 'utf8');
 
-    expect(streamSrc).toContain('shouldSuppressSelfSameDayLike');
+    expect(streamSrc).toContain("import { buildRenderableTimelineItems, type ActivityRunBucket } from '../services/timeline-rendering.js';");
+    expect(timelineServiceSrc).toContain('shouldSuppressSelfSameDayLike');
     expect(streamSrc).toContain('.showBlogChip=${!this.showActorInCluster}');
     expect(streamSrc).toContain('<result-group');
     expect(gridSrc).toContain('const shouldHideSelfInteractionChip =');
@@ -79,6 +81,7 @@ describe('QA regressions: auth, feed, activity semantics', () => {
 
   it('feed interaction clusters request only likes/comments, reject reblogs, and promote self-interactions to full cards', () => {
     const feedSrc = readFileSync(join(ROOT, 'pages/view-feed.ts'), 'utf8');
+    const timelineServiceSrc = readFileSync(join(ROOT, 'services/timeline-rendering.ts'), 'utf8');
 
     expect(feedSrc).toContain("activity_kinds: ['like', 'comment']");
     expect(feedSrc).toContain("if (kind !== 'like' && kind !== 'comment') return;");
@@ -92,7 +95,7 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(feedSrc).toContain('_activityCreatedAtUnix: post.updatedAtUnix || post.createdAtUnix');
     expect(feedSrc).toContain('_activityKindOverride: kind');
     expect(feedSrc).toContain("selfInteractionPosts.forEach((post) => clusters.push({ type: 1, post }));");
-    expect(readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8')).toContain('if (p._activityKindOverride) return p._activityKindOverride;');
+    expect(timelineServiceSrc).toContain('if (p._activityKindOverride) return p._activityKindOverride;');
   });
 
   it('renders tag chips in post detail pages/lightbox cards', () => {

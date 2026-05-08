@@ -5,30 +5,10 @@ import { baseStyles } from '../styles/theme.js';
 import type { ProcessedPost } from '../types/post.js';
 import type { TimelineItem } from '../types/api.js';
 import { DEFAULT_ACTIVITY_KINDS, type ActivityKind } from '../services/profile.js';
-import { toPresentationModel } from '../services/post-presentation.js';
+import { buildRenderableTimelineItems, type ActivityRunBucket } from '../services/timeline-rendering.js';
 import '../components/post-feed-item.js';
 import '../components/activity-grid.js';
 import '../components/result-group.js';
-
-type BucketInteraction = {
-  post: ProcessedPost;
-  type: 'like' | 'comment';
-};
-
-type DateActivityBucket = {
-  key: string;
-  dateKey: string;
-  actor: string;
-  likeCount: number;
-  commentCount: number;
-  latestInteractionUnix: number;
-  interactions: BucketInteraction[];
-  interactionIndex: Map<number, number>;
-};
-
-type RenderableItem =
-  | { type: 'post'; post: ProcessedPost }
-  | { type: 'activity-bucket'; bucket: DateActivityBucket };
 
 @customElement('timeline-stream')
 export class TimelineStream extends LitElement {
@@ -46,22 +26,6 @@ export class TimelineStream extends LitElement {
   @property({ type: String }) page: 'feed' | 'follower-feed' | 'activity' = 'feed';
   @state() private clusterVisibleCounts = new Map<string, number>();
   private readonly clusterPageSize = 12;
-
-  private inferItemKind(item: TimelineItem): ActivityKind {
-    if (item.type === 1 && item.post) {
-      const p = item.post as ProcessedPost;
-      if (p._activityKindOverride) return p._activityKindOverride;
-      const presentation = toPresentationModel(p, { surface: 'timeline', page: this.presentationPage });
-      return presentation.identity.isReblog ? 'reblog' : 'post';
-    }
-    if (item.type === 2 && item.cluster) {
-      const label = (item.cluster.label || '').toLowerCase();
-      if (label.includes('comment')) return 'comment';
-      if (label.includes('reblog')) return 'reblog';
-      return 'like';
-    }
-    return 'post';
-  }
 
   private getAllPosts(): ProcessedPost[] {
     const all: ProcessedPost[] = [];
@@ -86,14 +50,10 @@ export class TimelineStream extends LitElement {
     }));
   }
 
-  private getDateKey(post: ProcessedPost): string {
-    const ts = this.getInteractionUnix(post);
+  private getDateKey(unix: number): string {
+    const ts = unix;
     if (!ts) return 'unknown-date';
     return format(new Date(ts * 1000), 'yyyy-MM-dd');
-  }
-
-  private getInteractionUnix(post: ProcessedPost): number {
-    return post._activityCreatedAtUnix || post.updatedAtUnix || post.createdAtUnix || 0;
   }
 
   private getViewedBlogFromPath(): string {
@@ -102,116 +62,8 @@ export class TimelineStream extends LitElement {
     return parts[0].toLowerCase();
   }
 
-  private normalizeBlogName(name: string | undefined): string {
-    return (name || '').trim().toLowerCase();
-  }
-
   private get presentationPage(): 'feed' | 'activity' {
     return this.page === 'follower-feed' ? 'feed' : this.page;
-  }
-
-  private shouldSuppressSelfSameDayLike(post: ProcessedPost, kind: ActivityKind): boolean {
-    if (kind !== 'like' || this.showActorInCluster) return false;
-    const presentation = toPresentationModel(post, { surface: 'timeline', page: this.presentationPage, interactionKind: kind });
-    if (!presentation.identity.allowSelfSameDayLikeSuppression) return false;
-
-    const viewedBlog = this.getViewedBlogFromPath();
-    if (!viewedBlog) return false;
-
-    const ownerBlog = this.normalizeBlogName(post.blogName);
-    if (!ownerBlog || ownerBlog !== viewedBlog) return false;
-
-    const postDateKey = post.createdAtUnix ? format(new Date(post.createdAtUnix * 1000), 'yyyy-MM-dd') : '';
-    const interactionDateKey = this.getDateKey(post);
-    return Boolean(postDateKey) && postDateKey === interactionDateKey;
-  }
-
-  private getRenderableItems(): RenderableItem[] {
-    const renderable: RenderableItem[] = [];
-    const buckets = new Map<string, DateActivityBucket>();
-    for (const item of this.items) {
-      const kind = this.inferItemKind(item);
-      if (!this.activityKinds.includes(kind)) continue;
-
-      if (item.type === 1 && item.post) {
-        renderable.push({ type: 'post', post: item.post as ProcessedPost });
-        continue;
-      }
-
-      if (item.type === 2 && item.cluster) {
-        if (kind === 'reblog') {
-          for (const raw of (item.cluster.interactions || [])) {
-            const post = raw as ProcessedPost;
-            renderable.push({
-              type: 'post',
-              post: {
-                ...post,
-                _activityCreatedAtUnix: this.getInteractionUnix(post),
-              },
-            });
-          }
-          continue;
-        }
-        if (kind !== 'like' && kind !== 'comment') continue;
-
-        for (const raw of (item.cluster.interactions || [])) {
-          const post = raw as ProcessedPost;
-          const dateKey = this.getDateKey(post);
-          if (this.shouldSuppressSelfSameDayLike(post, kind)) {
-            continue;
-          }
-          const actor = this.showActorInCluster ? (post.blogName || '') : '';
-          const key = actor ? `${dateKey}::${actor}` : dateKey;
-          let bucket = buckets.get(key);
-          if (!bucket) {
-            bucket = {
-              key,
-              dateKey,
-              actor,
-              likeCount: 0,
-              commentCount: 0,
-              latestInteractionUnix: 0,
-              interactions: [],
-              interactionIndex: new Map<number, number>(),
-            };
-            buckets.set(key, bucket);
-            renderable.push({ type: 'activity-bucket', bucket });
-          }
-          const interactionUnix = this.getInteractionUnix(post);
-          if (interactionUnix > bucket.latestInteractionUnix) {
-            bucket.latestInteractionUnix = interactionUnix;
-          }
-          if (kind === 'like') bucket.likeCount += 1;
-          if (kind === 'comment') bucket.commentCount += 1;
-          if (!Number.isFinite(post.id)) {
-            bucket.interactions.push({ post, type: kind });
-            continue;
-          }
-          const postId = post.id;
-          const existingIndex = bucket.interactionIndex.get(postId);
-          if (existingIndex === undefined) {
-            bucket.interactionIndex.set(postId, bucket.interactions.length);
-            bucket.interactions.push({ post, type: kind });
-          } else if (kind === 'comment' && bucket.interactions[existingIndex].type === 'like') {
-            // If a post has both interactions, prefer comment icon on the single rendered tile.
-            bucket.interactions[existingIndex] = { post, type: 'comment' };
-          }
-        }
-      }
-    }
-
-    renderable.sort((a, b) => this.getRenderableTimestamp(b) - this.getRenderableTimestamp(a));
-    return renderable;
-  }
-
-  private getRenderableTimestamp(item: RenderableItem): number {
-    if (item.type === 'post') {
-      return item.post._activityCreatedAtUnix || item.post.createdAtUnix || 0;
-    }
-    if (item.type === 'activity-bucket') {
-      return item.bucket.latestInteractionUnix || 0;
-    }
-    return 0;
   }
 
   private getVisibleCount(key: string, total: number): number {
@@ -228,12 +80,21 @@ export class TimelineStream extends LitElement {
     this.requestUpdate();
   }
 
-  private renderActivityBucket(bucket: DateActivityBucket) {
+  private renderActivityBucket(bucket: ActivityRunBucket) {
     const visibleCount = this.getVisibleCount(bucket.key, bucket.interactions.length);
     const visibleItems = bucket.interactions.slice(0, visibleCount);
     const remaining = bucket.interactions.length - visibleItems.length;
     const actorSuffix = this.showActorInCluster && bucket.actor ? ` by @${bucket.actor}` : '';
-    const label = `Activity on ${bucket.dateKey} : ❤️ ${bucket.likeCount} . 💬 ${bucket.commentCount}${actorSuffix}`;
+    const oldestDate = this.getDateKey(bucket.oldestInteractionUnix || bucket.latestInteractionUnix);
+    const newestDate = this.getDateKey(bucket.latestInteractionUnix || bucket.oldestInteractionUnix);
+    const dateLabel = oldestDate === newestDate
+      ? `Activity on ${newestDate}`
+      : `Activity from ${oldestDate} to ${newestDate}`;
+    const countParts = [
+      bucket.likeCount ? `❤️ ${bucket.likeCount}` : '',
+      bucket.commentCount ? `💬 ${bucket.commentCount}` : '',
+    ].filter(Boolean);
+    const label = `${dateLabel}${countParts.length ? ` : ${countParts.join(' . ')}` : ''}${actorSuffix}`;
     return html`
       <result-group
         .label=${label}
@@ -251,7 +112,13 @@ export class TimelineStream extends LitElement {
   }
 
   render() {
-    const renderable = this.getRenderableItems();
+    const renderable = buildRenderableTimelineItems({
+      items: this.items,
+      activityKinds: this.activityKinds,
+      showActorInCluster: this.showActorInCluster,
+      presentationPage: this.presentationPage,
+      viewedBlogName: this.getViewedBlogFromPath(),
+    });
     return html`
       <div class="stream">
         ${renderable.map((item) => {
