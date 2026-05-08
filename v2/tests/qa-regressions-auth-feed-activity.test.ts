@@ -102,13 +102,16 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(detailSrc).toContain('buildContextualTagSearchHref');
   });
 
-  it('shows self-activity badge on promoted full cards', () => {
+  it('uses perspective-aware labels on promoted self-activity cards', () => {
     const feedCardSrc = readFileSync(join(ROOT, 'components/post-feed-item.ts'), 'utf8');
 
     expect(feedCardSrc).toContain('self-activity-badge');
+    expect(feedCardSrc).toContain("import { getViewedBlogName } from '../services/blog-resolver.js';");
+    expect(feedCardSrc).toContain('private renderSelfActivityBadge(post: ProcessedPost): string {');
+    expect(feedCardSrc).toContain("const samePerspective = Boolean(viewedBlog) && viewedBlog === actorBlog;");
     expect(feedCardSrc).toContain('❤️ Self-liked');
     expect(feedCardSrc).toContain('💬 Self-commented');
-    expect(feedCardSrc).toContain("post._activityKindOverride === 'like'");
-    expect(feedCardSrc).toContain("post._activityKindOverride === 'comment'");
+    expect(feedCardSrc).toContain('❤️ Liked own post');
+    expect(feedCardSrc).toContain('💬 Commented on own post');
   });
 });

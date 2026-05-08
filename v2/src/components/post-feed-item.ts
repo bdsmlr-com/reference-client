@@ -8,6 +8,7 @@ import { MAX_VISIBLE_TAGS } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';
 import { toPresentationModel } from '../services/post-presentation.js';
+import { getViewedBlogName } from '../services/blog-resolver.js';
 import type { PostRouteSource } from '../services/post-route-context.js';
 import type { MediaRenderType } from '../services/media-resolver.js';
 import type { IdentityDecoration } from '../types/api.js';
@@ -232,6 +233,25 @@ export class PostFeedItem extends LitElement {
     });
   }
 
+  private normalizeBlogName(name: string | undefined | null): string {
+    return (name || '').trim().toLowerCase();
+  }
+
+  private renderSelfActivityBadge(post: ProcessedPost): string {
+    const kind = post._activityKindOverride;
+    if (kind !== 'like' && kind !== 'comment') return '';
+
+    const viewedBlog = this.normalizeBlogName(getViewedBlogName());
+    const actorBlog = this.normalizeBlogName(post.blogName);
+    const samePerspective = Boolean(viewedBlog) && viewedBlog === actorBlog;
+
+    if (samePerspective) {
+      return kind === 'like' ? '❤️ Self-liked' : '💬 Self-commented';
+    }
+
+    return kind === 'like' ? '❤️ Liked own post' : '💬 Commented on own post';
+  }
+
   render() {
     const post = this.post;
     const presentation = toPresentationModel(post, {
@@ -255,11 +275,7 @@ export class PostFeedItem extends LitElement {
       ? (media.videoUrl || media.url)
       : (media.url || media.videoUrl || media.audioUrl);
     const posterSrc = media.type === 'video' && media.url && media.url !== rawUrl ? media.url : undefined;
-    const selfActivityBadge = post._activityKindOverride === 'like'
-      ? '❤️ Self-liked'
-      : post._activityKindOverride === 'comment'
-        ? '💬 Self-commented'
-        : '';
+    const selfActivityBadge = this.renderSelfActivityBadge(post);
     let mediaHtml;
     if (media.type === 'image' || media.type === 'video') {
       if (rawUrl) {
