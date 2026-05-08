@@ -80,10 +80,10 @@ export class ActivityItem extends LitElement {
         color: var(--text-primary);
       }
       .blog-chip {
+        display: inline-flex;
+        align-items: center;
+        min-width: 0;
         color: var(--text-primary);
-        border: 1px solid var(--border);
-        border-radius: 999px;
-        padding: 1px 6px;
         font-weight: 600;
         white-space: nowrap;
         overflow: hidden;
