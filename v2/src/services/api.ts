@@ -86,6 +86,8 @@ import type {
   BatchGetPostsResponse,
   GetBlogRequest,
   GetBlogResponse,
+  ListBlogTopTagsRequest,
+  ListBlogTopTagsResponse,
 } from '../types/api.js';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -1451,6 +1453,15 @@ export async function getBlog(
   );
 }
 
+export async function listBlogTopTags(
+  req: ListBlogTopTagsRequest
+): Promise<ListBlogTopTagsResponse> {
+  return apiRequest<ListBlogTopTagsResponse>(
+    '/v2/public-read-api-v2/list-blog-top-tags',
+    req
+  );
+}
+
 // Cached version of resolveIdentifier
 export async function resolveIdentifierCached(
   blogName: string
@@ -2621,6 +2632,13 @@ export class BlogsApi {
    */
   async get(req: GetBlogRequest): Promise<GetBlogResponse> {
     return getBlog(req);
+  }
+
+  /**
+   * Get the most-used tags for a blog archive.
+   */
+  async getTopTags(req: ListBlogTopTagsRequest): Promise<ListBlogTopTagsResponse> {
+    return listBlogTopTags(req);
   }
 
   /**

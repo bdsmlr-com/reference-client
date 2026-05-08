@@ -11,7 +11,7 @@ import {
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import { normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
-import type { Blog, PostType, PostSortField, Order, PostVariant } from '../types/api.js';
+import type { Blog, PostType, PostSortField, Order, PostVariant, Tag } from '../types/api.js';
 import { contentGridItems, flattenContentResultPosts, prepareContentResultUnits } from '../services/content-results.js';
 import {
   forcePaginatedContentRouteNavigation,
@@ -52,6 +52,7 @@ import '../components/loading-spinner.js';
 import '../components/skeleton-loader.js';
 import '../components/error-state.js';
 import '../components/blog-header.js';
+import '../components/archive-tag-cloud.js';
 import '../components/render-card.js';
 
 const ARCHIVE_PAGE_SIZE = 20;
@@ -157,6 +158,8 @@ export class ViewArchive extends LitElement {
   @state() private searchSessionId = '';
   @state() private initialLoading = false;
   @state() private blogData: Blog | null = null;
+  @state() private archiveTagItems: Tag[] = [];
+  @state() private archiveTagsLoading = false;
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
   @state() private galleryMode: GalleryMode = getGalleryMode('archive');
@@ -232,6 +235,38 @@ export class ViewArchive extends LitElement {
       return `blog:${this.blog}`;
     }
     return `(${trimmed}) blog:${this.blog}`;
+  }
+
+  private formatArchiveTagQuery(tag: string): string {
+    const trimmed = tag.trim();
+    if (!trimmed) {
+      return '';
+    }
+    if (/^[A-Za-z0-9_-]+$/.test(trimmed)) {
+      return `tag:${trimmed}`;
+    }
+    const escaped = trimmed.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    return `tag:"${escaped}"`;
+  }
+
+  async loadArchiveTagCloud(): Promise<void> {
+    if (!this.blog) {
+      this.archiveTagItems = [];
+      return;
+    }
+    this.archiveTagsLoading = true;
+    try {
+      const response = await apiClient.blogs.getTopTags({
+        blog_name: this.blog,
+        page_size: 24,
+      });
+      this.archiveTagItems = response.tags || [];
+    } catch (error) {
+      this.archiveTagItems = [];
+      this.errorMessage = getContextualErrorMessage(error, 'load_posts', { blogName: this.blog });
+    } finally {
+      this.archiveTagsLoading = false;
+    }
   }
 
   private async fetchArchivePageResponse(targetPage: number) {
@@ -317,7 +352,10 @@ export class ViewArchive extends LitElement {
       }
 
       this.blogId = blogId;
-      await this.loadPosts({ preserveNavigationState: true });
+      await Promise.all([
+        this.loadArchiveTagCloud(),
+        this.loadPosts({ preserveNavigationState: true }),
+      ]);
     } catch (e) {
       this.errorMessage = getContextualErrorMessage(e, 'resolve_blog', { blogName: this.blog });
       const apiError = isApiError(e) ? e : toApiError(e);
@@ -492,6 +530,11 @@ export class ViewArchive extends LitElement {
     }
   }
 
+  private async handleArchiveTagSelect(e: CustomEvent<{ tag: string }>): Promise<void> {
+    this.query = this.formatArchiveTagQuery(e.detail.tag);
+    await this.loadPosts();
+  }
+
   private handlePostClick(e: CustomEvent): void {
     e.stopPropagation();
     const post = e.detail.post as ProcessedPost;
@@ -592,6 +635,13 @@ export class ViewArchive extends LitElement {
               ${this.loading ? 'Filtering...' : 'Filter'}
             </button>
           </div>
+
+          <archive-tag-cloud
+            .blogName=${this.blog}
+            .tags=${this.archiveTagItems}
+            .loading=${this.archiveTagsLoading}
+            @tag-select=${this.handleArchiveTagSelect}
+          ></archive-tag-cloud>
 
           <control-panel
             .pageName=${'archive'}

@@ -134,6 +134,11 @@ export interface Blog {
   identityDecorations?: IdentityDecoration[];
 }
 
+export interface Tag {
+  name: string;
+  postsCount?: number;
+}
+
 export interface BlogPublicInterests {
   maledom?: boolean;
   femdom?: boolean;
@@ -410,6 +415,12 @@ export interface GetBlogRequest {
   blog_name?: string;
 }
 
+export interface ListBlogTopTagsRequest {
+  blog_id?: number;
+  blog_name?: string;
+  page_size?: number;
+}
+
 export interface GetPostRequest {
   post_id: number;
 }
@@ -516,6 +527,12 @@ export interface BlogFollowGraphResponse {
 export interface ListBlogsRecentActivityResponse {
   posts?: Post[];
   page?: PageInfo;
+  error?: string;
+}
+
+export interface ListBlogTopTagsResponse {
+  blogName?: string;
+  tags?: Tag[];
   error?: string;
 }
 
