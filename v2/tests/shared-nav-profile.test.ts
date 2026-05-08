@@ -51,6 +51,17 @@ describe('shared-nav profile/settings behavior', () => {
     expect(src).toContain('blog?.avatarUrl ?? blog?.avatar_url ?? null');
   });
 
+  it('uses theme-responsive text color for the profile blog identity and canonical activity routing', () => {
+    const src = readFileSync(NAV_FILE, 'utf8');
+
+    expect(src).toContain('.profile-blog-identity {');
+    expect(src).toContain('color: var(--text-primary);');
+    expect(src).not.toContain("window.location.href = `/${selectedBlog.name}/activity`;");
+    expect(src).not.toContain("window.location.href = `/${activeName}/activity`;");
+    expect(src).toContain("window.location.href = `/activity/${selectedBlog.name}`;");
+    expect(src).toContain("window.location.href = `/activity/${activeName}`;");
+  });
+
   it('scrolls to top when clicking nav tabs on the same pathname', () => {
     const src = readFileSync(NAV_FILE, 'utf8');
 

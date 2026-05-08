@@ -37,6 +37,12 @@ export class GalleryModePicker extends LitElement {
         background: var(--border-strong);
       }
 
+      .trigger.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
       .popover {
         position: absolute;
         top: calc(100% + 8px);
@@ -132,7 +138,7 @@ export class GalleryModePicker extends LitElement {
       <div class="selector">
         <button
           type="button"
-          class="trigger"
+          class="trigger ${this.open || this.value !== 'grid' ? 'active' : ''}"
           @click=${this.toggleSelector}
           aria-haspopup="dialog"
           aria-expanded=${this.open ? 'true' : 'false'}

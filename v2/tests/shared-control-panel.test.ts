@@ -76,6 +76,7 @@ describe('shared control panel', () => {
     const variantSrc = readFileSync(join(ROOT, 'components/variant-pills.ts'), 'utf8');
     const gallerySrc = readFileSync(join(ROOT, 'components/gallery-mode-picker.ts'), 'utf8');
     const activityKindSrc = readFileSync(join(ROOT, 'components/activity-kind-pills.ts'), 'utf8');
+    const whenSrc = readFileSync(join(ROOT, 'components/archive-when-picker.ts'), 'utf8');
 
     expect(typeSrc).toContain('All media');
     expect(typeSrc).toContain("import { customElement, property, state } from 'lit/decorators.js';");
@@ -83,6 +84,7 @@ describe('shared control panel', () => {
     expect(typeSrc).toContain('selectedTypeSummary');
     expect(typeSrc).toContain('aria-haspopup="dialog"');
     expect(typeSrc).toContain('role="dialog"');
+    expect(typeSrc).toContain("class=\"trigger ${this.open || !this.allSelected ? 'active' : ''}\"");
 
     expect(variantSrc).toContain('All posts');
     expect(variantSrc).toContain("import { customElement, property, state } from 'lit/decorators.js';");
@@ -91,10 +93,14 @@ describe('shared control panel', () => {
     expect(variantSrc).toContain('Reblogged posts');
     expect(variantSrc).toContain('aria-haspopup="dialog"');
     expect(variantSrc).toContain('role="dialog"');
+    expect(variantSrc).toContain("class=\"trigger ${this.open || this.selected !== 'all' ? 'active' : ''}\"");
 
     expect(gallerySrc).toContain("import { customElement, property, state } from 'lit/decorators.js';");
     expect(gallerySrc).toContain('@state() private open = false;');
+    expect(gallerySrc).toContain("class=\"trigger ${this.open || this.value !== 'grid' ? 'active' : ''}\"");
     expect(activityKindSrc).toContain("import { customElement, property, state } from 'lit/decorators.js';");
     expect(activityKindSrc).toContain('@state() private open = false;');
+    expect(whenSrc).toContain("class=\"trigger ${this.open || this.value ? 'active' : ''}\"");
+    expect(whenSrc).toContain('.trigger.active');
   });
 });

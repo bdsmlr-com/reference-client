@@ -47,6 +47,12 @@ export class ArchiveWhenPicker extends LitElement {
         font-weight: 600;
       }
 
+      .trigger.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
       .popover {
         position: absolute;
         top: calc(100% + 8px);
@@ -284,7 +290,7 @@ export class ArchiveWhenPicker extends LitElement {
     return html`
       <div class="picker">
         <button
-          class="trigger"
+          class="trigger ${this.open || this.value ? 'active' : ''}"
           type="button"
           aria-haspopup="dialog"
           aria-expanded=${this.open ? 'true' : 'false'}

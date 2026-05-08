@@ -226,7 +226,7 @@ export class TypePills extends LitElement {
       <div class="selector">
         <button
           type="button"
-          class="trigger ${this.open || this.allSelected ? 'active' : ''}"
+          class="trigger ${this.open || !this.allSelected ? 'active' : ''}"
           @click=${this.toggleSelector}
           aria-haspopup="dialog"
           aria-expanded=${this.open ? 'true' : 'false'}
