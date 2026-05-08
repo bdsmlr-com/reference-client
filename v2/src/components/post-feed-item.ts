@@ -6,6 +6,7 @@ import { EventNames, type PostSelectDetail } from '../types/events.js';
 import { formatDateShort, getTooltipDate } from '../services/date-formatter.js';
 import { MAX_VISIBLE_TAGS } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
+import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import type { PostRouteSource } from '../services/post-route-context.js';
 import type { MediaRenderType } from '../services/media-resolver.js';
@@ -216,31 +217,16 @@ export class PostFeedItem extends LitElement {
     }));
   }
 
-  private renderMicroBlogIdentity(
-    link: ReturnType<typeof resolveLink> | null | undefined,
-    label: string,
-    decoration?: IdentityDecoration | null,
-    blogId?: number | null,
-  ) {
-    const raw = label.trim().replace(/^@+/, '');
-    const normalized = raw.toLowerCase() === 'unknown' && (blogId || 0) > 0 ? '' : raw;
-    const decorations = decoration ? [decoration] : [];
-    if (!normalized && !(blogId || 0)) {
-      return html`<span class="blog-name">@unknown</span>`;
-    }
-    const identity = html`
-      <blog-identity
-        variant="micro"
-        .blogName=${normalized}
-        .blogId=${blogId || 0}
-        .showAvatar=${false}
-        .identityDecorations=${decorations}
-      ></blog-identity>
-    `;
-    if (!link) {
-      return identity;
-    }
-    return html`<a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing} class="blog-name" @click=${(e: Event) => e.stopPropagation()}>${identity}</a>`;
+  private renderMicroBlogIdentity(link: ReturnType<typeof resolveLink> | null | undefined, label: string, decoration?: IdentityDecoration | null, blogId?: number | null) {
+    return renderStructuredMicroBlogIdentity({
+      link,
+      label,
+      blogId,
+      decoration,
+      className: 'blog-name',
+      stopClick: true,
+      showAvatar: false,
+    });
   }
 
   render() {

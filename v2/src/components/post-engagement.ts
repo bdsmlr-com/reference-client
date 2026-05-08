@@ -3,6 +3,7 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { formatDate } from '../services/date-formatter.js';
+import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { getCachedBlogId, getCurrentBlog } from '../services/storage.js';
 import { type ProcessedPost } from '../types/post.js';
@@ -134,32 +135,12 @@ export class PostEngagement extends LitElement {
     decoration?: IdentityDecoration | null,
     blogId?: number | null,
   ) {
-    const raw = `${label || link?.label || ''}`.trim().replace(/^@+/, '');
-    const normalized = raw.toLowerCase() === 'unknown' && (blogId || 0) > 0 ? '' : raw;
-    if (!normalized && !(blogId || 0)) {
-      return html`<span>@unknown</span>`;
-    }
-    const identity = html`
-      <blog-identity
-        variant="micro"
-        .blogName=${normalized}
-        .blogId=${blogId || 0}
-        .identityDecorations=${decoration ? [decoration] : []}
-      ></blog-identity>
-    `;
-    if (!link) {
-      return identity;
-    }
-    return html`
-      <a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing}>
-        ${identity}
-      </a>
-    `;
-  }
-
-  private normalizeBlogName(blogName: string | null | undefined): string | null {
-    const normalized = (blogName || '').trim();
-    return normalized || null;
+    return renderStructuredMicroBlogIdentity({
+      link,
+      label: label || link?.label || '',
+      blogId,
+      decoration,
+    });
   }
 
   private renderMicroBlogIdentity(
@@ -168,27 +149,14 @@ export class PostEngagement extends LitElement {
     decorations?: IdentityDecoration[] | null,
     contextId: 'post_origin_blog' | 'post_via_blog' = 'post_via_blog',
   ) {
-    const normalized = this.normalizeBlogName(blogName);
-    if (!normalized && !(blogId || 0)) {
-      return html`<span>@unknown</span>`;
-    }
-    const identity = html`
-      <blog-identity
-        variant="micro"
-        .blogName=${normalized || ''}
-        .blogId=${blogId || 0}
-        .identityDecorations=${decorations || []}
-      ></blog-identity>
-    `;
-    if (!normalized) {
-      return identity;
-    }
-    const link = resolveLink(contextId, { blog: normalized });
-    return html`
-      <a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing}>
-        ${identity}
-      </a>
-    `;
+    const normalized = (blogName || '').trim();
+    const link = normalized ? resolveLink(contextId, { blog: normalized }) : null;
+    return renderStructuredMicroBlogIdentity({
+      link,
+      label: normalized,
+      blogId,
+      decorations: decorations || [],
+    });
   }
 
   private getActiveBlogId(): number | null {

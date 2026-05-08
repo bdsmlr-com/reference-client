@@ -6,6 +6,7 @@ import { EventNames, type PostSelectDetail } from '../types/events.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { resolveRetrievalClickMode } from '../services/retrieval-presentation.js';
+import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';
 import type { MediaRenderType } from '../services/media-resolver.js';
 import type { IdentityDecoration } from '../types/api.js';
 import type { PostRouteSource } from '../services/post-route-context.js';
@@ -56,7 +57,7 @@ export class PostCard extends LitElement {
       .blog-link {
         font-size: 12px;
         font-weight: 600;
-        color: var(--text);
+        color: var(--text-primary);
         text-decoration: none;
         white-space: nowrap;
         overflow: hidden;
@@ -116,7 +117,7 @@ export class PostCard extends LitElement {
 
       .tag {
         font-size: 10px;
-        color: var(--text);
+        color: var(--text-primary);
         background: transparent;
         border: 1px solid var(--border-subtle);
         padding: 1px 6px;
@@ -210,34 +211,16 @@ export class PostCard extends LitElement {
     decoration?: IdentityDecoration | null,
     blogId?: number | null,
   ) {
-    const raw = label.trim().replace(/^@+/, '');
-    const normalized = raw.toLowerCase() === 'unknown' && (blogId || 0) > 0 ? '' : raw;
-    const decorations = decoration ? [decoration] : [];
-    if (!normalized && !(blogId || 0)) {
-      return html`<span class="blog-link">@unknown</span>`;
-    }
-    const identity = html`
-      <blog-identity
-        variant="micro"
-        .blogName=${normalized}
-        .blogId=${blogId || 0}
-        .showAvatar=${false}
-        .identityDecorations=${decorations}
-      ></blog-identity>
-    `;
-    if (!link) {
-      return identity;
-    }
-    return html`
-      <a
-        class="blog-link"
-        href=${link.href}
-        target=${link.target}
-        rel=${link.rel || nothing}
-        title=${link.title || titleFallback}
-        @click=${(event: Event) => event.stopPropagation()}
-      >${identity}</a>
-    `;
+    return renderStructuredMicroBlogIdentity({
+      link,
+      label,
+      blogId,
+      decoration,
+      className: 'blog-link',
+      title: titleFallback,
+      stopClick: true,
+      showAvatar: false,
+    });
   }
 
   render() {

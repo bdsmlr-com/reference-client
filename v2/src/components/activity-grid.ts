@@ -98,7 +98,7 @@ export class ActivityItem extends LitElement {
         align-items: center;
         gap: 8px;
         font-size: 11px;
-        color: var(--text);
+        color: var(--text-primary);
       }
 
       .stat-item {

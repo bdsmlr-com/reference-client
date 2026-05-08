@@ -95,7 +95,6 @@ vi.mock('../src/services/search-result-units.js', () => ({
   ),
 }));
 
-vi.mock('../src/components/filter-bar.js', () => ({}));
 vi.mock('../src/components/control-panel.js', () => ({}));
 vi.mock('../src/components/activity-grid.js', () => ({}));
 vi.mock('../src/components/load-footer.js', () => ({}));

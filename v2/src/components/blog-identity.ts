@@ -287,6 +287,7 @@ export class BlogIdentity extends LitElement {
 
       :host([variant='micro']) .name {
         font-size: inherit;
+        font-weight: inherit;
         line-height: inherit;
       }
 

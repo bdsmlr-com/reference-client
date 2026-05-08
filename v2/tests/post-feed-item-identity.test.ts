@@ -9,10 +9,12 @@ describe('post feed item identity rendering', () => {
     const src = readFileSync(FILE, 'utf8');
 
     expect(src).toContain("import './blog-identity.js';");
+    expect(src).toContain("import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';");
     expect(src).toContain('private renderMicroBlogIdentity(');
-    expect(src).toContain('variant="micro"');
-    expect(src).toContain('.blogId=${blogId || 0}');
-    expect(src).toContain('.showAvatar=${false}');
+    expect(src).toContain('return renderStructuredMicroBlogIdentity({');
+    expect(src).toContain("className: 'blog-name'");
+    expect(src).toContain('showAvatar: false');
     expect(src).toContain('♻️ via ${this.renderMicroBlogIdentity(');
+    expect(src).not.toContain('@unknown');
   });
 });

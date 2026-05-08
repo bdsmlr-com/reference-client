@@ -24,20 +24,19 @@ describe('post engagement links', () => {
     const src = readFileSync(FILE, 'utf8');
 
     expect(src).toContain("import { resolveLink, type ResolvedLink } from '../services/link-resolver.js';");
+    expect(src).toContain("import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';");
     expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
-    expect(src).toContain('private normalizeBlogName');
     expect(src).toContain('private renderMicroBlogIdentity');
     expect(src).toContain('private renderResolvedMicroBlogIdentity');
     expect(src).toContain('const presentation = toPresentationModel');
     expect(src).not.toContain('POST_TYPE_ICONS[p.type as PostType] ||');
     expect(src).toContain("resolveLink('post_permalink'");
-    expect(src).toContain("const normalized = this.normalizeBlogName(blogName);");
-    expect(src).toContain("if (!normalized && !(blogId || 0)) {");
-    expect(src).toContain(".blogName=${normalized || ''}");
+    expect(src).toContain('return renderStructuredMicroBlogIdentity({');
     expect(src).not.toContain('href="/${p.originBlogName}/posts"');
     expect(src).not.toContain('href="/${p.blogName}/posts"');
     expect(src).toContain('presentation.identity.viaBlogDecoration');
     expect(src).toContain('presentation.identity.originBlogDecoration');
+    expect(src).not.toContain('@unknown');
   });
 
   it('links both origin and via post ids in reblog lightbox details', () => {
@@ -61,10 +60,8 @@ describe('post engagement links', () => {
 
     expect(src).toContain("import './blog-identity.js';");
     expect(src).toContain('private renderMicroBlogIdentity');
-    expect(src).toContain('variant="micro"');
-    expect(src).toContain('.blogId=${blogId || 0}');
-    expect(src).toContain('.identityDecorations=${decorations || []}');
-    expect(src).toContain("const normalized = raw.toLowerCase() === 'unknown' && (blogId || 0) > 0 ? '' : raw;");
+    expect(src).toContain("import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';");
+    expect(src).toContain('decorations: decorations || []');
   });
 
   it('renders missing origin post ids as non-linked tombstones', () => {
