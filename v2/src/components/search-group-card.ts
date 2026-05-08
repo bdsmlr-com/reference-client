@@ -3,6 +3,7 @@ import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import type { ProcessedPost } from '../types/post.js';
 import { extractMedia } from '../types/post.js';
+import { formatDate } from '../services/date-formatter.js';
 import './media-renderer.js';
 
 @customElement('search-group-card')
@@ -86,6 +87,7 @@ export class SearchGroupCard extends LitElement {
   @property({ type: String }) label = 'Reblogs';
   @property({ type: Number }) originPostId = 0;
   @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
+  @property({ type: String }) page: 'archive' | 'search' | 'post' | 'activity' | 'feed' | 'social' = 'search';
 
   private handleClick() {
     if (this.originPostId > 0) {
@@ -97,6 +99,7 @@ export class SearchGroupCard extends LitElement {
     const media = this.post?._media || extractMedia(this.post);
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
     const reblogCount = this.post.reblogsCount ?? this.count;
+    const archiveReblogDate = this.page === 'archive' ? formatDate(this.post.createdAtUnix, 'date') : '';
     const originLabel = this.post.originBlogName
       ? `@${this.post.originBlogName}`
       : (this.post.blogName ? `@${this.post.blogName}` : 'Unknown');
@@ -113,6 +116,7 @@ export class SearchGroupCard extends LitElement {
           </div>
           <div class="meta">
             <div class="label">♻️ ${reblogCount} ${originLabel}</div>
+            ${archiveReblogDate ? html`<div class="label">${archiveReblogDate}</div>` : ''}
           </div>
         </article>
       </div>

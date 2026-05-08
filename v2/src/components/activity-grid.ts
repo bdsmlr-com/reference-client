@@ -355,7 +355,7 @@ export class ActivityGrid extends LitElement {
             <div class="masonry-column">
               ${column.map((item) => html`
                 ${isResultGroupItem(item)
-                  ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label} .originPostId=${item.originPostId} mode="masonry"></search-group-card>`
+                  ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label} .originPostId=${item.originPostId} .page=${this.page} mode="masonry"></search-group-card>`
                   : html`<activity-item .post=${item.post} .interactionType=${item.type} .page=${this.page} .showBlogChip=${this.showBlogChip} mode="masonry"></activity-item>`}
               `)}
             </div>
@@ -368,7 +368,7 @@ export class ActivityGrid extends LitElement {
       <section class="grid" aria-label="Activity grid">
         ${this.items.map((item) => html`
           ${isResultGroupItem(item)
-            ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label} .originPostId=${item.originPostId} mode="grid"></search-group-card>`
+            ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label} .originPostId=${item.originPostId} .page=${this.page} mode="grid"></search-group-card>`
             : html`<activity-item .post=${item.post} .interactionType=${item.type} .page=${this.page} .showBlogChip=${this.showBlogChip} mode="grid"></activity-item>`}
         `)}
       </section>

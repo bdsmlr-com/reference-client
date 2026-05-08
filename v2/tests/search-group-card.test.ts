@@ -12,4 +12,12 @@ describe('search group card', () => {
     expect(src).not.toContain('search-group-click');
     expect(src).not.toContain('q=post:');
   });
+
+  it('shows the archive blog reblog date only in archive context', () => {
+    const src = readFileSync(FILE, 'utf8');
+
+    expect(src).toContain("@property({ type: String }) page: 'archive' | 'search' | 'post' | 'activity' | 'feed' | 'social' = 'search';");
+    expect(src).toContain("const archiveReblogDate = this.page === 'archive' ? formatDate(this.post.createdAtUnix, 'date') : '';");
+    expect(src).toContain("${archiveReblogDate ? html`<div class=\"label\">${archiveReblogDate}</div>` : ''}");
+  });
 });

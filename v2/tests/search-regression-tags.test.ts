@@ -81,6 +81,7 @@ describe('search regression and tag visibility', () => {
 
     expect(src).toContain('const reblogCount = this.post.reblogsCount ?? this.count;');
     expect(src).toContain('♻️ ${reblogCount}');
+    expect(src).toContain("const archiveReblogDate = this.page === 'archive' ? formatDate(this.post.createdAtUnix, 'date') : '';");
   });
 
   it('threads the search route perspective blog into the API request payload', () => {
