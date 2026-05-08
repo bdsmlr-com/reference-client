@@ -14,6 +14,13 @@ describe('social/blog-list render contract usage', () => {
     expect(socialSrc).toContain("import { getPageSlotConfig } from '../services/render-page.js';");
     expect(socialSrc).toContain("getPageSlotConfig('social', 'main_stream')");
     expect(listSrc).toContain('social_blog');
+    expect(listSrc).toContain("import './blog-identity.js';");
+    expect(listSrc).toContain("import './media-renderer.js';");
+    expect(listSrc).toContain("buildBlogPageUrl(normalized.blogName, 'activity')");
+    expect(listSrc).toContain("grid-template-rows: minmax(96px, auto) 100px;");
+    expect(listSrc).toContain('class="recent-grid"');
+    expect(listSrc).toContain('page: { page_size: 3 }');
+    expect(listSrc).toContain('<blog-identity');
     expect(render.pages.social.slots.main_stream.loading.cardType).toBe('social_blog_list');
     expect(render.cards.social_blog).toBeDefined();
   });

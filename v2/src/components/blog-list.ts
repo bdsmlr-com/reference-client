@@ -1,13 +1,16 @@
-import { LitElement, html, css, nothing, unsafeCSS } from 'lit';
+import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import type { FollowEdge } from '../types/api.js';
+import type { Blog, FollowEdge } from '../types/api.js';
 import { apiClient } from '../services/client.js';
 import { getCachedAvatarUrl, setCachedAvatarUrl } from '../services/storage.js';
 import { buildBlogPageUrl } from '../services/blog-resolver.js';
 import { BREAKPOINTS, SPACING, CONTAINER_SPACING } from '../types/ui-constants.js';
 import { loadRenderContract } from '../services/render-contract.js';
 import { handleAvatarImageError, normalizeAvatarUrl } from '../services/avatar-url.js';
+import { extractMedia, POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
+import './media-renderer.js';
+import './blog-identity.js';
 
 /**
  * Extended type to handle both camelCase and snake_case API responses.
@@ -51,33 +54,29 @@ export class BlogList extends LitElement {
         gap: ${unsafeCSS(SPACING.MD)}px;
       }
 
-      /* Tablet: 2 columns (BREAKPOINTS.MOBILE = 480px) */
       @media (min-width: ${unsafeCSS(BREAKPOINTS.MOBILE)}px) {
         .list {
           grid-template-columns: repeat(2, 1fr);
         }
       }
 
-      /* Desktop: 4 columns (BREAKPOINTS.TABLET = 768px) */
       @media (min-width: ${unsafeCSS(BREAKPOINTS.TABLET)}px) {
         .list {
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(3, 1fr);
         }
       }
 
       .list-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        /* UIC-021: Use standardized spacing scale for padding */
-        padding: 14px ${unsafeCSS(SPACING.LG)}px;
+        display: grid;
+        grid-template-rows: minmax(96px, auto) 100px;
+        gap: 12px;
+        padding: 14px;
         background: var(--bg-panel);
-        /* UIC-021: Use standardized spacing scale for border-radius */
         border-radius: ${unsafeCSS(SPACING.SM)}px;
         cursor: pointer;
         transition: background 0.2s;
         border: 1px solid var(--border);
-        min-height: 56px;
+        min-height: 208px;
       }
 
       .list-item:hover {
@@ -94,19 +93,40 @@ export class BlogList extends LitElement {
       }
 
       .blog-info {
-        display: flex;
+        display: grid;
+        grid-template-columns: minmax(80px, 1fr) minmax(0, 2fr);
         align-items: center;
-        /* UIC-021: Use standardized spacing scale */
-        gap: ${unsafeCSS(SPACING.MD)}px;
+        gap: 14px;
+        min-height: 96px;
+      }
+
+      .blog-copy {
+        min-width: 0;
+        display: grid;
+        gap: 4px;
       }
 
       .blog-name {
         font-size: 14px;
         color: var(--text-primary);
+        min-width: 0;
       }
 
-      .blog-meta {
-        font-size: 11px;
+      .blog-title,
+      .blog-description {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .blog-title {
+        font-size: 13px;
+        color: var(--text-primary);
+      }
+
+      .blog-description {
+        font-size: 12px;
         color: var(--text-muted);
       }
 
@@ -134,25 +154,83 @@ export class BlogList extends LitElement {
 
       /* Avatar styles (SOC-016) */
       .avatar {
-        width: 36px;
-        height: 36px;
+        width: 72px;
+        height: 72px;
         border-radius: 50%;
         object-fit: cover;
         flex-shrink: 0;
       }
 
       .avatar-placeholder {
-        width: 36px;
-        height: 36px;
+        width: 72px;
+        height: 72px;
         border-radius: 50%;
         background: var(--bg-panel-alt);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 14px;
+        font-size: 24px;
         font-weight: 600;
         color: var(--text-muted);
         flex-shrink: 0;
+      }
+
+      .recent-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        min-height: 100px;
+      }
+
+      .recent-item {
+        min-width: 0;
+        height: 100px;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        background: var(--bg-panel-alt);
+      }
+
+      .recent-item media-renderer {
+        width: 100%;
+        height: 100%;
+      }
+
+      .recent-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        font-size: 11px;
+      }
+
+      .recent-fallback {
+        width: 100%;
+        height: 100%;
+        display: grid;
+        align-content: center;
+        justify-items: center;
+        gap: 6px;
+        padding: 8px;
+        box-sizing: border-box;
+        background: var(--bg-panel-alt);
+        color: var(--text-primary);
+        text-align: center;
+      }
+
+      .recent-fallback-icon {
+        font-size: 18px;
+      }
+
+      .recent-fallback-text {
+        font-size: 11px;
+        color: var(--text-muted);
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
     `,
   ];
@@ -164,6 +242,9 @@ export class BlogList extends LitElement {
   // Avatar state (SOC-016)
   @state() private avatarUrls: Map<number, string | null> = new Map();
   @state() private fetchingAvatars: Set<number> = new Set();
+  @state() private blogMeta: Map<number, Blog | null> = new Map();
+  @state() private recentPosts: Map<number, ProcessedPost[]> = new Map();
+  @state() private fetchingRecentPosts: Set<number> = new Set();
   private readonly socialBlogCard = (loadRenderContract().cards as any).social_blog;
 
   private pendingResolve: number[] = [];
@@ -176,6 +257,7 @@ export class BlogList extends LitElement {
     if (changedProps.has('items')) {
       this.resolveUnknownNames();
       this.fetchMissingAvatars(); // SOC-016
+      this.fetchMissingRecentPosts();
     }
   }
 
@@ -271,7 +353,8 @@ export class BlogList extends LitElement {
       const promises = batch.map(async (blogId) => {
         try {
           const response = await apiClient.blogs.get({ blog_id: blogId });
-          const avatarUrl = response.blog?.avatarUrl || null;
+          const blog = response.blog || null;
+          const avatarUrl = blog?.avatarUrl || null;
 
           // Cache the result
           setCachedAvatarUrl(blogId, avatarUrl);
@@ -280,6 +363,14 @@ export class BlogList extends LitElement {
           const newAvatars = new Map(this.avatarUrls);
           newAvatars.set(blogId, avatarUrl);
           this.avatarUrls = newAvatars;
+          const nextMeta = new Map(this.blogMeta);
+          nextMeta.set(blogId, blog);
+          this.blogMeta = nextMeta;
+          if (blog?.name) {
+            const nextResolved = new Map(this.resolvedNames);
+            nextResolved.set(blogId, blog.name);
+            this.resolvedNames = nextResolved;
+          }
         } catch {
           // On error, cache null to avoid repeated fetches
           setCachedAvatarUrl(blogId, null);
@@ -299,6 +390,51 @@ export class BlogList extends LitElement {
       newFetching.delete(id);
     }
     this.fetchingAvatars = newFetching;
+  }
+
+  private fetchMissingRecentPosts(): void {
+    const idsNeedingFetch: number[] = [];
+
+    for (const item of this.items) {
+      const normalized = normalizeFollowEdge(item as RawFollowEdge);
+      if (!normalized.blogId) continue;
+      if (this.recentPosts.has(normalized.blogId) || this.fetchingRecentPosts.has(normalized.blogId)) {
+        continue;
+      }
+      idsNeedingFetch.push(normalized.blogId);
+    }
+
+    if (!idsNeedingFetch.length) return;
+
+    const nextFetching = new Set(this.fetchingRecentPosts);
+    idsNeedingFetch.forEach((id) => nextFetching.add(id));
+    this.fetchingRecentPosts = nextFetching;
+
+    void Promise.all(
+      idsNeedingFetch.map(async (blogId) => {
+        try {
+          const response = await apiClient.posts.list({
+            blog_id: blogId,
+            page: { page_size: 3 },
+          });
+          const posts = (response.posts || []).slice(0, 3).map((post) => ({
+            ...post,
+            _media: extractMedia(post),
+          })) as ProcessedPost[];
+          const nextRecent = new Map(this.recentPosts);
+          nextRecent.set(blogId, posts);
+          this.recentPosts = nextRecent;
+        } catch {
+          const nextRecent = new Map(this.recentPosts);
+          nextRecent.set(blogId, []);
+          this.recentPosts = nextRecent;
+        } finally {
+          const nextPending = new Set(this.fetchingRecentPosts);
+          nextPending.delete(blogId);
+          this.fetchingRecentPosts = nextPending;
+        }
+      }),
+    );
   }
 
   private async doBatchResolve(): Promise<void> {
@@ -370,13 +506,17 @@ export class BlogList extends LitElement {
     return { name: 'unknown', isResolving: false, hasName: false };
   }
 
+  private sanitizeSingleLine(value: string | undefined): string {
+    return `${value || ''}`.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
   private handleItemClick(item: FollowEdge): void {
     // Normalize to handle both camelCase and snake_case from API
     const normalized = normalizeFollowEdge(item as RawFollowEdge);
 
     // First check for direct blogName
     if (normalized.blogName) {
-      window.location.href = buildBlogPageUrl(normalized.blogName, 'archive');
+      window.location.href = buildBlogPageUrl(normalized.blogName, 'activity');
       return;
     }
 
@@ -384,11 +524,11 @@ export class BlogList extends LitElement {
     if (normalized.blogId) {
       const resolved = this.resolvedNames.get(normalized.blogId);
       if (resolved) {
-        window.location.href = buildBlogPageUrl(resolved, 'archive');
+        window.location.href = buildBlogPageUrl(resolved, 'activity');
         return;
       }
       // Fallback to navigating by ID (may not work but better than nothing)
-      window.location.href = buildBlogPageUrl(String(normalized.blogId), 'archive');
+      window.location.href = buildBlogPageUrl(String(normalized.blogId), 'activity');
     }
   }
 
@@ -409,10 +549,12 @@ export class BlogList extends LitElement {
           const { name, isResolving, hasName } = this.getDisplayName(item);
           const normalized = normalizeFollowEdge(item as RawFollowEdge);
           const canNavigate = hasName || !!normalized.blogId;
+          const meta = normalized.blogId ? this.blogMeta.get(normalized.blogId) || null : null;
           // Avatar logic (SOC-016)
           const rawAvatarUrl = normalized.blogId ? this.avatarUrls.get(normalized.blogId) : null;
           const avatarUrl = normalizeAvatarUrl(rawAvatarUrl ?? null);
           const initial = (name || 'B').charAt(0).toUpperCase();
+          const recentPosts = normalized.blogId ? (this.recentPosts.get(normalized.blogId) || []) : [];
 
           return html`
             <div
@@ -421,7 +563,7 @@ export class BlogList extends LitElement {
               role="listitem"
               tabindex=${canNavigate ? '0' : '-1'}
               @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && canNavigate && this.handleItemClick(item)}
-              aria-label=${hasName ? `View ${name}'s archive` : `Blog ${name}`}
+              aria-label=${hasName ? `View ${name}'s activity` : `Blog ${name}`}
             >
               <div class="blog-info">
                 ${avatarUrl
@@ -435,11 +577,48 @@ export class BlogList extends LitElement {
                       <div class="avatar-placeholder" style="display: none;" aria-hidden="true">${initial}</div>
                     `
                   : html`<div class="avatar-placeholder" aria-hidden="true">${initial}</div>`}
-                <span class="blog-name ${isResolving ? 'resolving' : ''}" aria-busy=${isResolving ? 'true' : 'false'}>
-                  @${name}${isResolving ? ' (loading...)' : ''}
-                </span>
+                <div class="blog-copy">
+                  <div class="blog-name ${isResolving ? 'resolving' : ''}" aria-busy=${isResolving ? 'true' : 'false'}>
+                    <blog-identity
+                      variant="micro"
+                      .blogName=${name}
+                      .blogId=${normalized.blogId || 0}
+                      .blogTitle=${meta?.title || ''}
+                      .identityDecorations=${meta?.identityDecorations || []}
+                      .showAvatar=${false}
+                    ></blog-identity>${isResolving ? ' (loading...)' : ''}
+                  </div>
+                  <div class="blog-title">${this.sanitizeSingleLine(meta?.title)}</div>
+                  <div class="blog-description">${this.sanitizeSingleLine(meta?.description)}</div>
+                </div>
               </div>
-              ${hasName ? html`<span class="action" aria-hidden="true">View →</span>` : nothing}
+              <div class="recent-grid" aria-hidden="true">
+                ${recentPosts.length > 0
+                  ? recentPosts.map((post) => {
+                      const media = post._media;
+                      const rawUrl = media.url || media.videoUrl || media.audioUrl;
+                      const previewText = this.sanitizeSingleLine(post.body || post.content?.text || post.content?.title || '');
+                      return html`
+                        <div class="recent-item">
+                          ${rawUrl
+                            ? html`
+                                <media-renderer
+                                  .src=${rawUrl}
+                                  .type=${'card'}
+                                  style="object-fit: cover;"
+                                ></media-renderer>
+                              `
+                            : html`
+                                <div class="recent-fallback">
+                                  <div class="recent-fallback-icon">${POST_TYPE_ICONS[post.type] || '📄'}</div>
+                                  <div class="recent-fallback-text">${previewText || 'Post'}</div>
+                                </div>
+                              `}
+                        </div>
+                      `;
+                    })
+                  : Array.from({ length: 3 }).map(() => html`<div class="recent-item"><div class="recent-placeholder">…</div></div>`)}
+              </div>
             </div>
           `;
         })}
