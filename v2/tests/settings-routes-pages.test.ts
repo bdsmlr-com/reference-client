@@ -22,7 +22,7 @@ describe('settings route pages', () => {
 
     expect(src).toContain("href=\"/settings/you\"");
     expect(src).toContain("buildPageUrl('for'");
-    expect(src).toContain("buildPageUrl('follower-feed'");
+    expect(src).not.toContain("buildPageUrl('follower-feed'");
     expect(src).toContain('>Settings</a>');
   });
 
@@ -36,6 +36,15 @@ describe('settings route pages', () => {
     expect(userSrc).toContain('const fallbackBlogs = (status.blogs || []).map');
     expect(userSrc).toContain('const resolvedBlogs = response.blogs && response.blogs.length > 0 ? response.blogs : fallbackBlogs;');
     expect(userSrc).toContain("name: status.blog_name");
+    expect(userSrc).toContain('View preferences');
+    expect(userSrc).toContain('Stored in this browser');
+    expect(userSrc).toContain("this.renderRoutePreferenceRow('archive'");
+    expect(userSrc).toContain("this.renderRoutePreferenceRow('search'");
+    expect(userSrc).toContain("this.renderRoutePreferenceRow('feed'");
+    expect(userSrc).toContain("this.renderRoutePreferenceRow('followers-feed'");
+    expect(userSrc).toContain("this.renderRoutePreferenceRow('activity'");
+    expect(userSrc).toContain("this.renderRoutePreferenceRow('social'");
+    expect(userSrc).toContain('Reset</button>');
     expect(blogSrc).toContain('getBlogSettings');
     expect(blogSrc).toContain("customElement('view-settings-blog')");
   });

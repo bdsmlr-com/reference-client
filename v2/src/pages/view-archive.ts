@@ -159,7 +159,7 @@ export class ViewArchive extends LitElement {
   @state() private blogData: Blog | null = null;
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
-  @state() private galleryMode: GalleryMode = getGalleryMode();
+  @state() private galleryMode: GalleryMode = getGalleryMode('archive');
   private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('archive', 'main_stream');
 
   private seenIds = new Set<number>();
@@ -192,7 +192,7 @@ export class ViewArchive extends LitElement {
   }
 
   private handleGalleryModeChanged = (): void => {
-    this.galleryMode = getGalleryMode();
+    this.galleryMode = getGalleryMode('archive');
   };
 
   private savePaginationState = (): void => {
@@ -522,6 +522,10 @@ export class ViewArchive extends LitElement {
     if (this.infiniteScroll) this.observeSentinel();
   }
 
+  private handleGalleryModeChange(e: CustomEvent): void {
+    this.galleryMode = e.detail.value;
+  }
+
   private async handlePreviousPage(): Promise<void> {
     const targetPage = getAdjacentContentPageTarget({
       direction: 'previous',
@@ -596,15 +600,22 @@ export class ViewArchive extends LitElement {
             .selectedVariants=${this.selectedVariants}
             .whenValue=${this.archiveWhen}
             .blog=${this.blogData}
+            .galleryMode=${this.galleryMode}
+            .infiniteScroll=${this.infiniteScroll}
             .showSort=${true}
             .showTypes=${true}
             .showVariants=${true}
             .showWhen=${true}
+            .showGalleryMode=${true}
+            .showInfiniteScroll=${true}
+            .settingsHref=${'/settings/you#archive'}
             .loading=${this.loading}
             @sort-change=${this.handleSortChange}
             @types-change=${this.handleTypesChange}
             @variant-change=${this.handleVariantChange}
             @when-change=${this.handleWhenChange}
+            @gallery-mode-change=${this.handleGalleryModeChange}
+            @infinite-toggle=${this.handleInfiniteToggle}
           ></control-panel>
         ` : ''}
 
@@ -648,7 +659,6 @@ export class ViewArchive extends LitElement {
           @load-more=${() => this.loadMore()}
           @previous-page=${() => this.handlePreviousPage()}
           @next-page=${() => this.handleNextPage()}
-          @infinite-toggle=${this.handleInfiniteToggle}
         ></load-footer>
 
         <div id="scroll-sentinel" style="height:1px;"></div>

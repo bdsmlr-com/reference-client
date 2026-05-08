@@ -5,6 +5,8 @@ import type { Blog, PostType, PostVariant } from '../types/api.js';
 import type { ActivityKind } from '../services/profile.js';
 import './activity-kind-pills.js';
 import './archive-when-picker.js';
+import './gallery-mode-picker.js';
+import './infinite-scroll-toggle.js';
 import './sort-controls.js';
 import './type-pills.js';
 import './variant-pills.js';
@@ -44,11 +46,16 @@ export class ControlPanel extends LitElement {
   @property({ type: String }) whenValue = '';
   @property({ type: Object }) blog: Blog | null = null;
   @property({ type: String }) pageName = '';
+  @property({ type: String }) galleryMode: 'grid' | 'masonry' = 'grid';
+  @property({ type: Boolean }) infiniteScroll = false;
+  @property({ type: String }) settingsHref = '';
   @property({ type: Boolean }) showSort = false;
   @property({ type: Boolean }) showTypes = false;
   @property({ type: Boolean }) showVariants = false;
   @property({ type: Boolean }) showActivityKinds = false;
   @property({ type: Boolean }) showWhen = false;
+  @property({ type: Boolean }) showGalleryMode = false;
+  @property({ type: Boolean }) showInfiniteScroll = false;
   @property({ type: Boolean }) loading = false;
 
   private handleSortChange(e: CustomEvent) {
@@ -69,6 +76,14 @@ export class ControlPanel extends LitElement {
 
   private handleWhenChange(e: CustomEvent) {
     this.dispatchEvent(new CustomEvent('when-change', { detail: e.detail }));
+  }
+
+  private handleGalleryModeChange(e: CustomEvent) {
+    this.dispatchEvent(new CustomEvent('gallery-mode-change', { detail: e.detail }));
+  }
+
+  private handleInfiniteToggle(e: CustomEvent) {
+    this.dispatchEvent(new CustomEvent('infinite-toggle', { detail: e.detail }));
   }
 
   private intersperse(parts: TemplateResult[]): TemplateResult[] {
@@ -116,6 +131,32 @@ export class ControlPanel extends LitElement {
     if (this.showWhen) {
       sections.push(html`
         <archive-when-picker .blog=${this.blog} .value=${this.whenValue} @when-change=${this.handleWhenChange}></archive-when-picker>
+      `);
+    }
+
+    if (this.showGalleryMode) {
+      sections.push(html`
+        <gallery-mode-picker
+          .value=${this.galleryMode}
+          .pageName=${this.pageName}
+          @gallery-mode-change=${this.handleGalleryModeChange}
+        ></gallery-mode-picker>
+      `);
+    }
+
+    if (this.showInfiniteScroll) {
+      sections.push(html`
+        <infinite-scroll-toggle
+          .enabled=${this.infiniteScroll}
+          .pageName=${this.pageName}
+          @infinite-toggle=${this.handleInfiniteToggle}
+        ></infinite-scroll-toggle>
+      `);
+    }
+
+    if (this.settingsHref) {
+      sections.push(html`
+        <a href=${this.settingsHref} aria-label="Open view preferences">⚙️</a>
       `);
     }
 

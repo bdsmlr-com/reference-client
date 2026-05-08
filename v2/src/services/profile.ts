@@ -7,6 +7,7 @@ const GALLERY_MODE_KEY = 'bdsmlr_gallery_mode';
 const ARCHIVE_SORT_KEY = 'bdsmlr_archive_sort';
 const SEARCH_SORT_KEY = 'bdsmlr_search_sort';
 const FOLLOWING_ACTIVITY_KINDS_KEY = 'bdsmlr_following_activity_kinds';
+const FOLLOWER_FEED_ACTIVITY_KINDS_KEY = 'bdsmlr_follower_feed_activity_kinds';
 const BLOG_ACTIVITY_KINDS_KEY = 'bdsmlr_blog_activity_kinds';
 
 export const PROFILE_EVENTS = {
@@ -37,6 +38,10 @@ function removeStorage(key: string): void {
   } catch {
     // no-op
   }
+}
+
+function getScopedKey(key: string, scope?: string): string {
+  return scope ? `${key}:${scope}` : key;
 }
 
 function emit(name: string, detail: Record<string, unknown>): void {
@@ -73,9 +78,12 @@ export function clearCurrentUsername(): void {
 export function clearProfileState(): void {
   removeStorage(USERNAME_KEY);
   removeStorage(GALLERY_MODE_KEY);
+  removeStorage(getScopedKey(GALLERY_MODE_KEY, 'search'));
+  removeStorage(getScopedKey(GALLERY_MODE_KEY, 'archive'));
   removeStorage(ARCHIVE_SORT_KEY);
   removeStorage(SEARCH_SORT_KEY);
   removeStorage(FOLLOWING_ACTIVITY_KINDS_KEY);
+  removeStorage(FOLLOWER_FEED_ACTIVITY_KINDS_KEY);
   removeStorage(BLOG_ACTIVITY_KINDS_KEY);
   emit(PROFILE_EVENTS.usernameChanged, { username: null });
   emit(PROFILE_EVENTS.galleryModeChanged, { mode: 'grid' });
@@ -86,14 +94,14 @@ export function isLoggedIn(): boolean {
   return Boolean(getCurrentUsername());
 }
 
-export function getGalleryMode(): GalleryMode {
-  const value = readStorage(GALLERY_MODE_KEY);
+export function getGalleryMode(scope?: string): GalleryMode {
+  const value = readStorage(getScopedKey(GALLERY_MODE_KEY, scope));
   return value === 'masonry' ? 'masonry' : 'grid';
 }
 
-export function setGalleryMode(mode: GalleryMode): void {
-  writeStorage(GALLERY_MODE_KEY, mode);
-  emit(PROFILE_EVENTS.galleryModeChanged, { mode });
+export function setGalleryMode(mode: GalleryMode, scope?: string): void {
+  writeStorage(getScopedKey(GALLERY_MODE_KEY, scope), mode);
+  emit(PROFILE_EVENTS.galleryModeChanged, { mode, scope: scope || null });
 }
 
 export function getArchiveSortPreference(): string | null {
@@ -136,6 +144,14 @@ export function getFollowingActivityKindsPreference(): ActivityKind[] {
 
 export function setFollowingActivityKindsPreference(kinds: ActivityKind[]): void {
   writeStorage(FOLLOWING_ACTIVITY_KINDS_KEY, kinds.join(','));
+}
+
+export function getFollowerFeedActivityKindsPreference(): ActivityKind[] {
+  return normalizeActivityKinds(readStorage(FOLLOWER_FEED_ACTIVITY_KINDS_KEY), DEFAULT_ACTIVITY_KINDS);
+}
+
+export function setFollowerFeedActivityKindsPreference(kinds: ActivityKind[]): void {
+  writeStorage(FOLLOWER_FEED_ACTIVITY_KINDS_KEY, kinds.join(','));
 }
 
 export function getBlogActivityKindsPreference(): ActivityKind[] {

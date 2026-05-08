@@ -4,7 +4,57 @@ import { baseStyles } from '../styles/theme.js';
 import { getStatus, getUserSettings, type SettingsBlog, type SettingsUser } from '../services/auth-service.js';
 import { buildPageUrl } from '../services/blog-resolver.js';
 import { handleAvatarImageError, normalizeAvatarUrl } from '../services/avatar-url.js';
+import { ALL_POST_TYPES } from '../services/post-filter-url.js';
+import {
+  getInfiniteScrollPreference,
+  getTypePreference,
+  getVariantPreference,
+  setInfiniteScrollPreference,
+  setTypePreference,
+  setVariantPreference,
+  type VariantSelection,
+} from '../services/storage.js';
+import {
+  DEFAULT_ACTIVITY_KINDS,
+  getArchiveSortPreference,
+  getBlogActivityKindsPreference,
+  getFollowerFeedActivityKindsPreference,
+  getFollowingActivityKindsPreference,
+  getGalleryMode,
+  getSearchSortPreference,
+  normalizeActivityKinds,
+  setArchiveSortPreference,
+  setBlogActivityKindsPreference,
+  setFollowerFeedActivityKindsPreference,
+  setFollowingActivityKindsPreference,
+  setGalleryMode,
+  setSearchSortPreference,
+  type ActivityKind,
+  type GalleryMode,
+} from '../services/profile.js';
+import { normalizeSortValue } from '../types/post.js';
+import type { PostType, PostVariant } from '../types/api.js';
 import '../components/blog-identity.js';
+import '../components/control-panel.js';
+
+type PreferenceRoute = 'archive' | 'search' | 'feed' | 'followers-feed' | 'activity' | 'social';
+
+type RoutePreferenceState = {
+  sortValue?: string;
+  selectedTypes?: PostType[];
+  selectedVariants?: PostVariant[];
+  activityKinds?: ActivityKind[];
+  galleryMode?: GalleryMode;
+  infiniteScroll: boolean;
+};
+
+const SORT_RESET = 'newest';
+
+function selectionFromVariant(variant: VariantSelection): PostVariant[] {
+  if (variant === 'original') return [1];
+  if (variant === 'reblog') return [2];
+  return [];
+}
 
 @customElement('view-settings-user')
 export class ViewSettingsUser extends LitElement {
@@ -199,6 +249,55 @@ export class ViewSettingsUser extends LitElement {
         border-color: var(--accent);
         color: #fff;
       }
+
+      .pref-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 0;
+        border-top: 1px solid var(--border);
+      }
+
+      .pref-row:first-of-type {
+        border-top: none;
+      }
+
+      .pref-copy {
+        width: 136px;
+        flex: 0 0 136px;
+      }
+
+      .pref-label {
+        color: var(--text-primary);
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .pref-help {
+        color: var(--text-muted);
+        font-size: 12px;
+        margin-top: 4px;
+      }
+
+      .pref-controls {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .pref-reset {
+        flex: 0 0 auto;
+        min-height: 36px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+        background: color-mix(in srgb, var(--accent) 10%, var(--bg-panel-alt));
+        color: color-mix(in srgb, var(--accent) 70%, var(--text-primary));
+        font-size: 12px;
+      }
+
+      .pref-reset:hover {
+        background: color-mix(in srgb, var(--accent) 16%, var(--bg-panel-alt));
+      }
     `,
   ];
 
@@ -207,6 +306,7 @@ export class ViewSettingsUser extends LitElement {
   @state() private user: SettingsUser | null = null;
   @state() private blogs: SettingsBlog[] = [];
   @state() private selectedBlog: SettingsBlog | null = null;
+  @state() private routePrefs: Record<PreferenceRoute, RoutePreferenceState> = this.readRoutePreferences();
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -251,6 +351,142 @@ export class ViewSettingsUser extends LitElement {
 
   private closeBlog(): void {
     this.selectedBlog = null;
+  }
+
+  private readRoutePreferences(): Record<PreferenceRoute, RoutePreferenceState> {
+    return {
+      archive: {
+        sortValue: normalizeSortValue(getArchiveSortPreference() || SORT_RESET),
+        selectedTypes: getTypePreference('archive') as PostType[],
+        selectedVariants: selectionFromVariant(getVariantPreference('archive')),
+        galleryMode: getGalleryMode('archive'),
+        infiniteScroll: getInfiniteScrollPreference('archive'),
+      },
+      search: {
+        sortValue: normalizeSortValue(getSearchSortPreference() || SORT_RESET),
+        selectedTypes: getTypePreference('search') as PostType[],
+        selectedVariants: selectionFromVariant(getVariantPreference('search')),
+        galleryMode: getGalleryMode('search'),
+        infiniteScroll: getInfiniteScrollPreference('search'),
+      },
+      feed: {
+        selectedTypes: getTypePreference('following') as PostType[],
+        activityKinds: getFollowingActivityKindsPreference(),
+        infiniteScroll: getInfiniteScrollPreference('following'),
+      },
+      'followers-feed': {
+        selectedTypes: getTypePreference('followers') as PostType[],
+        activityKinds: getFollowerFeedActivityKindsPreference(),
+        infiniteScroll: getInfiniteScrollPreference('followers'),
+      },
+      activity: {
+        selectedTypes: getTypePreference('timeline') as PostType[],
+        activityKinds: getBlogActivityKindsPreference(),
+        infiniteScroll: getInfiniteScrollPreference('timeline'),
+      },
+      social: {
+        infiniteScroll: getInfiniteScrollPreference('social'),
+      },
+    };
+  }
+
+  private updateRoutePreference(route: PreferenceRoute, patch: Partial<RoutePreferenceState>): void {
+    this.routePrefs = {
+      ...this.routePrefs,
+      [route]: {
+        ...this.routePrefs[route],
+        ...patch,
+      },
+    };
+  }
+
+  private resetRoutePreference(route: PreferenceRoute): void {
+    switch (route) {
+      case 'archive':
+        setArchiveSortPreference(SORT_RESET);
+        setTypePreference([...ALL_POST_TYPES], 'archive');
+        setVariantPreference('all', 'archive');
+        setGalleryMode('grid', 'archive');
+        setInfiniteScrollPreference(true, 'archive');
+        break;
+      case 'search':
+        setSearchSortPreference(SORT_RESET);
+        setTypePreference([...ALL_POST_TYPES], 'search');
+        setVariantPreference('all', 'search');
+        setGalleryMode('grid', 'search');
+        setInfiniteScrollPreference(true, 'search');
+        break;
+      case 'feed':
+        setTypePreference([...ALL_POST_TYPES], 'following');
+        setFollowingActivityKindsPreference([...DEFAULT_ACTIVITY_KINDS]);
+        setInfiniteScrollPreference(true, 'following');
+        break;
+      case 'followers-feed':
+        setTypePreference([...ALL_POST_TYPES], 'followers');
+        setFollowerFeedActivityKindsPreference([...DEFAULT_ACTIVITY_KINDS]);
+        setInfiniteScrollPreference(true, 'followers');
+        break;
+      case 'activity':
+        setTypePreference([...ALL_POST_TYPES], 'timeline');
+        setBlogActivityKindsPreference([...DEFAULT_ACTIVITY_KINDS]);
+        setInfiniteScrollPreference(true, 'timeline');
+        break;
+      case 'social':
+        setInfiniteScrollPreference(true, 'social');
+        break;
+    }
+    this.routePrefs = this.readRoutePreferences();
+  }
+
+  private renderRoutePreferenceRow(
+    route: PreferenceRoute,
+    label: string,
+    help: string,
+    pageName: string,
+    options: {
+      showSort?: boolean;
+      showTypes?: boolean;
+      showVariants?: boolean;
+      showActivityKinds?: boolean;
+      showGalleryMode?: boolean;
+      showInfiniteScroll?: boolean;
+      onSortChange?: (value: string) => void;
+      onActivityKindsChange?: (value: ActivityKind[]) => void;
+    },
+  ) {
+    const state = this.routePrefs[route];
+    return html`
+      <div class="pref-row" id=${route}>
+        <div class="pref-copy">
+          <div class="pref-label">${label}</div>
+          <div class="pref-help">${help}</div>
+        </div>
+        <div class="pref-controls">
+          <control-panel
+            .pageName=${pageName}
+            .sortValue=${state.sortValue || SORT_RESET}
+            .selectedTypes=${state.selectedTypes || []}
+            .selectedVariants=${state.selectedVariants || []}
+            .activityKinds=${state.activityKinds || []}
+            .galleryMode=${state.galleryMode || 'grid'}
+            .infiniteScroll=${state.infiniteScroll}
+            .showSort=${options.showSort || false}
+            .showTypes=${options.showTypes || false}
+            .showVariants=${options.showVariants || false}
+            .showActivityKinds=${options.showActivityKinds || false}
+            .showGalleryMode=${options.showGalleryMode || false}
+            .showInfiniteScroll=${options.showInfiniteScroll || false}
+            @sort-change=${options.onSortChange ? ((e: CustomEvent) => options.onSortChange!(e.detail.value)) : null}
+            @types-change=${(e: CustomEvent) => this.updateRoutePreference(route, { selectedTypes: e.detail.types })}
+            @variant-change=${(e: CustomEvent) => this.updateRoutePreference(route, { selectedVariants: e.detail.variants || [] })}
+            @activity-kinds-change=${options.onActivityKindsChange ? ((e: CustomEvent) => options.onActivityKindsChange!(normalizeActivityKinds((e.detail.activityKinds || []).join(',')))) : null}
+            @gallery-mode-change=${(e: CustomEvent) => this.updateRoutePreference(route, { galleryMode: e.detail.value })}
+            @infinite-toggle=${(e: CustomEvent) => this.updateRoutePreference(route, { infiniteScroll: e.detail.enabled })}
+          ></control-panel>
+        </div>
+        <button class="pref-reset" type="button" @click=${() => this.resetRoutePreference(route)}>Reset</button>
+      </div>
+    `;
   }
 
   private renderBlogAvatar(blog: SettingsBlog) {
@@ -315,6 +551,63 @@ export class ViewSettingsUser extends LitElement {
         ${this.loading ? html`<div class="status">Loading settings…</div>` : ''}
         ${!this.loading && this.error ? html`<div class="error">Settings unavailable<br />${this.error}</div>` : ''}
         ${!this.loading && !this.error ? html`
+          <div class="section">
+            <div class="eyebrow">View preferences</div>
+            <h2>Stored in this browser</h2>
+            ${this.renderRoutePreferenceRow('archive', 'Archive', 'Default archive view controls.', 'archive', {
+              showSort: true,
+              showTypes: true,
+              showVariants: true,
+              showGalleryMode: true,
+              showInfiniteScroll: true,
+              onSortChange: (value) => {
+                setArchiveSortPreference(normalizeSortValue(value));
+                this.updateRoutePreference('archive', { sortValue: normalizeSortValue(value) });
+              },
+            })}
+            ${this.renderRoutePreferenceRow('search', 'Search', 'Default search view controls.', 'search', {
+              showSort: true,
+              showTypes: true,
+              showVariants: true,
+              showGalleryMode: true,
+              showInfiniteScroll: true,
+              onSortChange: (value) => {
+                setSearchSortPreference(normalizeSortValue(value));
+                this.updateRoutePreference('search', { sortValue: normalizeSortValue(value) });
+              },
+            })}
+            ${this.renderRoutePreferenceRow('feed', 'Feed', 'Default followed-posts controls.', 'following', {
+              showTypes: true,
+              showActivityKinds: true,
+              showInfiniteScroll: true,
+              onActivityKindsChange: (value) => {
+                setFollowingActivityKindsPreference(value);
+                this.updateRoutePreference('feed', { activityKinds: value });
+              },
+            })}
+            ${this.renderRoutePreferenceRow('followers-feed', "Followers' Feed", 'Default follower-posts controls.', 'followers', {
+              showTypes: true,
+              showActivityKinds: true,
+              showInfiniteScroll: true,
+              onActivityKindsChange: (value) => {
+                setFollowerFeedActivityKindsPreference(value);
+                this.updateRoutePreference('followers-feed', { activityKinds: value });
+              },
+            })}
+            ${this.renderRoutePreferenceRow('activity', 'Activity', 'Default blog activity controls.', 'timeline', {
+              showTypes: true,
+              showActivityKinds: true,
+              showInfiniteScroll: true,
+              onActivityKindsChange: (value) => {
+                setBlogActivityKindsPreference(value);
+                this.updateRoutePreference('activity', { activityKinds: value });
+              },
+            })}
+            ${this.renderRoutePreferenceRow('social', 'Social', 'Default followers/following list behavior.', 'social', {
+              showInfiniteScroll: true,
+            })}
+          </div>
+
           <div class="section">
             <div class="eyebrow">Owned blogs</div>
             <h2>Choose a blog</h2>

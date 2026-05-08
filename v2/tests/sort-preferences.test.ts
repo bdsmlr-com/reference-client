@@ -24,16 +24,18 @@ describe('sort preference persistence', () => {
     expect(searchSrc).toContain('const resolvedSort = normalizeSortValue(sort || getSearchSortPreference());');
     expect(archiveSrc).toContain('setArchiveSortPreference(this.sortValue);');
     expect(searchSrc).toContain('setSearchSortPreference(this.sortValue);');
-    expect(archiveSrc).toContain("activity_kinds: ['post', 'reblog']");
   });
 
-  it('settings menu exposes archive and search default sort controls', () => {
+  it('settings page now owns archive and search default sort controls', () => {
+    const settingsSrc = readFileSync(join(ROOT, 'pages/view-settings-user.ts'), 'utf8');
     const navSrc = readFileSync(join(ROOT, 'components/shared-nav.ts'), 'utf8');
 
-    expect(navSrc).toContain('Archive default sort');
-    expect(navSrc).toContain('Search default sort');
-    expect(navSrc).toContain('handleArchiveSortPreferenceChange');
-    expect(navSrc).toContain('handleSearchSortPreferenceChange');
+    expect(settingsSrc).toContain('setArchiveSortPreference');
+    expect(settingsSrc).toContain('setSearchSortPreference');
+    expect(settingsSrc).toContain("this.renderRoutePreferenceRow('archive'");
+    expect(settingsSrc).toContain("this.renderRoutePreferenceRow('search'");
+    expect(navSrc).not.toContain('Archive default sort');
+    expect(navSrc).not.toContain('Search default sort');
   });
 
   it('feed route no longer highlights Activity tab', () => {

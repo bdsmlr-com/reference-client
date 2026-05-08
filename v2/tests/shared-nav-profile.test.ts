@@ -18,13 +18,16 @@ describe('shared-nav profile/settings behavior', () => {
     expect(config.links.contexts.nav_logo.labelTemplate).toBe('BDSMLR');
   });
 
-  it('contains profile and settings menu with login + logout + gallery mode controls', () => {
+  it('contains profile and settings menu with login + logout and no route preference controls', () => {
     const src = readFileSync(NAV_FILE, 'utf8');
 
     expect(src).toContain('openLoginModal');
     expect(src).toContain('Log out');
-    expect(src).toContain('Gallery view');
     expect(src).toContain('Clear cache');
+    expect(src).not.toContain('Gallery view');
+    expect(src).not.toContain('Archive default sort');
+    expect(src).not.toContain('Search default sort');
+    expect(src).not.toContain('Infinite scroll');
   });
 
   it('uses log in label when logged out and avatar button when logged in', () => {
@@ -55,12 +58,10 @@ describe('shared-nav profile/settings behavior', () => {
     expect(src).toContain("window.scrollTo({ top: 0, behavior: 'smooth' });");
   });
 
-  it('keeps settings menu open while interacting with sort select controls', () => {
+  it('keeps settings menu open while interacting with menu controls', () => {
     const src = readFileSync(NAV_FILE, 'utf8');
 
     expect(src).toContain("if (activeEl && activeEl.tagName === 'SELECT') return;");
     expect(src).toContain('@click=${(e: Event) => e.stopPropagation()}');
-    expect(src).toContain('@input=${this.handleArchiveSortPreferenceChange}');
-    expect(src).toContain('@input=${this.handleSearchSortPreferenceChange}');
   });
 });

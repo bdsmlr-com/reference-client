@@ -2,9 +2,11 @@ import type { PostType } from '../types/api.js';
 import {
   DEFAULT_ACTIVITY_KINDS,
   getBlogActivityKindsPreference,
+  getFollowerFeedActivityKindsPreference,
   getFollowingActivityKindsPreference,
   normalizeActivityKinds,
   setBlogActivityKindsPreference,
+  setFollowerFeedActivityKindsPreference,
   setFollowingActivityKindsPreference,
   type ActivityKind,
 } from './profile.js';
@@ -44,8 +46,8 @@ const TIMELINE_ROUTE_DEFINITIONS: Record<TimelineRouteKind, TimelineRouteDefinit
     footerMode: 'activity',
     footerPageName: 'followers',
     controlPageName: 'followers',
-    readStoredActivityKinds: getFollowingActivityKindsPreference,
-    writeStoredActivityKinds: setFollowingActivityKindsPreference,
+    readStoredActivityKinds: getFollowerFeedActivityKindsPreference,
+    writeStoredActivityKinds: setFollowerFeedActivityKindsPreference,
   },
   activity: {
     streamPage: 'activity',

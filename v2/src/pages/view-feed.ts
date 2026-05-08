@@ -24,6 +24,7 @@ import { resolveLink } from '../services/link-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { ALL_POST_TYPES } from '../services/post-filter-url.js';
 import { buildPageUrl } from '../services/blog-resolver.js';
+import { getInfiniteScrollPreference } from '../services/storage.js';
 import '../components/control-panel.js';
 import '../components/blog-header.js';
 import '../components/timeline-stream.js';
@@ -100,7 +101,7 @@ export class ViewFeed extends LitElement {
   @state() private loading = false;
   @state() private exhausted = false;
   @state() private loadingCurrent = 0;
-  @state() private infiniteScroll = false;
+  @state() private infiniteScroll = getInfiniteScrollPreference('following');
   @state() private statusMessage = '';
   @state() private errorMessage = '';
   @state() private retrying = false;
@@ -341,6 +342,7 @@ export class ViewFeed extends LitElement {
     });
     this.selectedTypes = queryState.selectedTypes;
     this.activityKinds = queryState.activityKinds;
+    this.infiniteScroll = getInfiniteScrollPreference(this.timelineRoute.footerPageName);
     setUrlParams(buildTimelineRouteQueryParams(queryState));
 
     if (this.selectedTypes.length === 0) {
@@ -668,11 +670,15 @@ export class ViewFeed extends LitElement {
                 .showWhen=${false}
                 .showActivityKinds=${true}
                 .showTypes=${true}
+                .showInfiniteScroll=${true}
                 .activityKinds=${this.activityKinds}
                 .selectedTypes=${this.selectedTypes}
+                .infiniteScroll=${this.infiniteScroll}
                 .pageName=${this.timelineRoute.controlPageName}
+                .settingsHref=${this.isFollowerFeed ? '/settings/you#followers-feed' : '/settings/you#feed'}
                 @activity-kinds-change=${this.handleActivityKindsChange}
                 @types-change=${this.handleTypesChange}
+                @infinite-toggle=${this.handleInfiniteToggle}
               ></control-panel>
             `
           : ''}
@@ -698,7 +704,6 @@ export class ViewFeed extends LitElement {
                 .loadingTarget=${PAGE_SIZE}
                 .infiniteScroll=${this.infiniteScroll}
                 @load-more=${() => this.loadMore()}
-                @infinite-toggle=${this.handleInfiniteToggle}
               ></load-footer>
             `
           : ''}

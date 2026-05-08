@@ -11,6 +11,8 @@ describe('shared control panel', () => {
     expect(src).toContain("@customElement('control-panel')");
     expect(src).toContain("import './activity-kind-pills.js';");
     expect(src).toContain("import './archive-when-picker.js';");
+    expect(src).toContain("import './gallery-mode-picker.js';");
+    expect(src).toContain("import './infinite-scroll-toggle.js';");
     expect(src).toContain("import './sort-controls.js';");
     expect(src).toContain("import './type-pills.js';");
     expect(src).toContain("import './variant-pills.js';");
@@ -21,9 +23,13 @@ describe('shared control panel', () => {
     expect(src).toContain('showActivityKinds');
     expect(src).toContain('showTypes');
     expect(src).toContain('showVariants');
+    expect(src).toContain('showGalleryMode');
+    expect(src).toContain('showInfiniteScroll');
     expect(src).toContain('<archive-when-picker');
     expect(src).toContain('<variant-pills');
     expect(src).toContain('<activity-kind-pills');
+    expect(src).toContain('<gallery-mode-picker');
+    expect(src).toContain('<infinite-scroll-toggle');
   });
 
   it('routes feed, activity, archive, and search through the shared control-panel component', () => {
@@ -46,17 +52,23 @@ describe('shared control panel', () => {
     expect(feedSrc).toContain('.showTypes=${true}');
     expect(feedSrc).toContain('.showSort=${false}');
     expect(feedSrc).toContain('.showWhen=${false}');
+    expect(feedSrc).toContain('.showInfiniteScroll=${true}');
 
     expect(activitySrc).toContain('.showActivityKinds=${true}');
     expect(activitySrc).toContain('.showTypes=${true}');
+    expect(activitySrc).toContain('.showInfiniteScroll=${true}');
 
     expect(archiveSrc).toContain('.showSort=${true}');
     expect(archiveSrc).toContain('.showVariants=${true}');
     expect(archiveSrc).toContain('.showWhen=${true}');
+    expect(archiveSrc).toContain('.showGalleryMode=${true}');
+    expect(archiveSrc).toContain('.showInfiniteScroll=${true}');
 
     expect(searchSrc).toContain('.showSort=${true}');
     expect(searchSrc).toContain('.showVariants=${true}');
     expect(searchSrc).toContain('.showWhen=${true}');
+    expect(searchSrc).toContain('.showGalleryMode=${true}');
+    expect(searchSrc).toContain('.showInfiniteScroll=${true}');
   });
 
   it('uses compact popover selectors for shared type and variant filters', () => {

@@ -9,6 +9,7 @@ import { scrollObserver } from '../services/scroll-observer.js';
 import {
   generatePaginationCursorKey,
   getCachedPaginationCursor,
+  getInfiniteScrollPreference,
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import {
@@ -20,6 +21,7 @@ import {
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import type { FollowEdge, Blog } from '../types/api.js';
+import '../components/control-panel.js';
 import '../components/blog-list.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
@@ -122,7 +124,7 @@ export class ViewSocial extends LitElement {
   @state() private followersExhausted = false;
   @state() private followingExhausted = false;
   @state() private loading = false;
-  @state() private infiniteScroll = false;
+  @state() private infiniteScroll = getInfiniteScrollPreference('social');
   @state() private statusMessage = '';
   @state() private errorMessage = '';
   @state() private retrying = false;
@@ -203,6 +205,7 @@ export class ViewSocial extends LitElement {
       this.errorMessage = ErrorMessages.VALIDATION.NO_BLOG_SPECIFIED;
       return;
     }
+    this.infiniteScroll = getInfiniteScrollPreference('social');
 
     try {
       this.statusMessage = 'Resolving blog...';
@@ -551,6 +554,14 @@ export class ViewSocial extends LitElement {
 
         ${this.statusMessage && !this.errorMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
 
+        <control-panel
+          .pageName=${'social'}
+          .showInfiniteScroll=${true}
+          .infiniteScroll=${this.infiniteScroll}
+          .settingsHref=${'/settings/you#social'}
+          @infinite-toggle=${this.handleInfiniteToggle}
+        ></control-panel>
+
         ${this.currentList.length > 0
           ? html`
               <div class="list-container">
@@ -565,7 +576,6 @@ export class ViewSocial extends LitElement {
                 .exhausted=${this.isExhausted}
                 .infiniteScroll=${this.infiniteScroll}
                 @load-more=${() => this.loadMore()}
-                @infinite-toggle=${this.handleInfiniteToggle}
               ></load-footer>
             `
           : this.blogId && !this.loading

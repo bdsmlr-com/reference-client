@@ -369,7 +369,7 @@ export class ViewSearch extends LitElement {
   @state() private retrying = false;
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
-  @state() private galleryMode: GalleryMode = getGalleryMode();
+  @state() private galleryMode: GalleryMode = getGalleryMode('search');
   @state() private teaserPosts: ProcessedPost[] = [];
   @state() private teaserLoading = false;
   @state() private hasNextPage = false;
@@ -436,7 +436,7 @@ export class ViewSearch extends LitElement {
   }
 
   private handleGalleryModeChanged = (): void => {
-    this.galleryMode = getGalleryMode();
+    this.galleryMode = getGalleryMode('search');
   };
 
   private savePaginationState = (): void => {
@@ -810,6 +810,10 @@ export class ViewSearch extends LitElement {
     }
   }
 
+  private handleGalleryModeChange(e: CustomEvent): void {
+    this.galleryMode = e.detail.value;
+  }
+
   private handlePostClick(e: CustomEvent): void {
     e.stopPropagation();
     const post = e.detail.post as ProcessedPost;
@@ -979,15 +983,22 @@ export class ViewSearch extends LitElement {
           .selectedTypes=${this.selectedTypes}
           .selectedVariants=${this.selectedVariants}
           .whenValue=${this.searchWhen}
+          .galleryMode=${this.galleryMode}
+          .infiniteScroll=${this.infiniteScroll}
           .showSort=${true}
           .showTypes=${true}
           .showVariants=${true}
           .showWhen=${true}
+          .showGalleryMode=${true}
+          .showInfiniteScroll=${true}
+          .settingsHref=${'/settings/you#search'}
           .loading=${this.loading}
           @sort-change=${this.handleSortChange}
           @types-change=${this.handleTypesChange}
           @variant-change=${this.handleVariantChange}
           @when-change=${this.handleWhenChange}
+          @gallery-mode-change=${this.handleGalleryModeChange}
+          @infinite-toggle=${this.handleInfiniteToggle}
         ></control-panel>
 
         ${!this.hasSearched
@@ -1059,7 +1070,6 @@ export class ViewSearch extends LitElement {
                 @load-more=${() => this.loadMore()}
                 @previous-page=${() => this.handlePreviousPage()}
                 @next-page=${() => this.handleNextPage()}
-                @infinite-toggle=${this.handleInfiniteToggle}
               ></load-footer>
             `
           : ''}

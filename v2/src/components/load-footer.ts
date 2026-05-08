@@ -1,10 +1,9 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { getInfiniteScrollPreference, setInfiniteScrollPreference } from '../services/storage.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import type { ViewStats } from '../types/post.js';
-import { EventNames, type InfiniteToggleDetail } from '../types/events.js';
+import { EventNames } from '../types/events.js';
 import { SPACING, CONTAINER_SPACING } from '../types/ui-constants.js';
 
 export type FooterMode = 'search' | 'archive' | 'timeline' | 'activity' | 'list';
@@ -53,22 +52,6 @@ export class LoadFooter extends LitElement {
         font-size: 10px;
         color: var(--text-muted);
         margin-top: 2px;
-      }
-
-      .infinite-toggle {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        margin-bottom: 8px;
-        font-size: 12px;
-        color: var(--text-muted);
-      }
-
-      .infinite-toggle input {
-        cursor: pointer;
-        width: 14px;
-        height: 14px;
       }
 
       .footer-stats {
@@ -132,23 +115,6 @@ export class LoadFooter extends LitElement {
   @property({ type: Boolean }) hasPreviousPage = false;
   @property({ type: Boolean }) hasNextPage = false;
 
-  connectedCallback(): void {
-    super.connectedCallback();
-    // Load saved infinite scroll preference (per-page if pageName is set)
-    if (this.persistSelection) {
-      const saved = getInfiniteScrollPreference(this.pageName || undefined);
-      if (saved !== this.infiniteScroll) {
-        this.infiniteScroll = saved;
-        // Emit event so parent knows about saved preference
-        this.dispatchEvent(
-          new CustomEvent<InfiniteToggleDetail>(EventNames.INFINITE_TOGGLE, {
-            detail: { enabled: saved },
-          })
-        );
-      }
-    }
-  }
-
   private handleLoadMore(): void {
     this.dispatchEvent(new CustomEvent(EventNames.LOAD_MORE));
   }
@@ -159,19 +125,6 @@ export class LoadFooter extends LitElement {
 
   private handleNextPage(): void {
     this.dispatchEvent(new CustomEvent(EventNames.NEXT_PAGE));
-  }
-
-  private handleInfiniteToggle(e: Event): void {
-    const checked = (e.target as HTMLInputElement).checked;
-    // Save preference (per-page if pageName is set)
-    if (this.persistSelection) {
-      setInfiniteScrollPreference(checked, this.pageName || undefined);
-    }
-    this.dispatchEvent(
-      new CustomEvent<InfiniteToggleDetail>(EventNames.INFINITE_TOGGLE, {
-        detail: { enabled: checked },
-      })
-    );
   }
 
   private renderButton() {
@@ -267,15 +220,6 @@ export class LoadFooter extends LitElement {
   render() {
     return html`
       <footer>
-        <div class="infinite-toggle">
-          <input
-            type="checkbox"
-            id="infinite-scroll"
-            .checked=${this.infiniteScroll}
-            @change=${this.handleInfiniteToggle}
-          />
-          <label for="infinite-scroll">Enable infinite scroll</label>
-        </div>
         ${this.renderButton()}
         ${this.renderStats()}
       </footer>

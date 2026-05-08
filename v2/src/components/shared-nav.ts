@@ -14,21 +14,12 @@ import {
   isLoggedIn,
   clearCurrentUsername,
   setCurrentUsername,
-  getGalleryMode,
-  setGalleryMode,
   PROFILE_EVENTS,
-  type GalleryMode,
-  getArchiveSortPreference,
-  setArchiveSortPreference,
-  getSearchSortPreference,
-  setSearchSortPreference,
 } from '../services/profile.js';
 import { apiClient } from '../services/client.js';
 import { getAuthUser, updateActiveBlog } from '../state/auth-state.js';
 import { setStoredActiveBlog, clearStoredActiveBlog } from '../utils/storage.js';
-import { getInfiniteScrollPreference, setInfiniteScrollPreference } from '../services/storage.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
-import { SORT_OPTIONS, normalizeSortValue } from '../types/post.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { logout as legacyLogout, login as legacyLogin } from '../services/auth-service.js';
 import { normalizeAvatarUrl } from '../services/avatar-url.js';
@@ -109,8 +100,7 @@ export class SharedNav extends LitElement {
 
       .theme-toggle,
       .profile-toggle,
-      .menu-button,
-      .gallery-toggle {
+      .menu-button {
         padding: 6px 10px;
         border-radius: 4px;
         background: var(--bg-panel-alt);
@@ -159,15 +149,8 @@ export class SharedNav extends LitElement {
 
       .theme-toggle:hover,
       .profile-toggle:hover,
-      .menu-button:hover,
-      .gallery-toggle:hover {
+      .menu-button:hover {
         background: var(--border-strong);
-      }
-
-      .gallery-toggle.active {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: #fff;
       }
 
       .profile-menu {
@@ -210,11 +193,6 @@ export class SharedNav extends LitElement {
 
       .profile-blog-identity {
         display: block;
-      }
-
-      .gallery-row {
-        display: flex;
-        gap: 6px;
       }
 
       .modal-backdrop {
@@ -304,12 +282,8 @@ export class SharedNav extends LitElement {
   @state() private usernameInput = '';
   @state() private passwordInput = '';
   @state() private currentUsername: string | null = getCurrentUsername();
-  @state() private galleryMode: GalleryMode = getGalleryMode();
   @state() private profileAvatarUrl: string | null = null;
   @state() private profileBlogTitle: string | null = null;
-  @state() private archiveSortPreference = normalizeSortValue(getArchiveSortPreference() || 'newest');
-  @state() private searchSortPreference = normalizeSortValue(getSearchSortPreference() || 'newest');
-  @state() private infiniteScrollPref = getInfiniteScrollPreference();
   @state() private loginError: string | null = null;
   @state() private blogs: { id: number; name: string }[] = [];
   @state() private activeBlogId: number | null = null;
@@ -318,8 +292,6 @@ export class SharedNav extends LitElement {
     super.connectedCallback();
     document.addEventListener('click', this.handleDocumentClick);
     window.addEventListener(PROFILE_EVENTS.usernameChanged, this.handleProfileStateChange as EventListener);
-    window.addEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleProfileStateChange as EventListener);
-    window.addEventListener(PROFILE_EVENTS.sortPreferencesChanged, this.handleProfileStateChange as EventListener);
     window.addEventListener('auth-user-changed', this.handleAuthChanged as EventListener);
     this.syncFromAuth();
     void this.refreshProfileIdentity();
@@ -329,8 +301,6 @@ export class SharedNav extends LitElement {
     super.disconnectedCallback();
     document.removeEventListener('click', this.handleDocumentClick);
     window.removeEventListener(PROFILE_EVENTS.usernameChanged, this.handleProfileStateChange as EventListener);
-    window.removeEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleProfileStateChange as EventListener);
-    window.removeEventListener(PROFILE_EVENTS.sortPreferencesChanged, this.handleProfileStateChange as EventListener);
     window.removeEventListener('auth-user-changed', this.handleAuthChanged as EventListener);
   }
 
@@ -345,9 +315,6 @@ export class SharedNav extends LitElement {
 
   private handleProfileStateChange = (): void => {
     this.currentUsername = getCurrentUsername();
-    this.galleryMode = getGalleryMode();
-    this.archiveSortPreference = normalizeSortValue(getArchiveSortPreference() || 'newest');
-    this.searchSortPreference = normalizeSortValue(getSearchSortPreference() || 'newest');
     void this.refreshProfileIdentity();
   };
 
@@ -538,42 +505,6 @@ export class SharedNav extends LitElement {
     });
   }
 
-  private handleGalleryMode(mode: GalleryMode): void {
-    setGalleryMode(mode);
-    this.galleryMode = mode;
-  }
-
-  private handleArchiveSortPreferenceChange(e: Event): void {
-    const value = normalizeSortValue((e.target as HTMLSelectElement).value);
-    this.archiveSortPreference = value;
-    setArchiveSortPreference(value);
-  }
-
-  private handleSearchSortPreferenceChange(e: Event): void {
-    const value = normalizeSortValue((e.target as HTMLSelectElement).value);
-    this.searchSortPreference = value;
-    setSearchSortPreference(value);
-  }
-
-  private handleInfiniteScrollPreferenceChange(e: Event): void {
-    const checked = (e.target as HTMLInputElement).checked;
-    setInfiniteScrollPreference(checked);
-    this.infiniteScrollPref = checked;
-  }
-
-  private renderInfiniteScrollPreference() {
-    return html`
-      <label class="menu-button">
-        <input
-          type="checkbox"
-          .checked=${this.infiniteScrollPref}
-          @change=${this.handleInfiniteScrollPreferenceChange}
-        />
-        <span>Infinite scroll</span>
-      </label>
-    `;
-  }
-
   private handleBlogSwitch(e: Event): void {
     const user = getAuthUser();
     if (!user) return;
@@ -611,8 +542,6 @@ export class SharedNav extends LitElement {
               ></blog-identity>
               <div class="menu-section-title">Routes</div>
               <a class="menu-button" href=${buildPageUrl('for', this.currentUsername || getPrimaryBlogName() || getViewedBlogName() || '')}>For you</a>
-              <a class="menu-button" href=${buildPageUrl('feed', this.currentUsername || getPrimaryBlogName() || getViewedBlogName() || '')}>Feed</a>
-              <a class="menu-button" href=${buildPageUrl('follower-feed', this.currentUsername || getPrimaryBlogName() || getViewedBlogName() || '')}>Follower Feed</a>
               <div class="menu-section-title">Settings</div>
               <a class="menu-button" href="/settings/you">Settings</a>
               ${this.blogs && this.blogs.length > 1
@@ -628,33 +557,13 @@ export class SharedNav extends LitElement {
                     </select>
                   `
                 : ''}
-              <div class="menu-section-title">Gallery view</div>
-              <div class="gallery-row" aria-label="Gallery view">
-                <button
-                  class="gallery-toggle ${this.galleryMode === 'grid' ? 'active' : ''}"
-                  @click=${() => this.handleGalleryMode('grid')}
-                >Grid</button>
-                <button
-                  class="gallery-toggle ${this.galleryMode === 'masonry' ? 'active' : ''}"
-                  @click=${() => this.handleGalleryMode('masonry')}
-                >Masonry</button>
-              </div>
-              <div class="menu-section-title">Archive default sort</div>
-              <select class="menu-button" .value=${this.archiveSortPreference} @change=${this.handleArchiveSortPreferenceChange} @input=${this.handleArchiveSortPreferenceChange}>
-                ${SORT_OPTIONS.map((opt) => html`<option value=${opt.value}>${opt.label}</option>`)}
-              </select>
-              <div class="menu-section-title">Search default sort</div>
-              <select class="menu-button" .value=${this.searchSortPreference} @change=${this.handleSearchSortPreferenceChange} @input=${this.handleSearchSortPreferenceChange}>
-                ${SORT_OPTIONS.map((opt) => html`<option value=${opt.value}>${opt.label}</option>`)}
-              </select>
-              ${this.renderInfiniteScrollPreference()}
               <a class="menu-button" href=${this.getClearCacheUrl()}>Clear cache</a>
               <button class="menu-button" @click=${this.handleLogout}>Log out</button>
               <div class="menu-build-tag" aria-label="Build tag">${BUILD_TAG}</div>
             `
           : html`
               <div class="menu-section-title">Settings</div>
-              ${this.renderInfiniteScrollPreference()}
+              <a class="menu-button" href="/settings/you">Settings</a>
               <button class="menu-button" @click=${this.openLoginModal}>Log in</button>
               <a class="menu-button" href=${this.getClearCacheUrl()}>Clear cache</a>
               <div class="menu-build-tag" aria-label="Build tag">${BUILD_TAG}</div>

@@ -20,6 +20,7 @@ import {
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { ALL_POST_TYPES } from '../services/post-filter-url.js';
+import { getInfiniteScrollPreference } from '../services/storage.js';
 import '../components/control-panel.js';
 import '../components/timeline-stream.js';
 import '../components/load-footer.js';
@@ -50,7 +51,7 @@ export class ViewPosts extends LitElement {
   @state() private timelineItems: TimelineItem[] = [];
   @state() private loading = false;
   @state() private exhausted = false;
-  @state() private infiniteScroll = false;
+  @state() private infiniteScroll = getInfiniteScrollPreference('timeline');
   @state() private errorMessage = '';
   @state() private statusMessage = '';
   @state() private activityKinds: ActivityKind[] = getTimelineRouteDefinition('activity').readStoredActivityKinds();
@@ -100,6 +101,7 @@ export class ViewPosts extends LitElement {
     });
     this.selectedTypes = queryState.selectedTypes;
     this.activityKinds = queryState.activityKinds;
+    this.infiniteScroll = getInfiniteScrollPreference(this.timelineRoute.footerPageName);
     this.statusMessage = '';
 
     if (this.selectedTypes.length === 0) {
@@ -268,11 +270,15 @@ export class ViewPosts extends LitElement {
         <control-panel
           .showActivityKinds=${true}
           .showTypes=${true}
+          .showInfiniteScroll=${true}
           .activityKinds=${this.activityKinds}
           .selectedTypes=${this.selectedTypes}
+          .infiniteScroll=${this.infiniteScroll}
           .pageName=${this.timelineRoute.controlPageName}
+          .settingsHref=${'/settings/you#activity'}
           @activity-kinds-change=${this.handleActivityKindsChange}
           @types-change=${this.handleTypesChange}
+          @infinite-toggle=${this.handleInfiniteToggle}
         ></control-panel>
 
         ${this.errorMessage ? html`<error-state message=${this.errorMessage}></error-state>` : ''}
@@ -304,7 +310,6 @@ export class ViewPosts extends LitElement {
           .exhausted=${this.exhausted}
           .infiniteScroll=${this.infiniteScroll}
           @load-more=${() => this.loadMore()}
-          @infinite-toggle=${this.handleInfiniteToggle}
         ></load-footer>
 
         <div id="scroll-sentinel" style="height:1px;"></div>

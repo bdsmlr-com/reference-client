@@ -56,8 +56,8 @@ describe('hybrid activity stream', () => {
     expect(streamSrc).toContain('<activity-grid');
     expect(streamSrc).toContain('<result-group');
     expect(streamSrc).toContain('showActorInCluster');
-    expect(streamSrc).toContain('@post-click=');
-    expect(streamSrc).not.toContain('@post-select=');
+    expect(streamSrc).toContain('@activity-click=');
+    expect(streamSrc).toContain('@post-select=');
   });
 
   it('groups like/comment interactions into local-date activity cards', () => {
