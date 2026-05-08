@@ -18,7 +18,7 @@ import './components/shared-nav.js';
 import './components/offline-banner.js';
 import './components/contract-error-screen.js';
 import { initTheme, injectGlobalStyles, baseStyles } from './styles/theme.js';
-import { getPrimaryBlogName, getViewedBlogName, isAdminMode, syncAdminModeFromUrl } from './services/blog-resolver.js';
+import { buildPageUrl, getPrimaryBlogName, getViewedBlogName, isAdminMode, syncAdminModeFromUrl } from './services/blog-resolver.js';
 import { loadRenderContract } from './services/render-contract.js';
 import { validateRenderContract } from './services/render-contract-validator.js';
 import { getStatus } from './services/auth-service.js';
@@ -98,10 +98,10 @@ export class AppRoot extends LitElement {
     { path: '/social/you/following', render: () => html`<view-social .blog=${this.resolveRouteBlogName('you')} .initialTab=${'following'}></view-social>` },
     { path: '/social/:blogname/followers', render: ({ blogname }) => html`<view-social .blog=${this.resolveRouteBlogName(blogname || '')} .initialTab=${'followers'}></view-social>` },
     { path: '/social/:blogname/following', render: ({ blogname }) => html`<view-social .blog=${this.resolveRouteBlogName(blogname || '')} .initialTab=${'following'}></view-social>` },
-    { path: '/:blog/archive', render: ({ blog }) => html`<view-archive .blog=${blog}></view-archive>` },
-    { path: '/:blog/activity', render: ({ blog }) => html`<view-posts .blog=${blog}></view-posts>` },
-    { path: '/:blog/feed', render: ({ blog }) => html`<view-feed .blog=${blog}></view-feed>` },
-    { path: '/:blog/social', render: ({ blog }) => html`<view-social .blog=${blog}></view-social>` },
+    { path: '/:blog/archive', render: ({ blog }) => this.redirectLegacyRoute(buildPageUrl('archive', blog)) },
+    { path: '/:blog/activity', render: ({ blog }) => this.redirectLegacyRoute(buildPageUrl('activity', blog)) },
+    { path: '/:blog/feed', render: ({ blog }) => this.redirectLegacyRoute(buildPageUrl('feed', blog)) },
+    { path: '/:blog/social', render: ({ blog }) => this.redirectLegacyRoute(buildPageUrl('social', blog)) },
   ]);
 
   @state() private contractErrors: string[] = [];
@@ -164,7 +164,7 @@ export class AppRoot extends LitElement {
       this.authenticated = true;
 
       if (window.location.pathname === '/' && activeBlogName) {
-        window.location.replace(`/${activeBlogName}/activity`);
+        window.location.replace(buildPageUrl('activity', activeBlogName));
       }
     } catch (err: any) {
       this.authError = 'Login required';
@@ -185,6 +185,14 @@ export class AppRoot extends LitElement {
     if (!post?.id) return;
     const from = e.detail?.from || 'direct';
     window.location.assign(buildPostHref(post.id, from));
+  }
+
+  private redirectLegacyRoute(targetHref: string) {
+    const currentHref = `${window.location.pathname}${window.location.search}`;
+    if (currentHref !== targetHref) {
+      window.location.replace(targetHref);
+    }
+    return html``;
   }
 
   render() {

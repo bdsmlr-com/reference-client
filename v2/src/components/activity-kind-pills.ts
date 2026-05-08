@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import type { ActivityKind } from '../services/profile.js';
 import { BREAKPOINTS, PILL_SPACING, SPACING } from '../types/ui-constants.js';
+import { SelectorPopoverController, selectorPopoverStyles } from './selector-popover.js';
 
 const ALL_KINDS: ActivityKind[] = ['post', 'reblog', 'like', 'comment'];
 const OPTIONS: Array<{ key: ActivityKind; label: string; icon: string }> = [
@@ -16,70 +17,10 @@ const OPTIONS: Array<{ key: ActivityKind; label: string; icon: string }> = [
 export class ActivityKindPills extends LitElement {
   static styles = [
     baseStyles,
+    selectorPopoverStyles,
     css`
-      :host {
-        display: inline-flex;
-        position: relative;
-        min-width: 0;
-      }
-
-      .selector {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-      }
-
-      .trigger {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        min-height: 36px;
-        padding: 0 14px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        background: var(--bg-panel-alt);
-        color: var(--text-primary);
-        font-size: 12px;
-        cursor: pointer;
-        white-space: nowrap;
-        transition: background 0.2s, border-color 0.2s;
-      }
-
-      .trigger:hover {
-        background: var(--border-strong);
-      }
-
-      .trigger.active {
-        background: var(--accent);
-        color: #fff;
-        border-color: var(--accent);
-      }
-
-      .trigger-summary {
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .popover {
-        position: absolute;
-        top: calc(100% + 8px);
-        left: 50%;
-        transform: translateX(-50%);
-        width: min(92vw, 420px);
-        padding: 12px;
-        border-radius: 16px;
-        border: 1px solid var(--border);
-        background: var(--surface-raised, var(--surface-primary, #fff));
-        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.12);
-        z-index: 30;
-      }
-
       .pill-group {
-        display: flex;
         gap: ${unsafeCSS(SPACING.XS)}px;
-        justify-content: center;
-        flex-wrap: wrap;
       }
 
       .pill {
@@ -122,24 +63,17 @@ export class ActivityKindPills extends LitElement {
   @property({ type: Array }) selected: ActivityKind[] = [...ALL_KINDS];
 
   @state() private open = false;
+  private selectorPopover = new SelectorPopoverController(this, () => this.open, (next) => { this.open = next; });
 
   connectedCallback(): void {
     super.connectedCallback();
-    window.addEventListener('click', this.handleWindowClick);
+    this.selectorPopover.connect();
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
-    window.removeEventListener('click', this.handleWindowClick);
+    this.selectorPopover.disconnect();
   }
-
-  private handleWindowClick = (event: Event): void => {
-    if (!this.open) return;
-    const path = event.composedPath();
-    if (!path.includes(this)) {
-      this.open = false;
-    }
-  };
 
   private toggle(kind: ActivityKind): void {
     if (this.selected.length === ALL_KINDS.length && this.selected.every((k) => ALL_KINDS.includes(k))) {
@@ -153,11 +87,6 @@ export class ActivityKindPills extends LitElement {
 
   private selectAll = (): void => {
     this.dispatchEvent(new CustomEvent('activity-kinds-change', { detail: { kinds: [...ALL_KINDS] } }));
-  };
-
-  private toggleSelector = (e: Event): void => {
-    e.stopPropagation();
-    this.open = !this.open;
   };
 
   private selectedSummary(): string {
@@ -177,7 +106,7 @@ export class ActivityKindPills extends LitElement {
         <button
           type="button"
           class="trigger ${this.open || !isAllSelected ? 'active' : ''}"
-          @click=${this.toggleSelector}
+          @click=${this.selectorPopover.toggle}
           aria-haspopup="dialog"
           aria-expanded=${this.open ? 'true' : 'false'}
           aria-label=${`Filter activity types: ${this.selectedSummary()}`}
@@ -185,7 +114,7 @@ export class ActivityKindPills extends LitElement {
           <span class="trigger-summary">${this.selectedSummary()}</span>
         </button>
         ${this.open ? html`
-          <div class="popover" role="dialog" aria-label="Choose activity types" @click=${(event: Event) => event.stopPropagation()}>
+          <div class="popover" role="dialog" aria-label="Choose activity types" @click=${this.selectorPopover.stopPropagation}>
             <div class="pill-group" role="group" aria-label="Filter activity types">
               <button
                 type="button"

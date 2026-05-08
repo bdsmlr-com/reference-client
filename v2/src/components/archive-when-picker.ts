@@ -12,6 +12,7 @@ import {
   parseArchiveWhenParts,
   resolveArchiveWhenBounds,
 } from '../services/archive-when.js';
+import { SelectorPopoverController, selectorPopoverStyles } from './selector-popover.js';
 
 type BrowseLevel = 'root' | 'year' | 'month';
 
@@ -19,52 +20,22 @@ type BrowseLevel = 'root' | 'year' | 'month';
 export class ArchiveWhenPicker extends LitElement {
   static styles = [
     baseStyles,
+    selectorPopoverStyles,
     css`
       :host {
         display: block;
       }
 
-      .picker {
-        position: relative;
-        display: inline-flex;
+      .selector {
         justify-content: center;
-      }
-
-      .trigger {
-        min-height: 30px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        background: var(--bg-panel-alt);
-        color: var(--text-primary);
-        padding: 0 12px;
-        font: inherit;
-        cursor: pointer;
-        white-space: nowrap;
-        font-size: 12px;
       }
 
       .trigger strong {
         font-weight: 600;
       }
 
-      .trigger.active {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: #fff;
-      }
-
       .popover {
-        position: absolute;
-        top: calc(100% + 8px);
-        left: 50%;
-        transform: translateX(-50%);
-        width: min(92vw, 420px);
-        padding: 12px;
-        border-radius: 16px;
-        border: 1px solid var(--border);
         background: var(--bg-panel);
-        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.12);
-        z-index: 30;
       }
 
       .breadcrumbs {
@@ -145,15 +116,16 @@ export class ArchiveWhenPicker extends LitElement {
   @state() private browseLevel: BrowseLevel = 'root';
   @state() private openYear: number | null = null;
   @state() private openMonth: number | null = null;
+  private selectorPopover = new SelectorPopoverController(this, () => this.open, (next) => { this.open = next; });
 
   connectedCallback(): void {
     super.connectedCallback();
-    window.addEventListener('click', this.handleWindowClick);
+    this.selectorPopover.connect();
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
-    window.removeEventListener('click', this.handleWindowClick);
+    this.selectorPopover.disconnect();
   }
 
   protected willUpdate(changed: PropertyValues<this>): void {
@@ -161,14 +133,6 @@ export class ArchiveWhenPicker extends LitElement {
       this.syncSelectionFromValue();
     }
   }
-
-  private handleWindowClick = (event: Event): void => {
-    if (!this.open) return;
-    const path = event.composedPath();
-    if (!path.includes(this)) {
-      this.open = false;
-    }
-  };
 
   private syncSelectionFromValue(): void {
     const parts = parseArchiveWhenParts(this.value);
@@ -189,9 +153,9 @@ export class ArchiveWhenPicker extends LitElement {
     }));
   }
 
-  private openPicker(): void {
+  private togglePicker(event: Event): void {
     this.syncSelectionFromValue();
-    this.open = !this.open;
+    this.selectorPopover.toggle(event);
   }
 
   private setBrowseLevel(level: BrowseLevel): void {
@@ -200,6 +164,7 @@ export class ArchiveWhenPicker extends LitElement {
 
   private selectAllTime(): void {
     this.emitChange('');
+    this.closePicker();
   }
 
   private selectYear(year: number): void {
@@ -219,10 +184,11 @@ export class ArchiveWhenPicker extends LitElement {
   private selectDay(day: number): void {
     if (!this.openYear || !this.openMonth) return;
     this.emitChange(`${this.openYear}-${String(this.openMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+    this.closePicker();
   }
 
   private closePicker(): void {
-    this.open = false;
+    this.selectorPopover.close();
   }
 
   private renderBreadcrumbs() {
@@ -288,18 +254,18 @@ export class ArchiveWhenPicker extends LitElement {
 
   render() {
     return html`
-      <div class="picker">
+      <div class="selector">
         <button
           class="trigger ${this.open || this.value ? 'active' : ''}"
           type="button"
           aria-haspopup="dialog"
           aria-expanded=${this.open ? 'true' : 'false'}
-          @click=${this.openPicker}
+          @click=${this.togglePicker}
         >
           <strong>${formatArchiveWhenLabel(this.value)}</strong>
         </button>
         ${this.open ? html`
-          <div class="popover" role="dialog" aria-label="Choose archive date" @click=${(event: Event) => event.stopPropagation()}>
+          <div class="popover" role="dialog" aria-label="Choose archive date" @click=${this.selectorPopover.stopPropagation}>
             <div class="breadcrumbs">
               ${this.renderBreadcrumbs()}
             </div>

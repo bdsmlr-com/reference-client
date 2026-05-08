@@ -7,75 +7,16 @@ import type { PostType } from '../types/api.js';
 import { POST_TYPE_ICONS, POST_TYPE_LABELS } from '../types/post.js';
 import { EventNames, type TypesChangeDetail } from '../types/events.js';
 import { BREAKPOINTS, SPACING, PILL_SPACING } from '../types/ui-constants.js';
+import { SelectorPopoverController, selectorPopoverStyles } from './selector-popover.js';
 
 @customElement('type-pills')
 export class TypePills extends LitElement {
   static styles = [
     baseStyles,
+    selectorPopoverStyles,
     css`
-      :host {
-        display: inline-flex;
-        position: relative;
-        min-width: 0;
-      }
-
-      .selector {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-      }
-
-      .trigger {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        min-height: 36px;
-        padding: 0 14px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        background: var(--bg-panel-alt);
-        color: var(--text-primary);
-        font-size: 12px;
-        cursor: pointer;
-        white-space: nowrap;
-        transition: background 0.2s, border-color 0.2s;
-      }
-
-      .trigger:hover {
-        background: var(--border-strong);
-      }
-
-      .trigger.active {
-        background: var(--accent);
-        color: #fff;
-        border-color: var(--accent);
-      }
-
-      .trigger-summary {
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .popover {
-        position: absolute;
-        top: calc(100% + 8px);
-        left: 50%;
-        transform: translateX(-50%);
-        width: min(92vw, 420px);
-        padding: 12px;
-        border-radius: 16px;
-        border: 1px solid var(--border);
-        background: var(--surface-raised, var(--surface-primary, #fff));
-        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.12);
-        z-index: 30;
-      }
-
       .pill-group {
-        display: flex;
         gap: ${unsafeCSS(SPACING.XS)}px;
-        justify-content: center;
-        flex-wrap: wrap;
       }
 
       .type-pill {
@@ -126,10 +67,11 @@ export class TypePills extends LitElement {
 
   private allTypes: PostType[] = [1, 2, 3, 4, 5, 6, 7];
   @state() private open = false;
+  private selectorPopover = new SelectorPopoverController(this, () => this.open, (next) => { this.open = next; });
 
   connectedCallback(): void {
     super.connectedCallback();
-    window.addEventListener('click', this.handleWindowClick);
+    this.selectorPopover.connect();
     if (this.persistSelection) {
       const saved = getTypePreference(this.pageName || undefined);
       if (saved && saved.length > 0 && saved.length < 7) {
@@ -145,7 +87,7 @@ export class TypePills extends LitElement {
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
-    window.removeEventListener('click', this.handleWindowClick);
+    this.selectorPopover.disconnect();
   }
 
   protected willUpdate(changed: PropertyValues<this>): void {
@@ -153,14 +95,6 @@ export class TypePills extends LitElement {
       this.open = this.open && this.selectedTypes.length > 0;
     }
   }
-
-  private handleWindowClick = (event: Event): void => {
-    if (!this.open) return;
-    const path = event.composedPath();
-    if (!path.includes(this)) {
-      this.open = false;
-    }
-  };
 
   private get allSelected(): boolean {
     return this.allTypes.every((t) => this.selectedTypes.includes(t));
@@ -177,13 +111,8 @@ export class TypePills extends LitElement {
     return `${labels[0]}, ${labels[1]} +${labels.length - 2}`;
   }
 
-  private toggleSelector(e: Event): void {
-    e.stopPropagation();
-    this.open = !this.open;
-  }
-
   private closePopover(): void {
-    this.open = false;
+    this.selectorPopover.close();
   }
 
   private toggleType(type: PostType): void {
@@ -227,7 +156,7 @@ export class TypePills extends LitElement {
         <button
           type="button"
           class="trigger ${this.open || !this.allSelected ? 'active' : ''}"
-          @click=${this.toggleSelector}
+          @click=${this.selectorPopover.toggle}
           aria-haspopup="dialog"
           aria-expanded=${this.open ? 'true' : 'false'}
           aria-label=${`Filter media types: ${this.selectedTypeSummary()}`}
@@ -235,7 +164,7 @@ export class TypePills extends LitElement {
           <span class="trigger-summary">${this.selectedTypeSummary()}</span>
         </button>
         ${this.open ? html`
-          <div class="popover" role="dialog" aria-label="Choose media types" @click=${(event: Event) => event.stopPropagation()}>
+          <div class="popover" role="dialog" aria-label="Choose media types" @click=${this.selectorPopover.stopPropagation}>
             <div class="pill-group" role="group" aria-label="Filter by post type">
               <button
                 type="button"

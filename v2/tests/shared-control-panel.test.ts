@@ -101,6 +101,10 @@ describe('shared control panel', () => {
     expect(activityKindSrc).toContain("import { customElement, property, state } from 'lit/decorators.js';");
     expect(activityKindSrc).toContain('@state() private open = false;');
     expect(whenSrc).toContain("class=\"trigger ${this.open || this.value ? 'active' : ''}\"");
-    expect(whenSrc).toContain('.trigger.active');
+    expect(typeSrc).toContain("import { SelectorPopoverController, selectorPopoverStyles } from './selector-popover.js';");
+    expect(variantSrc).toContain("import { SelectorPopoverController, selectorPopoverStyles } from './selector-popover.js';");
+    expect(gallerySrc).toContain("import { SelectorPopoverController, selectorPopoverStyles } from './selector-popover.js';");
+    expect(activityKindSrc).toContain("import { SelectorPopoverController, selectorPopoverStyles } from './selector-popover.js';");
+    expect(whenSrc).toContain("import { SelectorPopoverController, selectorPopoverStyles } from './selector-popover.js';");
   });
 });

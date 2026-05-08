@@ -64,6 +64,8 @@ describe('shared-nav profile/settings behavior', () => {
     expect(identitySrc).toContain('color: var(--blog-identity-text, var(--blog-text, var(--text-primary)));');
     expect(identitySrc).toContain('.identity {');
     expect(identitySrc).toContain('color: inherit;');
+    expect(identitySrc).toContain(":host([variant='micro']) .name {");
+    expect(identitySrc).toContain('font-weight: inherit;');
   });
 
   it('scrolls to top when clicking nav tabs on the same pathname', () => {

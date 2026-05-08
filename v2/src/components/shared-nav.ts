@@ -194,6 +194,8 @@ export class SharedNav extends LitElement {
       .profile-blog-identity {
         display: block;
         color: var(--text-primary);
+        --blog-identity-text: var(--text-primary);
+        --blog-text: var(--text-primary);
       }
 
       .modal-backdrop {

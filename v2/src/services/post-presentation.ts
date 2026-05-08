@@ -121,7 +121,6 @@ function buildIdentity(post: ProcessedPost) {
   const isReblog = Boolean(post.originPostId && post.originPostId !== post.id);
   const isCanonicalCard = post.variant === 1 || post.variant === 2;
   const originBlogName = post.originBlogName || post.blogName || '';
-  const blogLabel = originBlogName || `Post ${post.id}`;
   const originBlog = originBlogName
     ? resolveLink('post_origin_blog', { blog: originBlogName })
     : null;
@@ -143,6 +142,7 @@ function buildIdentity(post: ProcessedPost) {
     ? originBlogLabel
     : viaBlogLabel;
   const primaryBlogLabel = isReblog ? originBlogLabel : viaBlogLabel;
+  const summaryLabel = originBlogName || viaBlogName || '';
 
   return {
     isReblog,
@@ -161,7 +161,7 @@ function buildIdentity(post: ProcessedPost) {
     viaBlogLabel,
     primaryBlogLabel,
     chipBlogLabel,
-    summaryLine: `${blogLabel} · ${POST_TYPE_LABELS[post.type]}`,
+    summaryLine: summaryLabel ? `${summaryLabel} · ${POST_TYPE_LABELS[post.type]}` : POST_TYPE_LABELS[post.type],
   };
 }
 

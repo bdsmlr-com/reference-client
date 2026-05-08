@@ -78,8 +78,17 @@ export class SearchGroupCard extends LitElement {
       }
 
       .label {
-        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 0.35em;
+        min-width: 0;
+        font-size: 11px;
         color: var(--text-primary);
+      }
+
+      .label blog-identity {
+        min-width: 0;
+        flex: 1 1 auto;
       }
 
       .archive-origin-line {
@@ -87,8 +96,10 @@ export class SearchGroupCard extends LitElement {
         align-items: center;
         gap: 0.35em;
         min-width: 0;
-        font-size: 13px;
+        font-size: 11px;
         color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
       }
 
       .archive-origin-prefix {
@@ -185,7 +196,7 @@ export class SearchGroupCard extends LitElement {
                     ${tagsCount ? html`<div class="stat-item">🏷️ ${tagsCount}</div>` : ''}
                   </div>
                 `
-              : html`<div class="label">♻️ ${reblogCount} ${this.renderOriginIdentity(originName, originBlogId)}</div>`}
+              : html`<div class="label"><span>♻️ ${reblogCount}</span>${this.renderOriginIdentity(originName, originBlogId)}</div>`}
           </div>
         </article>
       </div>

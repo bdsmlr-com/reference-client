@@ -2,6 +2,7 @@ import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { BREAKPOINTS, SPACING } from '../types/ui-constants.js';
+import './blog-identity.js';
 
 type PageName = 'archive' | 'timeline' | 'social' | 'following' | 'masquerade';
 
@@ -43,10 +44,13 @@ export class BlogContext extends LitElement {
       .blog-name {
         color: var(--text-primary);
         font-size: 14px;
-        font-weight: 600;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        min-width: 0;
+      }
+
+      .blog-name blog-identity {
+        max-width: 100%;
+        font: inherit;
+        color: inherit;
       }
 
       @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE)}px) {
@@ -69,7 +73,9 @@ export class BlogContext extends LitElement {
     return html`
       <div class="context-container" role="region" aria-label="Blog context">
         <span class="context-label">Blog</span>
-        <strong class="blog-name">@${this.viewedBlog}</strong>
+        <span class="blog-name">
+          <blog-identity variant="micro" .blogName=${this.viewedBlog} .showAvatar=${false}></blog-identity>
+        </span>
       </div>
     `;
   }
