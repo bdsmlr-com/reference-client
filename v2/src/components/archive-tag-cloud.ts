@@ -15,23 +15,31 @@ export class ArchiveTagCloud extends LitElement {
     css`
       :host {
         display: block;
-        margin: 0 auto 14px;
-        padding: 0 16px;
-        max-width: 900px;
+        min-width: 0;
       }
 
       .teaser {
         width: 100%;
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 8px;
         min-width: 0;
-        padding: 8px 0;
-        color: var(--text-muted);
+        padding: 8px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--bg-panel);
+        color: var(--text-primary);
         font-size: 13px;
+        text-align: left;
+      }
+
+      .teaser:hover {
+        background: var(--bg-panel-alt);
       }
 
       .teaser-copy {
+        flex: 1 1 auto;
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;

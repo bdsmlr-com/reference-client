@@ -124,6 +124,26 @@ describe('archive tag cloud', () => {
     expect(view.archiveTagItems).toEqual([{ name: 'bikini', postsCount: 12 }]);
   });
 
+  it('uses theme-responsive teaser chrome instead of plain white text', () => {
+    const tagCloudSrc = readFileSync(new URL('../src/components/archive-tag-cloud.ts', import.meta.url), 'utf8');
+
+    expect(tagCloudSrc).toContain('background: var(--bg-panel);');
+    expect(tagCloudSrc).toContain('color: var(--text-primary);');
+    expect(tagCloudSrc).toContain('border: 1px solid var(--border);');
+    expect(tagCloudSrc).toContain('.teaser:hover {');
+    expect(tagCloudSrc).toContain('background: var(--bg-panel-alt);');
+  });
+
+  it('renders archive filter input and tag cloud teaser in a shared two-column tool row', () => {
+    const archiveSrc = readFileSync(new URL('../src/pages/view-archive.ts', import.meta.url), 'utf8');
+
+    expect(archiveSrc).toContain('.archive-tools {');
+    expect(archiveSrc).toContain('grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);');
+    expect(archiveSrc).toContain('<div class="archive-tools">');
+    expect(archiveSrc).toContain('<div class="search-box">');
+    expect(archiveSrc).toContain('<archive-tag-cloud');
+  });
+
   it('replaces the archive query when a tag is selected from the cloud', async () => {
     const view = Object.assign(Object.create(ViewArchive.prototype), {
       query: 'old stuff',

@@ -89,19 +89,29 @@ export class ViewArchive extends LitElement {
       }
 
       .search-box {
-        max-width: 600px;
-        margin: 0 auto 20px;
-        padding: 0 16px;
+        width: 100%;
         display: flex;
         gap: 10px;
-        flex-wrap: wrap;
-        justify-content: center;
+        align-items: stretch;
+        justify-content: stretch;
+      }
+
+      .archive-tools {
+        max-width: 900px;
+        margin: 0 auto 20px;
+        padding: 0 16px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 12px;
+        align-items: stretch;
+      }
+
+      .archive-tools archive-tag-cloud {
+        min-width: 0;
       }
 
       .search-box input {
         flex: 1;
-        min-width: 200px;
-        max-width: 300px;
         padding: 8px 12px;
         border-radius: 4px;
         border: 1px solid var(--border);
@@ -133,6 +143,12 @@ export class ViewArchive extends LitElement {
       .search-box button:disabled {
         background: var(--text-muted);
         cursor: wait;
+      }
+
+      @media (max-width: 720px) {
+        .archive-tools {
+          grid-template-columns: 1fr;
+        }
       }
     `,
   ];
@@ -623,25 +639,27 @@ export class ViewArchive extends LitElement {
         ${this.initialLoading ? html`<loading-spinner message="Loading archive..."></loading-spinner>` : ''}
 
         ${this.blogId ? html`
-          <div class="search-box">
-            <input
-              type="text"
-              placeholder="Filter this archive with free text or tag:..."
-              .value=${this.query}
-              @input=${this.handleArchiveQueryInput}
-              @keypress=${this.handleArchiveQueryKeyPress}
-            />
-            <button ?disabled=${this.loading} @click=${() => this.loadPosts()}>
-              ${this.loading ? 'Filtering...' : 'Filter'}
-            </button>
-          </div>
+          <div class="archive-tools">
+            <div class="search-box">
+              <input
+                type="text"
+                placeholder="Filter this archive with free text or tag:..."
+                .value=${this.query}
+                @input=${this.handleArchiveQueryInput}
+                @keypress=${this.handleArchiveQueryKeyPress}
+              />
+              <button ?disabled=${this.loading} @click=${() => this.loadPosts()}>
+                ${this.loading ? 'Filtering...' : 'Filter'}
+              </button>
+            </div>
 
-          <archive-tag-cloud
-            .blogName=${this.blog}
-            .tags=${this.archiveTagItems}
-            .loading=${this.archiveTagsLoading}
-            @tag-select=${this.handleArchiveTagSelect}
-          ></archive-tag-cloud>
+            <archive-tag-cloud
+              .blogName=${this.blog}
+              .tags=${this.archiveTagItems}
+              .loading=${this.archiveTagsLoading}
+              @tag-select=${this.handleArchiveTagSelect}
+            ></archive-tag-cloud>
+          </div>
 
           <control-panel
             .pageName=${'archive'}
