@@ -828,15 +828,6 @@ export class ViewSearch extends LitElement {
     }));
   }
 
-  private handleSearchGroupClick(e: CustomEvent): void {
-    const originPostId = Number(e.detail?.originPostId || 0);
-    if (!originPostId) return;
-    window.location.href = buildPageUrl('search', undefined, {
-      q: `post:${originPostId}`,
-      variants: 'reblog',
-    });
-  }
-
   private handleInfiniteToggle(e: CustomEvent): void {
     this.infiniteScroll = e.detail.enabled;
     this.navigationMode = resolveToggledContentNavigationMode({
@@ -1051,7 +1042,7 @@ export class ViewSearch extends LitElement {
 
         ${this.resultUnits.length > 0
           ? html`
-              <div @search-group-click=${this.handleSearchGroupClick}>
+              <div>
                 ${this.renderSearchResultUnits()}
               </div>
               <load-footer

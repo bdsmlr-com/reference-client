@@ -5,12 +5,13 @@ import { join } from 'node:path';
 const FILE = join(process.cwd(), 'src/components/search-group-card.ts');
 
 describe('search group card', () => {
-  it('navigates grouped cards to the origin post page instead of a search drilldown', () => {
+  it('dispatches shared post-click events for the representative post instead of hard-jumping to the origin post page', () => {
     const src = readFileSync(FILE, 'utf8');
 
-    expect(src).toContain("window.location.href = `/post/${this.originPostId}`;");
+    expect(src).toContain("new CustomEvent('post-click'");
+    expect(src).toContain('detail: { post: this.post, from: this.page }');
+    expect(src).not.toContain("window.location.href = `/post/${this.originPostId}`;");
     expect(src).not.toContain('search-group-click');
-    expect(src).not.toContain('q=post:');
   });
 
   it('shows the archive blog reblog date only in archive context', () => {

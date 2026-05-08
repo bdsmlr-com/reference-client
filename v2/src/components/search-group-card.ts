@@ -144,9 +144,11 @@ export class SearchGroupCard extends LitElement {
   @property({ type: String }) page: 'archive' | 'search' | 'post' | 'activity' | 'feed' | 'social' = 'search';
 
   private handleClick() {
-    if (this.originPostId > 0) {
-      window.location.href = `/post/${this.originPostId}`;
-    }
+    this.dispatchEvent(new CustomEvent('post-click', {
+      detail: { post: this.post, from: this.page },
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   private renderOriginIdentity(originName: string, originBlogId: number) {

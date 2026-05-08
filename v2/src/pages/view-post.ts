@@ -36,6 +36,7 @@ export class ViewPost extends LitElement {
   @state() private loading = true;
   @state() private error = '';
   @state() private post: ProcessedPost | null = null;
+  @state() private originPost: ProcessedPost | null = null;
 
   protected updated(changedProperties: Map<string, any>): void {
     if (changedProperties.has('postId')) {
@@ -48,6 +49,7 @@ export class ViewPost extends LitElement {
     this.loading = true;
     this.error = '';
     this.post = null;
+    this.originPost = null;
 
     try {
       const id = parseInt(this.postId);
@@ -58,6 +60,18 @@ export class ViewPost extends LitElement {
           ...resp.post,
           _media: extractMedia(resp.post)
         };
+        if (
+          resp.post.originPostId
+          && resp.post.originPostId !== resp.post.id
+        ) {
+          const originResp = await apiClient.posts.get(resp.post.originPostId);
+          if (originResp.post) {
+            this.originPost = {
+              ...originResp.post,
+              _media: extractMedia(originResp.post),
+            };
+          }
+        }
       } else {
         this.error = 'Post not found.';
       }
@@ -93,6 +107,7 @@ export class ViewPost extends LitElement {
       <post-detail-content
         style="width: 100%;"
         .post=${this.post}
+        .originPost=${this.originPost}
         .from=${this.from as PostRouteSource}
       ></post-detail-content>
     `;

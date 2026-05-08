@@ -87,6 +87,25 @@ export class PostDetailContent extends LitElement {
         margin-bottom: 20px;
       }
 
+      .tag-sections {
+        display: grid;
+        gap: 14px;
+        margin-bottom: 20px;
+      }
+
+      .tag-section {
+        display: grid;
+        gap: 8px;
+      }
+
+      .tag-section-label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+
       .tag-chip {
         font-size: 12px;
         border: 1px solid var(--border);
@@ -103,6 +122,7 @@ export class PostDetailContent extends LitElement {
   ];
 
   @property({ type: Object }) post: ProcessedPost | null = null;
+  @property({ type: Object }) originPost: ProcessedPost | null = null;
   @property({ type: String }) surface: 'detail' | 'lightbox' = 'detail';
   @property({ type: String }) from = 'direct';
 
@@ -136,7 +156,9 @@ export class PostDetailContent extends LitElement {
     });
     const recommendationsMode = this.surface === 'lightbox' ? 'list' : 'grid';
     const engagementStandalone = false;
-    const tags = extractRenderableTags(p);
+    const reblogTags = extractRenderableTags(p);
+    const originTags = this.originPost ? extractRenderableTags(this.originPost) : [];
+    const tags = presentation.identity.isReblog ? [] : reblogTags;
     const bodyHtml = p.content?.html || p.body || p.content?.text || p.content?.title || '';
     const media = p._media;
     const rawUrl = media?.type === 'video'
@@ -206,14 +228,47 @@ export class PostDetailContent extends LitElement {
           ${unsafeHTML(sanitizeHtmlFragment(bodyHtml))}
         </div>
 
-        ${presentation.layout.showTags && tags.length > 0 ? html`
-          <div class="post-tags">
-            ${tags.map((tag) => {
-              const href = buildContextualTagSearchHref(tag, p, this.from as PostRouteSource);
-              return html`<a class="tag-chip" href=${href}>#${tag}</a>`;
-            })}
-          </div>
-        ` : nothing}
+        ${presentation.layout.showTags && presentation.identity.isReblog
+          ? html`
+              <div class="tag-sections">
+                ${reblogTags.length > 0
+                  ? html`
+                      <div class="tag-section">
+                        <div class="tag-section-label">RP tags</div>
+                        <div class="post-tags">
+                          ${reblogTags.map((tag) => {
+                            const href = buildContextualTagSearchHref(tag, p, this.from as PostRouteSource);
+                            return html`<a class="tag-chip" href=${href}>#${tag}</a>`;
+                          })}
+                        </div>
+                      </div>
+                    `
+                  : nothing}
+                ${originTags.length > 0
+                  ? html`
+                      <div class="tag-section">
+                        <div class="tag-section-label">OP tags</div>
+                        <div class="post-tags">
+                          ${originTags.map((tag) => {
+                            const href = buildContextualTagSearchHref(tag, p, this.from as PostRouteSource);
+                            return html`<a class="tag-chip" href=${href}>#${tag}</a>`;
+                          })}
+                        </div>
+                      </div>
+                    `
+                  : nothing}
+              </div>
+            `
+          : presentation.layout.showTags && tags.length > 0
+            ? html`
+                <div class="post-tags">
+                  ${tags.map((tag) => {
+                    const href = buildContextualTagSearchHref(tag, p, this.from as PostRouteSource);
+                    return html`<a class="tag-chip" href=${href}>#${tag}</a>`;
+                  })}
+                </div>
+              `
+            : nothing}
 
         <post-engagement .post=${p} .from=${this.from as PostRouteSource} ?standalone=${engagementStandalone}></post-engagement>
 

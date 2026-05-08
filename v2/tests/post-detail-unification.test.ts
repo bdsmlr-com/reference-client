@@ -34,4 +34,18 @@ describe('post detail unification', () => {
     expect(detailSrc).toContain('p.content?.text');
     expect(detailSrc).toContain('p.content?.title');
   });
+
+  it('renders separate reblog and origin tag sections on RP detail pages', () => {
+    const postViewSrc = readFileSync(join(ROOT, 'pages/view-post.ts'), 'utf8');
+    const detailSrc = readFileSync(join(ROOT, 'components/post-detail-content.ts'), 'utf8');
+
+    expect(postViewSrc).toContain('private originPost: ProcessedPost | null = null;');
+    expect(postViewSrc).toContain('resp.post.originPostId');
+    expect(postViewSrc).toContain('const originResp = await apiClient.posts.get(resp.post.originPostId);');
+    expect(detailSrc).toContain("@property({ type: Object }) originPost: ProcessedPost | null = null;");
+    expect(detailSrc).toContain('const reblogTags = extractRenderableTags(p);');
+    expect(detailSrc).toContain('const originTags = this.originPost ? extractRenderableTags(this.originPost) : [];');
+    expect(detailSrc).toContain('class="tag-section-label">RP tags</div>');
+    expect(detailSrc).toContain('class="tag-section-label">OP tags</div>');
+  });
 });
