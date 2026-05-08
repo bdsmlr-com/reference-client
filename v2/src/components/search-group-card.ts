@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { nothing } from 'lit';
 import { baseStyles } from '../styles/theme.js';
 import type { ProcessedPost } from '../types/post.js';
 import { extractMedia } from '../types/post.js';
@@ -134,6 +135,20 @@ export class SearchGroupCard extends LitElement {
     }
   }
 
+  private renderOriginIdentity(originName: string, originBlogId: number) {
+    if (!originName && !originBlogId) {
+      return nothing;
+    }
+    return html`
+      <blog-identity
+        variant="micro"
+        .blogName=${originName}
+        .blogId=${originBlogId}
+        .showAvatar=${false}
+      ></blog-identity>
+    `;
+  }
+
   render() {
     const media = this.post?._media || extractMedia(this.post);
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
@@ -161,12 +176,7 @@ export class SearchGroupCard extends LitElement {
               ? html`
                   <div class="archive-origin-line">
                     <span class="archive-origin-prefix">♻️${typeIcon}</span>
-                    <blog-identity
-                      variant="micro"
-                      .blogName=${originName}
-                      .blogId=${originBlogId}
-                      .showAvatar=${false}
-                    ></blog-identity>
+                    ${this.renderOriginIdentity(originName, originBlogId)}
                   </div>
                   ${archiveReblogDate ? html`<div class="archive-reblog-date">${archiveReblogDate}</div>` : ''}
                   <div class="stats-line">
@@ -175,7 +185,7 @@ export class SearchGroupCard extends LitElement {
                     ${tagsCount ? html`<div class="stat-item">🏷️ ${tagsCount}</div>` : ''}
                   </div>
                 `
-              : html`<div class="label">♻️ ${reblogCount} ${originName ? `@${originName}` : 'Unknown'}</div>`}
+              : html`<div class="label">♻️ ${reblogCount} ${this.renderOriginIdentity(originName, originBlogId)}</div>`}
           </div>
         </article>
       </div>
