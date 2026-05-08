@@ -6,6 +6,7 @@ import { extractMedia } from '../types/post.js';
 import { formatDate } from '../services/date-formatter.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import './media-renderer.js';
+import './blog-identity.js';
 
 @customElement('search-group-card')
 export class SearchGroupCard extends LitElement {
@@ -78,7 +79,29 @@ export class SearchGroupCard extends LitElement {
       .label {
         font-size: 13px;
         color: var(--text-primary);
-        font-weight: 600;
+      }
+
+      .archive-origin-line {
+        display: flex;
+        align-items: center;
+        gap: 0.35em;
+        min-width: 0;
+        font-size: 13px;
+        color: var(--text-primary);
+      }
+
+      .archive-origin-prefix {
+        flex: 0 0 auto;
+      }
+
+      .archive-origin-line blog-identity {
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+
+      .archive-reblog-date {
+        font-size: 11px;
+        color: var(--text-primary);
       }
 
       .stats-line {
@@ -120,9 +143,8 @@ export class SearchGroupCard extends LitElement {
     const likesCount = presentation.actions.like.count;
     const tagsCount = (this.post.tags || []).length;
     const typeIcon = presentation.identity.postTypeIcon || '📄';
-    const originLabel = this.post.originBlogName
-      ? `@${this.post.originBlogName}`
-      : (this.post.blogName ? `@${this.post.blogName}` : 'Unknown');
+    const originName = this.post.originBlogName || this.post.blogName || '';
+    const originBlogId = this.post.originBlogId || this.post.blogId || 0;
 
     return html`
       <div class="stack">
@@ -137,15 +159,23 @@ export class SearchGroupCard extends LitElement {
           <div class="meta">
             ${this.page === 'archive'
               ? html`
-                  <div class="label">♻️${typeIcon} ${originLabel}</div>
-                  ${archiveReblogDate ? html`<div class="label">${archiveReblogDate}</div>` : ''}
+                  <div class="archive-origin-line">
+                    <span class="archive-origin-prefix">♻️${typeIcon}</span>
+                    <blog-identity
+                      variant="micro"
+                      .blogName=${originName}
+                      .blogId=${originBlogId}
+                      .showAvatar=${false}
+                    ></blog-identity>
+                  </div>
+                  ${archiveReblogDate ? html`<div class="archive-reblog-date">${archiveReblogDate}</div>` : ''}
                   <div class="stats-line">
                     ${likesCount ? html`<div class="stat-item">${presentation.actions.like.icon} ${likesCount}</div>` : ''}
                     ${reblogCount ? html`<div class="stat-item">${presentation.actions.reblog.icon} ${reblogCount}</div>` : ''}
                     ${tagsCount ? html`<div class="stat-item">🏷️ ${tagsCount}</div>` : ''}
                   </div>
                 `
-              : html`<div class="label">♻️ ${reblogCount} ${originLabel}</div>`}
+              : html`<div class="label">♻️ ${reblogCount} ${originName ? `@${originName}` : 'Unknown'}</div>`}
           </div>
         </article>
       </div>

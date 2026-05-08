@@ -18,8 +18,11 @@ describe('search group card', () => {
 
     expect(src).toContain("@property({ type: String }) page: 'archive' | 'search' | 'post' | 'activity' | 'feed' | 'social' = 'search';");
     expect(src).toContain("const archiveReblogDate = this.page === 'archive' ? formatDate(this.post.createdAtUnix, 'date') : '';");
-    expect(src).toContain("<div class=\"label\">♻️${typeIcon} ${originLabel}</div>");
-    expect(src).toContain("${archiveReblogDate ? html`<div class=\"label\">${archiveReblogDate}</div>` : ''}");
+    expect(src).toContain("import './blog-identity.js';");
+    expect(src).toContain('class="archive-origin-line"');
+    expect(src).toContain('<blog-identity');
+    expect(src).toContain('.showAvatar=${false}');
+    expect(src).toContain("${archiveReblogDate ? html`<div class=\"archive-reblog-date\">${archiveReblogDate}</div>` : ''}");
     expect(src).toContain('<div class="stats-line">');
   });
 });

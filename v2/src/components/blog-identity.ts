@@ -134,6 +134,7 @@ export class BlogIdentity extends LitElement {
       :host {
         display: inline-block;
         min-width: 0;
+        color: var(--blog-identity-text, var(--blog-text, var(--text-primary)));
         --blog-identity-accent: hsl(220 60% 48%);
       }
 
@@ -142,6 +143,7 @@ export class BlogIdentity extends LitElement {
         align-items: center;
         gap: 10px;
         min-width: 0;
+        color: inherit;
       }
 
       :host([variant='menu']) .identity {
@@ -180,6 +182,7 @@ export class BlogIdentity extends LitElement {
         flex-direction: column;
         min-width: 0;
         gap: 2px;
+        color: inherit;
       }
 
       .name {
@@ -197,6 +200,7 @@ export class BlogIdentity extends LitElement {
         align-items: baseline;
         gap: 0.35em;
         min-width: 0;
+        color: inherit;
       }
 
       .name-decoration {

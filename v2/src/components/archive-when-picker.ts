@@ -34,7 +34,7 @@ export class ArchiveWhenPicker extends LitElement {
         min-height: 30px;
         border-radius: 999px;
         border: 1px solid var(--border);
-        background: var(--surface-raised, var(--surface-primary, #fff));
+        background: var(--bg-panel-alt);
         color: var(--text-primary);
         padding: 0 12px;
         font: inherit;
@@ -62,7 +62,7 @@ export class ArchiveWhenPicker extends LitElement {
         padding: 12px;
         border-radius: 16px;
         border: 1px solid var(--border);
-        background: var(--surface-raised, var(--surface-primary, #fff));
+        background: var(--bg-panel);
         box-shadow: 0 18px 45px rgba(0, 0, 0, 0.12);
         z-index: 30;
       }
@@ -101,7 +101,7 @@ export class ArchiveWhenPicker extends LitElement {
         min-height: 40px;
         border-radius: 10px;
         border: 1px solid var(--border);
-        background: var(--surface-primary, #fff);
+        background: var(--bg-panel-alt);
         color: var(--text-primary);
         font: inherit;
         cursor: pointer;
@@ -123,7 +123,7 @@ export class ArchiveWhenPicker extends LitElement {
         min-height: 36px;
         border-radius: 999px;
         border: 1px solid var(--border);
-        background: var(--surface-raised, var(--surface-primary, #fff));
+        background: var(--bg-panel-alt);
         color: var(--text-primary);
         padding: 0 14px;
         font: inherit;

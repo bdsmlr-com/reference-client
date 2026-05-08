@@ -19,5 +19,7 @@ describe('archive when picker', () => {
     expect(src).toContain("detail: { value }");
     expect(src).toContain('aria-haspopup="dialog"');
     expect(src).toContain('<strong>${formatArchiveWhenLabel(this.value)}</strong>');
+    expect(src).toContain('background: var(--bg-panel-alt);');
+    expect(src).toContain("class=\"trigger ${this.open || this.value ? 'active' : ''}\"");
   });
 });
