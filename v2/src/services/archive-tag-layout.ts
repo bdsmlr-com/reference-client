@@ -26,6 +26,7 @@ interface LayoutOptions {
   gap?: number;
   padding?: number;
   allowRotation?: boolean;
+  targetAspectRatio?: number;
 }
 
 type PlacementCandidate = { left: number; top: number; score: number };
@@ -68,6 +69,7 @@ function placeTag(
   boxWidth: number,
   boxHeight: number,
   gap: number,
+  targetAspectRatio: number,
 ): { left: number; top: number } | null {
   const centerX = width / 2;
   const centerY = height / 2;
@@ -78,12 +80,15 @@ function placeTag(
     ? Math.max(1, (placedBounds.right - placedBounds.left) * (placedBounds.bottom - placedBounds.top))
     : 1;
   const maxExpansion = Math.sqrt(clusterArea) * 0.55 + 26;
+  const horizontalBias = Math.max(1, targetAspectRatio);
   let bestCandidate: PlacementCandidate | null = null;
 
   const scoreCandidate = (left: number, top: number): number => {
     const candidateCenterX = left + boxWidth / 2;
     const candidateCenterY = top + boxHeight / 2;
-    const distance = Math.hypot(candidateCenterX - anchorX, candidateCenterY - anchorY);
+    const dx = candidateCenterX - anchorX;
+    const dy = candidateCenterY - anchorY;
+    const distance = Math.hypot(dx / horizontalBias, dy);
     if (!placedBounds) return distance;
 
     const nextLeft = Math.min(placedBounds.left, left);
@@ -92,7 +97,7 @@ function placeTag(
     const nextBottom = Math.max(placedBounds.bottom, top + boxHeight);
     const expandX = Math.max(0, nextRight - nextLeft - (placedBounds.right - placedBounds.left));
     const expandY = Math.max(0, nextBottom - nextTop - (placedBounds.bottom - placedBounds.top));
-    const expansionPenalty = expandX + expandY;
+    const expansionPenalty = expandX / horizontalBias + expandY * horizontalBias;
     const detachedPenalty = distance > maxExpansion ? (distance - maxExpansion) * 8 : 0;
     return distance + expansionPenalty * 2.5 + detachedPenalty;
   };
@@ -158,6 +163,7 @@ export function buildArchiveTagLayout(
 ): ArchiveTagLayout {
   const gap = options.gap ?? 8;
   const padding = options.padding ?? 12;
+  const targetAspectRatio = Math.max(1, options.targetAspectRatio ?? 1);
   const boundedWidth = Math.max(240, Math.floor(options.width));
   const boundedHeight = Math.max(220, Math.floor(options.maxHeight));
   const innerWidth = Math.max(160, boundedWidth - padding * 2);
@@ -170,7 +176,7 @@ export function buildArchiveTagLayout(
     const rotated = chooseRotation(tag, index, options.allowRotation ?? true);
     const boxWidth = Math.ceil(rotated ? tag.height : tag.width);
     const boxHeight = Math.ceil(rotated ? tag.width : tag.height);
-    const spot = placeTag(innerWidth, innerHeight, placed, boxWidth, boxHeight, gap);
+    const spot = placeTag(innerWidth, innerHeight, placed, boxWidth, boxHeight, gap, targetAspectRatio);
     if (!spot) {
       return;
     }

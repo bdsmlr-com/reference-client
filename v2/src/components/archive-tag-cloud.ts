@@ -249,6 +249,7 @@ export class ArchiveTagCloud extends LitElement {
       allowRotation: true,
       gap: 8,
       padding: 12,
+      targetAspectRatio: 2,
     });
     this.positionedTags = layout.items;
     this.cloudHeight = layout.height;

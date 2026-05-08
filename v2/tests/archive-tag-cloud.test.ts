@@ -120,7 +120,7 @@ describe('archive tag cloud', () => {
 
     await view.loadArchiveTagCloud();
 
-    expect(getTopTags).toHaveBeenCalledWith({ blog_name: 'ddlg-gent', page_size: 32 });
+    expect(getTopTags).toHaveBeenCalledWith({ blog_name: 'ddlg-gent', page_size: 50 });
     expect(view.archiveTagItems).toEqual([{ name: 'bikini', postsCount: 12 }]);
   });
 
