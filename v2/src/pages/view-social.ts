@@ -515,6 +515,8 @@ export class ViewSocial extends LitElement {
                 page="social"
                 .blogName=${this.blog}
                 .blogTitle=${this.blogData?.title || ''}
+                .blogDescription=${this.blogData?.description || ''}
+                .avatarUrl=${this.blogData?.avatarUrl || ''}
                 .identityDecorations=${this.blogData?.identityDecorations || []}
               ></blog-header>
             `

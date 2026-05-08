@@ -29,10 +29,14 @@ describe('blog identity integration', () => {
     const headerSrc = readFileSync(join(ROOT, 'components/blog-header.ts'), 'utf8');
     const archiveSrc = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
     const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
+    const socialSrc = readFileSync(join(ROOT, 'pages/view-social.ts'), 'utf8');
 
     expect(headerSrc).toContain("import './blog-identity.js';");
     expect(headerSrc).toContain("type PageName = 'archive' | 'timeline' | 'social' | 'following' | 'activity' | 'feed' | 'follower-feed';");
     expect(headerSrc).toContain('summary-card');
+    expect(headerSrc).toContain("import './route-shell-card.js';");
+    expect(headerSrc).toContain('<route-shell-card compact>');
+    expect(headerSrc).toContain('class="subnav"');
     expect(headerSrc).toContain('summary-description');
     expect(headerSrc).toContain('[more...]');
     expect(headerSrc).toContain('modal-backdrop');
@@ -51,6 +55,9 @@ describe('blog identity integration', () => {
     expect(postsSrc).toContain('page="activity"');
     expect(postsSrc).toContain('.avatarUrl=${this.blogData?.avatarUrl || \'\'}');
     expect(postsSrc).toContain('.identityDecorations=${this.blogData?.identityDecorations || []}');
+    expect(socialSrc).toContain('.blogDescription=${this.blogData?.description || \'\'}');
+    expect(socialSrc).toContain('.avatarUrl=${this.blogData?.avatarUrl || \'\'}');
+    expect(archiveSrc).toContain('<blog-header');
   });
 
   it('reuses blog-identity in the shared-nav profile menu with compact menu variant', () => {

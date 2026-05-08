@@ -268,6 +268,7 @@ export class ViewPosts extends LitElement {
         ></blog-header>
 
         <control-panel
+          .framed=${true}
           .showActivityKinds=${true}
           .showTypes=${true}
           .showInfiniteScroll=${true}

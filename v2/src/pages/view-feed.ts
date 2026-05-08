@@ -27,6 +27,7 @@ import { buildPageUrl } from '../services/blog-resolver.js';
 import { getInfiniteScrollPreference } from '../services/storage.js';
 import '../components/control-panel.js';
 import '../components/blog-header.js';
+import '../components/route-shell-card.js';
 import '../components/timeline-stream.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
@@ -65,7 +66,6 @@ export class ViewFeed extends LitElement {
       .feed-summary {
         text-align: center;
         color: var(--text-muted);
-        padding: 0 16px 12px;
         font-size: 13px;
       }
 
@@ -621,16 +621,38 @@ export class ViewFeed extends LitElement {
           if (!this.resolvedBlogName || this.sourceCount <= 0) return '';
           const relationshipLink = resolveLink(this.relationshipLinkContext, { blog: this.resolvedBlogName });
           return html`
-            <div class="feed-summary">
-              Showing posts from
-              <a href=${relationshipLink.href} target=${relationshipLink.target} rel=${relationshipLink.rel || ''}>
-                <strong>${this.sourceCount}</strong> ${this.relationshipLabelParticaple}
-              </a>
-              ${this.relationshipSummarySuffix}
-              <a href=${buildPageUrl('social', this.resolvedBlogName)}>
-                <strong>@${this.resolvedBlogName}</strong>
-              </a>
-            </div>
+            <route-shell-card wide compact>
+              <div class="feed-summary">
+                Showing posts from
+                <a href=${relationshipLink.href} target=${relationshipLink.target} rel=${relationshipLink.rel || ''}>
+                  <strong>${this.sourceCount}</strong> ${this.relationshipLabelParticaple}
+                </a>
+                ${this.relationshipSummarySuffix}
+                <a href=${buildPageUrl('social', this.resolvedBlogName)}>
+                  <strong>@${this.resolvedBlogName}</strong>
+                </a>
+              </div>
+              ${this.sourceBlogIds.length > 0
+                ? html`
+                    <control-panel
+                      .framed=${false}
+                      .showSort=${false}
+                      .showWhen=${false}
+                      .showActivityKinds=${true}
+                      .showTypes=${true}
+                      .showInfiniteScroll=${true}
+                      .activityKinds=${this.activityKinds}
+                      .selectedTypes=${this.selectedTypes}
+                      .infiniteScroll=${this.infiniteScroll}
+                      .pageName=${this.timelineRoute.controlPageName}
+                      .settingsHref=${this.isFollowerFeed ? '/settings/you#followers-feed' : '/settings/you#feed'}
+                      @activity-kinds-change=${this.handleActivityKindsChange}
+                      @types-change=${this.handleTypesChange}
+                      @infinite-toggle=${this.handleInfiniteToggle}
+                    ></control-panel>
+                  `
+                : ''}
+            </route-shell-card>
           `;
         })()}
 
@@ -660,26 +682,6 @@ export class ViewFeed extends LitElement {
                 count=${this.mainSlotConfig.loading?.count}
                 loading
               ></render-card>
-            `
-          : ''}
-
-        ${this.sourceBlogIds.length > 0
-          ? html`
-              <control-panel
-                .showSort=${false}
-                .showWhen=${false}
-                .showActivityKinds=${true}
-                .showTypes=${true}
-                .showInfiniteScroll=${true}
-                .activityKinds=${this.activityKinds}
-                .selectedTypes=${this.selectedTypes}
-                .infiniteScroll=${this.infiniteScroll}
-                .pageName=${this.timelineRoute.controlPageName}
-                .settingsHref=${this.isFollowerFeed ? '/settings/you#followers-feed' : '/settings/you#feed'}
-                @activity-kinds-change=${this.handleActivityKindsChange}
-                @types-change=${this.handleTypesChange}
-                @infinite-toggle=${this.handleInfiniteToggle}
-              ></control-panel>
             `
           : ''}
 

@@ -5,6 +5,7 @@ import { buildPageUrl } from '../services/blog-resolver.js';
 import { handleAvatarImageError, normalizeAvatarUrl } from '../services/avatar-url.js';
 import { BREAKPOINTS, SPACING } from '../types/ui-constants.js';
 import type { IdentityDecoration } from '../types/api.js';
+import './route-shell-card.js';
 import './blog-identity.js';
 
 type PageName = 'archive' | 'timeline' | 'social' | 'following' | 'activity' | 'feed' | 'follower-feed';
@@ -111,8 +112,7 @@ export class BlogHeader extends LitElement {
         justify-content: center;
         gap: 6px;
         flex-wrap: wrap;
-        padding: 0 ${SPACING.LG}px;
-        margin-top: ${SPACING.XS}px;
+        margin: 0;
       }
 
       .subnav-link {
@@ -208,10 +208,6 @@ export class BlogHeader extends LitElement {
       @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE)}px) {
         .header-container {
           padding: ${SPACING.SM}px;
-        }
-
-        .subnav {
-          padding: 0 ${SPACING.SM}px;
         }
 
         .summary-card {
@@ -311,16 +307,18 @@ export class BlogHeader extends LitElement {
             </div>
           </button>
         </div>
-        <nav class="subnav" aria-label="Blog navigation">
-          ${navPages.map((page) => {
-            const href = this.getSubnavUrl(page.name, this.blogName);
-            return html`
-              <a class="subnav-link ${activePage === page.name ? 'active' : ''}" href=${href}>
-                ${page.label}
-              </a>
-            `;
-          })}
-        </nav>
+        <route-shell-card compact>
+          <nav class="subnav" aria-label="Blog navigation">
+            ${navPages.map((page) => {
+              const href = this.getSubnavUrl(page.name, this.blogName);
+              return html`
+                <a class="subnav-link ${activePage === page.name ? 'active' : ''}" href=${href}>
+                  ${page.label}
+                </a>
+              `;
+            })}
+          </nav>
+        </route-shell-card>
       </div>
 
       ${this.modalOpen ? html`

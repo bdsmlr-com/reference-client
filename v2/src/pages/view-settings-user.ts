@@ -463,6 +463,7 @@ export class ViewSettingsUser extends LitElement {
         </div>
         <div class="pref-controls">
           <control-panel
+            .framed=${false}
             .pageName=${pageName}
             .sortValue=${state.sortValue || SORT_RESET}
             .selectedTypes=${state.selectedTypes || []}

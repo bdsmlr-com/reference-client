@@ -3,6 +3,7 @@ import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import type { Blog, PostType, PostVariant } from '../types/api.js';
 import type { ActivityKind } from '../services/profile.js';
+import './route-shell-card.js';
 import './activity-kind-pills.js';
 import './archive-when-picker.js';
 import './gallery-mode-picker.js';
@@ -57,6 +58,7 @@ export class ControlPanel extends LitElement {
   @property({ type: Boolean }) showGalleryMode = false;
   @property({ type: Boolean }) showInfiniteScroll = false;
   @property({ type: Boolean }) loading = false;
+  @property({ type: Boolean }) framed = true;
 
   private handleSortChange(e: CustomEvent) {
     this.dispatchEvent(new CustomEvent('sort-change', { detail: e.detail }));
@@ -160,11 +162,17 @@ export class ControlPanel extends LitElement {
       `);
     }
 
-    return html`
+    const row = html`
       <div class="control-row">
         ${sections.length ? this.intersperse(sections) : nothing}
       </div>
     `;
+
+    if (!this.framed) {
+      return row;
+    }
+
+    return html`<route-shell-card wide compact>${row}</route-shell-card>`;
   }
 }
 
