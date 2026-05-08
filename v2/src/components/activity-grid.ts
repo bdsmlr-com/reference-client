@@ -28,6 +28,9 @@ export class ActivityItem extends LitElement {
 
       .card {
         background: var(--bg-panel);
+        color: var(--text-primary);
+        --blog-text: var(--text-primary);
+        --blog-identity-text: var(--text-primary);
         border-radius: 6px;
         overflow: hidden;
         cursor: pointer;

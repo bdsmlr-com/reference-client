@@ -53,6 +53,9 @@ export class SearchGroupCard extends LitElement {
       .card {
         position: relative;
         background: var(--bg-panel);
+        color: var(--text-primary);
+        --blog-text: var(--text-primary);
+        --blog-identity-text: var(--text-primary);
         border-radius: 8px;
         overflow: hidden;
         border: 1px solid var(--border);

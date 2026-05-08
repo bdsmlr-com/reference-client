@@ -12,6 +12,9 @@ export class ResultGroup extends LitElement {
         max-width: 600px;
         margin: 0 auto 20px auto;
         background: var(--bg-panel-alt);
+        color: var(--text-primary);
+        --blog-text: var(--text-primary);
+        --blog-identity-text: var(--text-primary);
         padding: 12px;
         border-radius: 8px;
         border: 1px solid var(--border);
