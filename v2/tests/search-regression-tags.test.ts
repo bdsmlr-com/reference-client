@@ -80,7 +80,7 @@ describe('search regression and tag visibility', () => {
     const src = readFileSync(join(ROOT, 'components/search-group-card.ts'), 'utf8');
 
     expect(src).toContain('const reblogCount = this.post.reblogsCount ?? this.count;');
-    expect(src).toContain('♻️ ${reblogCount}');
+    expect(src).toContain('<div class="stat-item">${presentation.actions.reblog.icon} ${reblogCount}</div>');
     expect(src).toContain("const archiveReblogDate = this.page === 'archive' ? formatDate(this.post.createdAtUnix, 'date') : '';");
   });
 

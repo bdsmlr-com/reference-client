@@ -4,6 +4,7 @@ import { baseStyles } from '../styles/theme.js';
 import type { ProcessedPost } from '../types/post.js';
 import { extractMedia } from '../types/post.js';
 import { formatDate } from '../services/date-formatter.js';
+import { toPresentationModel } from '../services/post-presentation.js';
 import './media-renderer.js';
 
 @customElement('search-group-card')
@@ -79,6 +80,21 @@ export class SearchGroupCard extends LitElement {
         color: var(--text-primary);
         font-weight: 600;
       }
+
+      .stats-line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        font-size: 11px;
+        color: var(--text-primary);
+      }
+
+      .stat-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+      }
     `,
   ];
 
@@ -98,8 +114,12 @@ export class SearchGroupCard extends LitElement {
   render() {
     const media = this.post?._media || extractMedia(this.post);
     const rawUrl = media.url || media.videoUrl || media.audioUrl;
+    const presentation = toPresentationModel(this.post, { surface: 'card', page: this.page, interactionKind: 'reblog', role: 'cluster' });
     const reblogCount = this.post.reblogsCount ?? this.count;
     const archiveReblogDate = this.page === 'archive' ? formatDate(this.post.createdAtUnix, 'date') : '';
+    const likesCount = presentation.actions.like.count;
+    const tagsCount = (this.post.tags || []).length;
+    const typeIcon = presentation.identity.postTypeIcon || '📄';
     const originLabel = this.post.originBlogName
       ? `@${this.post.originBlogName}`
       : (this.post.blogName ? `@${this.post.blogName}` : 'Unknown');
@@ -115,8 +135,17 @@ export class SearchGroupCard extends LitElement {
             ></media-renderer>
           </div>
           <div class="meta">
-            <div class="label">♻️ ${reblogCount} ${originLabel}</div>
-            ${archiveReblogDate ? html`<div class="label">${archiveReblogDate}</div>` : ''}
+            ${this.page === 'archive'
+              ? html`
+                  <div class="label">♻️${typeIcon} ${originLabel}</div>
+                  ${archiveReblogDate ? html`<div class="label">${archiveReblogDate}</div>` : ''}
+                  <div class="stats-line">
+                    ${likesCount ? html`<div class="stat-item">${presentation.actions.like.icon} ${likesCount}</div>` : ''}
+                    ${reblogCount ? html`<div class="stat-item">${presentation.actions.reblog.icon} ${reblogCount}</div>` : ''}
+                    ${tagsCount ? html`<div class="stat-item">🏷️ ${tagsCount}</div>` : ''}
+                  </div>
+                `
+              : html`<div class="label">♻️ ${reblogCount} ${originLabel}</div>`}
           </div>
         </article>
       </div>
