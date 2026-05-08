@@ -134,7 +134,7 @@ export class BlogIdentity extends LitElement {
       :host {
         display: inline-block;
         min-width: 0;
-        color: var(--blog-identity-text, var(--blog-text, var(--text-primary)));
+        color: var(--blog-identity-text, var(--text-primary));
         --blog-identity-accent: hsl(220 60% 48%);
       }
 

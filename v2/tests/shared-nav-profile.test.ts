@@ -61,7 +61,7 @@ describe('shared-nav profile/settings behavior', () => {
     expect(src).not.toContain("window.location.href = `/${activeName}/activity`;");
     expect(src).toContain("window.location.href = `/activity/${selectedBlog.name}`;");
     expect(src).toContain("window.location.href = `/activity/${activeName}`;");
-    expect(identitySrc).toContain('color: var(--blog-identity-text, var(--blog-text, var(--text-primary)));');
+    expect(identitySrc).toContain('color: var(--blog-identity-text, var(--text-primary));');
     expect(identitySrc).toContain('.identity {');
     expect(identitySrc).toContain('color: inherit;');
     expect(identitySrc).toContain(":host([variant='micro']) .name {");
