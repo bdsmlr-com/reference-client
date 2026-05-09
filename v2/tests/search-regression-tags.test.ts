@@ -10,8 +10,11 @@ describe('search regression and tag visibility', () => {
 
     expect(src).toContain('private activeSearchToken = 0;');
     expect(src).toContain('private currentSearchSignature =');
+    expect(src).toContain('private readonly maxWarmingRetries = 3;');
     expect(src).toContain('const searchToken = ++this.activeSearchToken;');
     expect(src).toContain('if (searchToken !== this.activeSearchToken || signature !== this.currentSearchSignature)');
+    expect(src).toContain("this.statusMessage = 'Warming search results…';");
+    expect(src).toContain("String(resp.searchStatus || '').toLowerCase() === 'warming'");
   });
 
   it('keeps search result rendering free of timeline item leakage', () => {

@@ -911,13 +911,15 @@ function setFollowGraphCache(cache: FollowGraphCache): void {
 export function generateFollowGraphCacheKey(
   blogId: number,
   direction: 'followers' | 'following',
-  pageToken?: string
+  pageToken?: string,
+  viewerScope?: string
 ): string {
+  const scope = (viewerScope || 'viewer:anonymous').trim();
   // For first page (no token), cache key is simple
   // For pagination, include the page token to cache each page separately
   return pageToken
-    ? `follow:${blogId}:${direction}:${pageToken}`
-    : `follow:${blogId}:${direction}`;
+    ? `follow:${scope}:${blogId}:${direction}:${pageToken}`
+    : `follow:${scope}:${blogId}:${direction}`;
 }
 
 /**

@@ -50,6 +50,7 @@ import {
 } from './api-error.js';
 import { isOffline } from './connection.js';
 import { logError } from './error-telemetry.js';
+import { getAuthUser } from '../state/auth-state.js';
 import type {
   SearchPostsByTagRequest,
   SearchPostsByTagResponse,
@@ -1261,6 +1262,15 @@ function getFollowDirectionLabel(direction?: FollowGraphDirection): 'followers' 
   return 'followers';
 }
 
+function getFollowGraphViewerScope(): string {
+  const authUser = getAuthUser();
+  const activeBlogId = authUser?.activeBlogId ?? authUser?.blogId ?? null;
+  const userId = authUser?.userId ?? null;
+  if (activeBlogId) return `viewer-blog:${activeBlogId}`;
+  if (userId) return `viewer-user:${userId}`;
+  return 'viewer:anonymous';
+}
+
 export async function blogFollowGraph(
   req: BlogFollowGraphRequest
 ): Promise<BlogFollowGraphResponse> {
@@ -1303,7 +1313,8 @@ export async function blogFollowGraphCached(
   const cacheKey = generateFollowGraphCacheKey(
     req.blog_id,
     directionLabel,
-    req.page_token
+    req.page_token,
+    getFollowGraphViewerScope()
   );
 
   // Check cache first (unless skipping)

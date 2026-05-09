@@ -383,6 +383,7 @@ export class ViewSearch extends LitElement {
   private currentSearchSignature = '';
   private sortExplicitInUrl = false;
   private replaceSearchUrlOnPageBoundary = false;
+  private readonly maxWarmingRetries = 3;
 
   private parseDevFacetTuning(): Record<string, number | string> {
     if (ACTIVE_ENV !== 'dev') return {};
@@ -667,45 +668,68 @@ export class ViewSearch extends LitElement {
     const perspectiveBlogName = (facetMode || hasFacetTuning) ? (routePerspectiveBlog || undefined) : undefined;
 
     try {
-      const resp = await apiClient.posts.searchCached({
-        tag_name: this.query,
-        session_id: this.searchSessionId || undefined,
-        page_number: targetPage,
-        page_size: SEARCH_PAGE_SIZE,
-        perspective_blog_name: perspectiveBlogName,
-        facetMode,
-        sort_field: sortOpt.field as PostSortField,
-        order: sortOpt.order as Order,
-        post_types: this.selectedTypes,
-        variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
-        when: this.searchWhen || undefined,
-        page: {
+      let resp;
+      let newUnits: SearchResultUnit[] = [];
+      let warmingRetries = 0;
+
+      while (true) {
+        resp = await apiClient.posts.searchCached({
+          tag_name: this.query,
+          session_id: this.searchSessionId || undefined,
+          page_number: targetPage,
           page_size: SEARCH_PAGE_SIZE,
-        },
-        ...facetTuning,
-      });
-      if (searchToken !== this.activeSearchToken || signature !== this.currentSearchSignature) {
-        return;
+          perspective_blog_name: perspectiveBlogName,
+          facetMode,
+          sort_field: sortOpt.field as PostSortField,
+          order: sortOpt.order as Order,
+          post_types: this.selectedTypes,
+          variants: this.selectedVariants.length > 0 ? this.selectedVariants : undefined,
+          when: this.searchWhen || undefined,
+          page: {
+            page_size: SEARCH_PAGE_SIZE,
+          },
+          ...facetTuning,
+        });
+        if (searchToken !== this.activeSearchToken || signature !== this.currentSearchSignature) {
+          return;
+        }
+
+        this.backendCursor = resp.page?.nextPageToken || null;
+        const nextState = applyContentPageResponseState({
+          responseSessionId: resp.sessionId,
+          currentSessionId: this.searchSessionId,
+          responsePageNumber: resp.pageNumber,
+          targetPage,
+          hasMore: resp.hasMore,
+        });
+        this.searchSessionId = nextState.sessionId;
+        this.currentPage = nextState.currentPage;
+        this.hasNextPage = nextState.hasNextPage;
+        this.exhausted = nextState.exhausted;
+
+        newUnits = prepareContentResultUnits({
+          units: materializeSearchResultUnits(resp),
+          seenIds: this.seenIds,
+          stats: this.stats,
+        });
+
+        const shouldRetryWarming =
+          targetPage === 1
+          && newUnits.length === 0
+          && !!resp.hasMore
+          && String(resp.searchStatus || '').toLowerCase() === 'warming'
+          && warmingRetries < this.maxWarmingRetries;
+
+        if (!shouldRetryWarming) break;
+
+        warmingRetries += 1;
+        this.statusMessage = 'Warming search results…';
+        await new Promise((resolve) => window.setTimeout(resolve, 250));
       }
 
-      this.backendCursor = resp.page?.nextPageToken || null;
-      const nextState = applyContentPageResponseState({
-        responseSessionId: resp.sessionId,
-        currentSessionId: this.searchSessionId,
-        responsePageNumber: resp.pageNumber,
-        targetPage,
-        hasMore: resp.hasMore,
-      });
-      this.searchSessionId = nextState.sessionId;
-      this.currentPage = nextState.currentPage;
-      this.hasNextPage = nextState.hasNextPage;
-      this.exhausted = nextState.exhausted;
-
-      const newUnits = prepareContentResultUnits({
-        units: materializeSearchResultUnits(resp),
-        seenIds: this.seenIds,
-        stats: this.stats,
-      });
+      if (this.statusMessage === 'Warming search results…') {
+        this.statusMessage = '';
+      }
 
       this.resultUnits = mergeContentPageUnits({
         navigationMode: this.navigationMode,

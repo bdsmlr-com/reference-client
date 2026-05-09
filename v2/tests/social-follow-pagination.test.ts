@@ -114,4 +114,15 @@ describe('social follow pagination safeguards', () => {
     expect(src).toContain('seenFollowingCursors');
     expect(src).toContain('maxPageAttempts = 32');
   });
+
+  it('scopes follow-graph cache keys by viewer identity', () => {
+    const storageSrc = readFileSync(join(process.cwd(), 'src/services/storage.ts'), 'utf8');
+    const apiSrc = readFileSync(join(process.cwd(), 'src/services/api.ts'), 'utf8');
+
+    expect(storageSrc).toContain("viewerScope?: string");
+    expect(storageSrc).toContain("const scope = (viewerScope || 'viewer:anonymous').trim();");
+    expect(storageSrc).toContain('`follow:${scope}:${blogId}:${direction}`');
+    expect(apiSrc).toContain('function getFollowGraphViewerScope(): string');
+    expect(apiSrc).toContain('getFollowGraphViewerScope()');
+  });
 });
