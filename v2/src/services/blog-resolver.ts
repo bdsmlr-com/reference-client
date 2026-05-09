@@ -563,7 +563,7 @@ function parseRouteContext(pathname: string): { page: string; blogName: string }
   }
 
   if (first === 'social' && second) {
-    if (third === 'followers' || third === 'following') {
+    if (third === 'followers' || third === 'following' || third === 'siblings') {
       return { page: 'social', blogName: resolvePathBlogSegment(second) };
     }
     return { page: 'social', blogName: resolvePathBlogSegment(second) };

@@ -21,6 +21,9 @@ describe('social/blog-list render contract usage', () => {
     expect(listSrc).toContain('class="recent-grid"');
     expect(listSrc).toContain('page: { page_size: 3 }');
     expect(listSrc).toContain('<blog-identity');
+    expect(socialSrc).toContain("type Tab = 'followers' | 'following' | 'siblings';");
+    expect(socialSrc).toContain("apiClient.blogs.listFamily({ blog_id: this.blogId })");
+    expect(socialSrc).toContain('Sibling Blogs');
     expect(render.pages.social.slots.main_stream.loading.cardType).toBe('social_blog_list');
     expect(render.cards.social_blog).toBeDefined();
   });

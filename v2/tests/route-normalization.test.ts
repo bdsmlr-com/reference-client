@@ -51,8 +51,10 @@ describe('route normalization', () => {
       ['/settings/sam', 'settings', 'sam'],
       ['/social/you/followers', 'social', 'alice'],
       ['/social/you/following', 'social', 'alice'],
+      ['/social/you/siblings', 'social', 'alice'],
       ['/social/sam/followers', 'social', 'sam'],
       ['/social/sam/following', 'social', 'sam'],
+      ['/social/sam/siblings', 'social', 'sam'],
       ['/sam/archive', 'archive', 'sam'],
       ['/sam/activity', 'activity', 'sam'],
       ['/sam/feed', 'feed', 'sam'],
@@ -125,8 +127,10 @@ describe('route normalization', () => {
     expect(appRootSrc).toContain("path: '/settings/:blogname'");
     expect(appRootSrc).toContain("path: '/social/you/followers'");
     expect(appRootSrc).toContain("path: '/social/you/following'");
+    expect(appRootSrc).toContain("path: '/social/you/siblings'");
     expect(appRootSrc).toContain("path: '/social/:blogname/followers'");
     expect(appRootSrc).toContain("path: '/social/:blogname/following'");
+    expect(appRootSrc).toContain("path: '/social/:blogname/siblings'");
     expect(appRootSrc).toContain("path: '/:blog/archive'");
     expect(appRootSrc).toContain("path: '/:blog/activity'");
     expect(appRootSrc).toContain("path: '/:blog/feed'");

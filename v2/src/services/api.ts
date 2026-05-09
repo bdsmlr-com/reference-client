@@ -88,6 +88,8 @@ import type {
   GetBlogResponse,
   ListBlogTopTagsRequest,
   ListBlogTopTagsResponse,
+  ListBlogFamilyBlogsRequest,
+  ListBlogFamilyBlogsResponse,
 } from '../types/api.js';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -120,6 +122,7 @@ const ENDPOINT_TIMEOUTS: Record<string, number> = {
   // Fast endpoints (5s) - simple lookups, single record
   '/v2/resolve-identifier': 5000,
   '/v2/get-blog': 5000,
+  '/v2/list-blog-family-blogs': 5000,
   '/v2/sign-url': 5000,
 
   // Medium endpoints (15s) - standard list queries
@@ -1459,6 +1462,15 @@ export async function listBlogTopTags(
   );
 }
 
+export async function listBlogFamilyBlogs(
+  req: ListBlogFamilyBlogsRequest
+): Promise<ListBlogFamilyBlogsResponse> {
+  return apiRequest<ListBlogFamilyBlogsResponse>(
+    '/v2/list-blog-family-blogs',
+    req
+  );
+}
+
 // Cached version of resolveIdentifier
 export async function resolveIdentifierCached(
   blogName: string
@@ -2636,6 +2648,13 @@ export class BlogsApi {
    */
   async getTopTags(req: ListBlogTopTagsRequest): Promise<ListBlogTopTagsResponse> {
     return listBlogTopTags(req);
+  }
+
+  /**
+   * Get sibling blogs in the same blog family.
+   */
+  async listFamily(req: ListBlogFamilyBlogsRequest): Promise<ListBlogFamilyBlogsResponse> {
+    return listBlogFamilyBlogs(req);
   }
 
   /**

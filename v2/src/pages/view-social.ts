@@ -30,7 +30,7 @@ import '../components/blog-header.js';
 import '../components/render-card.js';
 
 const PAGE_SIZE = 100;
-type Tab = 'followers' | 'following';
+type Tab = 'followers' | 'following' | 'siblings';
 
 @customElement('view-social')
 export class ViewSocial extends LitElement {
@@ -117,12 +117,15 @@ export class ViewSocial extends LitElement {
   @state() private activeTab: Tab = 'followers';
   @state() private followers: FollowEdge[] = [];
   @state() private following: FollowEdge[] = [];
+  @state() private siblings: FollowEdge[] = [];
   @state() private followersCount = 0;
   @state() private followingCount = 0;
+  @state() private siblingsCount = 0;
   @state() private followersCursor: string | null = null;
   @state() private followingCursor: string | null = null;
   @state() private followersExhausted = false;
   @state() private followingExhausted = false;
+  @state() private siblingsLoaded = false;
   @state() private loading = false;
   @state() private infiniteScroll = getInfiniteScrollPreference('social');
   @state() private statusMessage = '';
@@ -197,7 +200,7 @@ export class ViewSocial extends LitElement {
     this.followingPageAttempts = 0;
     const pathTab = window.location.pathname.split('/').filter(Boolean)[2] as Tab | undefined;
     const tab = pathTab || (getUrlParam('tab') as Tab) || this.initialTab;
-    if (tab === 'followers' || tab === 'following') {
+    if (tab === 'followers' || tab === 'following' || tab === 'siblings') {
       this.activeTab = tab;
     }
 
@@ -243,11 +246,15 @@ export class ViewSocial extends LitElement {
   }
 
   private get isExhausted(): boolean {
-    return this.activeTab === 'followers' ? this.followersExhausted : this.followingExhausted;
+    if (this.activeTab === 'followers') return this.followersExhausted;
+    if (this.activeTab === 'following') return this.followingExhausted;
+    return true;
   }
 
   private get currentList(): FollowEdge[] {
-    return this.activeTab === 'followers' ? this.followers : this.following;
+    if (this.activeTab === 'followers') return this.followers;
+    if (this.activeTab === 'following') return this.following;
+    return this.siblings;
   }
 
   private async loadData(): Promise<void> {
@@ -268,28 +275,31 @@ export class ViewSocial extends LitElement {
       blog: this.blog,
     });
 
-    const activeKey = this.activeTab === 'followers'
-      ? this.followersPaginationKey
-      : this.followingPaginationKey;
-    const cachedState = getCachedPaginationCursor(activeKey);
-    if (cachedState && cachedState.itemCount > 0) {
-      if (this.activeTab === 'followers') {
-        this.followersCursor = cachedState.cursor;
-        this.followersExhausted = cachedState.exhausted;
-      } else {
-        this.followingCursor = cachedState.cursor;
-        this.followingExhausted = cachedState.exhausted;
+    if (this.activeTab !== 'siblings') {
+      const activeKey = this.activeTab === 'followers'
+        ? this.followersPaginationKey
+        : this.followingPaginationKey;
+      const cachedState = getCachedPaginationCursor(activeKey);
+      if (cachedState && cachedState.itemCount > 0) {
+        if (this.activeTab === 'followers') {
+          this.followersCursor = cachedState.cursor;
+          this.followersExhausted = cachedState.exhausted;
+        } else {
+          this.followingCursor = cachedState.cursor;
+          this.followingExhausted = cachedState.exhausted;
+        }
+        const scrollTarget = cachedState.scrollPosition;
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            window.scrollTo({ top: scrollTarget, behavior: 'auto' });
+          }, 100);
+        });
       }
-      const scrollTarget = cachedState.scrollPosition;
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          window.scrollTo({ top: scrollTarget, behavior: 'auto' });
-        }, 100);
-      });
     }
 
     try {
       await this.fetchPage();
+      await this.ensureSiblingBlogsLoaded();
     } catch (e) {
       const operation = this.activeTab === 'followers' ? 'load_followers' : 'load_following';
       this.errorMessage = getContextualErrorMessage(e, operation, { blogName: this.blog });
@@ -306,6 +316,10 @@ export class ViewSocial extends LitElement {
     this.loading = true;
 
     try {
+      if (this.activeTab === 'siblings') {
+        await this.fetchSiblingBlogs();
+        return;
+      }
       const direction = this.activeTab === 'followers' ? 'followers' : 'following';
       const cursor = this.activeTab === 'followers' ? this.followersCursor : this.followingCursor;
       const cursorKey = cursor || '__first_page__';
@@ -455,6 +469,24 @@ export class ViewSocial extends LitElement {
     }
   }
 
+  private async ensureSiblingBlogsLoaded(): Promise<void> {
+    if (!this.blogId || this.siblingsLoaded) return;
+    await this.fetchSiblingBlogs();
+  }
+
+  private async fetchSiblingBlogs(): Promise<void> {
+    if (!this.blogId) return;
+    const response = await apiClient.blogs.listFamily({ blog_id: this.blogId });
+    const blogs = (response.blogs || []).filter((blog) => blog.id && blog.id !== this.blogId);
+    this.siblings = blogs.map((blog) => ({
+      blogId: blog.id,
+      blogName: blog.name,
+      userId: blog.ownerUserId,
+    }));
+    this.siblingsCount = this.siblings.length;
+    this.siblingsLoaded = true;
+  }
+
   private async loadMore(): Promise<void> {
     if (this.loading || this.isExhausted) return;
     await this.fetchPage();
@@ -470,7 +502,7 @@ export class ViewSocial extends LitElement {
     url.search = '';
     window.history.replaceState({}, '', url.toString());
 
-    if (this.currentList.length === 0) {
+    if (tab === 'siblings' ? !this.siblingsLoaded : this.currentList.length === 0) {
       await this.fetchPage();
     }
 
@@ -550,6 +582,16 @@ export class ViewSocial extends LitElement {
                 >
                   Following ${this.followingCount > 0 ? `(${this.followingCount})` : this.following.length > 0 ? `(${this.following.length})` : ''}
                 </button>
+                ${this.siblingsCount > 0
+                  ? html`
+                      <button
+                        class="tab ${this.activeTab === 'siblings' ? 'active' : ''}"
+                        @click=${() => this.switchTab('siblings')}
+                      >
+                        Sibling Blogs (${this.siblingsCount})
+                      </button>
+                    `
+                  : ''}
               </div>
             `
           : ''}

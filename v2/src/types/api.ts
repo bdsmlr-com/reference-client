@@ -421,6 +421,11 @@ export interface ListBlogTopTagsRequest {
   page_size?: number;
 }
 
+export interface ListBlogFamilyBlogsRequest {
+  blog_id?: number;
+  blog_name?: string;
+}
+
 export interface GetPostRequest {
   post_id: number;
 }
@@ -508,6 +513,12 @@ export interface LoginResponse {
 
 // New response types
 export interface SearchBlogsResponse {
+  blogs?: Blog[];
+  page?: PageInfo;
+  error?: string;
+}
+
+export interface ListBlogFamilyBlogsResponse {
   blogs?: Blog[];
   page?: PageInfo;
   error?: string;
