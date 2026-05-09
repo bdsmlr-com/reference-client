@@ -21,7 +21,6 @@ import {
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import type { FollowEdge, Blog } from '../types/api.js';
-import type { IdentityDecoration } from '../types/api.js';
 import '../components/control-panel.js';
 import '../components/blog-list.js';
 import '../components/load-footer.js';
@@ -256,25 +255,6 @@ export class ViewSocial extends LitElement {
     if (this.activeTab === 'followers') return this.followers;
     if (this.activeTab === 'following') return this.following;
     return this.siblings;
-  }
-
-  private get contextIdentityDecorations(): IdentityDecoration[] {
-    const tokens = new Set((this.blogData?.identityDecorations || []).map((decoration) => decoration.token || ''));
-    const rootIsRestricted = tokens.has('restricted') || tokens.has('restricted-allowed');
-    if (this.activeTab !== 'following' || !rootIsRestricted) {
-      return [];
-    }
-    return [
-      {
-        kind: 'visibility',
-        token: 'key-holder',
-        label: 'Approved follower of this restricted blog',
-        icon: '🔑',
-        priority: 15,
-        visibility: ['inline_name'],
-        source: 'system',
-      },
-    ];
   }
 
   private async loadData(): Promise<void> {
@@ -629,10 +609,9 @@ export class ViewSocial extends LitElement {
         ${this.currentList.length > 0
           ? html`
               <div class="list-container">
-                <blog-list
-                  .items=${this.currentList}
-                  .contextIdentityDecorations=${this.contextIdentityDecorations}
-                ></blog-list>
+        <blog-list
+          .items=${this.currentList}
+        ></blog-list>
               </div>
 
               <load-footer
