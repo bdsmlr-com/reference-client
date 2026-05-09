@@ -8,13 +8,12 @@ import type { IdentityDecoration } from '../types/api.js';
 
 type BlogIdentityVariant = 'header' | 'menu' | 'micro';
 
-function pickInlineDecoration(
+function pickInlineDecorations(
   decorations: IdentityDecoration[] | null | undefined,
-): IdentityDecoration | null {
-  const eligible = (decorations || [])
+): IdentityDecoration[] {
+  return (decorations || [])
     .filter((decoration) => (decoration.visibility || []).includes('inline_name'))
     .sort((a, b) => (a.priority ?? Number.MAX_SAFE_INTEGER) - (b.priority ?? Number.MAX_SAFE_INTEGER));
-  return eligible[0] ?? null;
 }
 
 function normalizeBlogName(blogName: string): string {
@@ -399,7 +398,7 @@ export class BlogIdentity extends LitElement {
     const avatarUrl = this.resolvedAvatarUrl;
     const title = this.blogTitle.trim();
     const description = this.blogDescription.trim();
-    const decoration = pickInlineDecoration(this.identityDecorations);
+    const decorations = pickInlineDecorations(this.identityDecorations);
 
     return html`
       <div
@@ -424,7 +423,11 @@ export class BlogIdentity extends LitElement {
         <span class="copy">
           <span class="name-row">
             <span class="name">@${blogName}</span>
-            ${decoration?.icon ? html`<span class="name-decoration" title=${decoration.label || nothing}>${decoration.icon}</span>` : nothing}
+            ${decorations.map((decoration) =>
+              decoration?.icon
+                ? html`<span class="name-decoration" title=${decoration.label || nothing}>${decoration.icon}</span>`
+                : nothing,
+            )}
           </span>
           ${title ? html`<span class="title">${title}</span>` : nothing}
           ${description ? html`<span class="description">${description}</span>` : nothing}

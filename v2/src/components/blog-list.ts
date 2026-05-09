@@ -2,6 +2,7 @@ import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import type { Blog, FollowEdge } from '../types/api.js';
+import type { IdentityDecoration } from '../types/api.js';
 import { apiClient } from '../services/client.js';
 import { getCachedAvatarUrl, setCachedAvatarUrl } from '../services/storage.js';
 import { buildBlogPageUrl } from '../services/blog-resolver.js';
@@ -236,6 +237,7 @@ export class BlogList extends LitElement {
   ];
 
   @property({ type: Array }) items: FollowEdge[] = [];
+  @property({ attribute: false }) contextIdentityDecorations: IdentityDecoration[] = [];
 
   @state() private resolvedNames: Map<number, string | null> = new Map();
   @state() private resolvingIds: Set<number> = new Set();
@@ -555,6 +557,10 @@ export class BlogList extends LitElement {
           const avatarUrl = normalizeAvatarUrl(rawAvatarUrl ?? null);
           const initial = (name || 'B').charAt(0).toUpperCase();
           const recentPosts = normalized.blogId ? (this.recentPosts.get(normalized.blogId) || []) : [];
+          const effectiveIdentityDecorations = [
+            ...(meta?.identityDecorations || []),
+            ...this.contextIdentityDecorations,
+          ];
 
           return html`
             <div
@@ -584,7 +590,7 @@ export class BlogList extends LitElement {
                       .blogName=${name}
                       .blogId=${normalized.blogId || 0}
                       .blogTitle=${meta?.title || ''}
-                      .identityDecorations=${meta?.identityDecorations || []}
+                      .identityDecorations=${effectiveIdentityDecorations}
                       .showAvatar=${false}
                     ></blog-identity>${isResolving ? ' (loading...)' : ''}
                   </div>
