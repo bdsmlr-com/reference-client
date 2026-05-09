@@ -22,6 +22,7 @@ import {
   getFollowingActivityKindsPreference,
   getGalleryMode,
   getSearchSortPreference,
+  getSocialSortPreference,
   normalizeActivityKinds,
   setArchiveSortPreference,
   setBlogActivityKindsPreference,
@@ -29,9 +30,11 @@ import {
   setFollowingActivityKindsPreference,
   setGalleryMode,
   setSearchSortPreference,
+  setSocialSortPreference,
   type ActivityKind,
   type GalleryMode,
 } from '../services/profile.js';
+import { SOCIAL_SORT_OPTIONS, normalizeSocialSortValue } from '../services/social-sort.js';
 import { normalizeSortValue } from '../types/post.js';
 import type { PostType, PostVariant } from '../types/api.js';
 import '../components/blog-identity.js';
@@ -385,6 +388,7 @@ export class ViewSettingsUser extends LitElement {
         infiniteScroll: getInfiniteScrollPreference('timeline'),
       },
       social: {
+        sortValue: normalizeSocialSortValue(getSocialSortPreference() || 'default'),
         infiniteScroll: getInfiniteScrollPreference('social'),
       },
     };
@@ -432,6 +436,7 @@ export class ViewSettingsUser extends LitElement {
         setInfiniteScrollPreference(true, 'timeline');
         break;
       case 'social':
+        setSocialSortPreference('default');
         setInfiniteScrollPreference(true, 'social');
         break;
     }
@@ -450,6 +455,7 @@ export class ViewSettingsUser extends LitElement {
       showActivityKinds?: boolean;
       showGalleryMode?: boolean;
       showInfiniteScroll?: boolean;
+      sortOptions?: Array<{ value: string; label: string }>;
       onSortChange?: (value: string) => void;
       onActivityKindsChange?: (value: ActivityKind[]) => void;
     },
@@ -472,6 +478,7 @@ export class ViewSettingsUser extends LitElement {
             .galleryMode=${state.galleryMode || 'grid'}
             .infiniteScroll=${state.infiniteScroll}
             .showSort=${options.showSort || false}
+            .sortOptions=${options.sortOptions || []}
             .showTypes=${options.showTypes || false}
             .showVariants=${options.showVariants || false}
             .showActivityKinds=${options.showActivityKinds || false}
@@ -605,6 +612,12 @@ export class ViewSettingsUser extends LitElement {
               },
             })}
             ${this.renderRoutePreferenceRow('social', 'Social', 'Default followers/following list behavior.', 'social', {
+              showSort: true,
+              sortOptions: SOCIAL_SORT_OPTIONS,
+              onSortChange: (value) => {
+                setSocialSortPreference(normalizeSocialSortValue(value));
+                this.updateRoutePreference('social', { sortValue: normalizeSocialSortValue(value) });
+              },
               showInfiniteScroll: true,
             })}
           </div>

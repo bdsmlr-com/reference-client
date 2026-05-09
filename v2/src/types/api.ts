@@ -119,6 +119,8 @@ export interface Blog {
   ownerUserId?: number;
   followersCount?: number;
   postsCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
   avatarUrl?: string;
   coverUrl?: string;
   // Theme customization
@@ -434,6 +436,16 @@ export interface FollowEdge {
   blogId: number;
   blogName?: string;
   userId?: number;
+  ownerUserId?: number;
+  title?: string;
+  description?: string;
+  avatarUrl?: string;
+  followersCount?: number;
+  postsCount?: number;
+  createdAt?: string;
+  latestPostCreatedAtUnix?: number;
+  identityDecorations?: IdentityDecoration[];
+  recentPosts?: Post[];
 }
 
 // Response types
@@ -536,6 +548,12 @@ export interface BlogFollowGraphResponse {
 }
 
 export interface ListBlogsRecentActivityResponse {
+  items?: {
+    blogId?: number;
+    blogName?: string;
+    latestPostId?: number;
+    latestCreatedAtUnix?: number;
+  }[];
   posts?: Post[];
   page?: PageInfo;
   error?: string;

@@ -6,6 +6,7 @@ const USERNAME_KEY = 'bdsmlr_profile_username';
 const GALLERY_MODE_KEY = 'bdsmlr_gallery_mode';
 const ARCHIVE_SORT_KEY = 'bdsmlr_archive_sort';
 const SEARCH_SORT_KEY = 'bdsmlr_search_sort';
+const SOCIAL_SORT_KEY = 'bdsmlr_social_sort';
 const FOLLOWING_ACTIVITY_KINDS_KEY = 'bdsmlr_following_activity_kinds';
 const FOLLOWER_FEED_ACTIVITY_KINDS_KEY = 'bdsmlr_follower_feed_activity_kinds';
 const BLOG_ACTIVITY_KINDS_KEY = 'bdsmlr_blog_activity_kinds';
@@ -82,6 +83,7 @@ export function clearProfileState(): void {
   removeStorage(getScopedKey(GALLERY_MODE_KEY, 'archive'));
   removeStorage(ARCHIVE_SORT_KEY);
   removeStorage(SEARCH_SORT_KEY);
+  removeStorage(SOCIAL_SORT_KEY);
   removeStorage(FOLLOWING_ACTIVITY_KINDS_KEY);
   removeStorage(FOLLOWER_FEED_ACTIVITY_KINDS_KEY);
   removeStorage(BLOG_ACTIVITY_KINDS_KEY);
@@ -125,6 +127,19 @@ export function setSearchSortPreference(sortValue: string): void {
   emit(PROFILE_EVENTS.sortPreferencesChanged, {
     archiveSort: getArchiveSortPreference(),
     searchSort: sortValue,
+  });
+}
+
+export function getSocialSortPreference(): string | null {
+  return readStorage(SOCIAL_SORT_KEY);
+}
+
+export function setSocialSortPreference(sortValue: string): void {
+  writeStorage(SOCIAL_SORT_KEY, sortValue);
+  emit(PROFILE_EVENTS.sortPreferencesChanged, {
+    archiveSort: getArchiveSortPreference(),
+    searchSort: getSearchSortPreference(),
+    socialSort: sortValue,
   });
 }
 

@@ -6,6 +6,8 @@ import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from
 import { getUrlParam } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
+import { getSocialSortPreference, setSocialSortPreference } from '../services/profile.js';
+import { normalizeSocialSortValue, SOCIAL_SORT_OPTIONS, sortSocialEdges } from '../services/social-sort.js';
 import {
   generatePaginationCursorKey,
   getCachedPaginationCursor,
@@ -20,7 +22,8 @@ import {
 } from '../services/follow-pagination.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
-import type { FollowEdge, Blog } from '../types/api.js';
+import type { FollowEdge, Blog, Post } from '../types/api.js';
+import { extractMedia, type ProcessedPost } from '../types/post.js';
 import '../components/control-panel.js';
 import '../components/blog-list.js';
 import '../components/load-footer.js';
@@ -125,9 +128,9 @@ export class ViewSocial extends LitElement {
   @state() private followingCursor: string | null = null;
   @state() private followersExhausted = false;
   @state() private followingExhausted = false;
-  @state() private siblingsLoaded = false;
   @state() private loading = false;
   @state() private infiniteScroll = getInfiniteScrollPreference('social');
+  @state() private sortValue = 'default';
   @state() private statusMessage = '';
   @state() private errorMessage = '';
   @state() private retrying = false;
@@ -200,6 +203,8 @@ export class ViewSocial extends LitElement {
     this.followingPageAttempts = 0;
     const pathTab = window.location.pathname.split('/').filter(Boolean)[2] as Tab | undefined;
     const tab = pathTab || (getUrlParam('tab') as Tab) || this.initialTab;
+    this.sortValue = getUrlParam('sort') || getSocialSortPreference() || 'default';
+    this.sortValue = normalizeSocialSortValue(this.sortValue);
     if (tab === 'followers' || tab === 'following' || tab === 'siblings') {
       this.activeTab = tab;
     }
@@ -252,9 +257,12 @@ export class ViewSocial extends LitElement {
   }
 
   private get currentList(): FollowEdge[] {
-    if (this.activeTab === 'followers') return this.followers;
-    if (this.activeTab === 'following') return this.following;
-    return this.siblings;
+    const base = this.activeTab === 'followers'
+      ? this.followers
+      : this.activeTab === 'following'
+      ? this.following
+      : this.siblings;
+    return sortSocialEdges(base, this.sortValue);
   }
 
   private async loadData(): Promise<void> {
@@ -299,7 +307,7 @@ export class ViewSocial extends LitElement {
 
     try {
       await this.fetchPage();
-      await this.ensureSiblingBlogsLoaded();
+      await this.loadRemainingForSort();
     } catch (e) {
       const operation = this.activeTab === 'followers' ? 'load_followers' : 'load_following';
       this.errorMessage = getContextualErrorMessage(e, operation, { blogName: this.blog });
@@ -372,10 +380,11 @@ export class ViewSocial extends LitElement {
 
       if (this.activeTab === 'followers') {
         const items = resp.followers || [];
+        const hydratedItems = await this.attachRecentPostsToEdges(items);
         const pageFingerprint = fingerprintFollowEdges(items);
         const repeatedPage = !!cursor && this.lastFollowersPageFingerprint === pageFingerprint;
-        const newlyAddedCount = countNewFollowEdges(this.followers, items);
-        this.followers = mergeFollowEdges(this.followers, items);
+        const newlyAddedCount = countNewFollowEdges(this.followers, hydratedItems);
+        this.followers = mergeFollowEdges(this.followers, hydratedItems);
         this.lastFollowersPageFingerprint = pageFingerprint;
         const shouldStop = shouldStopFollowPagination({
           previousCursor: cursor,
@@ -416,10 +425,11 @@ export class ViewSocial extends LitElement {
         }
       } else {
         const items = resp.following || [];
+        const hydratedItems = await this.attachRecentPostsToEdges(items);
         const pageFingerprint = fingerprintFollowEdges(items);
         const repeatedPage = !!cursor && this.lastFollowingPageFingerprint === pageFingerprint;
-        const newlyAddedCount = countNewFollowEdges(this.following, items);
-        this.following = mergeFollowEdges(this.following, items);
+        const newlyAddedCount = countNewFollowEdges(this.following, hydratedItems);
+        this.following = mergeFollowEdges(this.following, hydratedItems);
         this.lastFollowingPageFingerprint = pageFingerprint;
         const shouldStop = shouldStopFollowPagination({
           previousCursor: cursor,
@@ -469,22 +479,25 @@ export class ViewSocial extends LitElement {
     }
   }
 
-  private async ensureSiblingBlogsLoaded(): Promise<void> {
-    if (!this.blogId || this.siblingsLoaded) return;
-    await this.fetchSiblingBlogs();
-  }
-
   private async fetchSiblingBlogs(): Promise<void> {
     if (!this.blogId) return;
     const response = await apiClient.blogs.listFamily({ blog_id: this.blogId });
     const blogs = (response.blogs || []).filter((blog) => blog.id && blog.id !== this.blogId);
-    this.siblings = blogs.map((blog) => ({
+    const siblingEdges = blogs.map((blog) => ({
       blogId: blog.id,
       blogName: blog.name,
       userId: blog.ownerUserId,
-    }));
+      ownerUserId: blog.ownerUserId,
+      title: blog.title,
+      description: blog.description,
+      avatarUrl: blog.avatarUrl,
+      followersCount: blog.followersCount,
+      postsCount: blog.postsCount,
+      identityDecorations: blog.identityDecorations,
+      createdAt: blog.createdAt,
+    })) satisfies FollowEdge[];
+    this.siblings = await this.attachRecentPostsToEdges(siblingEdges);
     this.siblingsCount = this.siblings.length;
-    this.siblingsLoaded = true;
   }
 
   private async loadMore(): Promise<void> {
@@ -495,18 +508,8 @@ export class ViewSocial extends LitElement {
   private async switchTab(tab: Tab): Promise<void> {
     if (tab === this.activeTab) return;
 
-    this.activeTab = tab;
     const normalizedBlog = (this.blog || 'you').trim() || 'you';
-    const url = new URL(window.location.href);
-    url.pathname = `/social/${encodeURIComponent(normalizedBlog)}/${this.activeTab}`;
-    url.search = '';
-    window.history.replaceState({}, '', url.toString());
-
-    if (tab === 'siblings' ? !this.siblingsLoaded : this.currentList.length === 0) {
-      await this.fetchPage();
-    }
-
-    this.observeSentinel();
+    window.location.href = `/social/${encodeURIComponent(normalizedBlog)}/${tab}`;
   }
 
   private handleInfiniteToggle(e: CustomEvent): void {
@@ -514,6 +517,65 @@ export class ViewSocial extends LitElement {
     if (this.infiniteScroll) {
       this.observeSentinel();
     }
+  }
+
+  private async handleSortChange(e: CustomEvent): Promise<void> {
+    this.sortValue = normalizeSocialSortValue(e.detail.value);
+    setSocialSortPreference(this.sortValue);
+    await this.loadRemainingForSort();
+    this.requestUpdate();
+  }
+
+  private async loadRemainingForSort(): Promise<void> {
+    if (this.sortValue === 'default' || this.activeTab === 'siblings') {
+      return;
+    }
+    if (this.loading) {
+      return;
+    }
+    if (this.isExhausted) {
+      return;
+    }
+    this.statusMessage = 'Loading full list for sorting…';
+    while (!this.loading && !this.isExhausted) {
+      await this.fetchPage();
+    }
+    this.statusMessage = '';
+  }
+
+  private async attachRecentPostsToEdges(items: FollowEdge[]): Promise<FollowEdge[]> {
+    const ids = [...new Set(items.map((item) => item.blogId).filter((value): value is number => typeof value === 'number' && value > 0))];
+    if (!ids.length) {
+      return items;
+    }
+    const response = await apiClient.recentActivity.listCached({
+      blog_ids: ids,
+      global_merge: false,
+      page_size: ids.length,
+      limit_per_blog: 3,
+    });
+    const latestByBlog = new Map<number, number>();
+    for (const item of response.items || []) {
+      if (typeof item.blogId === 'number') {
+        latestByBlog.set(item.blogId, item.latestCreatedAtUnix || 0);
+      }
+    }
+    const postsByBlog = new Map<number, ProcessedPost[]>();
+    for (const post of response.posts || []) {
+      if (!post.blogId) continue;
+      const current = postsByBlog.get(post.blogId) || [];
+      if (current.length >= 3) continue;
+      current.push({
+        ...post,
+        _media: extractMedia(post as Post),
+      } as ProcessedPost);
+      postsByBlog.set(post.blogId, current);
+    }
+    return items.map((item) => ({
+      ...item,
+      recentPosts: postsByBlog.get(item.blogId) || item.recentPosts || [],
+      latestPostCreatedAtUnix: latestByBlog.get(item.blogId) || item.latestPostCreatedAtUnix || 0,
+    }));
   }
 
   private async handleRetry(e?: CustomEvent): Promise<void> {
@@ -582,16 +644,12 @@ export class ViewSocial extends LitElement {
                 >
                   Following ${this.followingCount > 0 ? `(${this.followingCount})` : this.following.length > 0 ? `(${this.following.length})` : ''}
                 </button>
-                ${this.siblingsCount > 0
-                  ? html`
-                      <button
-                        class="tab ${this.activeTab === 'siblings' ? 'active' : ''}"
-                        @click=${() => this.switchTab('siblings')}
-                      >
-                        Sibling Blogs (${this.siblingsCount})
-                      </button>
-                    `
-                  : ''}
+                <button
+                  class="tab ${this.activeTab === 'siblings' ? 'active' : ''}"
+                  @click=${() => this.switchTab('siblings')}
+                >
+                  Sibling Blogs ${this.siblingsCount > 0 ? `(${this.siblingsCount})` : ''}
+                </button>
               </div>
             `
           : ''}
@@ -600,9 +658,13 @@ export class ViewSocial extends LitElement {
 
         <control-panel
           .pageName=${'social'}
+          .sortValue=${this.sortValue}
+          .sortOptions=${SOCIAL_SORT_OPTIONS}
+          .showSort=${true}
           .showInfiniteScroll=${true}
           .infiniteScroll=${this.infiniteScroll}
           .settingsHref=${'/settings/you#social'}
+          @sort-change=${this.handleSortChange}
           @infinite-toggle=${this.handleInfiniteToggle}
         ></control-panel>
 

@@ -4,6 +4,11 @@ import { baseStyles } from '../styles/theme.js';
 import { SORT_OPTIONS } from '../types/post.js';
 import { EventNames, type SortChangeDetail } from '../types/events.js';
 
+interface SortOption {
+  value: string;
+  label: string;
+}
+
 @customElement('sort-controls')
 export class SortControls extends LitElement {
   static styles = [
@@ -32,6 +37,7 @@ export class SortControls extends LitElement {
   ];
 
   @property({ type: String }) value = '1:0';
+  @property({ attribute: false }) options: SortOption[] = SORT_OPTIONS;
 
   private handleChange(e: Event): void {
     const select = e.target as HTMLSelectElement;
@@ -43,13 +49,14 @@ export class SortControls extends LitElement {
   }
 
   render() {
+    const options = this.options.length ? this.options : SORT_OPTIONS;
     return html`
       <select
         .value=${this.value}
         @change=${this.handleChange}
         aria-label="Sort posts by"
       >
-        ${SORT_OPTIONS.map(
+        ${options.map(
           (opt) => html`
             <option value=${opt.value} ?selected=${opt.value === this.value}>
               ${opt.label}
