@@ -448,6 +448,7 @@ async function apiRequest<T>(
       method: 'POST',
       headers,
       body: JSON.stringify(body),
+      credentials: 'include',
       signal: controller.signal,
     });
 
