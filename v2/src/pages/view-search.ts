@@ -323,6 +323,30 @@ export class ViewSearch extends LitElement {
         padding: 0 16px;
       }
 
+      .empty-state {
+        max-width: 520px;
+        margin: 0 auto;
+        padding: 28px 24px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--bg-panel);
+        text-align: center;
+      }
+
+      .empty-state-title {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .empty-state-copy {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--text-muted);
+      }
+
       @media (max-width: ${unsafeCSS(BREAKPOINTS.MOBILE - 1)}px) {
         .search-box {
           flex-direction: column;
@@ -869,6 +893,32 @@ export class ViewSearch extends LitElement {
     }
   }
 
+  private getEmptySearchState(): { title: string; message: string } | null {
+    if (
+      !this.hasSearched
+      || this.searching
+      || !!this.errorMessage
+      || this.resultUnits.length > 0
+    ) {
+      return null;
+    }
+
+    const normalizedQuery = this.query.trim();
+    const blogMatch = normalizedQuery.match(/^blog:([^\s]+)$/i);
+    if (blogMatch) {
+      const blogName = blogMatch[1];
+      return {
+        title: 'No results',
+        message: `No results for @${blogName}.`,
+      };
+    }
+
+    return {
+      title: 'No results',
+      message: 'No results found. Try different search terms or adjust your filters.',
+    };
+  }
+
   private renderSyntaxGuide() {
     const examples = [
       {
@@ -959,6 +1009,7 @@ export class ViewSearch extends LitElement {
     const matchHelp = routePerspectiveBlog === 'you'
       ? 'Use your profile to shape results.'
       : routePerspectiveBlog ? `Use @${routePerspectiveBlog}'s profile to shape results.` : '';
+    const emptyState = this.getEmptySearchState();
     return html`
       <div class="content">
         <p class="help">
@@ -1063,6 +1114,17 @@ export class ViewSearch extends LitElement {
           : ''}
 
         ${this.statusMessage && !this.searching && !this.errorMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
+
+        ${emptyState
+          ? html`
+              <div class="grid-container">
+                <div class="empty-state">
+                  <h2 class="empty-state-title">${emptyState.title}</h2>
+                  <p class="empty-state-copy">${emptyState.message}</p>
+                </div>
+              </div>
+            `
+          : ''}
 
         ${this.resultUnits.length > 0
           ? html`

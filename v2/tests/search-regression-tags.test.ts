@@ -128,6 +128,19 @@ describe('search regression and tag visibility', () => {
     expect(apiSrc).toContain('page_size: page_size ?? page?.page_size');
   });
 
+  it('renders an explicit terminal empty search state instead of a silent blank grid', () => {
+    const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+
+    expect(src).toContain('private getEmptySearchState(): { title: string; message: string } | null');
+    expect(src).toContain("const blogMatch = normalizedQuery.match(/^blog:([^\\s]+)$/i);");
+    expect(src).toContain("title: 'No results'");
+    expect(src).toContain("message: `No results for @${blogName}.`");
+    expect(src).toContain("message: 'No results found. Try different search terms or adjust your filters.'");
+    expect(src).toContain('const emptyState = this.getEmptySearchState();');
+    expect(src).toContain('${emptyState');
+    expect(src).toContain('class="empty-state"');
+  });
+
   it('supports paginated footer controls for search navigation', () => {
     const src = readFileSync(join(ROOT, 'components/load-footer.ts'), 'utf8');
     const eventSrc = readFileSync(join(ROOT, 'types/events.ts'), 'utf8');
