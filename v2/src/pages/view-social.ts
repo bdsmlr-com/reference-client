@@ -713,10 +713,7 @@ export class ViewSocial extends LitElement {
           ? html`
               <div class="section-heading">Blogs you may like</div>
               <div class="list-container">
-                <blog-list
-                  .items=${this.recommendedBlogs}
-                  .recommendedBlogs=${this.recommendedBlogs}
-                ></blog-list>
+                <blog-list .items=${this.recommendedBlogs}></blog-list>
               </div>
             `
           : ''}

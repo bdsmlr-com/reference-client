@@ -36,7 +36,9 @@ describe('social/blog-list render contract usage', () => {
 
     expect(socialSrc).toContain('Blogs you may like');
     expect(socialSrc).toContain('apiClient.blogs.listRecommended');
-    expect(socialSrc).toContain('.recommendedBlogs=${this.recommendedBlogs}');
+    expect(socialSrc).toContain('@state() private recommendedBlogs: FollowEdge[] = [];');
+    expect(socialSrc).toContain("this.recommendedBlogs.length > 0");
+    expect(socialSrc).toContain('<blog-list .items=${this.recommendedBlogs}></blog-list>');
   });
 
   it('check-render-contract script fails for ad hoc legacy card tags', () => {
