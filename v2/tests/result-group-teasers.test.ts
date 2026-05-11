@@ -36,6 +36,9 @@ describe('result-group teaser consumers', () => {
     expect(src).toContain(".mode=${'grid'}");
     expect(src).toContain('.perspectiveBlogName=${this.perspectiveBlogName}');
     expect(src).toContain('<post-recommendations');
-    expect(src).toContain('.tab.active');
+    expect(src).toContain("@property({ type: String }) routePerspective = 'you';");
+    expect(src).toContain("title = 'More like this';");
+    expect(src).toContain('class="perspective-nav"');
+    expect(src).toContain('class="perspective-link');
   });
 });

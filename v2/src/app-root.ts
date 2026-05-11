@@ -75,15 +75,29 @@ export class AppRoot extends LitElement {
     },
     {
       path: '/post/:postId/related',
-      render: ({ postId }) => html`<view-post-related .postId=${postId} .title=${'More like this ✨'}></view-post-related>`,
+      render: ({ postId }) => this.redirectLegacyRoute(`/post/${postId}/related/for/you`),
     },
     {
       path: '/post/:postId/related/for/you',
-      render: ({ postId }) => html`<view-post-related .postId=${postId} .perspectiveBlogName=${this.resolveRouteBlogName('you')} .title=${`More like this for you ✨`}></view-post-related>`,
+      render: ({ postId }) => html`
+        <view-post-related
+          .postId=${postId}
+          .routePerspective=${'you'}
+          .perspectiveBlogName=${this.resolveRouteBlogName('you')}
+          .title=${'More like this'}
+        ></view-post-related>
+      `,
     },
     {
       path: '/post/:postId/related/for/:blogname',
-      render: ({ postId, blogname }) => html`<view-post-related .postId=${postId} .perspectiveBlogName=${this.resolveRouteBlogName(blogname || '')} .title=${`More like this for ${this.resolveRouteBlogName(blogname || '')} ✨`}></view-post-related>`,
+      render: ({ postId, blogname }) => html`
+        <view-post-related
+          .postId=${postId}
+          .routePerspective=${blogname || 'you'}
+          .perspectiveBlogName=${this.resolveRouteBlogName(blogname || '')}
+          .title=${'More like this'}
+        ></view-post-related>
+      `,
     },
     { path: '/clear-cache*', render: () => html`<view-clear-cache></view-clear-cache>` },
     { path: '/feed/for/you', render: () => html`<view-feed .blog=${this.resolveRouteBlogName('you')}></view-feed>` },

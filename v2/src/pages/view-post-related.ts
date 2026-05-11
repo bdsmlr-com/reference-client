@@ -1,9 +1,6 @@
-import { LitElement, html, css } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { LitElement, html, css, nothing } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { apiClient } from '../services/client.js';
-import { getPrimaryBlogName } from '../services/blog-resolver.js';
-import type { Post } from '../types/api.js';
 import '../components/post-recommendations.js';
 
 @customElement('view-post-related')
@@ -39,110 +36,81 @@ export class ViewPostRelated extends LitElement {
       .subtitle {
         color: var(--text-muted);
         font-size: 14px;
-        margin: 0 0 20px;
+        margin: 0 0 16px;
       }
 
-      .tabs {
+      .perspective-nav {
         display: flex;
-        justify-content: flex-start;
-        gap: 6px;
+        align-items: center;
+        gap: 10px;
         flex-wrap: wrap;
         margin: 0 0 20px;
-      }
-
-      .tab {
-        padding: 6px 14px;
-        border-radius: 4px;
-        background: var(--bg-panel);
         color: var(--text-muted);
         font-size: 13px;
-        min-height: 30px;
-        transition: all 0.2s;
-        border: 1px solid var(--border);
+      }
+
+      .perspective-link {
+        color: var(--text-muted);
         text-decoration: none;
-        display: inline-flex;
-        align-items: center;
       }
 
-      .tab:hover {
-        background: var(--bg-panel-alt);
+      .perspective-link:hover {
+        color: var(--accent);
       }
 
-      .tab.active {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: #fff;
+      .perspective-link.active {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .perspective-separator {
+        color: var(--text-muted);
       }
     `,
   ];
 
   @property({ type: String }) postId = '';
+  @property({ type: String }) routePerspective = 'you';
   @property({ type: String }) perspectiveBlogName = '';
-  @property({ type: String }) title = 'More like this ✨';
-  @state() private seedPost: Post | null = null;
+  @property({ type: String }) title = 'More like this';
 
   private get normalizedPostId(): number {
     return parseInt(this.postId, 10) || 0;
   }
 
-  protected updated(changedProperties: Map<string, unknown>): void {
-    if (changedProperties.has('postId')) {
-      void this.loadSeedPost();
-    }
-  }
-
-  private async loadSeedPost(): Promise<void> {
-    const id = this.normalizedPostId;
-    if (!id) {
-      this.seedPost = null;
-      return;
-    }
-    try {
-      const resp = await apiClient.posts.get(id);
-      this.seedPost = resp.post || null;
-    } catch {
-      this.seedPost = null;
-    }
+  private get currentPerspective(): string {
+    const raw = (this.routePerspective || 'you').trim().toLowerCase();
+    return raw || 'you';
   }
 
   private relatedHref(blogName?: string): string {
     const id = this.normalizedPostId;
-    if (!blogName) {
-      return `/post/${id}/related`;
+    const normalized = (blogName || '').trim();
+    if (!normalized || normalized.toLowerCase() === 'you') {
+      return `/post/${id}/related/for/you`;
     }
-    const normalized = blogName.trim();
     return `/post/${id}/related/for/${encodeURIComponent(normalized)}`;
   }
 
-  private get perspectiveTabs(): Array<{ href: string; label: string; active: boolean }> {
-    const tabs: Array<{ href: string; label: string; active: boolean }> = [];
-    const currentPerspective = (this.perspectiveBlogName || '').trim().toLowerCase();
-    const seen = new Set<string>();
-    const add = (blogName: string | undefined, label: string) => {
-      const normalized = (blogName || '').trim();
-      if (!normalized) return;
-      const key = normalized.toLowerCase();
-      if (seen.has(key)) return;
-      seen.add(key);
-      tabs.push({
-        href: this.relatedHref(normalized),
-        label,
-        active: key === currentPerspective,
+  private get perspectiveNavItems(): Array<{ href: string; label: string; active: boolean }> {
+    const currentPerspective = this.currentPerspective;
+    const items: Array<{ href: string; label: string; active: boolean }> = [
+      {
+        href: this.relatedHref('you'),
+        label: 'for you',
+        active: currentPerspective === 'you',
+      },
+    ];
+
+    if (currentPerspective !== 'you') {
+      items.push({
+        href: this.relatedHref(currentPerspective),
+        label: `for @${this.routePerspective.trim() || currentPerspective}`,
+        active: true,
       });
-    };
+    }
 
-    tabs.push({
-      href: this.relatedHref(),
-      label: 'More like this',
-      active: currentPerspective === '',
-    });
-
-    const activeBlog = getPrimaryBlogName();
-    add(activeBlog || undefined, 'For you');
-    add(this.seedPost?.originBlogName, `For @${this.seedPost?.originBlogName}`);
-    add(this.seedPost?.blogName, `For @${this.seedPost?.blogName}`);
-
-    return tabs;
+    return items;
   }
 
   render() {
@@ -158,11 +126,16 @@ export class ViewPostRelated extends LitElement {
 
       <div class="subtitle">Expanded related results for post ${id}</div>
 
-      <div class="tabs">
-        ${this.perspectiveTabs.map(
-          (tab) => html`<a class="tab ${tab.active ? 'active' : ''}" href=${tab.href}>${tab.label}</a>`
+      <nav class="perspective-nav" aria-label="Related perspectives">
+        ${this.perspectiveNavItems.map(
+          (item, index) => html`
+            ${index > 0 ? html`<span class="perspective-separator" aria-hidden="true">·</span>` : nothing}
+            ${item.active
+              ? html`<span class="perspective-link active" aria-current=${item.active ? 'page' : nothing}>${item.label}</span>`
+              : html`<a class="perspective-link" href=${item.href} aria-current=${item.active ? 'page' : nothing}>${item.label}</a>`}
+          `
         )}
-      </div>
+      </nav>
 
       <post-recommendations
         .postId=${id}
