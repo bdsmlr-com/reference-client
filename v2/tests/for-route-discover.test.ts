@@ -10,10 +10,12 @@ describe('for-you discover routes', () => {
     const resolverSrc = readFileSync(join(ROOT, 'services/blog-resolver.ts'), 'utf8');
 
     expect(src).toContain("path: '/for/you'");
+    expect(src).toContain("path: '/for-you'");
+    expect(src).toContain("path: '/for-you/'");
     expect(src).toContain("<view-discover .blog=${this.resolveRouteBlogName('you')}></view-discover>");
     expect(src).toContain("path: '/for/:blogname'");
     expect(src).toContain("<view-discover .blog=${this.resolveRouteBlogName(blogname || '')}></view-discover>");
-    expect(src).toContain("else if (pathname.startsWith('/for/')) currentPage = 'blogs';");
+    expect(src).toContain("pathname === '/for-you' || pathname === '/for-you/' || pathname.startsWith('/for/')) currentPage = 'blogs';");
     expect(resolverSrc).toContain("if (first === 'for') {");
     expect(resolverSrc).toContain("return { page: 'for', blogName: resolvePathBlogSegment(second) };");
   });
@@ -31,5 +33,18 @@ describe('for-you discover routes', () => {
     expect(src).toContain('this.nextOffset');
     expect(src).toContain('const isPrimaryPerspective = !!subjectBlog && subjectBlog === primaryBlog;');
     expect(src).toContain("const title = isPrimaryPerspective ? 'For You' : `For @${subjectBlog}`;");
+  });
+
+  it('routes /social and /social/:blogname to recommendation-focused social pages', () => {
+    const src = readFileSync(join(ROOT, 'app-root.ts'), 'utf8');
+    const socialSrc = readFileSync(join(ROOT, 'pages/view-social.ts'), 'utf8');
+
+    expect(src).toContain("path: '/social'");
+    expect(src).toContain("path: '/social/'");
+    expect(src).toContain("path: '/social/:blogname'");
+    expect(src).toContain(".rootMode=${true}");
+    expect(socialSrc).toContain("@property({ type: Boolean }) rootMode = false;");
+    expect(socialSrc).toContain('if (this.rootMode) {');
+    expect(socialSrc).toContain('No blog recommendations available yet');
   });
 });

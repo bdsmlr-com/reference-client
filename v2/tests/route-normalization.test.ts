@@ -37,6 +37,8 @@ describe('route normalization', () => {
       ['/search', 'search', ''],
       ['/search/for/you', 'search', 'alice'],
       ['/search/for/sam', 'search', 'sam'],
+      ['/for-you', 'for', ''],
+      ['/for-you/', 'for', ''],
       ['/for/you', 'for', 'alice'],
       ['/for/sam', 'for', 'sam'],
       ['/feed/for/you', 'feed', 'alice'],
@@ -49,6 +51,10 @@ describe('route normalization', () => {
       ['/archive/sam', 'archive', 'sam'],
       ['/settings/you', 'settings', 'alice'],
       ['/settings/sam', 'settings', 'sam'],
+      ['/social', 'social', ''],
+      ['/social/', 'social', ''],
+      ['/social/you', 'social', 'alice'],
+      ['/social/sam', 'social', 'sam'],
       ['/social/you/followers', 'social', 'alice'],
       ['/social/you/following', 'social', 'alice'],
       ['/social/you/siblings', 'social', 'alice'],
@@ -106,8 +112,8 @@ describe('route normalization', () => {
 
     expect(buildPageUrl('posts', 'alice')).toBe('/activity/you');
     expect(buildPageUrl('timeline', 'sam')).toBe('/activity/sam');
-    expect(buildPageUrl('social', 'alice')).toBe('/social/you/followers');
-    expect(buildPageUrl('social', 'sam')).toBe('/social/sam/followers');
+    expect(buildPageUrl('social', 'alice')).toBe('/social');
+    expect(buildPageUrl('social', 'sam')).toBe('/social/sam');
   });
 
   it('documents the canonical and legacy router aliases in app-root', () => {
@@ -116,6 +122,8 @@ describe('route normalization', () => {
     expect(appRootSrc).toContain("path: '/search'");
     expect(appRootSrc).toContain("path: '/search/for/you'");
     expect(appRootSrc).toContain("path: '/search/for/:blogname'");
+    expect(appRootSrc).toContain("path: '/for-you'");
+    expect(appRootSrc).toContain("path: '/for-you/'");
     expect(appRootSrc).toContain("path: '/feed/for/you'");
     expect(appRootSrc).toContain("path: '/feed/for/:blogname'");
     expect(appRootSrc).toContain("path: '/follower-feed/you'");
@@ -125,6 +133,10 @@ describe('route normalization', () => {
     expect(appRootSrc).toContain("path: '/archive/you'");
     expect(appRootSrc).toContain("path: '/archive/:blogname'");
     expect(appRootSrc).toContain("path: '/settings/:blogname'");
+    expect(appRootSrc).toContain("path: '/social'");
+    expect(appRootSrc).toContain("path: '/social/'");
+    expect(appRootSrc).toContain("path: '/social/you'");
+    expect(appRootSrc).toContain("path: '/social/:blogname'");
     expect(appRootSrc).toContain("path: '/social/you/followers'");
     expect(appRootSrc).toContain("path: '/social/you/following'");
     expect(appRootSrc).toContain("path: '/social/you/siblings'");

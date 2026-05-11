@@ -63,6 +63,8 @@ export class AppRoot extends LitElement {
     { path: '/search', render: () => html`<view-search></view-search>` },
     { path: '/search/for/you', render: () => html`<view-search></view-search>` },
     { path: '/search/for/:blogname', render: () => html`<view-search></view-search>` },
+    { path: '/for-you', render: () => html`<view-discover .blog=${this.resolveRouteBlogName('you')}></view-discover>` },
+    { path: '/for-you/', render: () => html`<view-discover .blog=${this.resolveRouteBlogName('you')}></view-discover>` },
     { path: '/for/you', render: () => html`<view-discover .blog=${this.resolveRouteBlogName('you')}></view-discover>` },
     { path: '/for/:blogname', render: ({ blogname }) => html`<view-discover .blog=${this.resolveRouteBlogName(blogname || '')}></view-discover>` },
     { path: '/blogs*', render: () => html`<view-blogs></view-blogs>` },
@@ -94,6 +96,10 @@ export class AppRoot extends LitElement {
     { path: '/archive/:blogname', render: ({ blogname }) => html`<view-archive .blog=${this.resolveRouteBlogName(blogname || '')}></view-archive>` },
     { path: '/settings/you', render: () => html`<view-settings-user></view-settings-user>` },
     { path: '/settings/:blogname', render: ({ blogname }) => html`<view-settings-blog .blog=${this.resolveRouteBlogName(blogname || '')}></view-settings-blog>` },
+    { path: '/social', render: () => html`<view-social .blog=${this.resolveRouteBlogName('you')} .rootMode=${true}></view-social>` },
+    { path: '/social/', render: () => html`<view-social .blog=${this.resolveRouteBlogName('you')} .rootMode=${true}></view-social>` },
+    { path: '/social/you', render: () => html`<view-social .blog=${this.resolveRouteBlogName('you')} .rootMode=${true}></view-social>` },
+    { path: '/social/:blogname', render: ({ blogname }) => html`<view-social .blog=${this.resolveRouteBlogName(blogname || '')} .rootMode=${true}></view-social>` },
     { path: '/social/you/followers', render: () => html`<view-social .blog=${this.resolveRouteBlogName('you')} .initialTab=${'followers'}></view-social>` },
     { path: '/social/you/following', render: () => html`<view-social .blog=${this.resolveRouteBlogName('you')} .initialTab=${'following'}></view-social>` },
     { path: '/social/you/siblings', render: () => html`<view-social .blog=${this.resolveRouteBlogName('you')} .initialTab=${'siblings'}></view-social>` },
@@ -221,7 +227,7 @@ export class AppRoot extends LitElement {
     else if (pathname.includes('/feed')) currentPage = 'following';
     else if (pathname.includes('/archive')) currentPage = 'archive';
     else if (pathname.includes('/search')) currentPage = 'search';
-    else if (pathname.startsWith('/for/')) currentPage = 'blogs';
+    else if (pathname === '/for-you' || pathname === '/for-you/' || pathname.startsWith('/for/')) currentPage = 'blogs';
     else if (pathname.includes('/blogs')) currentPage = 'blogs';
     else if (pathname.includes('/social')) currentPage = 'social';
     else if (pathname.includes('/settings')) currentPage = 'settings';

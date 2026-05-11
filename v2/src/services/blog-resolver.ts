@@ -36,6 +36,7 @@ const RESERVED_PAGE_ROUTES = [
   'home',
   'search',
   'for',
+  'for-you',
   'blogs',
   'discover',
   'you',
@@ -183,6 +184,7 @@ export function getBlogNameFromSubdomain(): string {
  *   /activity/:blogname
  *   /archive/:blogname
  *   /settings/:blogname
+ *   /social/:blogname
  *   /social/:blogname/followers
  *   /social/:blogname/following
  *
@@ -420,7 +422,7 @@ export function buildPageUrl(
       url = `/${normalizedPage}/${blogSegment || 'you'}`;
     } else if (normalizedPage === 'social') {
       const blogSegment = resolveBuildBlogSegment(blogName);
-      url = `/social/${blogSegment || 'you'}/followers`;
+      url = blogSegment && blogSegment !== 'you' ? `/social/${blogSegment}` : '/social';
     } else {
       // Non-blog pages: /:page
       url = `/${normalizedPage}`;
@@ -555,6 +557,10 @@ function parseRouteContext(pathname: string): { page: string; blogName: string }
     if (second) {
       return { page: 'for', blogName: resolvePathBlogSegment(second) };
     }
+    return { page: 'for', blogName: '' };
+  }
+
+  if (first === 'for-you') {
     return { page: 'for', blogName: '' };
   }
 

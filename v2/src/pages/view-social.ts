@@ -124,6 +124,7 @@ export class ViewSocial extends LitElement {
 
   @property({ type: String }) blog = '';
   @property({ type: String }) initialTab: Tab = 'followers';
+  @property({ type: Boolean }) rootMode = false;
 
   @state() private blogId: number | null = null;
   @state() private activeTab: Tab = 'followers';
@@ -277,6 +278,14 @@ export class ViewSocial extends LitElement {
 
   private async loadData(): Promise<void> {
     if (!this.blogId) return;
+    if (this.rootMode) {
+      try {
+        await this.loadRecommendedBlogs();
+      } catch {
+        this.recommendedBlogs = [];
+      }
+      return;
+    }
     const normalizedBlog = (this.blog || 'you').trim() || 'you';
     const targetPath = `/social/${encodeURIComponent(normalizedBlog)}/${this.activeTab}`;
     const url = new URL(window.location.href);
@@ -628,6 +637,8 @@ export class ViewSocial extends LitElement {
     try {
       if (!this.blogId) {
         await this.loadFromUrl();
+      } else if (this.rootMode) {
+        await this.loadRecommendedBlogs();
       } else {
         await this.fetchPage();
       }
@@ -642,6 +653,11 @@ export class ViewSocial extends LitElement {
   }
 
   render() {
+    const showTabs = !!this.blogId && !this.rootMode;
+    const showControlPanel = !this.rootMode;
+    const showList = !this.rootMode && this.currentList.length > 0;
+    const showEmptyList = !this.rootMode && this.blogId && !this.loading;
+
     return html`
       <div class="content">
         ${this.blog
@@ -670,7 +686,7 @@ export class ViewSocial extends LitElement {
             `
           : ''}
 
-        ${this.blogId
+        ${showTabs
           ? html`
               <div class="tabs">
                 <button
@@ -697,17 +713,21 @@ export class ViewSocial extends LitElement {
 
         ${this.statusMessage && !this.errorMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
 
-        <control-panel
-          .pageName=${'social'}
-          .sortValue=${this.sortValue}
-          .sortOptions=${SOCIAL_SORT_OPTIONS}
-          .showSort=${true}
-          .showInfiniteScroll=${true}
-          .infiniteScroll=${this.infiniteScroll}
-          .settingsHref=${'/settings/you#social'}
-          @sort-change=${this.handleSortChange}
-          @infinite-toggle=${this.handleInfiniteToggle}
-        ></control-panel>
+        ${showControlPanel
+          ? html`
+              <control-panel
+                .pageName=${'social'}
+                .sortValue=${this.sortValue}
+                .sortOptions=${SOCIAL_SORT_OPTIONS}
+                .showSort=${true}
+                .showInfiniteScroll=${true}
+                .infiniteScroll=${this.infiniteScroll}
+                .settingsHref=${'/settings/you#social'}
+                @sort-change=${this.handleSortChange}
+                @infinite-toggle=${this.handleInfiniteToggle}
+              ></control-panel>
+            `
+          : ''}
 
         ${this.recommendedBlogs.length > 0
           ? html`
@@ -718,7 +738,7 @@ export class ViewSocial extends LitElement {
             `
           : ''}
 
-        ${this.currentList.length > 0
+        ${showList
           ? html`
               <div class="list-container">
         <blog-list
@@ -736,11 +756,15 @@ export class ViewSocial extends LitElement {
                 @load-more=${() => this.loadMore()}
               ></load-footer>
             `
-          : this.blogId && !this.loading
+          : showEmptyList
           ? html`<div class="status">No ${this.activeTab} found</div>`
           : ''}
 
-        ${this.loading && this.currentList.length === 0
+        ${this.rootMode && !this.loading && this.recommendedBlogs.length === 0 && !this.errorMessage
+          ? html`<div class="status">No blog recommendations available yet</div>`
+          : ''}
+
+        ${this.loading && (this.rootMode ? this.recommendedBlogs.length === 0 : this.currentList.length === 0)
           ? html`
               <render-card
                 cardType=${this.mainSlotConfig.loading?.cardType || ''}
