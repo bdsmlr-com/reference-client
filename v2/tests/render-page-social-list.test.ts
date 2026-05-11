@@ -31,6 +31,14 @@ describe('social/blog-list render contract usage', () => {
     expect(render.cards.social_blog).toBeDefined();
   });
 
+  it('renders a Blogs you may like section on social pages', () => {
+    const socialSrc = readFileSync(join(process.cwd(), 'src/pages/view-social.ts'), 'utf8');
+
+    expect(socialSrc).toContain('Blogs you may like');
+    expect(socialSrc).toContain('apiClient.blogs.listRecommended');
+    expect(socialSrc).toContain('.recommendedBlogs=${this.recommendedBlogs}');
+  });
+
   it('check-render-contract script fails for ad hoc legacy card tags', () => {
     const fixtureDir = mkdtempSync(join(tmpdir(), 'render-contract-check-'));
     const badFile = join(fixtureDir, 'bad.ts');

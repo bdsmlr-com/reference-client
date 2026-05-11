@@ -110,6 +110,15 @@ export class ViewSocial extends LitElement {
       .list-container {
         margin-bottom: 20px;
       }
+
+      .section-heading {
+        max-width: 1200px;
+        margin: 0 auto 12px;
+        padding: 0 16px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
     `,
   ];
 
@@ -121,6 +130,7 @@ export class ViewSocial extends LitElement {
   @state() private followers: FollowEdge[] = [];
   @state() private following: FollowEdge[] = [];
   @state() private siblings: FollowEdge[] = [];
+  @state() private recommendedBlogs: FollowEdge[] = [];
   @state() private followersCount = 0;
   @state() private followingCount = 0;
   @state() private siblingsCount = 0;
@@ -306,7 +316,10 @@ export class ViewSocial extends LitElement {
     }
 
     try {
-      await this.fetchPage();
+      await Promise.all([
+        this.fetchPage(),
+        this.loadRecommendedBlogs(),
+      ]);
       await this.loadRemainingForSort();
     } catch (e) {
       const operation = this.activeTab === 'followers' ? 'load_followers' : 'load_following';
@@ -500,6 +513,34 @@ export class ViewSocial extends LitElement {
     this.siblingsCount = this.siblings.length;
   }
 
+  private async loadRecommendedBlogs(): Promise<void> {
+    if (!this.blog) {
+      this.recommendedBlogs = [];
+      return;
+    }
+
+    try {
+      const response = await apiClient.blogs.listRecommended({ blog_name: this.blog, limit: 12 });
+      const blogs = (response.blogs || []).filter((blog) => blog.id && blog.name);
+      const edges = blogs.map((blog) => ({
+        blogId: blog.id,
+        blogName: blog.name,
+        userId: blog.ownerUserId,
+        ownerUserId: blog.ownerUserId,
+        title: blog.title,
+        description: blog.description,
+        avatarUrl: blog.avatarUrl,
+        followersCount: blog.followersCount,
+        postsCount: blog.postsCount,
+        identityDecorations: blog.identityDecorations,
+        createdAt: blog.createdAt,
+      })) satisfies FollowEdge[];
+      this.recommendedBlogs = await this.attachRecentPostsToEdges(edges);
+    } catch {
+      this.recommendedBlogs = [];
+    }
+  }
+
   private async loadMore(): Promise<void> {
     if (this.loading || this.isExhausted) return;
     await this.fetchPage();
@@ -667,6 +708,18 @@ export class ViewSocial extends LitElement {
           @sort-change=${this.handleSortChange}
           @infinite-toggle=${this.handleInfiniteToggle}
         ></control-panel>
+
+        ${this.recommendedBlogs.length > 0
+          ? html`
+              <div class="section-heading">Blogs you may like</div>
+              <div class="list-container">
+                <blog-list
+                  .items=${this.recommendedBlogs}
+                  .recommendedBlogs=${this.recommendedBlogs}
+                ></blog-list>
+              </div>
+            `
+          : ''}
 
         ${this.currentList.length > 0
           ? html`

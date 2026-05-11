@@ -428,6 +428,11 @@ export interface ListBlogFamilyBlogsRequest {
   blog_name?: string;
 }
 
+export interface ListRecommendedBlogsRequest {
+  blog_name: string;
+  limit?: number;
+}
+
 export interface GetPostRequest {
   post_id: number;
 }
@@ -533,6 +538,11 @@ export interface SearchBlogsResponse {
 export interface ListBlogFamilyBlogsResponse {
   blogs?: Blog[];
   page?: PageInfo;
+  error?: string;
+}
+
+export interface ListRecommendedBlogsResponse {
+  blogs?: Blog[];
   error?: string;
 }
 

@@ -91,6 +91,8 @@ import type {
   ListBlogTopTagsResponse,
   ListBlogFamilyBlogsRequest,
   ListBlogFamilyBlogsResponse,
+  ListRecommendedBlogsRequest,
+  ListRecommendedBlogsResponse,
 } from '../types/api.js';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -1483,6 +1485,15 @@ export async function listBlogFamilyBlogs(
   );
 }
 
+export async function listRecommendedBlogs(
+  req: ListRecommendedBlogsRequest
+): Promise<ListRecommendedBlogsResponse> {
+  return apiRequest<ListRecommendedBlogsResponse>(
+    '/v2/list-recommended-blogs',
+    req
+  );
+}
+
 // Cached version of resolveIdentifier
 export async function resolveIdentifierCached(
   blogName: string
@@ -2667,6 +2678,13 @@ export class BlogsApi {
    */
   async listFamily(req: ListBlogFamilyBlogsRequest): Promise<ListBlogFamilyBlogsResponse> {
     return listBlogFamilyBlogs(req);
+  }
+
+  /**
+   * Get affinity-based blog recommendations for the current perspective blog.
+   */
+  async listRecommended(req: ListRecommendedBlogsRequest): Promise<ListRecommendedBlogsResponse> {
+    return listRecommendedBlogs(req);
   }
 
   /**
