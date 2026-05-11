@@ -323,6 +323,13 @@ export interface ForYouPostsRequest {
   page_token?: string;
 }
 
+export interface RelatedPostsRequest {
+  seed_post_id: number;
+  perspective_blog_name?: string;
+  page_size?: number;
+  page_token?: string;
+}
+
 export interface ListBlogPostsRequest {
   blog_id: number;
   q?: string;

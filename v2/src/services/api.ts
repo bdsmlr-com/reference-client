@@ -55,6 +55,7 @@ import type {
   SearchPostsByTagRequest,
   SearchPostsByTagResponse,
   ForYouPostsRequest,
+  RelatedPostsRequest,
   ListBlogPostsRequest,
   ListBlogPostsResponse,
   ResolveIdentifierRequest,
@@ -958,6 +959,15 @@ export async function getForYouPosts(
 ): Promise<SearchPostsByTagResponse> {
   return apiRequest<SearchPostsByTagResponse>(
     '/v2/for-you',
+    req
+  );
+}
+
+export async function getRelatedPosts(
+  req: RelatedPostsRequest
+): Promise<SearchPostsByTagResponse> {
+  return apiRequest<SearchPostsByTagResponse>(
+    '/v2/related-posts',
     req
   );
 }
@@ -2461,6 +2471,10 @@ export class PostsApi {
 
   async forYou(req: ForYouPostsRequest): Promise<SearchPostsByTagResponse> {
     return getForYouPosts(req);
+  }
+
+  async related(req: RelatedPostsRequest): Promise<SearchPostsByTagResponse> {
+    return getRelatedPosts(req);
   }
 
   /**

@@ -2,7 +2,7 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
-import { recService, type RecResult, type SimilarPostsResponse } from '../services/recommendation-api.js';
+import { type RecResult, type SimilarPostsResponse } from '../services/recommendation-api.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
 import type { Post } from '../types/api.js';
 import { repeat } from 'lit/directives/repeat.js';
@@ -346,12 +346,12 @@ export class PostRecommendations extends LitElement {
 
     try {
       const requestOffset = this.nextOffset;
-      const recs = await recService.getSimilarPosts(
-        id,
-        RECS_PAGE_SIZE,
-        requestOffset,
-        this.perspectiveBlogName || undefined,
-      );
+      const recs = await apiClient.posts.related({
+        seed_post_id: id,
+        page_size: RECS_PAGE_SIZE,
+        page_token: requestOffset > 0 ? String(requestOffset) : undefined,
+        perspective_blog_name: this.perspectiveBlogName || undefined,
+      });
       
       if (fetchSignal?.aborted) return;
 

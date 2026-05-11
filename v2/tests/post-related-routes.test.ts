@@ -28,19 +28,21 @@ describe('post related routes', () => {
   it('related page renders perspective tabs for default, you, and blog-scoped variants', () => {
     const pageSrc = readFileSync(join(ROOT, 'pages/view-post-related.ts'), 'utf8');
 
-    expect(pageSrc).toContain("label: 'More like this'");
-    expect(pageSrc).toContain("add(activeBlog || undefined, 'For you');");
-    expect(pageSrc).toContain('add(this.seedPost?.originBlogName');
-    expect(pageSrc).toContain('add(this.seedPost?.blogName');
+    expect(pageSrc).toContain("@property({ type: String }) title = 'More like this';");
+    expect(pageSrc).toContain("label: 'for you'");
+    expect(pageSrc).toContain('addPerspective(this.seedPost?.originBlogName);');
+    expect(pageSrc).toContain('addPerspective(this.seedPost?.blogName);');
     expect(pageSrc).toContain('apiClient.posts.get(id)');
     expect(pageSrc).not.toContain('<result-group');
     expect(pageSrc).toContain(".mode=${'grid'}");
   });
 
-  it('recommendation API forwards perspective blog name when provided', () => {
-    const apiSrc = readFileSync(join(ROOT, 'services/recommendation-api.ts'), 'utf8');
+  it('related page uses the first-class posts API instead of the rec proxy', () => {
+    const recommendationsSrc = readFileSync(join(ROOT, 'components/post-recommendations.ts'), 'utf8');
+    const apiSrc = readFileSync(join(ROOT, 'services/api.ts'), 'utf8');
 
-    expect(apiSrc).toContain('perspectiveBlogName?: string');
-    expect(apiSrc).toContain("params.set('perspective_blog_name', perspectiveBlogName);");
+    expect(recommendationsSrc).toContain('apiClient.posts.related({');
+    expect(recommendationsSrc).not.toContain('recService.getSimilarPosts(');
+    expect(apiSrc).toContain("'/v2/related-posts'");
   });
 });
