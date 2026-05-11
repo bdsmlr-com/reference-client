@@ -4,7 +4,7 @@
  */
 
 import { extractMedia, type ProcessedPost } from '../types/post.js';
-import type { Post } from '../types/api.js';
+import type { Post, SearchPostsByTagResponse } from '../types/api.js';
 import { applyRetrievalPostPolicies, type RetrievalPostPolicyMap } from './retrieval-presentation.js';
 
 export interface RecResult {
@@ -46,7 +46,9 @@ function normalizeName(name: string | undefined): string {
   return name.replace(/_/g, '-');
 }
 
-export function materializeRecommendedPosts(response: SimilarPostsResponse): ProcessedPost[] {
+export function materializeRecommendedPosts(
+  response: Pick<SimilarPostsResponse, 'posts' | 'postPolicies'> | Pick<SearchPostsByTagResponse, 'posts' | 'postPolicies'>
+): ProcessedPost[] {
   if (!Array.isArray(response.posts) || response.posts.length === 0) {
     return [];
   }

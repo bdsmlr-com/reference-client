@@ -22,6 +22,13 @@ describe('result-group teaser consumers', () => {
     expect(src).toContain('<blog-list .items=${this.recommendedBlogs}></blog-list>');
   });
 
+  it('search teaser uses the dedicated v2 for-you endpoint instead of the recs facade', () => {
+    const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
+
+    expect(src).toContain('apiClient.posts.forYou({');
+    expect(src).not.toContain('getRecommendedPostsForUser(');
+  });
+
   it('related page uses post-recommendations as the outer shell around recommendation results', () => {
     const src = readFileSync(join(ROOT, 'pages/view-post-related.ts'), 'utf8');
 

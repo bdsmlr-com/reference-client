@@ -25,12 +25,13 @@ describe('for-you discover routes', () => {
 
     expect(src).toContain("@property({ type: String }) blog = '';");
     expect(src).toContain('const blogName = this.blog || getPrimaryBlogName() ||');
-    expect(src).toContain('getRecommendedPostsForUser(');
+    expect(src).toContain('apiClient.posts.forYou({');
+    expect(src).not.toContain('getRecommendedPostsForUser(');
     expect(src).toContain('apiClient.blogs.listRecommended');
     expect(src).toContain("Blogs you may like");
     expect(src).toContain("buildPageUrl('social', subjectBlog)");
     expect(src).toContain('ViewDiscover.PAGE_SIZE');
-    expect(src).toContain('this.nextOffset');
+    expect(src).toContain('this.nextPageToken');
     expect(src).toContain('const isPrimaryPerspective = !!subjectBlog && subjectBlog === primaryBlog;');
     expect(src).toContain("const title = isPrimaryPerspective ? 'For You' : `For @${subjectBlog}`;");
   });

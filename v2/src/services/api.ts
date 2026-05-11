@@ -54,6 +54,7 @@ import { getAuthUser } from '../state/auth-state.js';
 import type {
   SearchPostsByTagRequest,
   SearchPostsByTagResponse,
+  ForYouPostsRequest,
   ListBlogPostsRequest,
   ListBlogPostsResponse,
   ResolveIdentifierRequest,
@@ -949,6 +950,15 @@ export async function searchPostsByTag(
   return apiRequest<SearchPostsByTagResponse>(
     '/v2/search-posts-by-tag',
     payload
+  );
+}
+
+export async function getForYouPosts(
+  req: ForYouPostsRequest
+): Promise<SearchPostsByTagResponse> {
+  return apiRequest<SearchPostsByTagResponse>(
+    '/v2/for-you',
+    req
   );
 }
 
@@ -2447,6 +2457,10 @@ export class PostsApi {
    */
   async search(req: SearchPostsByTagRequest): Promise<SearchPostsByTagResponse> {
     return searchPostsByTag(req);
+  }
+
+  async forYou(req: ForYouPostsRequest): Promise<SearchPostsByTagResponse> {
+    return getForYouPosts(req);
   }
 
   /**

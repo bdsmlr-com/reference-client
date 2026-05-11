@@ -46,7 +46,7 @@ import {
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { ACTIVE_ENV } from '../config.js';
-import { materializeRecommendedPosts, recService } from '../services/recommendation-api.js';
+import { materializeRecommendedPosts } from '../services/recommendation-api.js';
 import '../components/control-panel.js';
 import '../components/activity-grid.js';
 import '../components/post-grid.js';
@@ -541,7 +541,10 @@ export class ViewSearch extends LitElement {
     if (!subjectBlog) return;
     this.teaserLoading = true;
     try {
-      const response = await recService.getRecommendedPostsForUser(subjectBlog, 6);
+      const response = await apiClient.posts.forYou({
+        perspective_blog_name: subjectBlog,
+        page_size: 6,
+      });
       this.teaserPosts = materializeRecommendedPosts(response);
     } catch {
       this.teaserPosts = [];

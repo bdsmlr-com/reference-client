@@ -317,6 +317,12 @@ export interface SearchPostsByTagRequest {
   seedPersonalMissWeight?: number;
 }
 
+export interface ForYouPostsRequest {
+  perspective_blog_name?: string;
+  page_size?: number;
+  page_token?: string;
+}
+
 export interface ListBlogPostsRequest {
   blog_id: number;
   q?: string;

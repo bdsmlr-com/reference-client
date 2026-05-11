@@ -2,7 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
-import { recService, materializeRecommendedPosts } from '../services/recommendation-api.js';
+import { materializeRecommendedPosts } from '../services/recommendation-api.js';
 import { buildPageUrl, getPrimaryBlogName } from '../services/blog-resolver.js';
 import { getGalleryMode, PROFILE_EVENTS, type GalleryMode } from '../services/profile.js';
 import { scrollObserver } from '../services/scroll-observer.js';
@@ -35,7 +35,7 @@ export class ViewDiscover extends LitElement {
   @state() private galleryMode: GalleryMode = getGalleryMode();
   @state() private exhausted = false;
   @state() private infiniteScroll = false;
-  @state() private nextOffset = 0;
+  @state() private nextPageToken: string | null = null;
 
   async connectedCallback() {
     super.connectedCallback();
@@ -84,7 +84,7 @@ export class ViewDiscover extends LitElement {
       this.recommendedPosts = [];
       this.recommendedBlogs = [];
       this.exhausted = false;
-      this.nextOffset = 0;
+      this.nextPageToken = null;
     }
     const blogName = this.blog || getPrimaryBlogName() || 'LittleWays';
     try {
@@ -92,11 +92,11 @@ export class ViewDiscover extends LitElement {
         ? this.loadRecommendedBlogs(blogName)
         : Promise.resolve(this.recommendedBlogs);
       const [response, recommendedBlogs] = await Promise.all([
-        recService.getRecommendedPostsForUser(
-          blogName,
-          ViewDiscover.PAGE_SIZE,
-          this.nextOffset,
-        ),
+        apiClient.posts.forYou({
+          perspective_blog_name: blogName,
+          page_size: ViewDiscover.PAGE_SIZE,
+          page_token: this.nextPageToken || undefined,
+        }),
         recommendedBlogsPromise,
       ]);
 
@@ -112,8 +112,11 @@ export class ViewDiscover extends LitElement {
         this.usingCanonicalPosts = true;
         const newPosts = materializeRecommendedPosts(response);
         this.recommendedPosts = reset ? newPosts : [...this.recommendedPosts, ...newPosts];
-        this.nextOffset += ViewDiscover.PAGE_SIZE;
+        this.nextPageToken = response.page?.nextPageToken || null;
         if (newPosts.length < ViewDiscover.PAGE_SIZE || this.recommendedPosts.length >= 96) {
+          this.exhausted = true;
+        }
+        if (!this.nextPageToken) {
           this.exhausted = true;
         }
         return;

@@ -63,7 +63,9 @@ describe('search route perspective wiring', () => {
     const src = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
 
     expect(src).toContain('void this.loadTeasers();');
-    expect(src).toContain("getRecommendedPostsForUser(subjectBlog, 6)");
+    expect(src).toContain("apiClient.posts.forYou({");
+    expect(src).toContain("perspective_blog_name: subjectBlog,");
+    expect(src).toContain("page_size: 6,");
     expect(src).toContain(".title=${'For You'}");
     expect(src).toContain("A teaser of personalized results while you refine your search.");
     expect(src).toContain(".actionHref=${buildPageUrl('for', getBlogNameFromPath() || getPrimaryBlogName() || '')}");
