@@ -8,6 +8,7 @@ describe('shared control panel', () => {
   it('defines a shared compact control-panel component with inline separators and optional sections', () => {
     const src = readFileSync(join(ROOT, 'components/control-panel.ts'), 'utf8');
     const shellSrc = readFileSync(join(ROOT, 'components/route-shell-card.ts'), 'utf8');
+    const sortSrc = readFileSync(join(ROOT, 'components/sort-controls.ts'), 'utf8');
 
     expect(shellSrc).toContain("@customElement('route-shell-card')");
     expect(shellSrc).toContain("class=\"shell\"");
@@ -30,12 +31,14 @@ describe('shared control panel', () => {
     expect(src).toContain('showGalleryMode');
     expect(src).toContain('showInfiniteScroll');
     expect(src).toContain('@property({ type: Boolean }) framed = true;');
+    expect(src).toContain('<sort-controls .value=${this.sortValue} .options=${this.sortOptions}');
     expect(src).toContain('<archive-when-picker');
     expect(src).toContain('<variant-pills');
     expect(src).toContain('<activity-kind-pills');
     expect(src).toContain('<gallery-mode-picker');
     expect(src).toContain('<infinite-scroll-toggle');
     expect(src).toContain('<route-shell-card wide compact>');
+    expect(sortSrc).toContain('Array.isArray(this.options) && this.options.length ? this.options : SORT_OPTIONS;');
   });
 
   it('routes feed, activity, archive, and search through the shared control-panel component', () => {

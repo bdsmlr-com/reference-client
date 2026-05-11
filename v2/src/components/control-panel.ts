@@ -100,7 +100,7 @@ export class ControlPanel extends LitElement {
 
     if (this.showSort) {
       sections.push(html`
-        <sort-controls .value=${this.sortValue} .options=${this.sortOptions.length ? this.sortOptions : undefined} @sort-change=${this.handleSortChange}></sort-controls>
+        <sort-controls .value=${this.sortValue} .options=${this.sortOptions} @sort-change=${this.handleSortChange}></sort-controls>
       `);
     }
 

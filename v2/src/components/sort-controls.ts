@@ -49,7 +49,7 @@ export class SortControls extends LitElement {
   }
 
   render() {
-    const options = this.options.length ? this.options : SORT_OPTIONS;
+    const options = Array.isArray(this.options) && this.options.length ? this.options : SORT_OPTIONS;
     return html`
       <select
         .value=${this.value}
