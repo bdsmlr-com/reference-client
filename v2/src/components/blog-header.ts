@@ -238,7 +238,7 @@ export class BlogHeader extends LitElement {
     if (page === 'follower-feed') return `/follower-feed/${blogName}`;
     if (page === 'activity') return `/activity/${blogName}`;
     if (page === 'archive') return `/archive/${blogName}`;
-    if (page === 'social') return `/social/${blogName}/followers`;
+    if (page === 'social') return buildPageUrl('social', blogName);
     return buildPageUrl(page, blogName);
   }
 

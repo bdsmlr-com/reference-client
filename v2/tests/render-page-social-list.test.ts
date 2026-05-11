@@ -20,11 +20,12 @@ describe('social/blog-list render contract usage', () => {
     expect(listSrc).toContain("grid-template-rows: minmax(96px, auto) 100px;");
     expect(listSrc).toContain('class="recent-grid"');
     expect(listSrc).toContain('<blog-identity');
-    expect(socialSrc).toContain("type Tab = 'followers' | 'following' | 'siblings';");
+    expect(socialSrc).toContain("type Tab = 'recommended' | 'followers' | 'following' | 'siblings';");
     expect(socialSrc).toContain("apiClient.blogs.listFamily({ blog_id: this.blogId })");
     expect(socialSrc).toContain('Sibling Blogs');
     expect(socialSrc).not.toContain('await this.ensureSiblingBlogsLoaded();');
     expect(socialSrc).toContain("window.location.href = `/social/${encodeURIComponent(normalizedBlog)}/${tab}`;");
+    expect(socialSrc).toContain("window.location.href = isPrimaryPerspective ? '/social' : `/social/${encodeURIComponent(normalizedBlog)}`;");
     expect(listSrc).not.toContain('apiClient.blogs.get(');
     expect(listSrc).not.toContain('apiClient.posts.list(');
     expect(render.pages.social.slots.main_stream.loading.cardType).toBe('social_blog_list');

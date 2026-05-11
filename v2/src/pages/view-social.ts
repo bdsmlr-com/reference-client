@@ -3,7 +3,7 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from '../services/api-error.js';
-import { getUrlParam } from '../services/blog-resolver.js';
+import { getPrimaryBlogName, getUrlParam } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { getSocialSortPreference, setSocialSortPreference } from '../services/profile.js';
@@ -33,7 +33,7 @@ import '../components/blog-header.js';
 import '../components/render-card.js';
 
 const PAGE_SIZE = 100;
-type Tab = 'followers' | 'following' | 'siblings';
+type Tab = 'recommended' | 'followers' | 'following' | 'siblings';
 
 @customElement('view-social')
 export class ViewSocial extends LitElement {
@@ -262,6 +262,7 @@ export class ViewSocial extends LitElement {
   }
 
   private get isExhausted(): boolean {
+    if (this.rootMode) return true;
     if (this.activeTab === 'followers') return this.followersExhausted;
     if (this.activeTab === 'following') return this.followingExhausted;
     return true;
@@ -279,6 +280,7 @@ export class ViewSocial extends LitElement {
   private async loadData(): Promise<void> {
     if (!this.blogId) return;
     if (this.rootMode) {
+      this.activeTab = 'recommended';
       try {
         await this.loadRecommendedBlogs();
       } catch {
@@ -556,9 +558,14 @@ export class ViewSocial extends LitElement {
   }
 
   private async switchTab(tab: Tab): Promise<void> {
-    if (tab === this.activeTab) return;
-
     const normalizedBlog = (this.blog || 'you').trim() || 'you';
+    const primaryBlog = (getPrimaryBlogName() || '').trim().toLowerCase();
+    const isPrimaryPerspective = !!primaryBlog && normalizedBlog.toLowerCase() === primaryBlog;
+    if (tab === 'recommended') {
+      window.location.href = isPrimaryPerspective ? '/social' : `/social/${encodeURIComponent(normalizedBlog)}`;
+      return;
+    }
+    if (!this.rootMode && tab === this.activeTab) return;
     window.location.href = `/social/${encodeURIComponent(normalizedBlog)}/${tab}`;
   }
 
@@ -653,10 +660,13 @@ export class ViewSocial extends LitElement {
   }
 
   render() {
-    const showTabs = !!this.blogId && !this.rootMode;
     const showControlPanel = !this.rootMode;
     const showList = !this.rootMode && this.currentList.length > 0;
     const showEmptyList = !this.rootMode && this.blogId && !this.loading;
+    const primaryBlog = (getPrimaryBlogName() || '').trim().toLowerCase();
+    const normalizedBlog = (this.blog || '').trim();
+    const isPrimaryPerspective = !!primaryBlog && normalizedBlog.toLowerCase() === primaryBlog;
+    const recommendedLabel = isPrimaryPerspective || !normalizedBlog ? 'For You' : `For @${normalizedBlog}`;
 
     return html`
       <div class="content">
@@ -686,9 +696,15 @@ export class ViewSocial extends LitElement {
             `
           : ''}
 
-        ${showTabs
+        ${this.blogId
           ? html`
               <div class="tabs">
+                <button
+                  class="tab ${this.rootMode ? 'active' : ''}"
+                  @click=${() => this.switchTab('recommended')}
+                >
+                  ${recommendedLabel}
+                </button>
                 <button
                   class="tab ${this.activeTab === 'followers' ? 'active' : ''}"
                   @click=${() => this.switchTab('followers')}

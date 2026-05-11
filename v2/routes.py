@@ -31,12 +31,13 @@ def _canonical_redirect(path: str) -> str | None:
     if normalized == '/settings':
         return '/settings/you'
     if normalized == '/social':
-        return '/social/you/followers'
+        return '/social/you'
     parts = [part for part in normalized.split('/') if part]
     if len(parts) == 2 and parts[0].lower() == 'social':
-        tab = (request.args.get('tab') or 'followers').lower()
-        tab = 'following' if tab == 'following' else 'followers'
-        return f'/social/{parts[1]}/{tab}'
+        tab = (request.args.get('tab') or '').lower()
+        if tab in {'followers', 'following', 'siblings'}:
+            return f'/social/{parts[1]}/{tab}'
+        return f'/social/{parts[1]}'
     if len(parts) != 2:
         return None
     blog, page = parts[0], parts[1].lower()
@@ -47,9 +48,10 @@ def _canonical_redirect(path: str) -> str | None:
     if page == 'feed':
         return f'/feed/for/{blog}'
     if page == 'social':
-        tab = (request.args.get('tab') or 'followers').lower()
-        tab = 'following' if tab == 'following' else 'followers'
-        return f'/social/{blog}/{tab}'
+        tab = (request.args.get('tab') or '').lower()
+        if tab in {'followers', 'following', 'siblings'}:
+            return f'/social/{blog}/{tab}'
+        return f'/social/{blog}'
     return None
 
 def init_client_routes(dist_path):

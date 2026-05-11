@@ -27,13 +27,13 @@ class ClientRoutesRedirectTests(unittest.TestCase):
             "/activity": "/activity/you",
             "/archive": "/archive/you",
             "/settings": "/settings/you",
-            "/social": "/social/you/followers",
-            "/social/you": "/social/you/followers",
-            "/social/sam": "/social/sam/followers",
+            "/social": "/social/you",
+            "/social/you": "/social/you",
+            "/social/sam": "/social/sam",
             "/sam/archive": "/archive/sam",
             "/sam/activity": "/activity/sam",
             "/sam/feed": "/feed/for/sam",
-            "/sam/social": "/social/sam/followers",
+            "/sam/social": "/social/sam",
         }
 
         for source, target in cases.items():
