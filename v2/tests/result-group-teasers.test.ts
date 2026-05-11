@@ -17,15 +17,18 @@ describe('result-group teaser consumers', () => {
     expect(src).toContain(".mode=${this.galleryMode}");
     expect(src).toContain('<load-footer');
     expect(src).toContain('pageName="discover"');
+    expect(src).toContain('apiClient.blogs.listRecommended');
+    expect(src).toContain('Blogs you may like');
+    expect(src).toContain('<blog-list .items=${this.recommendedBlogs}></blog-list>');
   });
 
-  it('related page uses result-group as the outer shell around recommendation results', () => {
+  it('related page uses post-recommendations as the outer shell around recommendation results', () => {
     const src = readFileSync(join(ROOT, 'pages/view-post-related.ts'), 'utf8');
 
-    expect(src).toContain('<result-group');
-    expect(src).toContain('?bare=${true}');
     expect(src).toContain('.title=${this.title}');
-    expect(src).toContain(".mode=${'list'}");
+    expect(src).toContain(".mode=${'grid'}");
+    expect(src).toContain('.perspectiveBlogName=${this.perspectiveBlogName}');
+    expect(src).toContain('<post-recommendations');
     expect(src).toContain('.tab.active');
   });
 });

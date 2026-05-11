@@ -1,13 +1,15 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { recService, materializeRecommendedPosts, type RecResult } from '../services/recommendation-api.js';
+import { apiClient } from '../services/client.js';
+import { recService, materializeRecommendedPosts } from '../services/recommendation-api.js';
 import { buildPageUrl, getPrimaryBlogName } from '../services/blog-resolver.js';
 import { getGalleryMode, PROFILE_EVENTS, type GalleryMode } from '../services/profile.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import type { ProcessedPost } from '../types/post.js';
+import type { Blog, FollowEdge } from '../types/api.js';
 import '../components/post-grid.js';
-import '../components/blog-card.js';
+import '../components/blog-list.js';
 import '../components/loading-spinner.js';
 import '../components/load-footer.js';
 import '../components/result-group.js';
@@ -20,12 +22,6 @@ export class ViewDiscover extends LitElement {
     baseStyles,
     css`
       :host { display: block; padding: 20px 16px; }
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 16px;
-        margin-top: 20px;
-      }
       h2 { color: var(--accent); margin-bottom: 8px; }
       .section { margin-bottom: 40px; }
     `
@@ -33,7 +29,7 @@ export class ViewDiscover extends LitElement {
 
   @property({ type: String }) blog = '';
   @state() private recommendedPosts: ProcessedPost[] = [];
-  @state() private recommendedBlogs: RecResult[] = [];
+  @state() private recommendedBlogs: FollowEdge[] = [];
   @state() private usingCanonicalPosts = false;
   @state() private loading = false;
   @state() private galleryMode: GalleryMode = getGalleryMode();
@@ -92,11 +88,26 @@ export class ViewDiscover extends LitElement {
     }
     const blogName = this.blog || getPrimaryBlogName() || 'LittleWays';
     try {
-      const response = await recService.getRecommendedPostsForUser(
-        blogName,
-        ViewDiscover.PAGE_SIZE,
-        this.nextOffset,
-      );
+      const recommendedBlogsPromise = reset
+        ? this.loadRecommendedBlogs(blogName)
+        : Promise.resolve(this.recommendedBlogs);
+      const [response, recommendedBlogs] = await Promise.all([
+        recService.getRecommendedPostsForUser(
+          blogName,
+          ViewDiscover.PAGE_SIZE,
+          this.nextOffset,
+        ),
+        recommendedBlogsPromise,
+      ]);
+
+      if (this.blog && this.blog !== blogName) {
+        return;
+      }
+
+      if (reset) {
+        this.recommendedBlogs = recommendedBlogs;
+      }
+
       if (Array.isArray(response.posts)) {
         this.usingCanonicalPosts = true;
         const newPosts = materializeRecommendedPosts(response);
@@ -107,15 +118,41 @@ export class ViewDiscover extends LitElement {
         }
         return;
       }
-
-      if (reset) {
-        this.recommendedBlogs = await recService.getRecommendedBlogsForUser(blogName, 12);
-        this.exhausted = true;
-      }
     } catch (e) {
       console.error(e);
     } finally {
       this.loading = false;
+    }
+  }
+
+  private mapRecommendedBlog(blog: Blog): FollowEdge {
+    return {
+      blogId: blog.id,
+      blogName: blog.name,
+      ownerUserId: blog.ownerUserId,
+      title: blog.title,
+      description: blog.description,
+      avatarUrl: blog.avatarUrl,
+      followersCount: blog.followersCount,
+      postsCount: blog.postsCount,
+      createdAt: blog.createdAt,
+      identityDecorations: blog.identityDecorations,
+    };
+  }
+
+  private async loadRecommendedBlogs(blogName: string): Promise<FollowEdge[]> {
+    try {
+      const response = await apiClient.blogs.listRecommended({
+        blog_name: blogName,
+        limit: 12,
+      });
+      if (this.blog && this.blog !== blogName) {
+        return [];
+      }
+      return Array.isArray(response.blogs) ? response.blogs.map((blog) => this.mapRecommendedBlog(blog)) : [];
+    } catch (e) {
+      console.error(e);
+      return [];
     }
   }
 
@@ -142,6 +179,20 @@ export class ViewDiscover extends LitElement {
         >
           <post-grid .posts=${this.recommendedPosts} .page=${'search'} .mode=${this.galleryMode}></post-grid>
         </result-group>
+        ${this.recommendedBlogs.length > 0
+          ? html`
+              <result-group
+                wide
+                bare
+                .title=${'Blogs you may like'}
+                .description=${'Based on your liking patterns and similar audiences.'}
+                .actionHref=${subjectBlog ? buildPageUrl('social', subjectBlog) : ''}
+                .actionLabel=${'See more'}
+              >
+                <blog-list .items=${this.recommendedBlogs}></blog-list>
+              </result-group>
+            `
+          : ''}
         <load-footer
           mode="search"
           pageName="discover"
@@ -159,19 +210,22 @@ export class ViewDiscover extends LitElement {
       `;
     }
 
-    return html`
-      <result-group
-        wide
-        bare
-        .title=${'Recommended Blogs for You'}
-        .description=${'Based on your liking patterns and similar audiences.'}
-      >
-        <div class="grid">
-          ${this.recommendedBlogs.map(rec => html`
-            <blog-card .blogName=${rec.content_id}></blog-card>
-          `)}
-        </div>
-      </result-group>
-    `;
+    if (this.recommendedBlogs.length > 0) {
+      const subjectBlog = this.blog || getPrimaryBlogName() || '';
+      return html`
+        <result-group
+          wide
+          bare
+          .title=${'Blogs you may like'}
+          .description=${'Based on your liking patterns and similar audiences.'}
+          .actionHref=${subjectBlog ? buildPageUrl('social', subjectBlog) : ''}
+          .actionLabel=${'See more'}
+        >
+          <blog-list .items=${this.recommendedBlogs}></blog-list>
+        </result-group>
+      `;
+    }
+
+    return html``;
   }
 }
