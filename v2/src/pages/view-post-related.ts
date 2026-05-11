@@ -1,6 +1,8 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
+import { apiClient } from '../services/client.js';
+import type { Post } from '../types/api.js';
 import '../components/post-recommendations.js';
 
 @customElement('view-post-related')
@@ -73,6 +75,7 @@ export class ViewPostRelated extends LitElement {
   @property({ type: String }) routePerspective = 'you';
   @property({ type: String }) perspectiveBlogName = '';
   @property({ type: String }) title = 'More like this';
+  @state() private seedPost: Post | null = null;
 
   private get normalizedPostId(): number {
     return parseInt(this.postId, 10) || 0;
@@ -81,6 +84,27 @@ export class ViewPostRelated extends LitElement {
   private get currentPerspective(): string {
     const raw = (this.routePerspective || 'you').trim().toLowerCase();
     return raw || 'you';
+  }
+
+  protected updated(changedProperties: Map<string, unknown>): void {
+    if (changedProperties.has('postId')) {
+      void this.loadSeedPost();
+    }
+  }
+
+  private async loadSeedPost(): Promise<void> {
+    const id = this.normalizedPostId;
+    if (!id) {
+      this.seedPost = null;
+      return;
+    }
+
+    try {
+      const resp = await apiClient.posts.get(id);
+      this.seedPost = resp.post || null;
+    } catch {
+      this.seedPost = null;
+    }
   }
 
   private relatedHref(blogName?: string): string {
@@ -94,20 +118,30 @@ export class ViewPostRelated extends LitElement {
 
   private get perspectiveNavItems(): Array<{ href: string; label: string; active: boolean }> {
     const currentPerspective = this.currentPerspective;
-    const items: Array<{ href: string; label: string; active: boolean }> = [
-      {
-        href: this.relatedHref('you'),
-        label: 'for you',
-        active: currentPerspective === 'you',
-      },
-    ];
+    const items: Array<{ href: string; label: string; active: boolean }> = [{
+      href: this.relatedHref('you'),
+      label: 'for you',
+      active: currentPerspective === 'you',
+    }];
 
-    if (currentPerspective !== 'you') {
+    const seen = new Set<string>(['you']);
+    const addPerspective = (blogName?: string | null) => {
+      const normalized = (blogName || '').trim().replace(/^@+/, '');
+      if (!normalized) return;
+      const key = normalized.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
       items.push({
-        href: this.relatedHref(currentPerspective),
-        label: `for @${this.routePerspective.trim() || currentPerspective}`,
-        active: true,
+        href: this.relatedHref(normalized),
+        label: `for @${normalized}`,
+        active: currentPerspective === key,
       });
+    };
+
+    addPerspective(this.seedPost?.originBlogName);
+    addPerspective(this.seedPost?.blogName);
+    if (currentPerspective !== 'you') {
+      addPerspective(this.routePerspective);
     }
 
     return items;

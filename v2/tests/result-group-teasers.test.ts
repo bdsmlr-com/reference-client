@@ -40,5 +40,8 @@ describe('result-group teaser consumers', () => {
     expect(src).toContain("title = 'More like this';");
     expect(src).toContain('class="perspective-nav"');
     expect(src).toContain('class="perspective-link');
+    expect(src).toContain('this.seedPost?.originBlogName');
+    expect(src).toContain('this.seedPost?.blogName');
+    expect(src).toContain('for @');
   });
 });

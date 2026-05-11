@@ -22,13 +22,14 @@ describe('related route perspective', () => {
     expect(src).toContain("title = 'More like this';");
     expect(src).toContain('private get currentPerspective(): string {');
     expect(src).toContain('private get perspectiveNavItems(): Array<{ href: string; label: string; active: boolean }> {');
+    expect(src).toContain('this.seedPost?.originBlogName');
+    expect(src).toContain('this.seedPost?.blogName');
+    expect(src).toContain("label: `for @${normalized}`");
     expect(src).toContain('class="perspective-nav"');
     expect(src).toContain('class="perspective-link');
     expect(src).toContain('for you');
     expect(src).toContain('aria-current=${item.active ?');
     expect(src).toContain('.perspectiveBlogName=${this.perspectiveBlogName}');
-    expect(src).not.toContain('getPrimaryBlogName()');
-    expect(src).not.toContain('seedPost');
     expect(src).not.toContain('.tab.active');
   });
 });
