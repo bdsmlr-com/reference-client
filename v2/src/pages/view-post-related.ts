@@ -76,6 +76,7 @@ export class ViewPostRelated extends LitElement {
   @property({ type: String }) perspectiveBlogName = '';
   @property({ type: String }) title = 'More like this';
   @state() private seedPost: Post | null = null;
+  @state() private seedLoadToken = 0;
 
   private get normalizedPostId(): number {
     return parseInt(this.postId, 10) || 0;
@@ -86,14 +87,15 @@ export class ViewPostRelated extends LitElement {
     return raw || 'you';
   }
 
-  protected updated(changedProperties: Map<string, unknown>): void {
+  protected willUpdate(changedProperties: Map<string, unknown>): void {
     if (changedProperties.has('postId')) {
-      void this.loadSeedPost();
+      this.seedLoadToken += 1;
+      this.seedPost = null;
+      void this.loadSeedPost(this.normalizedPostId, this.seedLoadToken);
     }
   }
 
-  private async loadSeedPost(): Promise<void> {
-    const id = this.normalizedPostId;
+  private async loadSeedPost(id: number, loadToken: number): Promise<void> {
     if (!id) {
       this.seedPost = null;
       return;
@@ -101,8 +103,14 @@ export class ViewPostRelated extends LitElement {
 
     try {
       const resp = await apiClient.posts.get(id);
+      if (loadToken !== this.seedLoadToken || id !== this.normalizedPostId) {
+        return;
+      }
       this.seedPost = resp.post || null;
     } catch {
+      if (loadToken !== this.seedLoadToken || id !== this.normalizedPostId) {
+        return;
+      }
       this.seedPost = null;
     }
   }
