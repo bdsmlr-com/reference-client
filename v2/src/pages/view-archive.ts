@@ -278,7 +278,7 @@ export class ViewArchive extends LitElement {
     try {
       const response = await apiClient.blogs.getTopTags({
         blog_name: this.blog,
-        page_size: 50,
+        page_size: 150,
       });
       this.archiveTagItems = response.tags || [];
     } catch (error) {
