@@ -101,6 +101,9 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 const AUTH_EMAIL = import.meta.env.VITE_AUTH_EMAIL || '';
 const AUTH_PASSWORD = import.meta.env.VITE_AUTH_PASSWORD || '';
 
+/** Flip to `false` to disable in-flight coalescing of identical `apiRequest` calls. */
+const API_INFLIGHT_DEDUPE_ENABLED = true;
+
 // Default timeout for endpoints not in the timeout map
 const DEFAULT_REQUEST_TIMEOUT = 15000;
 
@@ -205,6 +208,30 @@ const BACKOFF_MULTIPLIER = 2;
 const RATE_LIMIT_MAX_RETRIES = 3;
 const RATE_LIMIT_DEFAULT_BACKOFF_MS = 5000; // Default if no Retry-After header
 const RATE_LIMIT_MAX_BACKOFF_MS = 60000; // Max 60 seconds
+
+/** Coalesce concurrent identical API calls (same endpoint, URL query, normalized body). */
+const inflightApiRequestByKey = new Map<string, Promise<unknown>>();
+
+function stableSerializeJsonForDedupe(value: unknown): string {
+  if (value === undefined) return 'undefined';
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(stableSerializeJsonForDedupe).join(',')}]`;
+  }
+  const obj = value as Record<string, unknown>;
+  const keys = Object.keys(obj).sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${stableSerializeJsonForDedupe(obj[k])}`).join(',')}}`;
+}
+
+function buildApiRequestInflightKey(
+  normalizedEndpoint: string,
+  body: unknown,
+  endpointUrl: URL
+): string {
+  return `${normalizedEndpoint}\0${endpointUrl.search}\0${stableSerializeJsonForDedupe(body)}`;
+}
 
 /**
  * Calculate exponential backoff delay with jitter.
@@ -365,7 +392,7 @@ async function apiRequest<T>(
   if (normalizedEndpoint.includes('/v2/auth/')) {
     normalizedEndpoint = normalizedEndpoint.replace('/v2/auth/', '/v2/');
   }
-  
+
   if (!normalizedEndpoint.startsWith('/v2/')) {
     const clean = normalizedEndpoint.startsWith('/') ? normalizedEndpoint.slice(1) : normalizedEndpoint;
     if (!clean.startsWith('v2/')) {
@@ -416,6 +443,50 @@ async function apiRequest<T>(
     );
   }
 
+  if (!API_INFLIGHT_DEDUPE_ENABLED) {
+    return apiRequestCore<T>(
+      normalizedEndpoint,
+      endpoint,
+      body,
+      endpointUrl,
+      retryOnAuth,
+      retryAttempt
+    );
+  }
+
+  const inflightKey = buildApiRequestInflightKey(normalizedEndpoint, body, endpointUrl);
+  const existing = inflightApiRequestByKey.get(inflightKey);
+  if (existing) {
+    return existing as Promise<T>;
+  }
+
+  const promise = apiRequestCore<T>(
+    normalizedEndpoint,
+    endpoint,
+    body,
+    endpointUrl,
+    retryOnAuth,
+    retryAttempt
+  );
+
+  inflightApiRequestByKey.set(inflightKey, promise);
+  promise.finally(() => {
+    if (inflightApiRequestByKey.get(inflightKey) === promise) {
+      inflightApiRequestByKey.delete(inflightKey);
+    }
+  });
+
+  return promise;
+}
+
+async function apiRequestCore<T>(
+  normalizedEndpoint: string,
+  endpoint: string,
+  body: unknown,
+  endpointUrl: URL,
+  retryOnAuth: boolean,
+  retryAttempt: number
+): Promise<T> {
   const token = await getToken();
   const requestStartedAt = now();
 
@@ -475,7 +546,7 @@ async function apiRequest<T>(
         clearToken();
         currentToken = null;
         await login();
-        return apiRequest<T>(endpoint, body, false, 0);
+        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, false, 0);
       }
 
       // Handle rate limit errors (429) with longer backoff (RES-003)
@@ -488,7 +559,7 @@ async function apiRequest<T>(
             (retryAfterHeader ? ` [Retry-After: ${retryAfterHeader}]` : '')
         );
         await sleep(delay);
-        return apiRequest<T>(endpoint, body, retryOnAuth, retryAttempt + 1);
+        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1);
       }
 
       // Create typed ApiError for non-OK responses
@@ -502,7 +573,7 @@ async function apiRequest<T>(
           `Transient error (HTTP ${statusCode}), retrying in ${delay}ms (attempt ${retryAttempt + 1}/${MAX_RETRIES})`
         );
         await sleep(delay);
-        return apiRequest<T>(endpoint, body, retryOnAuth, retryAttempt + 1);
+        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1);
       }
 
       // Log error after all retries exhausted
@@ -517,7 +588,7 @@ async function apiRequest<T>(
         clearToken();
         currentToken = null;
         await login();
-        return apiRequest<T>(endpoint, body, false, 0);
+        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, false, 0);
       }
       // Throw typed API error for API-level errors
       const serverError = new ApiError(ApiErrorCode.SERVER_ERROR, data.error, { endpoint });
@@ -549,7 +620,7 @@ async function apiRequest<T>(
           `${e.code} error, retrying in ${delay}ms (attempt ${retryAttempt + 1}/${MAX_RETRIES})`
         );
         await sleep(delay);
-        return apiRequest<T>(endpoint, body, retryOnAuth, retryAttempt + 1);
+        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1);
       }
       // Log error after all retries exhausted
       logError(e, { retryAttempt, maxRetries: MAX_RETRIES });
@@ -575,7 +646,7 @@ async function apiRequest<T>(
           `Request timeout, retrying in ${delay}ms (attempt ${retryAttempt + 1}/${MAX_RETRIES})`
         );
         await sleep(delay);
-        return apiRequest<T>(endpoint, body, retryOnAuth, retryAttempt + 1);
+        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1);
       }
       // Log error after all retries exhausted
       logError(timeoutError, { retryAttempt, maxRetries: MAX_RETRIES });
@@ -598,7 +669,7 @@ async function apiRequest<T>(
           `Network error, retrying in ${delay}ms (attempt ${retryAttempt + 1}/${MAX_RETRIES})`
         );
         await sleep(delay);
-        return apiRequest<T>(endpoint, body, retryOnAuth, retryAttempt + 1);
+        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1);
       }
       // Log error after all retries exhausted
       logError(networkError, { retryAttempt, maxRetries: MAX_RETRIES });
