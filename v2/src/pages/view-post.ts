@@ -62,14 +62,19 @@ export class ViewPost extends LitElement {
         };
         if (
           resp.post.originPostId
+          && !resp.post.originPostMissing
           && resp.post.originPostId !== resp.post.id
         ) {
-          const originResp = await apiClient.posts.get(resp.post.originPostId);
-          if (originResp.post) {
-            this.originPost = {
-              ...originResp.post,
-              _media: extractMedia(originResp.post),
-            };
+          try {
+            const originResp = await apiClient.posts.get(resp.post.originPostId);
+            if (originResp.post) {
+              this.originPost = {
+                ...originResp.post,
+                _media: extractMedia(originResp.post),
+              };
+            }
+          } catch {
+            // Keep the main post visible even when the linked origin no longer resolves.
           }
         }
       } else {

@@ -41,7 +41,10 @@ describe('post detail unification', () => {
 
     expect(postViewSrc).toContain('private originPost: ProcessedPost | null = null;');
     expect(postViewSrc).toContain('resp.post.originPostId');
+    expect(postViewSrc).toContain('!resp.post.originPostMissing');
     expect(postViewSrc).toContain('const originResp = await apiClient.posts.get(resp.post.originPostId);');
+    expect(postViewSrc).toContain('} catch {');
+    expect(postViewSrc).toContain('Keep the main post visible even when the linked origin no longer resolves.');
     expect(detailSrc).toContain("@property({ type: Object }) originPost: ProcessedPost | null = null;");
     expect(detailSrc).toContain('const reblogTags = extractRenderableTags(p);');
     expect(detailSrc).toContain('const originTags = this.originPost ? extractRenderableTags(this.originPost) : [];');
