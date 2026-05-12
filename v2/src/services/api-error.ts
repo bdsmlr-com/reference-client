@@ -415,6 +415,12 @@ export function getContextualErrorMessage(
           return `No blogs found matching "${context.query}". Try a different search term or check the spelling.`;
         }
         return 'No blogs found. Try a different search term.';
+      case 'load_followers':
+      case 'load_following':
+        if (context?.blogName) {
+          return `Connections for @${context.blogName} are unavailable. This list may be hidden by the blog's privacy settings or require access.`;
+        }
+        return 'Connections are unavailable. This list may be hidden by privacy settings or require access.';
       default:
         return apiError.getUserMessage();
     }

@@ -134,4 +134,16 @@ describe('social follow pagination safeguards', () => {
     expect(src).not.toContain('loadRemainingForSort');
     expect(src).toContain('sortValue: this.sortValue');
   });
+
+  it('view-social suppresses empty-state copy when an error message is present', () => {
+    const src = readFileSync(join(process.cwd(), 'src/pages/view-social.ts'), 'utf8');
+    expect(src).toContain("const showEmptyList = !this.rootMode && this.blogId && !this.loading && !this.errorMessage;");
+  });
+
+  it('social follow not-found errors use a surface-specific explanation', () => {
+    const src = readFileSync(join(process.cwd(), 'src/services/api-error.ts'), 'utf8');
+    expect(src).toContain("case 'load_followers':");
+    expect(src).toContain("case 'load_following':");
+    expect(src).toContain('Connections for @${context.blogName} are unavailable.');
+  });
 });

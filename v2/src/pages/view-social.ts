@@ -659,7 +659,7 @@ export class ViewSocial extends LitElement {
   render() {
     const showControlPanel = !this.rootMode;
     const showList = !this.rootMode && this.currentList.length > 0;
-    const showEmptyList = !this.rootMode && this.blogId && !this.loading;
+    const showEmptyList = !this.rootMode && this.blogId && !this.loading && !this.errorMessage;
     const primaryBlog = (getPrimaryBlogName() || '').trim().toLowerCase();
     const normalizedBlog = (this.blog || '').trim();
     const isPrimaryPerspective = !!primaryBlog && normalizedBlog.toLowerCase() === primaryBlog;
