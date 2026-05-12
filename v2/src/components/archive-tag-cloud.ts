@@ -38,6 +38,13 @@ export class ArchiveTagCloud extends LitElement {
         background: var(--bg-panel-alt);
       }
 
+      .teaser.error {
+        justify-content: flex-start;
+        color: var(--text-muted);
+        border-style: dashed;
+        cursor: default;
+      }
+
       .teaser-copy {
         flex: 1 1 auto;
         min-width: 0;
@@ -138,6 +145,7 @@ export class ArchiveTagCloud extends LitElement {
   @property({ type: String }) blogName = '';
   @property({ attribute: false }) tags: Tag[] = [];
   @property({ type: Boolean }) loading = false;
+  @property({ type: String }) error = '';
   @state() private open = false;
   @state() private positionedTags: PositionedArchiveTag[] = [];
   @state() private cloudHeight = 0;
@@ -264,7 +272,17 @@ export class ArchiveTagCloud extends LitElement {
   };
 
   render() {
-    if (this.loading || !this.blogName || this.tags.length === 0) {
+    if (!this.blogName || this.loading) {
+      return nothing;
+    }
+    if (this.error) {
+      return html`
+        <div class="teaser error" role="status" aria-live="polite">
+          Top tags unavailable right now.
+        </div>
+      `;
+    }
+    if (this.tags.length === 0) {
       return nothing;
     }
     return html`

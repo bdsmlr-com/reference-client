@@ -133,7 +133,9 @@ describe('archive pagination mode', () => {
     const archiveSrc = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
 
     expect(archiveSrc).toContain("import '../components/control-panel.js';");
+    expect(archiveSrc).toContain("import '../components/route-shell-card.js';");
     expect(archiveSrc).toContain('<control-panel');
+    expect(archiveSrc).toContain('.framed=${false}');
     expect(archiveSrc).toContain('.blog=${this.blogData}');
     expect(archiveSrc).toContain('.whenValue=${this.archiveWhen}');
     expect(archiveSrc).toContain('.showWhen=${true}');

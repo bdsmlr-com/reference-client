@@ -54,6 +54,7 @@ import '../components/error-state.js';
 import '../components/blog-header.js';
 import '../components/archive-tag-cloud.js';
 import '../components/render-card.js';
+import '../components/route-shell-card.js';
 
 const ARCHIVE_PAGE_SIZE = 20;
 
@@ -176,6 +177,7 @@ export class ViewArchive extends LitElement {
   @state() private blogData: Blog | null = null;
   @state() private archiveTagItems: Tag[] = [];
   @state() private archiveTagsLoading = false;
+  @state() private archiveTagsError = '';
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
   @state() private galleryMode: GalleryMode = getGalleryMode('archive');
@@ -268,9 +270,11 @@ export class ViewArchive extends LitElement {
   async loadArchiveTagCloud(): Promise<void> {
     if (!this.blog) {
       this.archiveTagItems = [];
+      this.archiveTagsError = '';
       return;
     }
     this.archiveTagsLoading = true;
+    this.archiveTagsError = '';
     try {
       const response = await apiClient.blogs.getTopTags({
         blog_name: this.blog,
@@ -279,7 +283,7 @@ export class ViewArchive extends LitElement {
       this.archiveTagItems = response.tags || [];
     } catch (error) {
       this.archiveTagItems = [];
-      this.errorMessage = getContextualErrorMessage(error, 'load_posts', { blogName: this.blog });
+      this.archiveTagsError = getContextualErrorMessage(error, 'load_posts', { blogName: this.blog });
     } finally {
       this.archiveTagsLoading = false;
     }
@@ -357,6 +361,7 @@ export class ViewArchive extends LitElement {
 
     this.initialLoading = true;
     this.errorMessage = '';
+    this.archiveTagsError = '';
     try {
       this.blogData = await initBlogTheme(this.blog);
       const blogId = await apiClient.identity.resolveNameToId(this.blog);
@@ -368,10 +373,8 @@ export class ViewArchive extends LitElement {
       }
 
       this.blogId = blogId;
-      await Promise.all([
-        this.loadArchiveTagCloud(),
-        this.loadPosts({ preserveNavigationState: true }),
-      ]);
+      void this.loadArchiveTagCloud();
+      await this.loadPosts({ preserveNavigationState: true });
     } catch (e) {
       this.errorMessage = getContextualErrorMessage(e, 'resolve_blog', { blogName: this.blog });
       const apiError = isApiError(e) ? e : toApiError(e);
@@ -408,6 +411,7 @@ export class ViewArchive extends LitElement {
     this.stats = nextLoadState.stats;
     this.resultUnits = nextLoadState.resultUnits;
     this.statusMessage = nextLoadState.statusMessage;
+    this.errorMessage = '';
     this.syncArchiveUrlState();
     this.paginationKey = generatePaginationCursorKey('archive', buildContentPaginationSignature({
       query: this.buildArchiveScopedQuery(),
@@ -636,55 +640,59 @@ export class ViewArchive extends LitElement {
           .identityDecorations=${this.blogData?.identityDecorations || []}
         ></blog-header>
 
-        ${this.initialLoading ? html`<loading-spinner message="Loading archive..."></loading-spinner>` : ''}
+        ${this.initialLoading && !this.blogId ? html`<loading-spinner message="Loading archive..."></loading-spinner>` : ''}
 
         ${this.blogId ? html`
-          <div class="archive-tools">
-            <div class="search-box">
-              <input
-                type="text"
-                placeholder="Filter this archive with free text or tag:..."
-                .value=${this.query}
-                @input=${this.handleArchiveQueryInput}
-                @keypress=${this.handleArchiveQueryKeyPress}
-              />
-              <button ?disabled=${this.loading} @click=${() => this.loadPosts()}>
-                ${this.loading ? 'Filtering...' : 'Filter'}
-              </button>
+          <route-shell-card wide compact>
+            <div class="archive-tools">
+              <div class="search-box">
+                <input
+                  type="text"
+                  placeholder="Filter this archive with free text or tag:..."
+                  .value=${this.query}
+                  @input=${this.handleArchiveQueryInput}
+                  @keypress=${this.handleArchiveQueryKeyPress}
+                />
+                <button ?disabled=${this.loading} @click=${() => this.loadPosts()}>
+                  ${this.loading ? 'Filtering...' : 'Filter'}
+                </button>
+              </div>
+
+              <archive-tag-cloud
+                .blogName=${this.blog}
+                .tags=${this.archiveTagItems}
+                .loading=${this.archiveTagsLoading}
+                .error=${this.archiveTagsError}
+                @tag-select=${this.handleArchiveTagSelect}
+              ></archive-tag-cloud>
             </div>
 
-            <archive-tag-cloud
-              .blogName=${this.blog}
-              .tags=${this.archiveTagItems}
-              .loading=${this.archiveTagsLoading}
-              @tag-select=${this.handleArchiveTagSelect}
-            ></archive-tag-cloud>
-          </div>
-
-          <control-panel
-            .pageName=${'archive'}
-            .sortValue=${this.sortValue}
-            .selectedTypes=${this.selectedTypes}
-            .selectedVariants=${this.selectedVariants}
-            .whenValue=${this.archiveWhen}
-            .blog=${this.blogData}
-            .galleryMode=${this.galleryMode}
-            .infiniteScroll=${this.infiniteScroll}
-            .showSort=${true}
-            .showTypes=${true}
-            .showVariants=${true}
-            .showWhen=${true}
-            .showGalleryMode=${true}
-            .showInfiniteScroll=${true}
-            .settingsHref=${'/settings/you#archive'}
-            .loading=${this.loading}
-            @sort-change=${this.handleSortChange}
-            @types-change=${this.handleTypesChange}
-            @variant-change=${this.handleVariantChange}
-            @when-change=${this.handleWhenChange}
-            @gallery-mode-change=${this.handleGalleryModeChange}
-            @infinite-toggle=${this.handleInfiniteToggle}
-          ></control-panel>
+            <control-panel
+              .framed=${false}
+              .pageName=${'archive'}
+              .sortValue=${this.sortValue}
+              .selectedTypes=${this.selectedTypes}
+              .selectedVariants=${this.selectedVariants}
+              .whenValue=${this.archiveWhen}
+              .blog=${this.blogData}
+              .galleryMode=${this.galleryMode}
+              .infiniteScroll=${this.infiniteScroll}
+              .showSort=${true}
+              .showTypes=${true}
+              .showVariants=${true}
+              .showWhen=${true}
+              .showGalleryMode=${true}
+              .showInfiniteScroll=${true}
+              .settingsHref=${'/settings/you#archive'}
+              .loading=${this.loading}
+              @sort-change=${this.handleSortChange}
+              @types-change=${this.handleTypesChange}
+              @variant-change=${this.handleVariantChange}
+              @when-change=${this.handleWhenChange}
+              @gallery-mode-change=${this.handleGalleryModeChange}
+              @infinite-toggle=${this.handleInfiniteToggle}
+            ></control-panel>
+          </route-shell-card>
         ` : ''}
 
         ${this.errorMessage ? html`<error-state title="Error" message=${this.errorMessage} @retry=${this.handleRetry}></error-state>` : ''}

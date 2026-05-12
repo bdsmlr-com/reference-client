@@ -122,6 +122,27 @@ describe('archive tag cloud', () => {
 
     expect(getTopTags).toHaveBeenCalledWith({ blog_name: 'ddlg-gent', page_size: 50 });
     expect(view.archiveTagItems).toEqual([{ name: 'bikini', postsCount: 12 }]);
+    expect(view.archiveTagsError).toBe('');
+  });
+
+  it('keeps tag cloud failures localized instead of surfacing a page-level archive error', async () => {
+    const getTopTags = vi.mocked(apiClient.blogs.getTopTags);
+    getTopTags.mockRejectedValueOnce(new Error('boom'));
+
+    const view = Object.assign(Object.create(ViewArchive.prototype), {
+      blog: 'ddlg-gent',
+      blogId: 123,
+      archiveTagsLoading: false,
+      archiveTagsError: '',
+      archiveTagItems: [],
+      errorMessage: '',
+    });
+
+    await view.loadArchiveTagCloud();
+
+    expect(view.archiveTagItems).toEqual([]);
+    expect(view.archiveTagsError).toBe('error');
+    expect(view.errorMessage).toBe('');
   });
 
   it('uses theme-responsive teaser chrome instead of plain white text', () => {
@@ -134,14 +155,18 @@ describe('archive tag cloud', () => {
     expect(tagCloudSrc).toContain('background: var(--bg-panel-alt);');
   });
 
-  it('renders archive filter input and tag cloud teaser in a shared two-column tool row', () => {
+  it('renders archive filter, tag cloud, and control panel in one shared shell', () => {
     const archiveSrc = readFileSync(new URL('../src/pages/view-archive.ts', import.meta.url), 'utf8');
 
+    expect(archiveSrc).toContain("import '../components/route-shell-card.js';");
+    expect(archiveSrc).toContain('<route-shell-card wide compact>');
     expect(archiveSrc).toContain('.archive-tools {');
     expect(archiveSrc).toContain('grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);');
     expect(archiveSrc).toContain('<div class="archive-tools">');
     expect(archiveSrc).toContain('<div class="search-box">');
     expect(archiveSrc).toContain('<archive-tag-cloud');
+    expect(archiveSrc).toContain('.framed=${false}');
+    expect(archiveSrc).toContain('.error=${this.archiveTagsError}');
   });
 
   it('replaces the archive query when a tag is selected from the cloud', async () => {

@@ -34,8 +34,19 @@ describe('archive/search render contract usage', () => {
     expect(archiveSrc).toContain('tag_name: this.buildArchiveScopedQuery()');
     expect(archiveSrc).toContain('placeholder="Filter this archive with free text or tag:..."');
     expect(archiveSrc).toContain('<archive-tag-cloud');
+    expect(archiveSrc).toContain('.error=${this.archiveTagsError}');
     expect(searchSrc).toContain('readContentRouteUrlState({');
     expect(searchSrc).toContain('tag_name: this.query');
+  });
+
+  it('archive keeps initial loading and tag cloud failures separate from content results state', () => {
+    const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
+
+    expect(archiveSrc).toContain("@state() private archiveTagsError = '';");
+    expect(archiveSrc).toContain('void this.loadArchiveTagCloud();');
+    expect(archiveSrc).toContain('await this.loadPosts({ preserveNavigationState: true });');
+    expect(archiveSrc).toContain("this.initialLoading && !this.blogId ? html`<loading-spinner message=\"Loading archive...\"></loading-spinner>` : ''");
+    expect(archiveSrc).toContain("this.errorMessage = '';");
   });
 
   it('archive now rides the search session contract with an injected blog scope', () => {
