@@ -113,6 +113,10 @@ export interface RenderInteractionConfig {
   zone?: 'media' | 'metadata' | 'permalink' | 'tag_chip' | 'card_surface' | 'action';
 }
 
+export interface FeatureFlagsConfig {
+  more_like_this_on_post?: boolean;
+}
+
 export interface RenderContractConfig {
   pages: Record<string, RenderPageConfig>;
   cards: Record<string, RenderCardConfig>;
@@ -127,6 +131,7 @@ export const ENV_CONFIGS: Record<string, AppConfig> = mediaConfig.environments a
 export const LINK_CONFIG: LinkConfig = (mediaConfig as any).links as LinkConfig;
 export const POST_RENDER_POLICY_CONFIG: PostRenderPolicyConfig = (mediaConfig as any).post_render_policy as PostRenderPolicyConfig;
 export const RENDER_CONTRACT_CONFIG: RenderContractConfig = (mediaConfig as any).render as RenderContractConfig;
+export const FEATURE_FLAGS: FeatureFlagsConfig = (mediaConfig as any).features || {};
 
 // Build/runtime environment selection with safe fallback.
 export const ACTIVE_ENV = ((import.meta as any).env?.VITE_BUILD_ENV || 'staging') as string;

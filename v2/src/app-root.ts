@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { Router } from '@lit-labs/router';
+import { FEATURE_FLAGS } from './config.js';
 import './pages/view-home.js';
 import './pages/view-posts.js';
 import './pages/view-feed.js';
@@ -75,29 +76,39 @@ export class AppRoot extends LitElement {
     },
     {
       path: '/post/:postId/related',
-      render: ({ postId }) => this.redirectLegacyRoute(`/post/${postId}/related/for/you`),
+      render: ({ postId }) => this.redirectLegacyRoute(
+        FEATURE_FLAGS.more_like_this_on_post === true
+          ? `/post/${postId}/related/for/you`
+          : `/post/${postId}`,
+      ),
     },
     {
       path: '/post/:postId/related/for/you',
-      render: ({ postId }) => html`
-        <view-post-related
-          .postId=${postId}
-          .routePerspective=${'you'}
-          .perspectiveBlogName=${this.resolveRouteBlogName('you')}
-          .title=${'More like this'}
-        ></view-post-related>
-      `,
+      render: ({ postId }) =>
+        FEATURE_FLAGS.more_like_this_on_post === true
+          ? html`
+              <view-post-related
+                .postId=${postId}
+                .routePerspective=${'you'}
+                .perspectiveBlogName=${this.resolveRouteBlogName('you')}
+                .title=${'More like this'}
+              ></view-post-related>
+            `
+          : this.redirectLegacyRoute(`/post/${postId}`),
     },
     {
       path: '/post/:postId/related/for/:blogname',
-      render: ({ postId, blogname }) => html`
-        <view-post-related
-          .postId=${postId}
-          .routePerspective=${blogname || 'you'}
-          .perspectiveBlogName=${this.resolveRouteBlogName(blogname || '')}
-          .title=${'More like this'}
-        ></view-post-related>
-      `,
+      render: ({ postId, blogname }) =>
+        FEATURE_FLAGS.more_like_this_on_post === true
+          ? html`
+              <view-post-related
+                .postId=${postId}
+                .routePerspective=${blogname || 'you'}
+                .perspectiveBlogName=${this.resolveRouteBlogName(blogname || '')}
+                .title=${'More like this'}
+              ></view-post-related>
+            `
+          : this.redirectLegacyRoute(`/post/${postId}`),
     },
     { path: '/clear-cache*', render: () => html`<view-clear-cache></view-clear-cache>` },
     { path: '/feed/for/you', render: () => html`<view-feed .blog=${this.resolveRouteBlogName('you')}></view-feed>` },

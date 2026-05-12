@@ -93,10 +93,11 @@ describe('related route perspective', () => {
     const src = readFileSync(join(ROOT, 'app-root.ts'), 'utf8');
 
     expect(src).toContain("path: '/post/:postId/related'");
-    expect(src).toContain("this.redirectLegacyRoute(`/post/${postId}/related/for/you`)");
+    expect(src).toContain('FEATURE_FLAGS.more_like_this_on_post === true');
+    expect(src).toContain('? `/post/${postId}/related/for/you`');
+    expect(src).toContain("this.redirectLegacyRoute(`/post/${postId}`)");
     expect(src).toContain("path: '/post/:postId/related/for/you'");
-    expect(src).toContain(".routePerspective=${'you'}");
-    expect(src).toContain("title=${'More like this'}");
+    expect(src).toContain("path: '/post/:postId/related/for/:blogname'");
   });
 
   it('keeps the explicit related perspective route shareable and route-driven', () => {

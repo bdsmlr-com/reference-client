@@ -1,4 +1,5 @@
 import { resolveLink } from './link-resolver';
+import { FEATURE_FLAGS } from '../config';
 import {
   POST_TYPE_ICONS,
   POST_TYPE_LABELS,
@@ -170,7 +171,7 @@ function buildLayout(ctx: NormalizedPresentationContext) {
     showBlogChip: ctx.surface !== 'lightbox',
     compactMetadata: ctx.surface === 'card' || ctx.page === 'feed',
     showTags: ctx.surface !== 'lightbox',
-    showRecommendations: ctx.page === 'post' || ctx.page === 'activity',
+    showRecommendations: FEATURE_FLAGS.more_like_this_on_post === true && (ctx.page === 'post' || ctx.page === 'activity'),
   };
 }
 
