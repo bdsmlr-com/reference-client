@@ -146,4 +146,12 @@ describe('social follow pagination safeguards', () => {
     expect(src).toContain("case 'load_following':");
     expect(src).toContain('Connections for @${context.blogName} are unavailable.');
   });
+
+  it('renders social surface errors below the control panel, not above it', () => {
+    const src = readFileSync(join(process.cwd(), 'src/pages/view-social.ts'), 'utf8');
+    const controlPanelIndex = src.indexOf('<control-panel');
+    const errorStateIndex = src.lastIndexOf('<error-state');
+    expect(controlPanelIndex).toBeGreaterThan(-1);
+    expect(errorStateIndex).toBeGreaterThan(controlPanelIndex);
+  });
 });

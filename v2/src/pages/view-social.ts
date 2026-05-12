@@ -680,19 +680,6 @@ export class ViewSocial extends LitElement {
             `
           : ''}
 
-        ${this.errorMessage
-          ? html`
-              <error-state
-                title="Error"
-                message=${this.errorMessage}
-                ?retrying=${this.retrying}
-                ?autoRetry=${this.isRetryableError}
-                .autoRetryAttempt=${this.autoRetryAttempt}
-                @retry=${this.handleRetry}
-              ></error-state>
-            `
-          : ''}
-
         ${this.blogId
           ? html`
               <div class="tabs">
@@ -748,6 +735,19 @@ export class ViewSocial extends LitElement {
               <div class="list-container">
                 <blog-list .items=${this.recommendedBlogs}></blog-list>
               </div>
+            `
+          : ''}
+
+        ${this.errorMessage
+          ? html`
+              <error-state
+                title="Error"
+                message=${this.errorMessage}
+                ?retrying=${this.retrying}
+                ?autoRetry=${this.isRetryableError}
+                .autoRetryAttempt=${this.autoRetryAttempt}
+                @retry=${this.handleRetry}
+              ></error-state>
             `
           : ''}
 
