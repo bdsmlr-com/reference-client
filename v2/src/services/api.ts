@@ -1307,6 +1307,7 @@ export async function blogFollowGraph(
     {
       ...req,
       direction: dirStr,
+      sortValue: req.sortValue,
     }
   );
 }
@@ -1337,7 +1338,8 @@ export async function blogFollowGraphCached(
     req.blog_id,
     directionLabel,
     req.page_token,
-    getFollowGraphViewerScope()
+    getFollowGraphViewerScope(),
+    req.sortValue
   );
 
   // Check cache first (unless skipping)

@@ -121,8 +121,17 @@ describe('social follow pagination safeguards', () => {
 
     expect(storageSrc).toContain("viewerScope?: string");
     expect(storageSrc).toContain("const scope = (viewerScope || 'viewer:anonymous').trim();");
-    expect(storageSrc).toContain('`follow:${scope}:${blogId}:${direction}`');
+    expect(storageSrc).toContain("const sort = (sortValue || 'default').trim();");
+    expect(storageSrc).toContain('`follow:${scope}:${blogId}:${direction}:${sort}`');
     expect(apiSrc).toContain('function getFollowGraphViewerScope(): string');
     expect(apiSrc).toContain('getFollowGraphViewerScope()');
+    expect(apiSrc).toContain('req.sortValue');
+  });
+
+  it('view-social no longer drains the full graph to sort client-side', () => {
+    const src = readFileSync(join(process.cwd(), 'src/pages/view-social.ts'), 'utf8');
+    expect(src).not.toContain('Loading full list for sorting…');
+    expect(src).not.toContain('loadRemainingForSort');
+    expect(src).toContain('sortValue: this.sortValue');
   });
 });

@@ -410,6 +410,7 @@ export interface BlogFollowGraphRequest {
   direction?: FollowGraphDirection;
   page_size?: number;
   page_token?: string;
+  sortValue?: string;
 }
 
 export interface ListBlogsRecentActivityRequest {

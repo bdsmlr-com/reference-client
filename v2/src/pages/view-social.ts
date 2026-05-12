@@ -7,7 +7,7 @@ import { getPrimaryBlogName, getUrlParam } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { getSocialSortPreference, setSocialSortPreference } from '../services/profile.js';
-import { normalizeSocialSortValue, SOCIAL_SORT_OPTIONS, sortSocialEdges } from '../services/social-sort.js';
+import { normalizeSocialSortValue, SOCIAL_SORT_OPTIONS } from '../services/social-sort.js';
 import {
   generatePaginationCursorKey,
   getCachedPaginationCursor,
@@ -269,12 +269,11 @@ export class ViewSocial extends LitElement {
   }
 
   private get currentList(): FollowEdge[] {
-    const base = this.activeTab === 'followers'
+    return this.activeTab === 'followers'
       ? this.followers
       : this.activeTab === 'following'
       ? this.following
       : this.siblings;
-    return sortSocialEdges(base, this.sortValue);
   }
 
   private async loadData(): Promise<void> {
@@ -327,11 +326,7 @@ export class ViewSocial extends LitElement {
     }
 
     try {
-      await Promise.all([
-        this.fetchPage(),
-        this.loadRecommendedBlogs(),
-      ]);
-      await this.loadRemainingForSort();
+      await Promise.all([this.fetchPage(), this.loadRecommendedBlogs()]);
     } catch (e) {
       const operation = this.activeTab === 'followers' ? 'load_followers' : 'load_following';
       this.errorMessage = getContextualErrorMessage(e, operation, { blogName: this.blog });
@@ -388,6 +383,7 @@ export class ViewSocial extends LitElement {
         direction: direction === 'followers' ? 2 : 1,
         page_size: PAGE_SIZE,
         page_token: cursor || undefined,
+        sortValue: this.sortValue,
       }, { skipCache: shouldSkipCache });
 
       const rawResp = resp as unknown as Record<string, unknown>;
@@ -579,25 +575,26 @@ export class ViewSocial extends LitElement {
   private async handleSortChange(e: CustomEvent): Promise<void> {
     this.sortValue = normalizeSocialSortValue(e.detail.value);
     setSocialSortPreference(this.sortValue);
-    await this.loadRemainingForSort();
-    this.requestUpdate();
-  }
-
-  private async loadRemainingForSort(): Promise<void> {
-    if (this.sortValue === 'default' || this.activeTab === 'siblings') {
+    if (this.rootMode) {
+      this.requestUpdate();
       return;
     }
-    if (this.loading) {
-      return;
-    }
-    if (this.isExhausted) {
-      return;
-    }
-    this.statusMessage = 'Loading full list for sorting…';
-    while (!this.loading && !this.isExhausted) {
-      await this.fetchPage();
-    }
+    this.followers = [];
+    this.following = [];
+    this.followersCursor = null;
+    this.followingCursor = null;
+    this.followersExhausted = false;
+    this.followingExhausted = false;
+    this.lastFollowersPageFingerprint = null;
+    this.lastFollowingPageFingerprint = null;
+    this.seenFollowersCursors.clear();
+    this.seenFollowingCursors.clear();
+    this.followersPageAttempts = 0;
+    this.followingPageAttempts = 0;
+    this.errorMessage = '';
     this.statusMessage = '';
+    await this.fetchPage();
+    this.requestUpdate();
   }
 
   private async attachRecentPostsToEdges(items: FollowEdge[]): Promise<FollowEdge[]> {

@@ -912,14 +912,16 @@ export function generateFollowGraphCacheKey(
   blogId: number,
   direction: 'followers' | 'following',
   pageToken?: string,
-  viewerScope?: string
+  viewerScope?: string,
+  sortValue?: string
 ): string {
   const scope = (viewerScope || 'viewer:anonymous').trim();
+  const sort = (sortValue || 'default').trim();
   // For first page (no token), cache key is simple
   // For pagination, include the page token to cache each page separately
   return pageToken
-    ? `follow:${scope}:${blogId}:${direction}:${pageToken}`
-    : `follow:${scope}:${blogId}:${direction}`;
+    ? `follow:${scope}:${blogId}:${direction}:${sort}:${pageToken}`
+    : `follow:${scope}:${blogId}:${direction}:${sort}`;
 }
 
 /**
