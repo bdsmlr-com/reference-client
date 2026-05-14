@@ -49,6 +49,16 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(appRootSrc).toContain("<view-feed .blog=${this.resolveRouteBlogName(blogname || '')} .mode=${'followers'}></view-feed>");
   });
 
+  it('uses feed-specific error operations instead of social follow-surface wording', () => {
+    const feedSrc = readFileSync(join(ROOT, 'pages/view-feed.ts'), 'utf8');
+    const apiErrorSrc = readFileSync(join(ROOT, 'services/api-error.ts'), 'utf8');
+
+    expect(feedSrc).toContain("this.isFollowerFeed ? 'load_feed_followers' : 'load_feed_following'");
+    expect(apiErrorSrc).toContain("case 'load_feed_followers':");
+    expect(apiErrorSrc).toContain("case 'load_feed_following':");
+    expect(apiErrorSrc).toContain('Feed for @${context.blogName} is unavailable because its');
+  });
+
   it('keeps activity URLs focused on activity filters only', () => {
     const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
 

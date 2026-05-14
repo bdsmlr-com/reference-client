@@ -305,7 +305,7 @@ export class ViewFeed extends LitElement {
     } catch (e) {
       this.errorMessage = getContextualErrorMessage(
         e,
-        this.isFollowerFeed ? 'load_followers' : 'load_following',
+        this.isFollowerFeed ? 'load_feed_followers' : 'load_feed_following',
         { blogName: this.blogNameInput }
       );
       const apiError = isApiError(e) ? e : toApiError(e);

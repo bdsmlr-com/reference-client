@@ -296,6 +296,8 @@ export type ErrorOperation =
   | 'load_posts'
   | 'load_followers'
   | 'load_following'
+  | 'load_feed_followers'
+  | 'load_feed_following'
   | 'search'
   | 'search_blogs'
   | 'resolve_blog';
@@ -421,6 +423,16 @@ export function getContextualErrorMessage(
           return `Connections for @${context.blogName} are unavailable. This list may be hidden by the blog's privacy settings or require access.`;
         }
         return 'Connections are unavailable. This list may be hidden by privacy settings or require access.';
+      case 'load_feed_followers':
+        if (context?.blogName) {
+          return `Feed for @${context.blogName} is unavailable because its followers list is hidden or requires access.`;
+        }
+        return 'This feed is unavailable because the required followers list is hidden or requires access.';
+      case 'load_feed_following':
+        if (context?.blogName) {
+          return `Feed for @${context.blogName} is unavailable because its following list is hidden or requires access.`;
+        }
+        return 'This feed is unavailable because the required following list is hidden or requires access.';
       default:
         return apiError.getUserMessage();
     }
@@ -432,6 +444,9 @@ export function getContextualErrorMessage(
       case 'load_followers':
       case 'load_following':
         return 'Unable to load connection data due to a server issue. This is a known intermittent problem. Please try again in a few moments.';
+      case 'load_feed_followers':
+      case 'load_feed_following':
+        return 'Unable to load the source list for this feed due to a server issue. Please try again in a few moments.';
       case 'load_posts':
         return 'Unable to load posts due to a server issue. This is usually temporary. Please try again.';
       case 'search':
@@ -447,6 +462,9 @@ export function getContextualErrorMessage(
       case 'load_followers':
       case 'load_following':
         return 'Loading connections is taking longer than expected. This can happen for accounts with many followers. Try again or wait a moment.';
+      case 'load_feed_followers':
+      case 'load_feed_following':
+        return 'Loading the source list for this feed is taking longer than expected. Try again or wait a moment.';
       case 'load_posts':
         return 'Loading posts is taking longer than expected. Try again with a slower connection, or reduce filters to load fewer results.';
       case 'search':
