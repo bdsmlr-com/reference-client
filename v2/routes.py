@@ -37,7 +37,7 @@ def _canonical_redirect(path: str) -> str | None:
         tab = (request.args.get('tab') or '').lower()
         if tab in {'followers', 'following', 'siblings'}:
             return f'/social/{parts[1]}/{tab}'
-        return f'/social/{parts[1]}'
+        return None
     if len(parts) != 2:
         return None
     blog, page = parts[0], parts[1].lower()

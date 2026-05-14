@@ -28,8 +28,6 @@ class ClientRoutesRedirectTests(unittest.TestCase):
             "/archive": "/archive/you",
             "/settings": "/settings/you",
             "/social": "/social/you",
-            "/social/you": "/social/you",
-            "/social/sam": "/social/sam",
             "/sam/archive": "/archive/sam",
             "/sam/activity": "/activity/sam",
             "/sam/feed": "/feed/for/sam",
@@ -52,6 +50,14 @@ class ClientRoutesRedirectTests(unittest.TestCase):
         response = client.get("/sam/social?tab=following", follow_redirects=False)
         self.assertEqual(response.status_code, 301)
         self.assertTrue(response.headers["Location"].endswith("/social/sam/following"))
+
+    def test_canonical_social_blog_routes_do_not_redirect_to_themselves(self) -> None:
+        app = make_app()
+        client = app.test_client()
+
+        for source in ("/social/you", "/social/sam"):
+            response = client.get(source, follow_redirects=False)
+            self.assertNotEqual(response.status_code, 301)
 
 
 if __name__ == "__main__":
