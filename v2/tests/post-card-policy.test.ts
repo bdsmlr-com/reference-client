@@ -50,6 +50,40 @@ describe('post card retrieval click policy', () => {
     const card = {
       post: makePost(),
       dispatchEvent,
+      isNavigationBlocked: () => PostCard.prototype.isNavigationBlocked.call(card),
+      handleClick: () => PostCard.prototype.handleClick.call(card),
+    } as any;
+
+    PostCard.prototype.handlePermalinkClick.call(card, event);
+
+    expect(event.preventDefault).toHaveBeenCalledTimes(1);
+    expect(event.stopPropagation).toHaveBeenCalledTimes(1);
+    expect(dispatchEvent).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'post-select',
+    }));
+  });
+
+  it('fails closed when navigation identifiers are suppressed by authorization', async () => {
+    stubBrowserState();
+    const dispatchEvent = vi.fn();
+    const event = {
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as any;
+
+    const { PostCard } = await import('../src/components/post-card.js');
+    const card = {
+      post: makePost({
+        id: undefined as unknown as number,
+        authorization: {
+          media: 'obscured',
+          navigation: 'denied',
+          reason: 'entitlement_search_depth',
+        },
+        _retrievalPolicy: undefined,
+      }),
+      dispatchEvent,
+      isNavigationBlocked: () => PostCard.prototype.isNavigationBlocked.call(card),
       handleClick: () => PostCard.prototype.handleClick.call(card),
     } as any;
 

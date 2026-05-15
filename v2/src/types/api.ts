@@ -23,6 +23,12 @@ export interface PostPresentationPolicy {
   overrideReason?: string;
 }
 
+export interface PostAuthorization {
+  media?: string;
+  navigation?: string;
+  reason?: string;
+}
+
 export interface SearchPolicyContract {
   defaultResultWindowLimit?: number;
   clearResultCount?: number;
@@ -98,6 +104,7 @@ export interface Post {
   blogIdentityDecorations?: IdentityDecoration[];
   originBlogIdentityDecorations?: IdentityDecoration[];
   originPostMissing?: boolean;
+  authorization?: PostAuthorization;
 }
 
 export interface InteractionCluster {

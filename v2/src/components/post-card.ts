@@ -186,6 +186,13 @@ export class PostCard extends LitElement {
   @property({ type: Object }) post!: ProcessedPost;
   @property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'archive';
 
+  private isNavigationBlocked(): boolean {
+    if (this.post?.authorization?.navigation === 'denied') {
+      return true;
+    }
+    return this.post?.id == null;
+  }
+
   private handleClick(): void {
     const from: PostRouteSource = this.page === 'post' ? 'direct' : this.page;
     this.dispatchEvent(
@@ -198,7 +205,7 @@ export class PostCard extends LitElement {
   }
 
   private handlePermalinkClick(event: Event): void {
-    const mode = resolveRetrievalClickMode(this.post._retrievalPolicy);
+    const mode = this.isNavigationBlocked() ? 'open_modal' : resolveRetrievalClickMode(this.post._retrievalPolicy);
     if (mode === 'navigate') {
       return;
     }

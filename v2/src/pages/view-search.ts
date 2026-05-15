@@ -102,6 +102,71 @@ export class ViewSearch extends LitElement {
         z-index: 1000;
       }
 
+      .roadblock-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        z-index: 1000;
+      }
+
+      .roadblock-modal {
+        width: min(520px, 100%);
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+        padding: 18px 18px 14px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .roadblock-eyebrow {
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+
+      .roadblock-title {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .roadblock-copy {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--text-muted);
+      }
+
+      .roadblock-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .roadblock-button {
+        min-height: 36px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text-primary);
+      }
+
+      .roadblock-button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
       .syntax-modal {
         width: min(720px, 100%);
         max-height: min(80vh, 760px);
@@ -398,6 +463,7 @@ export class ViewSearch extends LitElement {
   @state() private teaserLoading = false;
   @state() private hasNextPage = false;
   @state() private showSyntaxGuide = false;
+  @state() private roadblockPost: ProcessedPost | null = null;
   private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('search', 'main_stream');
 
   private backendCursor: string | null = null;
@@ -868,6 +934,10 @@ export class ViewSearch extends LitElement {
   private handlePostClick(e: CustomEvent): void {
     e.stopPropagation();
     const post = e.detail.post as ProcessedPost;
+    if (this.isEntitlementRoadblock(post)) {
+      this.roadblockPost = post;
+      return;
+    }
     const allPosts = flattenContentResultPosts(this.resultUnits);
 
     const index = allPosts.findIndex(p => p.id === post.id);
@@ -877,6 +947,50 @@ export class ViewSearch extends LitElement {
       bubbles: true,
       composed: true
     }));
+  }
+
+  private isEntitlementRoadblock(post: ProcessedPost | null | undefined): boolean {
+    if (!post) return false;
+    if (post.authorization?.navigation === 'denied') {
+      return true;
+    }
+    return post.id == null;
+  }
+
+  private closeRoadblockModal = (): void => {
+    this.roadblockPost = null;
+  };
+
+  private renderRoadblockModal() {
+    if (!this.roadblockPost) {
+      return null;
+    }
+
+    return html`
+      <div class="roadblock-backdrop" @click=${this.closeRoadblockModal}>
+        <section
+          class="roadblock-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Upgrade to continue browsing search"
+          @click=${(event: Event) => event.stopPropagation()}
+        >
+          <div class="roadblock-eyebrow">Search preview limited</div>
+          <h3 class="roadblock-title">Deeper search is dithered for this blog</h3>
+          <p class="roadblock-copy">
+            This preview stays visible, but the full post is blocked because this perspective blog has hit its
+            search-depth browsing limit.
+          </p>
+          <p class="roadblock-copy">
+            Upgrade to keep exploring deeper search results without pixelation and unlock direct navigation again.
+          </p>
+          <div class="roadblock-actions">
+            <button class="roadblock-button" type="button" @click=${this.closeRoadblockModal}>Not now</button>
+            <button class="roadblock-button primary" type="button" @click=${this.closeRoadblockModal}>Learn more</button>
+          </div>
+        </section>
+      </div>
+    `;
   }
 
   private handleInfiniteToggle(e: CustomEvent): void {
@@ -1156,6 +1270,7 @@ export class ViewSearch extends LitElement {
 
         <div id="scroll-sentinel" style="height:1px;"></div>
         ${this.showSyntaxGuide ? this.renderSyntaxGuide() : ''}
+        ${this.renderRoadblockModal()}
       </div>
     `;
   }
