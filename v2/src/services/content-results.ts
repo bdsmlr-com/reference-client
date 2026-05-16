@@ -20,11 +20,14 @@ export function prepareContentResultUnits({
   allowDuplicateIds = false,
 }: PrepareContentResultUnitsOptions): SearchResultUnit[] {
   const preparePost = (post: ProcessedPost): ProcessedPost | null => {
-    if (!allowDuplicateIds && seenIds.has(post.id)) {
+    const postId = typeof post.id === 'number' ? post.id : null;
+    if (!allowDuplicateIds && postId !== null && seenIds.has(postId)) {
       stats.dupes++;
       return null;
     }
-    seenIds.add(post.id);
+    if (postId !== null) {
+      seenIds.add(postId);
+    }
     post._media = extractMedia(post);
     return post;
   };

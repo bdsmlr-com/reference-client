@@ -34,4 +34,34 @@ describe('content-results helpers', () => {
     expect(contentGridItems(prepared)).toHaveLength(2);
     expect(flattenContentResultPosts(prepared).map((post) => post.id)).toEqual([1, 2]);
   });
+
+  it('does not collapse obscured results when navigation ids are suppressed', () => {
+    const stats: ViewStats = { found: 0, deleted: 0, dupes: 0, notFound: 0 };
+    const seenIds = new Set<number>();
+    const units = [
+      {
+        kind: 'post',
+        post: {
+          id: null,
+          type: 1,
+          blogName: 'one',
+          authorization: { media: 'obscured', navigation: 'denied', reason: 'entitlement_search_depth' },
+        },
+      },
+      {
+        kind: 'post',
+        post: {
+          id: null,
+          type: 1,
+          blogName: 'two',
+          authorization: { media: 'obscured', navigation: 'denied', reason: 'entitlement_search_depth' },
+        },
+      },
+    ] as unknown as SearchResultUnit[];
+
+    const prepared = prepareContentResultUnits({ units, seenIds, stats });
+
+    expect(prepared).toHaveLength(2);
+    expect(stats.dupes).toBe(0);
+  });
 });

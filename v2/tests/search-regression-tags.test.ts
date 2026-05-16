@@ -51,7 +51,8 @@ describe('search regression and tag visibility', () => {
     expect(pageSrc).toContain('private seenIds = new Set<number>();');
     expect(contentResultsSrc).not.toContain('renderedMediaKeys');
     expect(contentResultsSrc).not.toContain('contentKey');
-    expect(contentResultsSrc).toContain('if (!allowDuplicateIds && seenIds.has(post.id)) {');
+    expect(contentResultsSrc).toContain("const postId = typeof post.id === 'number' ? post.id : null;");
+    expect(contentResultsSrc).toContain('if (!allowDuplicateIds && postId !== null && seenIds.has(postId)) {');
   });
 
   it('scopes cached search responses by build sha so deploys do not serve stale clear results', () => {
