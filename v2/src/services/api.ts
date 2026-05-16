@@ -1067,9 +1067,31 @@ export async function searchPostsByTagCached(
 export async function listBlogPosts(
   req: ListBlogPostsRequest
 ): Promise<ListBlogPostsResponse> {
+  const {
+    session_id,
+    page_number,
+    page_size,
+    page,
+    ...rest
+  } = req;
+  const resolvedPageSize = req.page_size ?? req.page?.page_size;
+  const payload: Record<string, unknown> = {
+    ...rest,
+    ...((page && page_number === undefined)
+      ? {
+          page: {
+            ...page,
+            ...(resolvedPageSize ? { page_size: page_size ?? page?.page_size } : {}),
+          },
+        }
+      : {}),
+    ...(session_id ? { session: session_id } : {}),
+    ...(page_number ? { page: page_number } : {}),
+    ...(resolvedPageSize ? { page_size: page_size ?? page?.page_size } : {}),
+  };
   return apiRequest<ListBlogPostsResponse>(
     '/v2/list-blog-activity',
-    req
+    payload
   );
 }
 

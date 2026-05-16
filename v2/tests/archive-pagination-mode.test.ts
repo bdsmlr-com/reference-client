@@ -23,7 +23,7 @@ vi.mock('../src/styles/theme.js', () => ({
 vi.mock('../src/services/client.js', () => ({
   apiClient: {
     identity: { resolveNameToId: vi.fn() },
-    posts: { searchCached: vi.fn() },
+    posts: { searchCached: vi.fn(), listCached: vi.fn() },
   },
 }));
 
@@ -150,12 +150,13 @@ describe('archive pagination mode', () => {
     expect(src).toContain('@next-page=${() => this.handleNextPage()}');
   });
 
-  it('forwards when to archive search requests', async () => {
-    const searchMock = vi.mocked(apiClient.posts.searchCached);
-    searchMock.mockResolvedValueOnce({ posts: [], resultUnits: [], pageNumber: 1, hasMore: false } as never);
+  it('forwards when to archive list requests', async () => {
+    const listMock = vi.mocked(apiClient.posts.listCached);
+    listMock.mockResolvedValueOnce({ posts: [], resultUnits: [], pageNumber: 1, hasMore: false } as never);
 
     const view = Object.assign(Object.create(ViewArchive.prototype), {
       blog: 'demo-blog',
+      blogId: 123,
       sortValue: 'newest',
       selectedTypes: [1, 2, 3],
       selectedVariants: [],
@@ -166,7 +167,7 @@ describe('archive pagination mode', () => {
 
     await view.fetchArchivePageResponse(1);
 
-    expect(searchMock).toHaveBeenCalledWith(expect.objectContaining({ when: '2026-05' }));
+    expect(listMock).toHaveBeenCalledWith(expect.objectContaining({ when: '2026-05' }));
   });
 
   it('changes archive when state and forces paginated reloads when the picker emits a new value', async () => {

@@ -31,7 +31,7 @@ describe('archive/search render contract usage', () => {
     const searchSrc = readFileSync(join(process.cwd(), 'src/pages/view-search.ts'), 'utf8');
 
     expect(archiveSrc).toContain('readContentRouteUrlState({');
-    expect(archiveSrc).toContain('tag_name: this.buildArchiveScopedQuery()');
+    expect(archiveSrc).toContain('q: this.query.trim() || undefined');
     expect(archiveSrc).toContain('placeholder="Filter this archive with free text or tag:..."');
     expect(archiveSrc).toContain('<archive-tag-cloud');
     expect(archiveSrc).toContain('.error=${this.archiveTagsError}');
@@ -49,12 +49,13 @@ describe('archive/search render contract usage', () => {
     expect(archiveSrc).toContain("this.errorMessage = '';");
   });
 
-  it('archive now rides the search session contract with an injected blog scope', () => {
+  it('archive now rides the archive posts contract with session paging and blog scope', () => {
     const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
 
     expect(archiveSrc).toContain('session_id: this.searchSessionId || undefined');
     expect(archiveSrc).toContain('page_number: targetPage');
-    expect(archiveSrc).toContain('apiClient.posts.searchCached({');
-    expect(archiveSrc).toContain("return `blog:${this.blog}`;");
+    expect(archiveSrc).toContain('apiClient.posts.listCached({');
+    expect(archiveSrc).toContain("activity_kinds: ['post', 'reblog']");
+    expect(archiveSrc).toContain('blog_id: this.blogId');
   });
 });

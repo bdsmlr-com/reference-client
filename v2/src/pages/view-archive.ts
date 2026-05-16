@@ -290,13 +290,16 @@ export class ViewArchive extends LitElement {
   }
 
   private async fetchArchivePageResponse(targetPage: number) {
-    if (!this.blog) {
+    if (!this.blog || !this.blogId) {
       return null;
     }
 
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
-    return apiClient.posts.searchCached({
-      tag_name: this.buildArchiveScopedQuery(),
+    return apiClient.posts.listCached({
+      blog_id: this.blogId,
+      blog_name: this.blog,
+      q: this.query.trim() || undefined,
+      activity_kinds: ['post', 'reblog'],
       session_id: this.searchSessionId || undefined,
       page_number: targetPage,
       page_size: ARCHIVE_PAGE_SIZE,

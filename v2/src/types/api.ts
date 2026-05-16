@@ -339,8 +339,12 @@ export interface RelatedPostsRequest {
 
 export interface ListBlogPostsRequest {
   blog_id: number;
+  blog_name?: string;
   q?: string;
   page?: Pagination;
+  session_id?: string;
+  page_number?: number;
+  page_size?: number;
   sort_field?: PostSortField;
   order?: Order;
   post_types?: PostType[];
@@ -505,7 +509,16 @@ export interface SearchReblogGroup {
 
 export interface ListBlogPostsResponse {
   posts?: Post[];
+  resultUnits?: SearchResultUnit[];
   page?: PageInfo;
+  postPolicies?: Record<string, PostPresentationPolicy>;
+  policy?: SearchPolicyContract;
+  sessionId?: string;
+  pageNumber?: number;
+  pageSize?: number;
+  totalVisibleSoFar?: number;
+  searchStatus?: 'warming' | 'ready' | 'exhausted' | 'failed' | string;
+  hasMore?: boolean;
   timelineItems?: TimelineItem[];
   error?: string;
 }
