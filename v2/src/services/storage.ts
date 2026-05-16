@@ -15,6 +15,7 @@ const KEYS = {
   BLOG_CACHE: 'bdsmlr_blog_cache',
   BLOG_ID_CACHE: 'bdsmlr_blog_id_cache', // Reverse cache: blogId -> blogName
   BLOG_AVATAR_CACHE: 'bdsmlr_blog_avatar_cache', // Avatar URL cache: blogId -> avatarUrl (SOC-016)
+  POST_CACHE: 'bdsmlr_post_cache', // Legacy blog-post list cache
   POST_BUFFER: 'bdsmlr_post_buffer',
   PREFS: 'bdsmlr_prefs',
   STORAGE_VERSION: 'bdsmlr_storage_version',
@@ -29,7 +30,7 @@ const KEYS = {
 } as const;
 
 // Current storage version for migration
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2;
 
 // Types
 export type Theme = 'dark' | 'light' | 'system';
@@ -322,8 +323,20 @@ function runMigrations(fromVersion: number): void {
     }
   }
 
-  // Future migrations go here:
-  // if (fromVersion < 2) { ... }
+  // v1 -> v2: Clear stale content caches after entitlement/presentation contract changes.
+  if (fromVersion < 2) {
+    const staleContentKeys = [
+      KEYS.SWR_CACHE,
+      KEYS.RESPONSE_CACHE,
+      KEYS.SEARCH_CACHE,
+      KEYS.POST_CACHE,
+      KEYS.PAGINATION_CURSOR_CACHE,
+      KEYS.POST_BUFFER,
+    ];
+    for (const key of staleContentKeys) {
+      localStorage.removeItem(key);
+    }
+  }
 
   console.log(`Storage migrated from v${fromVersion} to v${CURRENT_VERSION}`);
 }
