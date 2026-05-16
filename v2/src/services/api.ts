@@ -1016,7 +1016,7 @@ export async function searchPostsByTag(
         }
       : {}),
     ...(session_id ? { session: session_id } : {}),
-    ...(page_number ? { page: page_number } : {}),
+    ...(page_number !== undefined ? { page: page_number } : {}),
     ...(resolvedPageSize ? { page_size: page_size ?? page?.page_size } : {}),
   };
   return apiRequest<SearchPostsByTagResponse>(
@@ -1086,7 +1086,7 @@ export async function listBlogPosts(
         }
       : {}),
     ...(session_id ? { session: session_id } : {}),
-    ...(page_number ? { page: page_number } : {}),
+    ...(page_number !== undefined ? { page: page_number } : {}),
     ...(resolvedPageSize ? { page_size: page_size ?? page?.page_size } : {}),
   };
   return apiRequest<ListBlogPostsResponse>(

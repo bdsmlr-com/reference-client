@@ -54,7 +54,7 @@ describe('archive/search render contract usage', () => {
 
     expect(archiveSrc).toContain('session_id: this.searchSessionId || undefined');
     expect(archiveSrc).toContain('page_number: targetPage');
-    expect(archiveSrc).toContain('apiClient.posts.listCached({');
+    expect(archiveSrc).toContain('apiClient.posts.list({');
     expect(archiveSrc).toContain("activity_kinds: ['post', 'reblog']");
     expect(archiveSrc).toContain('blog_id: this.blogId');
   });

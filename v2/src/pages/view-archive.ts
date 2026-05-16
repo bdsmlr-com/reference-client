@@ -295,7 +295,7 @@ export class ViewArchive extends LitElement {
     }
 
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
-    return apiClient.posts.listCached({
+    return apiClient.posts.list({
       blog_id: this.blogId,
       blog_name: this.blog,
       q: this.query.trim() || undefined,

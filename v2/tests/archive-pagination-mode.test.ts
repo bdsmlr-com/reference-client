@@ -23,7 +23,7 @@ vi.mock('../src/styles/theme.js', () => ({
 vi.mock('../src/services/client.js', () => ({
   apiClient: {
     identity: { resolveNameToId: vi.fn() },
-    posts: { searchCached: vi.fn(), listCached: vi.fn() },
+    posts: { searchCached: vi.fn(), listCached: vi.fn(), list: vi.fn() },
   },
 }));
 
@@ -151,7 +151,7 @@ describe('archive pagination mode', () => {
   });
 
   it('forwards when to archive list requests', async () => {
-    const listMock = vi.mocked(apiClient.posts.listCached);
+    const listMock = vi.mocked(apiClient.posts.list);
     listMock.mockResolvedValueOnce({ posts: [], resultUnits: [], pageNumber: 1, hasMore: false } as never);
 
     const view = Object.assign(Object.create(ViewArchive.prototype), {

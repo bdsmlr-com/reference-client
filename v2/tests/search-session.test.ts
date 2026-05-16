@@ -165,4 +165,47 @@ describe('search session navigation helpers', () => {
     expect(body.session_id).toBeUndefined();
     expect(body.page_number).toBeUndefined();
   });
+
+  it('maps explicit session/page archive requests onto the route wire aliases', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => ({ posts: [], hasMore: false }),
+    }));
+    const getItem = vi.fn(() => null);
+    const setItem = vi.fn();
+    const removeItem = vi.fn();
+
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('localStorage', { getItem, setItem, removeItem });
+    vi.stubGlobal('navigator', { onLine: true });
+    vi.stubGlobal('window', {
+      location: {
+        origin: 'https://example.test',
+        search: '',
+      },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      history: { replaceState: vi.fn() },
+    });
+
+    const { listBlogPosts } = await import('../src/services/api.js');
+
+    await listBlogPosts({
+      blog_id: 123,
+      session_id: 'sess-archive',
+      page_number: 3,
+      page_size: 20,
+      activity_kinds: ['post', 'reblog'],
+    });
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body || '{}'));
+    expect(body.blog_id).toBe(123);
+    expect(body.session).toBe('sess-archive');
+    expect(body.page).toBe(3);
+    expect(body.page_size).toBe(20);
+    expect(body.session_id).toBeUndefined();
+    expect(body.page_number).toBeUndefined();
+  });
 });
