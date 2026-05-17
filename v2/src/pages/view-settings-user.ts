@@ -34,13 +34,20 @@ import {
   type ActivityKind,
   type GalleryMode,
 } from '../services/profile.js';
+import { getViewerCapabilities } from '../services/viewer-capabilities.js';
 import { SOCIAL_SORT_OPTIONS, normalizeSocialSortValue } from '../services/social-sort.js';
-import { normalizeSortValue } from '../types/post.js';
+import { SORT_OPTIONS, normalizeSortValue } from '../types/post.js';
 import type { PostType, PostVariant } from '../types/api.js';
 import '../components/blog-identity.js';
 import '../components/control-panel.js';
 
 type PreferenceRoute = 'archive' | 'search' | 'feed' | 'followers-feed' | 'activity' | 'social';
+type SettingsRoadblockKind = 'sort' | 'variant' | 'gallery';
+
+type SettingsRoadblockState = {
+  route: 'archive' | 'search';
+  kind: SettingsRoadblockKind;
+};
 
 type RoutePreferenceState = {
   sortValue?: string;
@@ -253,6 +260,72 @@ export class ViewSettingsUser extends LitElement {
         color: #fff;
       }
 
+      .roadblock-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        padding: 20px;
+      }
+
+      .roadblock-modal {
+        width: min(560px, 100%);
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+      }
+
+      .roadblock-eyebrow {
+        color: var(--text-muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .roadblock-title {
+        margin: 0;
+        color: var(--text-primary);
+        font-size: 20px;
+      }
+
+      .roadblock-copy {
+        color: var(--text-muted);
+        line-height: 1.45;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .roadblock-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .roadblock-button {
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--bg-panel-alt);
+        color: var(--text-primary);
+        text-decoration: none;
+        font-size: 13px;
+      }
+
+      .roadblock-button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
       .pref-row {
         display: flex;
         align-items: center;
@@ -309,11 +382,19 @@ export class ViewSettingsUser extends LitElement {
   @state() private user: SettingsUser | null = null;
   @state() private blogs: SettingsBlog[] = [];
   @state() private selectedBlog: SettingsBlog | null = null;
+  @state() private viewerCapabilities: string[] = getViewerCapabilities();
   @state() private routePrefs: Record<PreferenceRoute, RoutePreferenceState> = this.readRoutePreferences();
+  @state() private settingsRoadblock: SettingsRoadblockState | null = null;
 
   connectedCallback(): void {
     super.connectedCallback();
+    window.addEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
     this.load();
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
   }
 
   private async load(): Promise<void> {
@@ -348,6 +429,11 @@ export class ViewSettingsUser extends LitElement {
     }
   }
 
+  private handleAuthUserChanged = (): void => {
+    this.viewerCapabilities = getViewerCapabilities();
+    this.routePrefs = this.readRoutePreferences();
+  };
+
   private openBlog(blog: SettingsBlog): void {
     this.selectedBlog = blog;
   }
@@ -356,20 +442,65 @@ export class ViewSettingsUser extends LitElement {
     this.selectedBlog = null;
   }
 
+  private canUseArchiveSorts(): boolean {
+    return this.viewerCapabilities.includes('use_archive_non_newest_sort');
+  }
+
+  private canUseArchiveVariantFilters(): boolean {
+    return this.viewerCapabilities.includes('use_archive_variant_filters');
+  }
+
+  private canUseMasonry(): boolean {
+    return this.viewerCapabilities.includes('use_masonry');
+  }
+
+  private normalizeArchiveSortValue(value: string): string {
+    const normalized = normalizeSortValue(value || SORT_RESET);
+    return this.canUseArchiveSorts() ? normalized : SORT_RESET;
+  }
+
+  private normalizeArchiveVariants(variants: PostVariant[]): PostVariant[] {
+    return this.canUseArchiveVariantFilters() ? variants : [];
+  }
+
+  private normalizeGalleryMode(mode: GalleryMode): GalleryMode {
+    return this.canUseMasonry() ? mode : 'grid';
+  }
+
+  private lockedArchiveSortValues(): string[] {
+    return this.canUseArchiveSorts() ? [] : SORT_OPTIONS.filter((option) => option.value !== 'newest').map((option) => option.value);
+  }
+
+  private lockedArchiveVariantSelections(): Array<'all' | 'original' | 'reblog'> {
+    return this.canUseArchiveVariantFilters() ? [] : ['original', 'reblog'];
+  }
+
+  private lockedGalleryModes(): GalleryMode[] {
+    return this.canUseMasonry() ? [] : ['masonry'];
+  }
+
+  private openSettingsRoadblock(route: 'archive' | 'search', kind: SettingsRoadblockKind): void {
+    this.settingsRoadblock = { route, kind };
+  }
+
+  private closeSettingsRoadblock(): void {
+    this.settingsRoadblock = null;
+  }
+
   private readRoutePreferences(): Record<PreferenceRoute, RoutePreferenceState> {
     return {
       archive: {
-        sortValue: normalizeSortValue(getArchiveSortPreference() || SORT_RESET),
+        sortValue: this.normalizeArchiveSortValue(getArchiveSortPreference() || SORT_RESET),
         selectedTypes: getTypePreference('archive') as PostType[],
-        selectedVariants: selectionFromVariant(getVariantPreference('archive')),
-        galleryMode: getGalleryMode('archive'),
+        selectedVariants: this.normalizeArchiveVariants(selectionFromVariant(getVariantPreference('archive'))),
+        galleryMode: this.normalizeGalleryMode(getGalleryMode('archive')),
         infiniteScroll: getInfiniteScrollPreference('archive'),
       },
       search: {
         sortValue: normalizeSortValue(getSearchSortPreference() || SORT_RESET),
         selectedTypes: getTypePreference('search') as PostType[],
         selectedVariants: selectionFromVariant(getVariantPreference('search')),
-        galleryMode: getGalleryMode('search'),
+        galleryMode: this.normalizeGalleryMode(getGalleryMode('search')),
         infiniteScroll: getInfiniteScrollPreference('search'),
       },
       feed: {
@@ -456,8 +587,14 @@ export class ViewSettingsUser extends LitElement {
       showGalleryMode?: boolean;
       showInfiniteScroll?: boolean;
       sortOptions?: Array<{ value: string; label: string }>;
+      lockedSortValues?: string[];
+      lockedVariantSelections?: Array<'all' | 'original' | 'reblog'>;
+      lockedGalleryModes?: GalleryMode[];
       onSortChange?: (value: string) => void;
       onActivityKindsChange?: (value: ActivityKind[]) => void;
+      onSortLocked?: () => void;
+      onVariantLocked?: () => void;
+      onGalleryLocked?: () => void;
     },
   ) {
     const state = this.routePrefs[route];
@@ -476,6 +613,9 @@ export class ViewSettingsUser extends LitElement {
             .selectedVariants=${state.selectedVariants || []}
             .activityKinds=${state.activityKinds || []}
             .galleryMode=${state.galleryMode || 'grid'}
+            .lockedSortValues=${options.lockedSortValues || []}
+            .lockedVariantSelections=${options.lockedVariantSelections || []}
+            .lockedGalleryModes=${options.lockedGalleryModes || []}
             .infiniteScroll=${state.infiniteScroll}
             .showSort=${options.showSort || false}
             .sortOptions=${options.sortOptions || []}
@@ -485,10 +625,22 @@ export class ViewSettingsUser extends LitElement {
             .showGalleryMode=${options.showGalleryMode || false}
             .showInfiniteScroll=${options.showInfiniteScroll || false}
             @sort-change=${options.onSortChange ? ((e: CustomEvent) => options.onSortChange!(e.detail.value)) : null}
+            @sort-option-locked=${options.onSortLocked ? ((e: CustomEvent) => {
+              e.stopPropagation();
+              options.onSortLocked!();
+            }) : null}
             @types-change=${(e: CustomEvent) => this.updateRoutePreference(route, { selectedTypes: e.detail.types })}
             @variant-change=${(e: CustomEvent) => this.updateRoutePreference(route, { selectedVariants: e.detail.variants || [] })}
+            @variant-option-locked=${options.onVariantLocked ? ((e: CustomEvent) => {
+              e.stopPropagation();
+              options.onVariantLocked!();
+            }) : null}
             @activity-kinds-change=${options.onActivityKindsChange ? ((e: CustomEvent) => options.onActivityKindsChange!(normalizeActivityKinds((e.detail.activityKinds || []).join(',')))) : null}
             @gallery-mode-change=${(e: CustomEvent) => this.updateRoutePreference(route, { galleryMode: e.detail.value })}
+            @gallery-mode-locked=${options.onGalleryLocked ? ((e: CustomEvent) => {
+              e.stopPropagation();
+              options.onGalleryLocked!();
+            }) : null}
             @infinite-toggle=${(e: CustomEvent) => this.updateRoutePreference(route, { infiniteScroll: e.detail.enabled })}
           ></control-panel>
         </div>
@@ -550,6 +702,49 @@ export class ViewSettingsUser extends LitElement {
     `;
   }
 
+  private renderSettingsRoadblockModal() {
+    if (!this.settingsRoadblock) {
+      return null;
+    }
+
+    const routeLabel = this.settingsRoadblock.route === 'archive' ? 'Archive' : 'Search';
+
+    return html`
+      <div class="roadblock-backdrop" @click=${this.closeSettingsRoadblock}>
+        <section
+          class="roadblock-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Upgrade to unlock view preferences"
+          @click=${(event: Event) => event.stopPropagation()}
+        >
+          <div class="roadblock-eyebrow">View preferences limited</div>
+          <h3 class="roadblock-title">
+            ${this.settingsRoadblock.kind === 'sort'
+              ? 'Non-newest archive sorts are locked'
+              : this.settingsRoadblock.kind === 'variant'
+                ? 'Archive variant filters are locked'
+                : 'Masonry layout is locked'}
+          </h3>
+          <p class="roadblock-copy">
+            ${this.settingsRoadblock.kind === 'sort'
+              ? 'This archive preference stays on newest until the viewer is entitled to unlock additional sort orders.'
+              : this.settingsRoadblock.kind === 'variant'
+                ? 'This archive preference stays on all posts until the viewer is entitled to unlock original/reblog filtering.'
+                : `${routeLabel} preference stays on grid until the viewer is entitled to unlock masonry.`}
+          </p>
+          <p class="roadblock-copy">
+            Upgrade to unlock this control and keep browsing without restrictions.
+          </p>
+          <div class="roadblock-actions">
+            <button class="roadblock-button" type="button" @click=${this.closeSettingsRoadblock}>Not now</button>
+            <button class="roadblock-button primary" type="button" @click=${this.closeSettingsRoadblock}>Learn more</button>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
   render() {
     return html`
       <div class="wrap">
@@ -568,10 +763,17 @@ export class ViewSettingsUser extends LitElement {
               showVariants: true,
               showGalleryMode: true,
               showInfiniteScroll: true,
+              lockedSortValues: this.lockedArchiveSortValues(),
+              lockedVariantSelections: this.lockedArchiveVariantSelections(),
+              lockedGalleryModes: this.lockedGalleryModes(),
               onSortChange: (value) => {
-                setArchiveSortPreference(normalizeSortValue(value));
-                this.updateRoutePreference('archive', { sortValue: normalizeSortValue(value) });
+                const nextValue = this.normalizeArchiveSortValue(value);
+                setArchiveSortPreference(nextValue);
+                this.updateRoutePreference('archive', { sortValue: nextValue });
               },
+              onSortLocked: () => this.openSettingsRoadblock('archive', 'sort'),
+              onVariantLocked: () => this.openSettingsRoadblock('archive', 'variant'),
+              onGalleryLocked: () => this.openSettingsRoadblock('archive', 'gallery'),
             })}
             ${this.renderRoutePreferenceRow('search', 'Search', 'Default search view controls.', 'search', {
               showSort: true,
@@ -579,10 +781,12 @@ export class ViewSettingsUser extends LitElement {
               showVariants: true,
               showGalleryMode: true,
               showInfiniteScroll: true,
+              lockedGalleryModes: this.lockedGalleryModes(),
               onSortChange: (value) => {
                 setSearchSortPreference(normalizeSortValue(value));
                 this.updateRoutePreference('search', { sortValue: normalizeSortValue(value) });
               },
+              onGalleryLocked: () => this.openSettingsRoadblock('search', 'gallery'),
             })}
             ${this.renderRoutePreferenceRow('feed', 'Feed', 'Default followed-posts controls.', 'following', {
               showTypes: true,
@@ -653,6 +857,7 @@ export class ViewSettingsUser extends LitElement {
           </div>
         ` : ''}
         ${this.renderSelectedBlogModal()}
+        ${this.renderSettingsRoadblockModal()}
       </div>
     `;
   }
