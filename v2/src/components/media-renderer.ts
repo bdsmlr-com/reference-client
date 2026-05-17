@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { keyed } from 'lit/directives/keyed.js';
 import { resolveMediaUrl, isAnimation, isNativeVideo, probeNextBucket, type MediaRenderType } from '../services/media-resolver.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { getMediaBehavior } from '../services/media-behavior.js';
@@ -66,6 +67,17 @@ export class MediaRenderer extends LitElement {
       gap: 8px;
     }
 
+    .retry-link {
+      font-size: 10px;
+      color: #b86a6a;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .retry-link:hover {
+      color: #cf7a7a;
+    }
+
     .admin-debug {
       position: absolute;
       bottom: 0;
@@ -94,9 +106,11 @@ export class MediaRenderer extends LitElement {
 
   @state() private showPlaceholder = false;
   @state() private showPosterFrame = true;
+  @state() private retryGeneration = 0;
 
   protected updated(changed: Map<string, unknown>): void {
     if (changed.has('src') || changed.has('posterSrc')) {
+      this.showPlaceholder = false;
       this.showPosterFrame = true;
     }
   }
@@ -117,6 +131,12 @@ export class MediaRenderer extends LitElement {
     if (probeNextBucket(el)) return;
     this.showPlaceholder = true;
   }
+
+  private handleRetry = (): void => {
+    this.showPlaceholder = false;
+    this.showPosterFrame = true;
+    this.retryGeneration += 1;
+  };
 
   private renderDebug(resolvedUrl: string) {
     if (!isAdminMode()) return nothing;
@@ -142,9 +162,21 @@ export class MediaRenderer extends LitElement {
 
     if (this.showPlaceholder) {
       return html`
-        <div class="error-placeholder" style="background: #1a1a1a; border: 1px solid #442222;">
+        <div
+          class="error-placeholder"
+          style="background: #1a1a1a; border: 1px solid #442222;"
+          role="button"
+          tabindex="0"
+          @click=${this.handleRetry}
+          @keydown=${(e: KeyboardEvent) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              this.handleRetry();
+            }
+          }}
+        >
           <span style="font-size: 20px; opacity: 0.5;">🖼️</span>
-          <span style="font-size: 10px; opacity: 0.3;">Load Failed</span>
+          <span class="retry-link">Load Failed. Retry ⟳</span>
         </div>
       `;
     }
@@ -198,7 +230,7 @@ export class MediaRenderer extends LitElement {
       const videoStyle = fillMode ? mediaStyle : nonFillVideoStyle;
 
       if (!fillMode) {
-        return html`
+        return keyed(this.retryGeneration, html`
           <div class="video-shell">
             <img
               class="poster-frame ${this.showPosterFrame ? '' : 'hidden'}"
@@ -223,10 +255,10 @@ export class MediaRenderer extends LitElement {
             ></video>
           </div>
           ${this.renderDebug(resolvedUrl)}
-        `;
+        `);
       }
 
-      return html`
+      return keyed(this.retryGeneration, html`
         <video 
           src=${resolvedUrl}
           ?autoplay=${effectiveAutoplay}
@@ -243,10 +275,10 @@ export class MediaRenderer extends LitElement {
           @play=${this.handleVideoReady}
         ></video>
         ${this.renderDebug(resolvedUrl)}
-      `;
+      `);
     }
 
-    return html`
+    return keyed(this.retryGeneration, html`
       <img 
         src=${resolvedUrl} 
         alt=${this.alt} 
@@ -255,7 +287,7 @@ export class MediaRenderer extends LitElement {
         @error=${this.handleError} 
       />
       ${this.renderDebug(resolvedUrl)}
-    `;
+    `);
   }
 }
 
