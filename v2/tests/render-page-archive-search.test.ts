@@ -39,6 +39,16 @@ describe('archive/search render contract usage', () => {
     expect(searchSrc).toContain('tag_name: this.query');
   });
 
+  it('archive and search gate masonry through the canonical use_masonry capability', () => {
+    const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
+    const searchSrc = readFileSync(join(process.cwd(), 'src/pages/view-search.ts'), 'utf8');
+
+    expect(archiveSrc).toContain("viewerHasCapability('use_masonry')");
+    expect(searchSrc).toContain("viewerHasCapability('use_masonry')");
+    expect(archiveSrc).toContain('.lockedGalleryModes=${this.lockedGalleryModes()}');
+    expect(searchSrc).toContain('.lockedGalleryModes=${this.lockedGalleryModes()}');
+  });
+
   it('archive keeps initial loading and tag cloud failures separate from content results state', () => {
     const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
 
@@ -62,7 +72,7 @@ describe('archive/search render contract usage', () => {
   it('archive gates non-newest sort and variant filters behind supporter capabilities', () => {
     const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
 
-    expect(archiveSrc).toContain("import { getViewerCapabilities } from '../services/viewer-capabilities.js';");
+    expect(archiveSrc).toContain("import { getViewerCapabilities, viewerHasCapability } from '../services/viewer-capabilities.js';");
     expect(archiveSrc).toContain(".lockedSortValues=${this.lockedArchiveSortValues()}");
     expect(archiveSrc).toContain(".lockedVariantSelections=${this.lockedArchiveVariantSelections()}");
     expect(archiveSrc).toContain('@sort-option-locked=${this.handleSortOptionLocked}');
@@ -88,6 +98,18 @@ describe('archive/search render contract usage', () => {
 
     expect(archiveSrc).toContain('} else {');
     expect(archiveSrc).toContain('this.selectedVariants = this.normalizeArchiveVariants(this.selectedVariants, { showRoadblock: true });');
+  });
+
+  it('archive and search normalize locked gallery mode back to grid at runtime without overwriting storage', () => {
+    const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
+    const searchSrc = readFileSync(join(process.cwd(), 'src/pages/view-search.ts'), 'utf8');
+    const profileSrc = readFileSync(join(process.cwd(), 'src/services/profile.ts'), 'utf8');
+
+    expect(profileSrc).toContain('normalizeGalleryModeForCapabilities');
+    expect(archiveSrc).toContain('this.galleryMode = normalizeGalleryModeForCapabilities(this.galleryMode, this.viewerCapabilities);');
+    expect(searchSrc).toContain('this.galleryMode = normalizeGalleryModeForCapabilities(this.galleryMode, getViewerCapabilities());');
+    expect(archiveSrc).not.toContain("setGalleryMode('grid'");
+    expect(searchSrc).not.toContain("setGalleryMode('grid'");
   });
 
   it('archive load accounts for persisted variant preference before fetching posts', () => {

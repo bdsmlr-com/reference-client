@@ -1,7 +1,9 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { getGalleryMode, setGalleryMode, type GalleryMode } from '../services/profile.js';
+import { getGalleryMode, normalizeGalleryModeForCapabilities, setGalleryMode, type GalleryMode } from '../services/profile.js';
+import { getViewerCapabilities } from '../services/viewer-capabilities.js';
+import { EventNames, type GalleryModeLockedDetail } from '../types/events.js';
 import { SelectorPopoverController, selectorPopoverStyles } from './selector-popover.js';
 
 @customElement('gallery-mode-picker')
@@ -31,12 +33,23 @@ export class GalleryModePicker extends LitElement {
         background: var(--accent);
         color: #fff;
       }
+
+      .mode-pill.locked {
+        background: rgba(166, 67, 67, 0.14);
+        color: var(--text-primary);
+        border: 1px solid rgba(166, 67, 67, 0.35);
+      }
+
+      .mode-pill.locked:hover {
+        background: rgba(166, 67, 67, 0.2);
+      }
     `,
   ];
 
   @property({ type: String }) value: GalleryMode = 'grid';
   @property({ type: String }) pageName = '';
   @property({ type: Boolean }) persistSelection = true;
+  @property({ type: Array }) lockedValues: GalleryMode[] = [];
 
   @state() private open = false;
   private selectorPopover = new SelectorPopoverController(this, () => this.open, (next) => { this.open = next; });
@@ -45,7 +58,10 @@ export class GalleryModePicker extends LitElement {
     super.connectedCallback();
     this.selectorPopover.connect();
     if (this.persistSelection) {
-      this.value = getGalleryMode(this.pageName || undefined);
+      this.value = normalizeGalleryModeForCapabilities(
+        getGalleryMode(this.pageName || undefined),
+        getViewerCapabilities(),
+      );
     }
   }
 
@@ -67,6 +83,24 @@ export class GalleryModePicker extends LitElement {
     this.open = false;
   }
 
+  private hasLockedValues(): boolean {
+    return Array.isArray(this.lockedValues) && this.lockedValues.length > 0;
+  }
+
+  private isLocked(mode: GalleryMode): boolean {
+    return this.hasLockedValues() && this.lockedValues.includes(mode);
+  }
+
+  private handleLockedModeClick(mode: GalleryMode): void {
+    this.open = false;
+    const label = mode === 'masonry' ? 'Masonry' : 'Grid';
+    this.dispatchEvent(new CustomEvent<GalleryModeLockedDetail>(EventNames.GALLERY_MODE_LOCKED, {
+      detail: { value: mode, label },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
   private summary(): string {
     return this.value === 'masonry' ? 'Masonry' : 'Grid';
   }
@@ -84,7 +118,26 @@ export class GalleryModePicker extends LitElement {
         >
           ${this.summary()}
         </button>
-        ${this.open ? html`
+        ${this.hasLockedValues() ? html`
+          ${this.open ? html`
+            <div class="popover" role="dialog" aria-label="Choose gallery mode" @click=${this.selectorPopover.stopPropagation}>
+              <div class="pill-group">
+                <button
+                  type="button"
+                  class="mode-pill ${this.value === 'grid' ? 'active' : ''}"
+                  @click=${() => this.setMode('grid')}
+                >Grid</button>
+                <button
+                  type="button"
+                  class="mode-pill ${this.value === 'masonry' ? 'active' : ''} ${this.isLocked('masonry') ? 'locked' : ''}"
+                  @click=${() => (this.isLocked('masonry') ? this.handleLockedModeClick('masonry') : this.setMode('masonry'))}
+                  aria-disabled=${this.isLocked('masonry') ? 'true' : 'false'}
+                  aria-label=${this.isLocked('masonry') ? 'Masonry locked' : 'Masonry'}
+                >Masonry</button>
+              </div>
+            </div>
+          ` : null}
+        ` : this.open ? html`
           <div class="popover" role="dialog" aria-label="Choose gallery mode" @click=${this.selectorPopover.stopPropagation}>
             <div class="pill-group">
               <button

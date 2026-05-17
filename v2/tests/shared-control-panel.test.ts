@@ -39,6 +39,7 @@ describe('shared control panel', () => {
     expect(src).toContain('.lockedVariants=${this.lockedVariantSelections}');
     expect(src).toContain('<activity-kind-pills');
     expect(src).toContain('<gallery-mode-picker');
+    expect(src).toContain('.lockedValues=${this.lockedGalleryModes}');
     expect(src).toContain('<infinite-scroll-toggle');
     expect(src).toContain('<route-shell-card wide compact>');
     expect(sortSrc).toContain('Array.isArray(this.options) && this.options.length ? this.options : SORT_OPTIONS;');
@@ -128,6 +129,7 @@ describe('shared control panel', () => {
     expect(typeSrc).toContain("import { SelectorPopoverController, selectorPopoverStyles } from './selector-popover.js';");
     expect(variantSrc).toContain("import { SelectorPopoverController, selectorPopoverStyles } from './selector-popover.js';");
     expect(gallerySrc).toContain("import { SelectorPopoverController, selectorPopoverStyles } from './selector-popover.js';");
+    expect(gallerySrc).toContain("EventNames.GALLERY_MODE_LOCKED");
     expect(activityKindSrc).toContain("import { SelectorPopoverController, selectorPopoverStyles } from './selector-popover.js';");
     expect(whenSrc).toContain("import { SelectorPopoverController, selectorPopoverStyles } from './selector-popover.js';");
   });

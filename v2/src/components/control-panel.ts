@@ -51,6 +51,7 @@ export class ControlPanel extends LitElement {
   @property({ type: Object }) blog: Blog | null = null;
   @property({ type: String }) pageName = '';
   @property({ type: String }) galleryMode: 'grid' | 'masonry' = 'grid';
+  @property({ type: Array }) lockedGalleryModes: Array<'grid' | 'masonry'> = [];
   @property({ type: Boolean }) infiniteScroll = false;
   @property({ type: String }) settingsHref = '';
   @property({ type: Boolean }) showSort = false;
@@ -85,6 +86,10 @@ export class ControlPanel extends LitElement {
 
   private handleGalleryModeChange(e: CustomEvent) {
     this.dispatchEvent(new CustomEvent('gallery-mode-change', { detail: e.detail }));
+  }
+
+  private handleGalleryModeLocked(e: CustomEvent) {
+    this.dispatchEvent(new CustomEvent('gallery-mode-locked', { detail: e.detail }));
   }
 
   private handleInfiniteToggle(e: CustomEvent) {
@@ -150,7 +155,9 @@ export class ControlPanel extends LitElement {
         <gallery-mode-picker
           .value=${this.galleryMode}
           .pageName=${this.pageName}
+          .lockedValues=${this.lockedGalleryModes}
           @gallery-mode-change=${this.handleGalleryModeChange}
+          @gallery-mode-locked=${this.handleGalleryModeLocked}
         ></gallery-mode-picker>
       `);
     }

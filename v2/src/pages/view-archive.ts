@@ -37,11 +37,12 @@ import {
 import {
   getGalleryMode,
   PROFILE_EVENTS,
+  normalizeGalleryModeForCapabilities,
   type GalleryMode,
   getArchiveSortPreference,
   setArchiveSortPreference,
 } from '../services/profile.js';
-import { getViewerCapabilities } from '../services/viewer-capabilities.js';
+import { getViewerCapabilities, viewerHasCapability } from '../services/viewer-capabilities.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { generatePaginationCursorKey } from '../services/storage.js';
@@ -247,10 +248,10 @@ export class ViewArchive extends LitElement {
   @state() private archiveTagsLoading = false;
   @state() private archiveTagsError = '';
   @state() private viewerCapabilities: string[] = getViewerCapabilities();
-  @state() private archiveRoadblock: { kind: 'sort' | 'variant' } | null = null;
+  @state() private archiveRoadblock: { kind: 'sort' | 'variant' | 'gallery' } | null = null;
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
-  @state() private galleryMode: GalleryMode = getGalleryMode('archive');
+  @state() private galleryMode: GalleryMode = normalizeGalleryModeForCapabilities(getGalleryMode('archive'), getViewerCapabilities());
   private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('archive', 'main_stream');
 
   private seenIds = new Set<number>();
@@ -285,13 +286,14 @@ export class ViewArchive extends LitElement {
   }
 
   private handleGalleryModeChanged = (): void => {
-    this.galleryMode = getGalleryMode('archive');
+    this.galleryMode = normalizeGalleryModeForCapabilities(getGalleryMode('archive'), getViewerCapabilities());
   };
 
   private handleAuthUserChanged = (): void => {
     const previousSort = this.sortValue;
     const previousVariants = [...this.selectedVariants];
     this.viewerCapabilities = getViewerCapabilities();
+    this.galleryMode = normalizeGalleryModeForCapabilities(this.galleryMode, this.viewerCapabilities);
     this.sortValue = this.normalizeArchiveSortValue(this.sortValue, { showRoadblock: true });
     this.selectedVariants = this.normalizeArchiveVariants(this.selectedVariants, { showRoadblock: true });
     const sortChanged = previousSort !== this.sortValue;
@@ -318,6 +320,18 @@ export class ViewArchive extends LitElement {
 
   private canUseArchiveVariantFilters(): boolean {
     return this.hasCapability('use_archive_variant_filters');
+  }
+
+  private canUseMasonry(): boolean {
+    return viewerHasCapability('use_masonry');
+  }
+
+  private lockedGalleryModes(): Array<'grid' | 'masonry'> {
+    return this.canUseMasonry() ? [] : ['masonry'];
+  }
+
+  private normalizeGalleryModeForArchive(mode: GalleryMode): GalleryMode {
+    return normalizeGalleryModeForCapabilities(mode, this.viewerCapabilities);
   }
 
   private normalizeArchiveSortValue(value: string, options: { showRoadblock?: boolean } = {}): string {
@@ -364,7 +378,7 @@ export class ViewArchive extends LitElement {
     return this.canUseArchiveVariantFilters() ? [] : ['original', 'reblog'];
   }
 
-  private openArchiveRoadblock(kind: 'sort' | 'variant'): void {
+  private openArchiveRoadblock(kind: 'sort' | 'variant' | 'gallery'): void {
     this.archiveRoadblock = { kind };
   }
 
@@ -500,6 +514,7 @@ export class ViewArchive extends LitElement {
     this.searchSessionId = routeState.sessionId;
     this.replaceArchiveUrlOnPageBoundary = routeState.replaceUrlOnPageBoundary;
     this.hasNextPage = false;
+    this.galleryMode = this.normalizeGalleryModeForArchive(getGalleryMode('archive'));
     if (!sort) {
       setArchiveSortPreference(resolvedSort);
     }
@@ -773,7 +788,14 @@ export class ViewArchive extends LitElement {
   }
 
   private handleGalleryModeChange(e: CustomEvent): void {
-    this.galleryMode = e.detail.value;
+    this.galleryMode = this.normalizeGalleryModeForArchive(e.detail.value);
+    if (e.detail.value === 'masonry' && !this.canUseMasonry()) {
+      this.openArchiveRoadblock('gallery');
+    }
+  }
+
+  private handleGalleryModeLocked(): void {
+    this.openArchiveRoadblock('gallery');
   }
 
   private async handlePreviousPage(): Promise<void> {
@@ -863,6 +885,7 @@ export class ViewArchive extends LitElement {
               .whenValue=${this.archiveWhen}
               .blog=${this.blogData}
               .galleryMode=${this.galleryMode}
+              .lockedGalleryModes=${this.lockedGalleryModes()}
               .infiniteScroll=${this.infiniteScroll}
               .lockedSortValues=${this.lockedArchiveSortValues()}
               .lockedVariantSelections=${this.lockedArchiveVariantSelections()}
@@ -881,6 +904,7 @@ export class ViewArchive extends LitElement {
               @variant-option-locked=${this.handleVariantOptionLocked}
               @when-change=${this.handleWhenChange}
               @gallery-mode-change=${this.handleGalleryModeChange}
+              @gallery-mode-locked=${this.handleGalleryModeLocked}
               @infinite-toggle=${this.handleInfiniteToggle}
             ></control-panel>
           </route-shell-card>
@@ -899,12 +923,16 @@ export class ViewArchive extends LitElement {
               <h3 class="roadblock-title">
                 ${this.archiveRoadblock.kind === 'sort'
                   ? 'Non-newest archive sorts are locked'
-                  : 'Archive variant filters are locked'}
+                  : this.archiveRoadblock.kind === 'variant'
+                    ? 'Archive variant filters are locked'
+                    : 'Masonry layout is locked'}
               </h3>
               <p class="roadblock-copy">
                 ${this.archiveRoadblock.kind === 'sort'
                   ? 'This archive stays on newest until the viewer is entitled to unlock additional sort orders.'
-                  : 'This archive stays on all posts until the viewer is entitled to unlock original/reblog filtering.'}
+                  : this.archiveRoadblock.kind === 'variant'
+                    ? 'This archive stays on all posts until the viewer is entitled to unlock original/reblog filtering.'
+                    : 'This archive stays on grid until the viewer is entitled to unlock masonry.'}
               </p>
               <p class="roadblock-copy">
                 Upgrade to unlock this control and keep browsing without restrictions.

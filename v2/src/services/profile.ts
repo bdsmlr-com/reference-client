@@ -101,6 +101,13 @@ export function getGalleryMode(scope?: string): GalleryMode {
   return value === 'masonry' ? 'masonry' : 'grid';
 }
 
+export function normalizeGalleryModeForCapabilities(mode: GalleryMode, capabilities: string[] = []): GalleryMode {
+  if (mode === 'masonry' && !capabilities.includes('use_masonry')) {
+    return 'grid';
+  }
+  return mode;
+}
+
 export function setGalleryMode(mode: GalleryMode, scope?: string): void {
   writeStorage(getScopedKey(GALLERY_MODE_KEY, scope), mode);
   emit(PROFILE_EVENTS.galleryModeChanged, { mode, scope: scope || null });

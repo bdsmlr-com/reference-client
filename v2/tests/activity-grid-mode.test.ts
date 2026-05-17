@@ -53,14 +53,17 @@ describe('gallery mode wiring', () => {
     const searchSrc = readFileSync(join(ROOT, 'pages/view-search.ts'), 'utf8');
     const discoverSrc = readFileSync(join(ROOT, 'pages/view-discover.ts'), 'utf8');
     const postGridSrc = readFileSync(join(ROOT, 'components/post-grid.ts'), 'utf8');
+    const pickerSrc = readFileSync(join(ROOT, 'components/gallery-mode-picker.ts'), 'utf8');
 
     expect(archiveSrc).toContain('.mode=${this.galleryMode}');
     expect(searchSrc).toContain('.mode=${this.galleryMode}');
     expect(discoverSrc).toContain('.mode=${this.galleryMode}');
-    expect(archiveSrc).toContain("getGalleryMode()")
-    expect(searchSrc).toContain("getGalleryMode()")
-    expect(discoverSrc).toContain("getGalleryMode()")
+    expect(archiveSrc).toContain("getGalleryMode('archive')");
+    expect(searchSrc).toContain("getGalleryMode('search')");
+    expect(discoverSrc).toContain('getGalleryMode()');
     expect(postGridSrc).toContain("@property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';");
+    expect(pickerSrc).toContain("@property({ type: Array }) lockedValues: GalleryMode[] = [];");
+    expect(pickerSrc).toContain("EventNames.GALLERY_MODE_LOCKED");
   });
 
   it('activity cards use origin-aware blog chip logic for like/comment/reblog interactions', () => {

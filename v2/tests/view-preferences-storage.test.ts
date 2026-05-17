@@ -14,6 +14,7 @@ describe('view preferences storage', () => {
     expect(profileSrc).toContain('export function setFollowerFeedActivityKindsPreference(');
     expect(profileSrc).toContain('export function getGalleryMode(scope?: string)');
     expect(profileSrc).toContain('export function setGalleryMode(mode: GalleryMode, scope?: string)');
+    expect(profileSrc).toContain('export function normalizeGalleryModeForCapabilities(');
 
     expect(timelineSrc).toContain('getFollowerFeedActivityKindsPreference');
     expect(timelineSrc).toContain('setFollowerFeedActivityKindsPreference');

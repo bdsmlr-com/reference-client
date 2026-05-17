@@ -39,10 +39,12 @@ import { BREAKPOINTS } from '../types/ui-constants.js';
 import {
   getGalleryMode,
   PROFILE_EVENTS,
+  normalizeGalleryModeForCapabilities,
   type GalleryMode,
   getSearchSortPreference,
   setSearchSortPreference,
 } from '../services/profile.js';
+import { getViewerCapabilities, viewerHasCapability } from '../services/viewer-capabilities.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { ACTIVE_ENV } from '../config.js';
@@ -458,12 +460,13 @@ export class ViewSearch extends LitElement {
   @state() private retrying = false;
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
-  @state() private galleryMode: GalleryMode = getGalleryMode('search');
+  @state() private galleryMode: GalleryMode = normalizeGalleryModeForCapabilities(getGalleryMode('search'), getViewerCapabilities());
   @state() private teaserPosts: ProcessedPost[] = [];
   @state() private teaserLoading = false;
   @state() private hasNextPage = false;
   @state() private showSyntaxGuide = false;
   @state() private roadblockPost: ProcessedPost | null = null;
+  @state() private galleryRoadblock = false;
   private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('search', 'main_stream');
 
   private backendCursor: string | null = null;
@@ -513,6 +516,7 @@ export class ViewSearch extends LitElement {
     void this.loadTeasers();
     window.addEventListener('beforeunload', this.savePaginationState);
     window.addEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
+    window.addEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
   }
 
   disconnectedCallback(): void {
@@ -524,10 +528,31 @@ export class ViewSearch extends LitElement {
       scrollObserver.unobserve(sentinel);
     }
     window.removeEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
+    window.removeEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
   }
 
   private handleGalleryModeChanged = (): void => {
-    this.galleryMode = getGalleryMode('search');
+    this.galleryMode = normalizeGalleryModeForCapabilities(getGalleryMode('search'), getViewerCapabilities());
+  };
+
+  private handleAuthUserChanged = (): void => {
+    this.galleryMode = normalizeGalleryModeForCapabilities(this.galleryMode, getViewerCapabilities());
+  };
+
+  private canUseMasonry(): boolean {
+    return viewerHasCapability('use_masonry');
+  }
+
+  private lockedGalleryModes(): Array<'grid' | 'masonry'> {
+    return this.canUseMasonry() ? [] : ['masonry'];
+  }
+
+  private handleGalleryModeLocked = (): void => {
+    this.galleryRoadblock = true;
+  };
+
+  private closeGalleryRoadblock = (): void => {
+    this.galleryRoadblock = false;
   };
 
   private savePaginationState = (): void => {
@@ -595,6 +620,10 @@ export class ViewSearch extends LitElement {
         this.selectedVariants = parsedVariants;
       }
     }
+    this.galleryMode = normalizeGalleryModeForCapabilities(
+      getGalleryMode('search'),
+      getViewerCapabilities(),
+    );
 
     if (this.query) {
       void this.search({ preserveNavigationState: this.navigationMode === 'paginated' });
@@ -928,7 +957,7 @@ export class ViewSearch extends LitElement {
   }
 
   private handleGalleryModeChange(e: CustomEvent): void {
-    this.galleryMode = e.detail.value;
+    this.galleryMode = normalizeGalleryModeForCapabilities(e.detail.value, getViewerCapabilities());
   }
 
   private handlePostClick(e: CustomEvent): void {
@@ -1167,6 +1196,7 @@ export class ViewSearch extends LitElement {
           .selectedVariants=${this.selectedVariants}
           .whenValue=${this.searchWhen}
           .galleryMode=${this.galleryMode}
+          .lockedGalleryModes=${this.lockedGalleryModes()}
           .infiniteScroll=${this.infiniteScroll}
           .showSort=${true}
           .showTypes=${true}
@@ -1181,8 +1211,34 @@ export class ViewSearch extends LitElement {
           @variant-change=${this.handleVariantChange}
           @when-change=${this.handleWhenChange}
           @gallery-mode-change=${this.handleGalleryModeChange}
+          @gallery-mode-locked=${this.handleGalleryModeLocked}
           @infinite-toggle=${this.handleInfiniteToggle}
         ></control-panel>
+
+        ${this.galleryRoadblock ? html`
+          <div class="roadblock-backdrop" @click=${this.closeGalleryRoadblock}>
+            <section
+              class="roadblock-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Upgrade to unlock masonry layout"
+              @click=${(event: Event) => event.stopPropagation()}
+            >
+              <div class="roadblock-eyebrow">Search layout limited</div>
+              <h3 class="roadblock-title">Masonry layout is locked</h3>
+              <p class="roadblock-copy">
+                This search view stays on grid until the viewer is entitled to unlock masonry.
+              </p>
+              <p class="roadblock-copy">
+                Upgrade to unlock this layout and keep browsing without restrictions.
+              </p>
+              <div class="roadblock-actions">
+                <button class="roadblock-button" type="button" @click=${this.closeGalleryRoadblock}>Not now</button>
+                <button class="roadblock-button primary" type="button" @click=${this.closeGalleryRoadblock}>Learn more</button>
+              </div>
+            </section>
+          </div>
+        ` : ''}
 
         ${!this.hasSearched
           ? html`

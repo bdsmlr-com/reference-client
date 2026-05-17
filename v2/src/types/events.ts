@@ -21,6 +21,7 @@
 import type { ProcessedPost } from './post.js';
 import type { Blog, PostType, PostVariant } from './api.js';
 import type { PostRouteSource } from '../services/post-route-context.js';
+import type { GalleryMode } from '../services/profile.js';
 
 // ============================================================================
 // Post Events
@@ -144,6 +145,20 @@ export interface SortOptionLockedDetail {
 export type SortOptionLockedEvent = CustomEvent<SortOptionLockedDetail>;
 
 /**
+ * Detail for locked gallery mode option clicks.
+ * Used by: gallery-mode-picker
+ */
+export interface GalleryModeLockedDetail {
+  value: GalleryMode;
+  label: string;
+}
+
+/**
+ * Event dispatched when a locked gallery mode option is selected.
+ */
+export type GalleryModeLockedEvent = CustomEvent<GalleryModeLockedDetail>;
+
+/**
  * Detail for locked variant option clicks.
  * Used by: variant-pills
  */
@@ -247,6 +262,7 @@ export const EventNames = {
   WHEN_CHANGE: 'when-change', // From archive-when-picker
   SORT_CHANGE: 'sort-change', // From sort-controls
   SORT_OPTION_LOCKED: 'sort-option-locked', // From sort-controls
+  GALLERY_MODE_LOCKED: 'gallery-mode-locked', // From gallery-mode-picker
 
   // Load footer events
   LOAD_MORE: 'load-more', // From load-footer
