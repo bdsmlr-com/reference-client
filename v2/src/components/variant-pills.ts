@@ -4,7 +4,7 @@ import type { PropertyValues } from 'lit';
 import { baseStyles } from '../styles/theme.js';
 import { getVariantPreference, setVariantPreference, type VariantSelection } from '../services/storage.js';
 import type { PostVariant } from '../types/api.js';
-import { EventNames, type VariantChangeDetail } from '../types/events.js';
+import { EventNames, type VariantChangeDetail, type VariantOptionLockedDetail } from '../types/events.js';
 import { BREAKPOINTS, SPACING, PILL_SPACING } from '../types/ui-constants.js';
 import { SelectorPopoverController, selectorPopoverStyles } from './selector-popover.js';
 import './loading-spinner.js';
@@ -41,6 +41,21 @@ export class VariantPills extends LitElement {
         color: white;
       }
 
+      .variant-pill.locked {
+        background: rgba(166, 67, 67, 0.14);
+        color: var(--text-primary);
+        border: 1px solid rgba(166, 67, 67, 0.35);
+      }
+
+      .variant-pill.locked:hover {
+        background: rgba(166, 67, 67, 0.2);
+      }
+
+      .variant-pill.locked.active {
+        background: rgba(166, 67, 67, 0.72);
+        color: white;
+      }
+
       .variant-pill.loading {
         opacity: 0.7;
         pointer-events: none;
@@ -68,6 +83,7 @@ export class VariantPills extends LitElement {
 
   @property({ type: String }) selected: VariantSelection = 'all';
   @property({ type: Array }) selectedVariants: PostVariant[] = [];
+  @property({ type: Array }) lockedVariants: VariantSelection[] = [];
   @property({ type: String }) pageName = '';
   @property({ type: Boolean }) persistSelection = true;
   @property({ type: Boolean }) loading = false;
@@ -120,6 +136,20 @@ export class VariantPills extends LitElement {
     this.open = false;
   }
 
+  private isLocked(selection: VariantSelection): boolean {
+    return Array.isArray(this.lockedVariants) && this.lockedVariants.includes(selection);
+  }
+
+  private emitLocked(selection: VariantSelection, label: string): void {
+    this.dispatchEvent(
+      new CustomEvent<VariantOptionLockedDetail>(EventNames.VARIANT_OPTION_LOCKED, {
+        detail: { selection, variants: this.getVariants(selection), label },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
   private getVariants(selection: VariantSelection): PostVariant[] | undefined {
     switch (selection) {
       case 'original':
@@ -163,14 +193,16 @@ export class VariantPills extends LitElement {
 
   private renderButton(variant: VariantSelection, label: string, description: string) {
     const isActiveAndLoading = this.selected === variant && this.loading;
+    const locked = this.isLocked(variant);
     return html`
       <button
         type="button"
-        class=${this.getButtonClass(variant)}
-        @click=${() => this.setSelection(variant)}
+        class=${[this.getButtonClass(variant), locked ? 'locked' : ''].join(' ').trim()}
+        @click=${() => (locked ? this.emitLocked(variant, label) : this.setSelection(variant))}
         ?disabled=${this.loading}
         aria-pressed=${this.selected === variant ? 'true' : 'false'}
         aria-busy=${isActiveAndLoading ? 'true' : 'false'}
+        aria-disabled=${locked ? 'true' : 'false'}
         aria-label=${description}
       >
         ${label}

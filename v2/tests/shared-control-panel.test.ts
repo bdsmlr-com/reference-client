@@ -31,14 +31,19 @@ describe('shared control panel', () => {
     expect(src).toContain('showGalleryMode');
     expect(src).toContain('showInfiniteScroll');
     expect(src).toContain('@property({ type: Boolean }) framed = true;');
-    expect(src).toContain('<sort-controls .value=${this.sortValue} .options=${this.sortOptions}');
+    expect(src).toContain('<sort-controls');
+    expect(src).toContain('.options=${this.sortOptions}');
+    expect(src).toContain('.lockedValues=${this.lockedSortValues}');
     expect(src).toContain('<archive-when-picker');
     expect(src).toContain('<variant-pills');
+    expect(src).toContain('.lockedVariants=${this.lockedVariantSelections}');
     expect(src).toContain('<activity-kind-pills');
     expect(src).toContain('<gallery-mode-picker');
     expect(src).toContain('<infinite-scroll-toggle');
     expect(src).toContain('<route-shell-card wide compact>');
     expect(sortSrc).toContain('Array.isArray(this.options) && this.options.length ? this.options : SORT_OPTIONS;');
+    expect(sortSrc).toContain("EventNames.SORT_OPTION_LOCKED");
+    expect(sortSrc).toContain('lockedValues');
   });
 
   it('routes feed, activity, archive, and search through the shared control-panel component', () => {
@@ -75,6 +80,8 @@ describe('shared control panel', () => {
     expect(archiveSrc).toContain('.showWhen=${true}');
     expect(archiveSrc).toContain('.showGalleryMode=${true}');
     expect(archiveSrc).toContain('.showInfiniteScroll=${true}');
+    expect(archiveSrc).toContain('.lockedSortValues=${this.lockedArchiveSortValues()}');
+    expect(archiveSrc).toContain('.lockedVariantSelections=${this.lockedArchiveVariantSelections()}');
 
     expect(searchSrc).toContain('.showSort=${true}');
     expect(searchSrc).toContain('.showVariants=${true}');
@@ -106,6 +113,8 @@ describe('shared control panel', () => {
     expect(variantSrc).toContain('aria-haspopup="dialog"');
     expect(variantSrc).toContain('role="dialog"');
     expect(variantSrc).toContain("class=\"trigger ${this.open || this.selected !== 'all' ? 'active' : ''}\"");
+    expect(variantSrc).toContain('lockedVariants');
+    expect(variantSrc).toContain("EventNames.VARIANT_OPTION_LOCKED");
 
     expect(gallerySrc).toContain("import { customElement, property, state } from 'lit/decorators.js';");
     expect(gallerySrc).toContain('@state() private open = false;');

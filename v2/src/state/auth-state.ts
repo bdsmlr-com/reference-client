@@ -8,6 +8,7 @@ export type AuthUser = {
   primaryBlogId?: number | null;
   activeBlogId?: number | null;
   activeBlogName?: string | null;
+  capabilities?: string[];
 } | null;
 
 let currentUser: AuthUser = null;

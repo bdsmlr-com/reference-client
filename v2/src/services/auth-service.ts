@@ -45,7 +45,15 @@ const fetchJson = async <T>(
 };
 
 export type AuthBlog = { id: number; name: string };
-export type AuthStatus = { user_id: number; blog_id: number | null; blog_name?: string | null; username?: string | null; blogs?: AuthBlog[]; primary_blog_id?: number | null };
+export type AuthStatus = {
+  user_id: number;
+  blog_id: number | null;
+  blog_name?: string | null;
+  username?: string | null;
+  blogs?: AuthBlog[];
+  primary_blog_id?: number | null;
+  capabilities?: string[];
+};
 export type AuthLoginResponse = AuthStatus;
 export type SettingsUser = { id: number; username?: string | null };
 export type SettingsBlog = {

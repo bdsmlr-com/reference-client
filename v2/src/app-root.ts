@@ -193,6 +193,7 @@ export class AppRoot extends LitElement {
         primaryBlogId: primaryId,
         activeBlogId,
         activeBlogName,
+        capabilities: status.capabilities || [],
       });
       this.authenticated = true;
 

@@ -129,6 +129,35 @@ export interface SortChangeDetail {
  */
 export type SortChangeEvent = CustomEvent<SortChangeDetail>;
 
+/**
+ * Detail for locked sort option clicks.
+ * Used by: sort-controls
+ */
+export interface SortOptionLockedDetail {
+  value: string;
+  label: string;
+}
+
+/**
+ * Event dispatched when a locked sort option is selected.
+ */
+export type SortOptionLockedEvent = CustomEvent<SortOptionLockedDetail>;
+
+/**
+ * Detail for locked variant option clicks.
+ * Used by: variant-pills
+ */
+export interface VariantOptionLockedDetail {
+  selection: 'all' | 'original' | 'reblog';
+  variants: PostVariant[] | undefined;
+  label: string;
+}
+
+/**
+ * Event dispatched when a locked variant option is selected.
+ */
+export type VariantOptionLockedEvent = CustomEvent<VariantOptionLockedDetail>;
+
 // ============================================================================
 // Load Footer Events
 // ============================================================================
@@ -217,6 +246,7 @@ export const EventNames = {
   VARIANT_CHANGE: 'variant-change', // From variant-pills
   WHEN_CHANGE: 'when-change', // From archive-when-picker
   SORT_CHANGE: 'sort-change', // From sort-controls
+  SORT_OPTION_LOCKED: 'sort-option-locked', // From sort-controls
 
   // Load footer events
   LOAD_MORE: 'load-more', // From load-footer
@@ -230,6 +260,7 @@ export const EventNames = {
 
   // Error state events
   RETRY: 'retry', // From error-state
+  VARIANT_OPTION_LOCKED: 'variant-option-locked', // From variant-pills
 } as const;
 
 // ============================================================================

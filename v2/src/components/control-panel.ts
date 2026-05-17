@@ -44,6 +44,8 @@ export class ControlPanel extends LitElement {
   @property({ attribute: false }) sortOptions: Array<{ value: string; label: string }> = [];
   @property({ type: Array }) selectedTypes: PostType[] = [];
   @property({ type: Array }) selectedVariants: PostVariant[] = [];
+  @property({ type: Array }) lockedSortValues: string[] = [];
+  @property({ type: Array }) lockedVariantSelections: Array<'all' | 'original' | 'reblog'> = [];
   @property({ type: Array }) activityKinds: ActivityKind[] = [];
   @property({ type: String }) whenValue = '';
   @property({ type: Object }) blog: Blog | null = null;
@@ -100,7 +102,12 @@ export class ControlPanel extends LitElement {
 
     if (this.showSort) {
       sections.push(html`
-        <sort-controls .value=${this.sortValue} .options=${this.sortOptions} @sort-change=${this.handleSortChange}></sort-controls>
+        <sort-controls
+          .value=${this.sortValue}
+          .options=${this.sortOptions}
+          .lockedValues=${this.lockedSortValues}
+          @sort-change=${this.handleSortChange}
+        ></sort-controls>
       `);
     }
 
@@ -125,6 +132,7 @@ export class ControlPanel extends LitElement {
         <variant-pills
           .loading=${this.loading}
           .selectedVariants=${this.selectedVariants}
+          .lockedVariants=${this.lockedVariantSelections}
           .pageName=${this.pageName}
           @variant-change=${this.handleVariantChange}
         ></variant-pills>

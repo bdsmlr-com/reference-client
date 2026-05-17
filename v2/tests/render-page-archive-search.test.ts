@@ -58,4 +58,17 @@ describe('archive/search render contract usage', () => {
     expect(archiveSrc).toContain("activity_kinds: ['post', 'reblog']");
     expect(archiveSrc).toContain('blog_id: this.blogId');
   });
+
+  it('archive gates non-newest sort and variant filters behind supporter capabilities', () => {
+    const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
+
+    expect(archiveSrc).toContain("import { getViewerCapabilities } from '../services/viewer-capabilities.js';");
+    expect(archiveSrc).toContain(".lockedSortValues=${this.lockedArchiveSortValues()}");
+    expect(archiveSrc).toContain(".lockedVariantSelections=${this.lockedArchiveVariantSelections()}");
+    expect(archiveSrc).toContain('@sort-option-locked=${this.handleSortOptionLocked}');
+    expect(archiveSrc).toContain('@variant-option-locked=${this.handleVariantOptionLocked}');
+    expect(archiveSrc).toContain('Non-newest archive sorts are locked');
+    expect(archiveSrc).toContain('Archive variant filters are locked');
+    expect(archiveSrc).toContain('Upgrade to unlock this control and keep browsing without restrictions.');
+  });
 });

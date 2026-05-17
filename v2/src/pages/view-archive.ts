@@ -40,10 +40,12 @@ import {
   getArchiveSortPreference,
   setArchiveSortPreference,
 } from '../services/profile.js';
+import { getViewerCapabilities } from '../services/viewer-capabilities.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { generatePaginationCursorKey } from '../services/storage.js';
 import { materializeSearchResultUnits, type SearchResultUnit } from '../services/search-result-units.js';
+import { type SortOptionLockedDetail, type VariantOptionLockedDetail } from '../types/events.js';
 
 import '../components/control-panel.js';
 import '../components/activity-grid.js';
@@ -67,7 +69,7 @@ function parseArchiveWhenParam(raw: string | null): string {
 export class ViewArchive extends LitElement {
   static styles = [
     baseStyles,
-    css`
+  css`
       :host {
         display: block;
         min-height: 100vh;
@@ -109,6 +111,71 @@ export class ViewArchive extends LitElement {
 
       .archive-tools archive-tag-cloud {
         min-width: 0;
+      }
+
+      .roadblock-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        z-index: 1000;
+      }
+
+      .roadblock-modal {
+        width: min(520px, 100%);
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+        padding: 18px 18px 14px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .roadblock-eyebrow {
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+
+      .roadblock-title {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .roadblock-copy {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--text-muted);
+      }
+
+      .roadblock-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .roadblock-button {
+        min-height: 36px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text-primary);
+      }
+
+      .roadblock-button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
       }
 
       .search-box input {
@@ -178,6 +245,8 @@ export class ViewArchive extends LitElement {
   @state() private archiveTagItems: Tag[] = [];
   @state() private archiveTagsLoading = false;
   @state() private archiveTagsError = '';
+  @state() private viewerCapabilities: string[] = getViewerCapabilities();
+  @state() private archiveRoadblock: { kind: 'sort' | 'variant' } | null = null;
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
   @state() private galleryMode: GalleryMode = getGalleryMode('archive');
@@ -198,6 +267,7 @@ export class ViewArchive extends LitElement {
     super.connectedCallback();
     window.addEventListener('beforeunload', this.savePaginationState);
     window.addEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
+    window.addEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
   }
 
   disconnectedCallback(): void {
@@ -209,11 +279,77 @@ export class ViewArchive extends LitElement {
       scrollObserver.unobserve(sentinel);
     }
     window.removeEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
+    window.removeEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
     clearBlogTheme();
   }
 
   private handleGalleryModeChanged = (): void => {
     this.galleryMode = getGalleryMode('archive');
+  };
+
+  private handleAuthUserChanged = (): void => {
+    const previousSort = this.sortValue;
+    const previousVariants = [...this.selectedVariants];
+    this.viewerCapabilities = getViewerCapabilities();
+    this.sortValue = this.normalizeArchiveSortValue(this.sortValue);
+    this.selectedVariants = this.normalizeArchiveVariants(this.selectedVariants);
+    const sortChanged = previousSort !== this.sortValue;
+    const variantsChanged = !this.sameVariants(previousVariants, this.selectedVariants);
+    if ((sortChanged || variantsChanged) && this.blogId) {
+      void this.loadPosts({ preserveNavigationState: true });
+    }
+  };
+
+  private sameVariants(left: PostVariant[], right: PostVariant[]): boolean {
+    if (left.length !== right.length) {
+      return false;
+    }
+    return left.every((value, index) => value === right[index]);
+  }
+
+  private hasCapability(capability: string): boolean {
+    return this.viewerCapabilities.includes(capability);
+  }
+
+  private canUseArchiveSorts(): boolean {
+    return this.hasCapability('use_archive_non_newest_sort');
+  }
+
+  private canUseArchiveVariantFilters(): boolean {
+    return this.hasCapability('use_archive_variant_filters');
+  }
+
+  private normalizeArchiveSortValue(value: string): string {
+    if (!this.canUseArchiveSorts()) {
+      return 'newest';
+    }
+    return value || 'newest';
+  }
+
+  private normalizeArchiveVariants(variants: PostVariant[]): PostVariant[] {
+    if (!this.canUseArchiveVariantFilters()) {
+      return [];
+    }
+    return Array.isArray(variants) ? [...variants] : [];
+  }
+
+  private lockedArchiveSortValues(): string[] {
+    if (this.canUseArchiveSorts()) {
+      return [];
+    }
+    return SORT_OPTIONS.filter((option) => option.value !== 'newest').map((option) => option.value);
+  }
+
+  private lockedArchiveVariantSelections(): Array<'all' | 'original' | 'reblog'> {
+    return this.canUseArchiveVariantFilters() ? [] : ['original', 'reblog'];
+  }
+
+  private openArchiveRoadblock(kind: 'sort' | 'variant'): void {
+    this.archiveRoadblock = { kind };
+  }
+
+  private closeArchiveRoadblock = (): void => {
+    this.archiveRoadblock = null;
   };
 
   private savePaginationState = (): void => {
@@ -330,7 +466,7 @@ export class ViewArchive extends LitElement {
       forcePaginatedOnWhen: true,
     });
 
-    const resolvedSort = normalizeSortValue(sort || getArchiveSortPreference());
+    const resolvedSort = this.normalizeArchiveSortValue(normalizeSortValue(sort || getArchiveSortPreference()));
     this.sortValue = resolvedSort;
     this.query = query;
     this.infiniteScroll = infinitePref;
@@ -353,8 +489,10 @@ export class ViewArchive extends LitElement {
     if (variants) {
       const parsedVariants = parseVariantsParam(variants);
       if (parsedVariants) {
-        this.selectedVariants = parsedVariants;
+        this.selectedVariants = this.normalizeArchiveVariants(parsedVariants);
       }
+    } else {
+      this.selectedVariants = this.normalizeArchiveVariants(this.selectedVariants);
     }
 
     if (!this.blog) {
@@ -516,9 +654,19 @@ export class ViewArchive extends LitElement {
   }
 
   private handleSortChange(e: CustomEvent): void {
-    this.sortValue = e.detail.value;
+    const nextValue = normalizeSortValue(e.detail.value);
+    if (!this.canUseArchiveSorts() && nextValue !== 'newest') {
+      this.openArchiveRoadblock('sort');
+      return;
+    }
+    this.sortValue = this.normalizeArchiveSortValue(nextValue);
     setArchiveSortPreference(this.sortValue);
     void this.loadPosts();
+  }
+
+  private handleSortOptionLocked(e: CustomEvent<SortOptionLockedDetail>): void {
+    e.stopPropagation();
+    this.openArchiveRoadblock('sort');
   }
 
   private handleTypesChange(e: CustomEvent): void {
@@ -527,8 +675,18 @@ export class ViewArchive extends LitElement {
   }
 
   private handleVariantChange(e: CustomEvent): void {
-    this.selectedVariants = e.detail.variants || [];
+    const nextVariants = this.normalizeArchiveVariants(e.detail.variants || []);
+    if (!this.canUseArchiveVariantFilters() && (e.detail.variants || []).length > 0) {
+      this.openArchiveRoadblock('variant');
+      return;
+    }
+    this.selectedVariants = nextVariants;
     void this.loadPosts();
+  }
+
+  private handleVariantOptionLocked(e: CustomEvent<VariantOptionLockedDetail>): void {
+    e.stopPropagation();
+    this.openArchiveRoadblock('variant');
   }
 
   private handleWhenChange(e: CustomEvent<{ value: string }>): void {
@@ -680,6 +838,8 @@ export class ViewArchive extends LitElement {
               .blog=${this.blogData}
               .galleryMode=${this.galleryMode}
               .infiniteScroll=${this.infiniteScroll}
+              .lockedSortValues=${this.lockedArchiveSortValues()}
+              .lockedVariantSelections=${this.lockedArchiveVariantSelections()}
               .showSort=${true}
               .showTypes=${true}
               .showVariants=${true}
@@ -689,13 +849,46 @@ export class ViewArchive extends LitElement {
               .settingsHref=${'/settings/you#archive'}
               .loading=${this.loading}
               @sort-change=${this.handleSortChange}
+              @sort-option-locked=${this.handleSortOptionLocked}
               @types-change=${this.handleTypesChange}
               @variant-change=${this.handleVariantChange}
+              @variant-option-locked=${this.handleVariantOptionLocked}
               @when-change=${this.handleWhenChange}
               @gallery-mode-change=${this.handleGalleryModeChange}
               @infinite-toggle=${this.handleInfiniteToggle}
             ></control-panel>
           </route-shell-card>
+        ` : ''}
+
+        ${this.archiveRoadblock ? html`
+          <div class="roadblock-backdrop" @click=${this.closeArchiveRoadblock}>
+            <section
+              class="roadblock-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Upgrade to unlock archive controls"
+              @click=${(event: Event) => event.stopPropagation()}
+            >
+              <div class="roadblock-eyebrow">Archive controls limited</div>
+              <h3 class="roadblock-title">
+                ${this.archiveRoadblock.kind === 'sort'
+                  ? 'Non-newest archive sorts are locked'
+                  : 'Archive variant filters are locked'}
+              </h3>
+              <p class="roadblock-copy">
+                ${this.archiveRoadblock.kind === 'sort'
+                  ? 'This archive stays on newest until the viewer is entitled to unlock additional sort orders.'
+                  : 'This archive stays on all posts until the viewer is entitled to unlock original/reblog filtering.'}
+              </p>
+              <p class="roadblock-copy">
+                Upgrade to unlock this control and keep browsing without restrictions.
+              </p>
+              <div class="roadblock-actions">
+                <button class="roadblock-button" type="button" @click=${this.closeArchiveRoadblock}>Not now</button>
+                <button class="roadblock-button primary" type="button" @click=${this.closeArchiveRoadblock}>Learn more</button>
+              </div>
+            </section>
+          </div>
         ` : ''}
 
         ${this.errorMessage ? html`<error-state title="Error" message=${this.errorMessage} @retry=${this.handleRetry}></error-state>` : ''}
