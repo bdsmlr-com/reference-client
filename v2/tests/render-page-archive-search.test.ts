@@ -89,4 +89,12 @@ describe('archive/search render contract usage', () => {
     expect(archiveSrc).toContain('} else {');
     expect(archiveSrc).toContain('this.selectedVariants = this.normalizeArchiveVariants(this.selectedVariants, { showRoadblock: true });');
   });
+
+  it('archive load accounts for persisted variant preference before fetching posts', () => {
+    const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
+
+    expect(archiveSrc).toContain("getVariantPreference('archive')");
+    expect(archiveSrc).toContain('variantSelectionToPostVariants(savedVariants)');
+    expect(archiveSrc).toContain("showRoadblock: savedVariants !== 'all' && savedVariants !== null");
+  });
 });

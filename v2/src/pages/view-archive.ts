@@ -9,6 +9,7 @@ import { parsePostTypesParam, parseVariantsParam } from '../services/post-filter
 import { scrollObserver } from '../services/scroll-observer.js';
 import {
   setCachedPaginationCursor,
+  getVariantPreference,
 } from '../services/storage.js';
 import { normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
 import type { Blog, PostType, PostSortField, Order, PostVariant, Tag } from '../types/api.js';
@@ -341,6 +342,17 @@ export class ViewArchive extends LitElement {
     return [];
   }
 
+  private variantSelectionToPostVariants(selection: string | null | undefined): PostVariant[] {
+    switch (selection) {
+      case 'original':
+        return [1];
+      case 'reblog':
+        return [2];
+      default:
+        return [];
+    }
+  }
+
   private lockedArchiveSortValues(): string[] {
     if (this.canUseArchiveSorts()) {
       return [];
@@ -503,7 +515,10 @@ export class ViewArchive extends LitElement {
         this.selectedVariants = this.normalizeArchiveVariants(parsedVariants, { showRoadblock: true });
       }
     } else {
-      this.selectedVariants = this.normalizeArchiveVariants(this.selectedVariants, { showRoadblock: true });
+      const savedVariants = getVariantPreference('archive');
+      this.selectedVariants = this.normalizeArchiveVariants(this.variantSelectionToPostVariants(savedVariants), {
+        showRoadblock: savedVariants !== 'all' && savedVariants !== null,
+      });
     }
 
     if (!this.blog) {
