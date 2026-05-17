@@ -138,6 +138,12 @@ export class MediaRenderer extends LitElement {
     this.retryGeneration += 1;
   };
 
+  private handleRetryInteraction = (event: Event): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    this.handleRetry();
+  };
+
   private renderDebug(resolvedUrl: string) {
     if (!isAdminMode()) return nothing;
     // Only show simple debug if NOT in lightbox (lightbox has its own panel)
@@ -167,10 +173,11 @@ export class MediaRenderer extends LitElement {
           style="background: #1a1a1a; border: 1px solid #442222;"
           role="button"
           tabindex="0"
-          @click=${this.handleRetry}
+          @click=${this.handleRetryInteraction}
           @keydown=${(e: KeyboardEvent) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
+              e.stopPropagation();
               this.handleRetry();
             }
           }}

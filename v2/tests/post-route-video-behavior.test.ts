@@ -51,10 +51,12 @@ describe('post route media behavior', () => {
     expect(src).toContain("const defaultPreload = behavior.preload ?? 'none';");
     expect(src).toContain("this.type === 'card' ||");
     expect(src).toContain("this.type === 'gallery-grid' ||");
-    expect(src).toContain("@click=${this.handleRetry}");
+    expect(src).toContain("@click=${this.handleRetryInteraction}");
     expect(src).toContain('Load Failed. Retry ⟳');
     expect(src).toContain('color: #b86a6a;');
     expect(src).toContain('cursor: pointer;');
+    expect(src).toContain('event.stopPropagation();');
+    expect(src).toContain('event.preventDefault();');
   });
 
   it('post-detail-content emits the canonical detail media family', () => {
