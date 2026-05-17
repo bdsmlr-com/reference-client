@@ -141,6 +141,7 @@ export class VariantPills extends LitElement {
   }
 
   private emitLocked(selection: VariantSelection, label: string): void {
+    this.open = false;
     this.dispatchEvent(
       new CustomEvent<VariantOptionLockedDetail>(EventNames.VARIANT_OPTION_LOCKED, {
         detail: { selection, variants: this.getVariants(selection), label },
