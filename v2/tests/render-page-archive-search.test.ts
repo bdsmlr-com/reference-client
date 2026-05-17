@@ -112,6 +112,18 @@ describe('archive/search render contract usage', () => {
     expect(searchSrc).not.toContain("setGalleryMode('grid'");
   });
 
+  it('archive and search restore scoped masonry preference on auth-user-changed before normalizing', () => {
+    const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
+    const searchSrc = readFileSync(join(process.cwd(), 'src/pages/view-search.ts'), 'utf8');
+
+    expect(archiveSrc).toContain("window.addEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);");
+    expect(searchSrc).toContain("window.addEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);");
+    expect(archiveSrc).toContain('private handleAuthUserChanged = (): void => {');
+    expect(searchSrc).toContain('private handleAuthUserChanged = (): void => {');
+    expect(archiveSrc).toContain("this.galleryMode = normalizeGalleryModeForCapabilities(getGalleryMode('archive'), this.viewerCapabilities);");
+    expect(searchSrc).toContain("this.galleryMode = normalizeGalleryModeForCapabilities(getGalleryMode('search'), getViewerCapabilities());");
+  });
+
   it('archive load accounts for persisted variant preference before fetching posts', () => {
     const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
 
