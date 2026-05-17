@@ -293,7 +293,7 @@ export class ViewArchive extends LitElement {
     const previousSort = this.sortValue;
     const previousVariants = [...this.selectedVariants];
     this.viewerCapabilities = getViewerCapabilities();
-    this.galleryMode = normalizeGalleryModeForCapabilities(this.galleryMode, this.viewerCapabilities);
+    this.galleryMode = normalizeGalleryModeForCapabilities(getGalleryMode('archive'), this.viewerCapabilities);
     this.sortValue = this.normalizeArchiveSortValue(this.sortValue, { showRoadblock: true });
     this.selectedVariants = this.normalizeArchiveVariants(this.selectedVariants, { showRoadblock: true });
     const sortChanged = previousSort !== this.sortValue;

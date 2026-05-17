@@ -106,8 +106,8 @@ describe('archive/search render contract usage', () => {
     const profileSrc = readFileSync(join(process.cwd(), 'src/services/profile.ts'), 'utf8');
 
     expect(profileSrc).toContain('normalizeGalleryModeForCapabilities');
-    expect(archiveSrc).toContain('this.galleryMode = normalizeGalleryModeForCapabilities(this.galleryMode, this.viewerCapabilities);');
-    expect(searchSrc).toContain('this.galleryMode = normalizeGalleryModeForCapabilities(this.galleryMode, getViewerCapabilities());');
+    expect(archiveSrc).toContain("this.galleryMode = normalizeGalleryModeForCapabilities(getGalleryMode('archive'), this.viewerCapabilities);");
+    expect(searchSrc).toContain("this.galleryMode = normalizeGalleryModeForCapabilities(getGalleryMode('search'), getViewerCapabilities());");
     expect(archiveSrc).not.toContain("setGalleryMode('grid'");
     expect(searchSrc).not.toContain("setGalleryMode('grid'");
   });

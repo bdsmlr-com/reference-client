@@ -536,7 +536,7 @@ export class ViewSearch extends LitElement {
   };
 
   private handleAuthUserChanged = (): void => {
-    this.galleryMode = normalizeGalleryModeForCapabilities(this.galleryMode, getViewerCapabilities());
+    this.galleryMode = normalizeGalleryModeForCapabilities(getGalleryMode('search'), getViewerCapabilities());
   };
 
   private canUseMasonry(): boolean {
