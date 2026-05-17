@@ -71,4 +71,15 @@ describe('archive/search render contract usage', () => {
     expect(archiveSrc).toContain('Archive variant filters are locked');
     expect(archiveSrc).toContain('Upgrade to unlock this control and keep browsing without restrictions.');
   });
+
+  it('archive normalization still opens the roadblock when locked url or restored preferences are stripped', () => {
+    const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
+
+    expect(archiveSrc).toContain('normalizeArchiveSortValue(value: string, options: { showRoadblock?: boolean } = {})');
+    expect(archiveSrc).toContain('normalizeArchiveVariants(variants: PostVariant[], options: { showRoadblock?: boolean } = {})');
+    expect(archiveSrc).toContain("this.openArchiveRoadblock('sort')");
+    expect(archiveSrc).toContain("this.openArchiveRoadblock('variant')");
+    expect(archiveSrc).toContain("showRoadblock: Boolean(sortSource && sortSource !== 'newest')");
+    expect(archiveSrc).toContain('showRoadblock: true');
+  });
 });

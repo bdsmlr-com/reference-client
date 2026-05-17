@@ -291,8 +291,8 @@ export class ViewArchive extends LitElement {
     const previousSort = this.sortValue;
     const previousVariants = [...this.selectedVariants];
     this.viewerCapabilities = getViewerCapabilities();
-    this.sortValue = this.normalizeArchiveSortValue(this.sortValue);
-    this.selectedVariants = this.normalizeArchiveVariants(this.selectedVariants);
+    this.sortValue = this.normalizeArchiveSortValue(this.sortValue, { showRoadblock: true });
+    this.selectedVariants = this.normalizeArchiveVariants(this.selectedVariants, { showRoadblock: true });
     const sortChanged = previousSort !== this.sortValue;
     const variantsChanged = !this.sameVariants(previousVariants, this.selectedVariants);
     if ((sortChanged || variantsChanged) && this.blogId) {
@@ -319,18 +319,26 @@ export class ViewArchive extends LitElement {
     return this.hasCapability('use_archive_variant_filters');
   }
 
-  private normalizeArchiveSortValue(value: string): string {
-    if (!this.canUseArchiveSorts()) {
-      return 'newest';
+  private normalizeArchiveSortValue(value: string, options: { showRoadblock?: boolean } = {}): string {
+    const normalized = normalizeSortValue(value);
+    if (this.canUseArchiveSorts()) {
+      return normalized;
     }
-    return value || 'newest';
+    if (normalized !== 'newest' && options.showRoadblock) {
+      this.openArchiveRoadblock('sort');
+    }
+    return 'newest';
   }
 
-  private normalizeArchiveVariants(variants: PostVariant[]): PostVariant[] {
-    if (!this.canUseArchiveVariantFilters()) {
-      return [];
+  private normalizeArchiveVariants(variants: PostVariant[], options: { showRoadblock?: boolean } = {}): PostVariant[] {
+    const values = Array.isArray(variants) ? [...variants] : [];
+    if (this.canUseArchiveVariantFilters()) {
+      return values;
     }
-    return Array.isArray(variants) ? [...variants] : [];
+    if (values.length > 0 && options.showRoadblock) {
+      this.openArchiveRoadblock('variant');
+    }
+    return [];
   }
 
   private lockedArchiveSortValues(): string[] {
@@ -466,7 +474,10 @@ export class ViewArchive extends LitElement {
       forcePaginatedOnWhen: true,
     });
 
-    const resolvedSort = this.normalizeArchiveSortValue(normalizeSortValue(sort || getArchiveSortPreference()));
+    const sortSource = sort || getArchiveSortPreference();
+    const resolvedSort = this.normalizeArchiveSortValue(normalizeSortValue(sortSource), {
+      showRoadblock: Boolean(sortSource && sortSource !== 'newest'),
+    });
     this.sortValue = resolvedSort;
     this.query = query;
     this.infiniteScroll = infinitePref;
@@ -489,7 +500,7 @@ export class ViewArchive extends LitElement {
     if (variants) {
       const parsedVariants = parseVariantsParam(variants);
       if (parsedVariants) {
-        this.selectedVariants = this.normalizeArchiveVariants(parsedVariants);
+        this.selectedVariants = this.normalizeArchiveVariants(parsedVariants, { showRoadblock: true });
       }
     } else {
       this.selectedVariants = this.normalizeArchiveVariants(this.selectedVariants);
