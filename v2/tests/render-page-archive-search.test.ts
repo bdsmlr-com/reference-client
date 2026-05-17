@@ -82,4 +82,11 @@ describe('archive/search render contract usage', () => {
     expect(archiveSrc).toContain("showRoadblock: Boolean(sortSource && sortSource !== 'newest')");
     expect(archiveSrc).toContain('showRoadblock: true');
   });
+
+  it('archive normalization opens the roadblock when restored in-memory variants are stripped without a url override', () => {
+    const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
+
+    expect(archiveSrc).toContain('} else {');
+    expect(archiveSrc).toContain('this.selectedVariants = this.normalizeArchiveVariants(this.selectedVariants, { showRoadblock: true });');
+  });
 });

@@ -503,7 +503,7 @@ export class ViewArchive extends LitElement {
         this.selectedVariants = this.normalizeArchiveVariants(parsedVariants, { showRoadblock: true });
       }
     } else {
-      this.selectedVariants = this.normalizeArchiveVariants(this.selectedVariants);
+      this.selectedVariants = this.normalizeArchiveVariants(this.selectedVariants, { showRoadblock: true });
     }
 
     if (!this.blog) {
