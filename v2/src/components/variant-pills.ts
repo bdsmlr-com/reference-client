@@ -89,27 +89,14 @@ export class VariantPills extends LitElement {
   @property({ type: Boolean }) loading = false;
 
   @state() private open = false;
+  private lockStateKnown = false;
+  private restoredPersistedVariant = false;
+  private pendingExplicitSelection: VariantSelection | null = null;
   private selectorPopover = new SelectorPopoverController(this, () => this.open, (next) => { this.open = next; });
 
   connectedCallback(): void {
     super.connectedCallback();
     this.selectorPopover.connect();
-    const explicitSelection = this.selectionFromVariants(this.selectedVariants);
-    if (explicitSelection !== 'all' && !this.isLocked(explicitSelection)) {
-      this.selected = explicitSelection;
-      return;
-    }
-    if (this.persistSelection && this.selected === 'all') {
-      const saved = getVariantPreference(this.pageName || undefined);
-      if (saved && saved !== 'all' && !this.isLocked(saved)) {
-        this.selected = saved;
-        this.dispatchEvent(
-          new CustomEvent<VariantChangeDetail>(EventNames.VARIANT_CHANGE, {
-            detail: { selection: saved, variants: this.getVariants(saved) },
-          })
-        );
-      }
-    }
   }
 
   disconnectedCallback(): void {
@@ -118,8 +105,55 @@ export class VariantPills extends LitElement {
   }
 
   protected willUpdate(changed: PropertyValues<this>): void {
+    if (changed.has('lockedVariants')) {
+      this.lockStateKnown = true;
+    }
     if (changed.has('selectedVariants')) {
-      this.selected = this.selectionFromVariants(this.selectedVariants);
+      const explicitSelection = this.selectionFromVariants(this.selectedVariants);
+      if (!this.lockStateKnown) {
+        this.pendingExplicitSelection = explicitSelection;
+      } else {
+        this.applyExplicitSelection(explicitSelection);
+      }
+    }
+    if (this.lockStateKnown && this.pendingExplicitSelection !== null) {
+      const pendingSelection = this.pendingExplicitSelection;
+      this.pendingExplicitSelection = null;
+      this.applyExplicitSelection(pendingSelection);
+    }
+    if (
+      this.lockStateKnown
+      && !this.restoredPersistedVariant
+      && this.selected === 'all'
+      && (changed.has('lockedVariants') || changed.has('selectedVariants') || changed.has('pageName'))
+    ) {
+      this.restorePersistedSelection();
+    }
+  }
+
+  private restorePersistedSelection(): void {
+    if (!this.persistSelection || this.selected !== 'all') {
+      this.restoredPersistedVariant = true;
+      return;
+    }
+    const saved = getVariantPreference(this.pageName || undefined);
+    if (saved && saved !== 'all' && !this.isLocked(saved)) {
+      this.selected = saved;
+      this.dispatchEvent(
+        new CustomEvent<VariantChangeDetail>(EventNames.VARIANT_CHANGE, {
+          detail: { selection: saved, variants: this.getVariants(saved) },
+        })
+      );
+    }
+    this.restoredPersistedVariant = true;
+  }
+
+  private applyExplicitSelection(selection: VariantSelection): void {
+    if (selection !== 'all' && !this.isLocked(selection)) {
+      this.selected = selection;
+    }
+    if (selection !== 'all') {
+      this.restoredPersistedVariant = true;
     }
   }
 

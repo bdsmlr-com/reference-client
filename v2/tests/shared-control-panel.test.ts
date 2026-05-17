@@ -112,9 +112,9 @@ describe('shared control panel', () => {
     expect(variantSrc).toContain('Reblogged posts');
     expect(variantSrc).toContain('aria-haspopup="dialog"');
     expect(variantSrc).toContain('role="dialog"');
-    expect(variantSrc).toContain('explicitSelection !== \'all\' && !this.isLocked(explicitSelection)');
-    expect(variantSrc).toContain("saved && saved !== 'all' && !this.isLocked(saved)");
-    expect(variantSrc).toContain('this.open = false;');
+    expect(variantSrc).toContain('this.pendingExplicitSelection = explicitSelection;');
+    expect(variantSrc).toContain('this.lockStateKnown = true;');
+    expect(variantSrc).toContain('this.restorePersistedSelection();');
     expect(variantSrc).toContain("class=\"trigger ${this.open || this.selected !== 'all' ? 'active' : ''}\"");
     expect(variantSrc).toContain('lockedVariants');
     expect(variantSrc).toContain("EventNames.VARIANT_OPTION_LOCKED");
