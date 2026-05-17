@@ -95,13 +95,13 @@ export class VariantPills extends LitElement {
     super.connectedCallback();
     this.selectorPopover.connect();
     const explicitSelection = this.selectionFromVariants(this.selectedVariants);
-    if (explicitSelection !== 'all') {
+    if (explicitSelection !== 'all' && !this.isLocked(explicitSelection)) {
       this.selected = explicitSelection;
       return;
     }
     if (this.persistSelection && this.selected === 'all') {
       const saved = getVariantPreference(this.pageName || undefined);
-      if (saved && saved !== 'all') {
+      if (saved && saved !== 'all' && !this.isLocked(saved)) {
         this.selected = saved;
         this.dispatchEvent(
           new CustomEvent<VariantChangeDetail>(EventNames.VARIANT_CHANGE, {
