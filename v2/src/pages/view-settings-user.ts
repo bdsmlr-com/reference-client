@@ -432,6 +432,7 @@ export class ViewSettingsUser extends LitElement {
   private handleAuthUserChanged = (): void => {
     this.viewerCapabilities = getViewerCapabilities();
     this.routePrefs = this.readRoutePreferences();
+    this.settingsRoadblock = null;
   };
 
   private openBlog(blog: SettingsBlog): void {
