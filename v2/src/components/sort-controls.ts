@@ -65,17 +65,18 @@ export class SortControls extends LitElement {
       }
 
       .sort-pill.locked {
-        background: rgba(166, 67, 67, 0.14);
-        color: var(--text-primary);
-        border-color: rgba(166, 67, 67, 0.35);
+        background: color-mix(in srgb, var(--error) 16%, var(--bg-panel-alt));
+        color: color-mix(in srgb, var(--error) 42%, var(--text-primary));
+        border-color: color-mix(in srgb, var(--error) 55%, var(--border));
       }
 
       .sort-pill.locked:hover {
-        background: rgba(166, 67, 67, 0.2);
+        background: color-mix(in srgb, var(--error) 22%, var(--bg-panel-alt));
       }
 
       .sort-pill.locked.active {
-        background: rgba(166, 67, 67, 0.72);
+        background: color-mix(in srgb, var(--error) 78%, var(--bg-panel));
+        border-color: color-mix(in srgb, var(--error) 82%, var(--border));
         color: #fff;
       }
 
