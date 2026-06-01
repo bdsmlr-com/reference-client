@@ -51,13 +51,13 @@ describe('post feed context', () => {
     expect(gridSrc).toContain("@property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'activity';");
   });
 
-  it('uses canonical /activity/:blog links for post identity blog routes', () => {
+  it('uses canonical /blog/:blog links for post identity blog routes', () => {
     const configSrc = readFileSync(join(process.cwd(), 'media-config.json'), 'utf8');
 
     expect(configSrc).toContain('"post_origin_blog"');
     expect(configSrc).toContain('"post_via_blog"');
     expect(configSrc).toContain('"activity_actor_blog"');
-    expect(configSrc).toContain('"/activity/{blog}"');
+    expect(configSrc).toContain('"/blog/{blog}"');
     expect(configSrc).not.toContain('"/{blog}/activity"');
   });
 

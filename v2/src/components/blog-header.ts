@@ -236,7 +236,7 @@ export class BlogHeader extends LitElement {
   private getSubnavUrl(page: string, blogName: string): string {
     if (page === 'feed') return `/feed/for/${blogName}`;
     if (page === 'follower-feed') return `/follower-feed/${blogName}`;
-    if (page === 'activity') return `/activity/${blogName}`;
+    if (page === 'activity') return buildPageUrl('activity', blogName);
     if (page === 'archive') return `/archive/${blogName}`;
     if (page === 'social') return buildPageUrl('social', blogName);
     return buildPageUrl(page, blogName);

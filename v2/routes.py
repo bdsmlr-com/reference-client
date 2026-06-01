@@ -25,7 +25,9 @@ def _canonical_redirect(path: str) -> str | None:
     if normalized == '/feed':
         return '/feed/for/you'
     if normalized == '/activity':
-        return '/activity/you'
+        return '/blog/you'
+    if normalized == '/blog':
+        return '/blog/you'
     if normalized == '/archive':
         return '/archive/you'
     if normalized == '/settings':
@@ -44,7 +46,7 @@ def _canonical_redirect(path: str) -> str | None:
     if page == 'archive':
         return f'/archive/{blog}'
     if page == 'activity':
-        return f'/activity/{blog}'
+        return f'/blog/{blog}'
     if page == 'feed':
         return f'/feed/for/{blog}'
     if page == 'social':

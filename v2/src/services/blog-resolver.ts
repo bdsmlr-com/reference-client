@@ -20,7 +20,7 @@ const SUBDOMAIN_ENABLED_DOMAINS = ['bdsmlr.com', 'bdsmlr.localhost'];
 const RESERVED_SUBDOMAINS = ['www', 'api', 'cdn', 'static', 'admin', 'app'];
 
 // Canonical FE pages that accept a blog context in the path.
-const BLOG_PAGES = ['search', 'feed', 'follower-feed', 'activity', 'archive', 'settings', 'social'];
+const BLOG_PAGES = ['search', 'feed', 'follower-feed', 'blog', 'archive', 'settings', 'social'];
 
 // Legacy page aliases that should resolve to the canonical FE routes.
 const BLOG_PAGE_ALIASES: Record<string, string> = {
@@ -40,6 +40,7 @@ const RESERVED_PAGE_ROUTES = [
   'blogs',
   'discover',
   'you',
+  'blog',
   'activity',
   'archive',
   'feed',
@@ -181,6 +182,7 @@ export function getBlogNameFromSubdomain(): string {
  *   /search/for/:blogname
  *   /feed/for/:blogname
  *   /follower-feed/:blogname
+ *   /blog/:blogname
  *   /activity/:blogname
  *   /archive/:blogname
  *   /settings/:blogname
@@ -417,7 +419,10 @@ export function buildPageUrl(
     } else if (normalizedPage === 'follower-feed') {
       const blogSegment = resolveBuildBlogSegment(blogName);
       url = `/follower-feed/${blogSegment || 'you'}`;
-    } else if (normalizedPage === 'activity' || normalizedPage === 'archive' || normalizedPage === 'settings') {
+    } else if (normalizedPage === 'activity') {
+      const blogSegment = resolveBuildBlogSegment(blogName);
+      url = `/blog/${blogSegment || 'you'}`;
+    } else if (normalizedPage === 'archive' || normalizedPage === 'settings') {
       const blogSegment = resolveBuildBlogSegment(blogName);
       url = `/${normalizedPage}/${blogSegment || 'you'}`;
     } else if (normalizedPage === 'social') {
@@ -568,6 +573,20 @@ function parseRouteContext(pathname: string): { page: string; blogName: string }
     return { page: 'feed', blogName: resolvePathBlogSegment(third) };
   }
 
+  if (first === 'activity') {
+    if (second) {
+      return { page: 'activity', blogName: resolvePathBlogSegment(second) };
+    }
+    return { page: 'activity', blogName: '' };
+  }
+
+  if (first === 'blog') {
+    if (second) {
+      return { page: 'activity', blogName: resolvePathBlogSegment(second) };
+    }
+    return { page: 'activity', blogName: '' };
+  }
+
   if (first === 'social' && second) {
     if (third === 'followers' || third === 'following' || third === 'siblings') {
       return { page: 'social', blogName: resolvePathBlogSegment(second) };
@@ -590,7 +609,7 @@ function parseRouteContext(pathname: string): { page: string; blogName: string }
 
   if (parts.length >= 2) {
     const legacyPage = normalizePageRoute(parts[1]);
-    if (BLOG_PAGES.includes(legacyPage)) {
+    if (legacyPage === 'activity' || BLOG_PAGES.includes(legacyPage)) {
       return { page: legacyPage, blogName: resolvePathBlogSegment(parts[0]) };
     }
   }

@@ -51,7 +51,7 @@ describe('shared-nav profile/settings behavior', () => {
     expect(src).toContain('blog?.avatarUrl ?? blog?.avatar_url ?? null');
   });
 
-  it('uses theme-responsive text color for the profile blog identity and canonical activity routing', () => {
+  it('uses theme-responsive text color for the profile blog identity and canonical blog routing', () => {
     const src = readFileSync(NAV_FILE, 'utf8');
     const identitySrc = readFileSync(join(process.cwd(), 'src/components/blog-identity.ts'), 'utf8');
 
@@ -59,8 +59,8 @@ describe('shared-nav profile/settings behavior', () => {
     expect(src).toContain('color: var(--text-primary);');
     expect(src).not.toContain("window.location.href = `/${selectedBlog.name}/activity`;");
     expect(src).not.toContain("window.location.href = `/${activeName}/activity`;");
-    expect(src).toContain("window.location.href = `/activity/${selectedBlog.name}`;");
-    expect(src).toContain("window.location.href = `/activity/${activeName}`;");
+    expect(src).toContain("window.location.href = `/blog/${selectedBlog.name}`;");
+    expect(src).toContain("window.location.href = `/blog/${activeName}`;");
     expect(identitySrc).toContain('color: var(--blog-identity-text, var(--text-primary));');
     expect(identitySrc).toContain('.identity {');
     expect(identitySrc).toContain('color: inherit;');

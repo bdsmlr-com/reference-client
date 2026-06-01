@@ -483,7 +483,7 @@ export class SharedNav extends LitElement {
         updateActiveBlog(activeId || resp.blog_id || 0, activeName);
         this.currentUsername = activeName;
         this.loginModalOpen = false;
-        window.location.href = `/activity/${activeName}`;
+        window.location.href = `/blog/${activeName}`;
       } else {
         this.loginError = 'Login failed';
       }
@@ -525,7 +525,7 @@ export class SharedNav extends LitElement {
     // Rebuild URLs for current page
     const currentPath = window.location.pathname;
     if (currentPath === '/' || currentPath === '') {
-      window.location.href = `/activity/${selectedBlog.name}`;
+      window.location.href = `/blog/${selectedBlog.name}`;
     }
   }
 

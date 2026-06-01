@@ -17,15 +17,15 @@ describe('activity route alias', () => {
     expect(links.contexts.post_via_blog).toBeDefined();
   });
 
-  it('app router exposes canonical activity and legacy alias routes', () => {
+  it('app router exposes canonical blog routes and legacy activity aliases', () => {
     const appRootSrc = readFileSync(join(ROOT, 'app-root.ts'), 'utf8');
 
-    expect(appRootSrc).toContain("{ path: '/activity/:blogname'");
+    expect(appRootSrc).toContain("{ path: '/blog/:blogname'");
     expect(appRootSrc).toContain("{ path: '/:blog/activity'");
     expect(appRootSrc).not.toContain("{ path: '/:blog/posts'");
   });
 
-  it('shared nav targets activity path for the activity tab', () => {
+  it('shared nav targets canonical blog path for the activity tab', () => {
     const navSrc = readFileSync(join(ROOT, 'components/shared-nav.ts'), 'utf8');
     const headerSrc = readFileSync(join(ROOT, 'components/blog-header.ts'), 'utf8');
     const resolverSrc = readFileSync(join(ROOT, 'services/blog-resolver.ts'), 'utf8');
@@ -33,8 +33,8 @@ describe('activity route alias', () => {
     expect(navSrc).toContain("if (page === 'activity')");
     expect(navSrc).toContain("return buildPageUrl('activity', activeBlog);");
     expect(headerSrc).toContain("import { buildPageUrl } from '../services/blog-resolver.js';");
-    expect(headerSrc).toContain("if (page === 'activity') return `/activity/${blogName}`;");
-    expect(resolverSrc).toContain("const BLOG_PAGES = ['search', 'feed', 'follower-feed', 'activity', 'archive', 'settings', 'social'];");
+    expect(headerSrc).toContain("if (page === 'activity') return buildPageUrl('activity', blogName);");
+    expect(resolverSrc).toContain("const BLOG_PAGES = ['search', 'feed', 'follower-feed', 'blog', 'archive', 'settings', 'social'];");
   });
 
   it('activity view treats newest as canonical and keeps URLs minimal', () => {

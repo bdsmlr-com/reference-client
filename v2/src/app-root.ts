@@ -115,8 +115,8 @@ export class AppRoot extends LitElement {
     { path: '/feed/for/:blogname', render: ({ blogname }) => html`<view-feed .blog=${this.resolveRouteBlogName(blogname || '')}></view-feed>` },
     { path: '/follower-feed/you', render: () => html`<view-feed .blog=${this.resolveRouteBlogName('you')} .mode=${'followers'}></view-feed>` },
     { path: '/follower-feed/:blogname', render: ({ blogname }) => html`<view-feed .blog=${this.resolveRouteBlogName(blogname || '')} .mode=${'followers'}></view-feed>` },
-    { path: '/activity/you', render: () => html`<view-posts .blog=${this.resolveRouteBlogName('you')}></view-posts>` },
-    { path: '/activity/:blogname', render: ({ blogname }) => html`<view-posts .blog=${this.resolveRouteBlogName(blogname || '')}></view-posts>` },
+    { path: '/blog/you', render: () => html`<view-posts .blog=${this.resolveRouteBlogName('you')}></view-posts>` },
+    { path: '/blog/:blogname', render: ({ blogname }) => html`<view-posts .blog=${this.resolveRouteBlogName(blogname || '')}></view-posts>` },
     { path: '/archive/you', render: () => html`<view-archive .blog=${this.resolveRouteBlogName('you')}></view-archive>` },
     { path: '/archive/:blogname', render: ({ blogname }) => html`<view-archive .blog=${this.resolveRouteBlogName(blogname || '')}></view-archive>` },
     { path: '/settings/you', render: () => html`<view-settings-user></view-settings-user>` },
@@ -248,7 +248,7 @@ export class AppRoot extends LitElement {
     const pathname = window.location.pathname;
     const isAdmin = isAdminMode();
     let currentPage: any = 'home';
-    if (pathname.includes('/activity')) currentPage = 'timeline';
+    if (pathname.includes('/activity') || pathname.includes('/blog/')) currentPage = 'timeline';
     else if (pathname.includes('/follower-feed')) currentPage = 'follower-feed';
     else if (pathname.includes('/feed')) currentPage = 'following';
     else if (pathname.includes('/archive')) currentPage = 'archive';

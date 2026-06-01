@@ -24,12 +24,13 @@ class ClientRoutesRedirectTests(unittest.TestCase):
         cases = {
             "/for": "/for/you",
             "/feed": "/feed/for/you",
-            "/activity": "/activity/you",
+            "/activity": "/blog/you",
+            "/blog": "/blog/you",
             "/archive": "/archive/you",
             "/settings": "/settings/you",
             "/social": "/social/you",
             "/sam/archive": "/archive/sam",
-            "/sam/activity": "/activity/sam",
+            "/sam/activity": "/blog/sam",
             "/sam/feed": "/feed/for/sam",
             "/sam/social": "/social/sam",
         }

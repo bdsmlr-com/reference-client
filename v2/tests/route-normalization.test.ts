@@ -45,6 +45,8 @@ describe('route normalization', () => {
       ['/feed/for/sam', 'feed', 'sam'],
       ['/follower-feed/you', 'follower-feed', 'alice'],
       ['/follower-feed/sam', 'follower-feed', 'sam'],
+      ['/blog/you', 'activity', 'alice'],
+      ['/blog/sam', 'activity', 'sam'],
       ['/activity/you', 'activity', 'alice'],
       ['/activity/sam', 'activity', 'sam'],
       ['/archive/you', 'archive', 'alice'],
@@ -99,8 +101,8 @@ describe('route normalization', () => {
     expect(buildPageUrl('feed', 'sam')).toBe('/feed/for/sam');
     expect(buildPageUrl('follower-feed', 'alice')).toBe('/follower-feed/you');
     expect(buildPageUrl('follower-feed', 'sam')).toBe('/follower-feed/sam');
-    expect(buildPageUrl('activity', 'alice')).toBe('/activity/you');
-    expect(buildPageUrl('activity', 'sam')).toBe('/activity/sam');
+    expect(buildPageUrl('activity', 'alice')).toBe('/blog/you');
+    expect(buildPageUrl('activity', 'sam')).toBe('/blog/sam');
     expect(buildPageUrl('archive', 'alice')).toBe('/archive/you');
     expect(buildPageUrl('archive', 'sam')).toBe('/archive/sam');
     expect(buildPageUrl('settings', 'alice')).toBe('/settings/you');
@@ -110,8 +112,8 @@ describe('route normalization', () => {
   it('normalizes legacy page aliases onto the new route grammar', () => {
     getItem.mockReturnValue('alice');
 
-    expect(buildPageUrl('posts', 'alice')).toBe('/activity/you');
-    expect(buildPageUrl('timeline', 'sam')).toBe('/activity/sam');
+    expect(buildPageUrl('posts', 'alice')).toBe('/blog/you');
+    expect(buildPageUrl('timeline', 'sam')).toBe('/blog/sam');
     expect(buildPageUrl('social', 'alice')).toBe('/social');
     expect(buildPageUrl('social', 'sam')).toBe('/social/sam');
   });
@@ -128,8 +130,8 @@ describe('route normalization', () => {
     expect(appRootSrc).toContain("path: '/feed/for/:blogname'");
     expect(appRootSrc).toContain("path: '/follower-feed/you'");
     expect(appRootSrc).toContain("path: '/follower-feed/:blogname'");
-    expect(appRootSrc).toContain("path: '/activity/you'");
-    expect(appRootSrc).toContain("path: '/activity/:blogname'");
+    expect(appRootSrc).toContain("path: '/blog/you'");
+    expect(appRootSrc).toContain("path: '/blog/:blogname'");
     expect(appRootSrc).toContain("path: '/archive/you'");
     expect(appRootSrc).toContain("path: '/archive/:blogname'");
     expect(appRootSrc).toContain("path: '/settings/:blogname'");
