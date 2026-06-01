@@ -28,6 +28,7 @@ import { setCurrentUsername } from './services/profile.js';
 import { setStoredBlogName } from './services/blog-resolver.js';
 import { getStoredActiveBlog, setStoredActiveBlog } from './utils/storage.js';
 import { buildPostHref } from './services/post-route-context.js';
+import { isAnonymousReadableRoute } from './services/route-access-policy.js';
 import './components/auth-gate.js';
 
 @customElement('app-root')
@@ -234,7 +235,9 @@ export class AppRoot extends LitElement {
       return html``;
     }
 
-    if (!this.authenticated) {
+    const allowAnonymousRead = isAnonymousReadableRoute(window.location.pathname);
+
+    if (!this.authenticated && !allowAnonymousRead) {
       const env = (import.meta as any).env || {};
       const loginUrl = env.VITE_LOGIN_URL || 'https://bdsmlr.com/login';
       return html`<auth-gate .message=${this.authError} .loginUrl=${loginUrl} @auth-retry=${this.handleRetryAuth}></auth-gate>`;
