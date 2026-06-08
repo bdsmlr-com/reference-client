@@ -161,6 +161,9 @@ export class ViewSocial extends LitElement {
   private followersPageAttempts = 0;
   private followingPageAttempts = 0;
   private readonly maxPageAttempts = 32;
+  private recommendedBlogsLoadedFor = '';
+  private recommendedBlogsPromise: Promise<void> | null = null;
+  private recommendedBlogsRequestToken: object | null = null;
 
   protected updated(changedProperties: PropertyValues): void {
     if (changedProperties.has('blog')) {
@@ -212,6 +215,10 @@ export class ViewSocial extends LitElement {
     this.seenFollowingCursors.clear();
     this.followersPageAttempts = 0;
     this.followingPageAttempts = 0;
+    this.recommendedBlogsLoadedFor = '';
+    this.recommendedBlogsPromise = null;
+    this.recommendedBlogsRequestToken = null;
+    this.recommendedBlogs = [];
     const pathTab = window.location.pathname.split('/').filter(Boolean)[2] as Tab | undefined;
     const tab = pathTab || (getUrlParam('tab') as Tab) || this.initialTab;
     this.sortValue = getUrlParam('sort') || getSocialSortPreference() || 'default';
@@ -326,7 +333,8 @@ export class ViewSocial extends LitElement {
     }
 
     try {
-      await Promise.all([this.fetchPage(), this.loadRecommendedBlogs()]);
+      await this.fetchPage();
+      void this.loadRecommendedBlogs();
     } catch (e) {
       const operation = this.activeTab === 'followers' ? 'load_followers' : 'load_following';
       this.errorMessage = getContextualErrorMessage(e, operation, { blogName: this.blog });
@@ -521,31 +529,62 @@ export class ViewSocial extends LitElement {
   }
 
   private async loadRecommendedBlogs(): Promise<void> {
-    if (!this.blog) {
+    const blogName = this.blog;
+    if (!blogName) {
       this.recommendedBlogs = [];
+      this.recommendedBlogsLoadedFor = '';
+      this.recommendedBlogsPromise = null;
+      this.recommendedBlogsRequestToken = null;
       return;
     }
 
-    try {
-      const response = await apiClient.blogs.listRecommended({ blog_name: this.blog, limit: 12 });
-      const blogs = (response.blogs || []).filter((blog) => blog.id && blog.name);
-      const edges = blogs.map((blog) => ({
-        blogId: blog.id,
-        blogName: blog.name,
-        userId: blog.ownerUserId,
-        ownerUserId: blog.ownerUserId,
-        title: blog.title,
-        description: blog.description,
-        avatarUrl: blog.avatarUrl,
-        followersCount: blog.followersCount,
-        postsCount: blog.postsCount,
-        identityDecorations: blog.identityDecorations,
-        createdAt: blog.createdAt,
-      })) satisfies FollowEdge[];
-      this.recommendedBlogs = await this.attachRecentPostsToEdges(edges);
-    } catch {
-      this.recommendedBlogs = [];
+    if (this.recommendedBlogsLoadedFor === blogName && this.recommendedBlogs.length > 0) {
+      return;
     }
+
+    if (this.recommendedBlogsPromise) {
+      return this.recommendedBlogsPromise;
+    }
+
+    const requestToken = {};
+    this.recommendedBlogsRequestToken = requestToken;
+    const promise = (async () => {
+      try {
+        const response = await apiClient.blogs.listRecommended({ blog_name: blogName, limit: 12 });
+        const blogs = (response.blogs || []).filter((blog) => blog.id && blog.name);
+        const edges = blogs.map((blog) => ({
+          blogId: blog.id,
+          blogName: blog.name,
+          userId: blog.ownerUserId,
+          ownerUserId: blog.ownerUserId,
+          title: blog.title,
+          description: blog.description,
+          avatarUrl: blog.avatarUrl,
+          followersCount: blog.followersCount,
+          postsCount: blog.postsCount,
+          identityDecorations: blog.identityDecorations,
+          createdAt: blog.createdAt,
+        })) satisfies FollowEdge[];
+        const hydratedEdges = await this.attachRecentPostsToEdges(edges);
+        if (this.blog === blogName) {
+          this.recommendedBlogs = hydratedEdges;
+          this.recommendedBlogsLoadedFor = blogName;
+        }
+      } catch {
+        if (this.blog === blogName) {
+          this.recommendedBlogs = [];
+          this.recommendedBlogsLoadedFor = '';
+        }
+      } finally {
+        if (this.recommendedBlogsRequestToken === requestToken) {
+          this.recommendedBlogsPromise = null;
+          this.recommendedBlogsRequestToken = null;
+        }
+      }
+    })();
+
+    this.recommendedBlogsPromise = promise;
+    return promise;
   }
 
   private async loadMore(): Promise<void> {

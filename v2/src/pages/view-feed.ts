@@ -118,6 +118,7 @@ export class ViewFeed extends LitElement {
   private seenUrls = new Set<string>();
   private seenClusterKeys = new Set<string>();
   private blogTimelineCursors = new Map<number, string | null>();
+  private clusterLoadGeneration = 0;
 
   protected updated(changedProperties: PropertyValues): void {
     if (changedProperties.has('blog')) {
@@ -206,6 +207,7 @@ export class ViewFeed extends LitElement {
     this.seenUrls.clear();
     this.seenClusterKeys.clear();
     this.blogTimelineCursors.clear();
+    this.clusterLoadGeneration += 1;
     this.timelineItems = [];
     this.statusMessage = '';
   }
@@ -444,13 +446,16 @@ export class ViewFeed extends LitElement {
 
       const feedItems: TimelineItem[] = postBuffer.map((post) => ({ type: 1, post }));
       const activeBlogIds = [...new Set(postBuffer.map((p) => p.blogId).filter((id): id is number => Boolean(id)))];
-      const clusterItems = await this.fetchInteractionClusters(activeBlogIds.slice(0, MAX_CLUSTER_FETCH_BLOGS));
-      const merged = [...feedItems, ...clusterItems].sort((a, b) => this.itemTimestamp(b) - this.itemTimestamp(a));
+      const clusterGeneration = this.clusterLoadGeneration;
 
-      if (merged.length > 0) {
-        this.timelineItems = [...this.timelineItems, ...merged];
+      if (feedItems.length > 0) {
+        this.timelineItems = [...this.timelineItems, ...feedItems].sort((a, b) => this.itemTimestamp(b) - this.itemTimestamp(a));
       } else if (this.timelineItems.length === 0 && this.exhausted) {
         this.statusMessage = 'No posts found';
+      }
+
+      if (activeBlogIds.length > 0) {
+        void this.fetchAndAppendInteractionClusters(activeBlogIds.slice(0, MAX_CLUSTER_FETCH_BLOGS), clusterGeneration);
       }
     } finally {
       this.loading = false;
@@ -473,6 +478,20 @@ export class ViewFeed extends LitElement {
     if (label.includes('comment')) return 'comment';
     if (label.includes('reblog')) return 'reblog';
     return 'like';
+  }
+
+  private async fetchAndAppendInteractionClusters(blogIds: number[], generation: number): Promise<void> {
+    if (blogIds.length === 0) return;
+
+    try {
+      const clusterItems = await this.fetchInteractionClusters(blogIds);
+      if (generation !== this.clusterLoadGeneration || clusterItems.length === 0) {
+        return;
+      }
+      this.timelineItems = [...this.timelineItems, ...clusterItems].sort((a, b) => this.itemTimestamp(b) - this.itemTimestamp(a));
+    } catch (error) {
+      console.warn('Failed to enrich feed with interaction clusters', error);
+    }
   }
 
   private async fetchInteractionClusters(blogIds: number[]): Promise<TimelineItem[]> {

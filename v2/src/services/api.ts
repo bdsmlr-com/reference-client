@@ -135,7 +135,7 @@ const ENDPOINT_TIMEOUTS: Record<string, number> = {
   '/v2/sign-url': 5000,
 
   // Medium endpoints (15s) - standard list queries
-  '/v2/list-blog-activity': 15000,
+  '/v2/list-blog-activity': 30000,
   '/v2/list-post-likes': 15000,
   '/v2/list-post-comments': 15000,
   '/v2/list-post-reblogs': 15000,
@@ -143,6 +143,8 @@ const ENDPOINT_TIMEOUTS: Record<string, number> = {
 
   // Detail endpoints (30s) - single post detail can still trigger heavy backend hydration
   '/v2/get-post-detail': 30000,
+  '/v2/list-blog-top-tags': 30000,
+  '/v2/list-recommended-blogs': 30000,
 
   // Slow endpoints (30s) - complex queries with large result sets
   '/v2/search-posts-by-tag': 30000,
