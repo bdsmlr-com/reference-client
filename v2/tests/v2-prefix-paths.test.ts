@@ -13,6 +13,7 @@ describe('v2 transport namespace wiring', () => {
     const src = read('vite.config.ts');
 
     expect(src).toContain("base: '/v2/assets/'");
+    expect(src).toContain("assetsDir: ''");
     expect(src).toContain("url.startsWith('/v2/api')");
     expect(src).toContain("'/v2/api/recs'");
     expect(src).toContain("'/v2/api'");

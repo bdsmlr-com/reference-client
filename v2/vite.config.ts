@@ -34,6 +34,7 @@ export default defineConfig({
   plugins: [spaFallbackPlugin()],
   build: {
     target: 'es2020',
+    assetsDir: '',
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
