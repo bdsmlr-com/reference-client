@@ -33,6 +33,9 @@ export function extractMedia(post: Post): MediaInfo {
 
   switch (postType) {
     case 1: // Text
+      if (file) {
+        return { type: 'image', url: file, title, text: preview || text, html: preview || html };
+      }
       return { type: 'text', title, text: preview || text || html };
     case 2: // Image
       return { type: 'image', url: file, html: preview || html };
