@@ -75,11 +75,9 @@ describe('blog identity integration', () => {
 
     expect(identitySrc).toContain("type BlogIdentityVariant = 'header' | 'menu' | 'micro';");
     expect(identitySrc).toContain("@property({ type: Number }) blogId = 0;");
-    expect(identitySrc).toContain('const hydratedBlogMetaCache = new Map<number');
-    expect(identitySrc).toContain('const hydratedBlogMetaInflight = new Map<number');
-    expect(identitySrc).toContain('async function fetchHydratedBlogMeta(blogId: number)');
+    expect(identitySrc).toContain("from '../services/blog-meta.js'");
+    expect(identitySrc).toContain('fetchHydratedBlogMetaById(this.blogId)');
     expect(identitySrc).toContain('const cachedAvatar = getCachedAvatarUrl(this.blogId);');
-    expect(identitySrc).toContain('const blog = await fetchHydratedBlogMeta(this.blogId);');
     expect(identitySrc).toContain(":host([variant='micro']) .avatar");
     expect(identitySrc).toContain(":host([variant='micro']) .name");
     expect(identitySrc).toContain('font-size: inherit;');

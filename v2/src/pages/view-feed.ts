@@ -36,7 +36,7 @@ import '../components/render-card.js';
 
 const PAGE_SIZE = 20;
 const MAX_BACKEND_FETCHES = 3;
-const MAX_CLUSTER_FETCH_BLOGS = 6;
+const MAX_CLUSTER_FETCH_BLOGS = 3;
 
 @customElement('view-feed')
 export class ViewFeed extends LitElement {
@@ -232,7 +232,7 @@ export class ViewFeed extends LitElement {
 
     try {
       this.blogData = await initBlogTheme(name);
-      const blogId = await apiClient.identity.resolveNameToId(name);
+      const blogId = this.blogData?.id || await apiClient.identity.resolveNameToId(name);
 
       if (!blogId) {
         this.statusMessage = `Blog "@${name}" not found`;

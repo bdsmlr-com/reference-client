@@ -54,36 +54,43 @@ export class ViewPost extends LitElement {
     try {
       const id = parseInt(this.postId);
       const resp = await apiClient.posts.get(id);
-      
+
       if (resp.post) {
         this.post = {
           ...resp.post,
           _media: extractMedia(resp.post)
         };
+        this.loading = false;
         if (
           resp.post.originPostId
           && !resp.post.originPostMissing
           && resp.post.originPostId !== resp.post.id
         ) {
-          try {
-            const originResp = await apiClient.posts.get(resp.post.originPostId);
-            if (originResp.post) {
-              this.originPost = {
-                ...originResp.post,
-                _media: extractMedia(originResp.post),
-              };
-            }
-          } catch {
-            // Keep the main post visible even when the linked origin no longer resolves.
-          }
+          void this.loadOriginPost(resp.post.originPostId, id);
         }
-      } else {
-        this.error = 'Post not found.';
+        return;
       }
+
+      this.error = 'Post not found.';
     } catch (e) {
       this.error = getContextualErrorMessage(e, 'load_posts');
     } finally {
       this.loading = false;
+    }
+  }
+
+  private async loadOriginPost(originPostId: number, expectedPostId: number): Promise<void> {
+    try {
+      const originResp = await apiClient.posts.get(originPostId);
+      if (this.post?.id !== expectedPostId || !originResp.post) {
+        return;
+      }
+      this.originPost = {
+        ...originResp.post,
+        _media: extractMedia(originResp.post),
+      };
+    } catch {
+      // Keep the main post visible even when the linked origin no longer resolves.
     }
   }
 

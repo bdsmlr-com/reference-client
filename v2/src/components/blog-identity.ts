@@ -2,75 +2,13 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { handleAvatarImageError, normalizeAvatarUrl } from '../services/avatar-url.js';
-import { getBlog } from '../services/api.js';
 import { getCachedAvatarUrl, setCachedAvatarUrl } from '../services/storage.js';
+import { fetchHydratedBlogMetaById } from '../services/blog-meta.js';
 import type { IdentityDecoration } from '../types/api.js';
 
 type BlogIdentityVariant = 'header' | 'menu' | 'micro';
 
 
-interface HydratedBlogMeta {
-  name?: string;
-  title?: string;
-  description?: string;
-  avatarUrl?: string | null;
-  identityDecorations?: IdentityDecoration[];
-}
-
-const BLOG_META_CACHE_TTL = 10 * 60 * 1000;
-const hydratedBlogMetaCache = new Map<number, { value: HydratedBlogMeta | null; timestamp: number }>();
-const hydratedBlogMetaInflight = new Map<number, Promise<HydratedBlogMeta | null>>();
-
-function getHydratedBlogMeta(blogId: number): HydratedBlogMeta | null | undefined {
-  const entry = hydratedBlogMetaCache.get(blogId);
-  if (!entry) return undefined;
-  if (Date.now() > entry.timestamp + BLOG_META_CACHE_TTL) {
-    hydratedBlogMetaCache.delete(blogId);
-    return undefined;
-  }
-  return entry.value;
-}
-
-function setHydratedBlogMeta(blogId: number, value: HydratedBlogMeta | null): void {
-  hydratedBlogMetaCache.set(blogId, { value, timestamp: Date.now() });
-}
-
-async function fetchHydratedBlogMeta(blogId: number): Promise<HydratedBlogMeta | null> {
-  const cached = getHydratedBlogMeta(blogId);
-  if (cached !== undefined) {
-    return cached;
-  }
-  const inflight = hydratedBlogMetaInflight.get(blogId);
-  if (inflight) {
-    return inflight;
-  }
-  const promise = (async () => {
-    try {
-      const response = await getBlog({ blog_id: blogId });
-      const blog = response.blog;
-      if (!blog) {
-        setHydratedBlogMeta(blogId, null);
-        return null;
-      }
-      const value: HydratedBlogMeta = {
-        name: blog.name || undefined,
-        title: blog.title || undefined,
-        description: blog.description || undefined,
-        avatarUrl: blog.avatarUrl || null,
-        identityDecorations: blog.identityDecorations || [],
-      };
-      setHydratedBlogMeta(blogId, value);
-      return value;
-    } catch {
-      setHydratedBlogMeta(blogId, null);
-      return null;
-    } finally {
-      hydratedBlogMetaInflight.delete(blogId);
-    }
-  })();
-  hydratedBlogMetaInflight.set(blogId, promise);
-  return promise;
-}
 
 function pickInlineDecorations(
   decorations: IdentityDecoration[] | null | undefined,
@@ -415,7 +353,7 @@ export class BlogIdentity extends LitElement {
           this.avatarUrl = cachedAvatar || '';
         }
 
-        const blog = await fetchHydratedBlogMeta(this.blogId);
+        const blog = await fetchHydratedBlogMetaById(this.blogId);
         if (!blog) {
           this.hydratedBlogId = this.blogId;
           return;

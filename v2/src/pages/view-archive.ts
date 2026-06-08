@@ -259,6 +259,24 @@ export class ViewArchive extends LitElement {
   private paginationKey = '';
   private replaceArchiveUrlOnPageBoundary = false;
 
+  private scheduleArchiveTagCloudLoad(): void {
+    const run = () => {
+      void this.loadArchiveTagCloud();
+    };
+
+    const maybeWindow = globalThis as typeof globalThis & {
+      requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => number;
+      setTimeout: typeof setTimeout;
+    };
+
+    if (typeof maybeWindow.requestIdleCallback === 'function') {
+      maybeWindow.requestIdleCallback(run, { timeout: 1500 });
+      return;
+    }
+
+    maybeWindow.setTimeout(run, 250);
+  }
+
   protected updated(changedProperties: PropertyValues): void {
     if (changedProperties.has('blog')) {
       this.loadFromUrl();
@@ -546,7 +564,7 @@ export class ViewArchive extends LitElement {
     this.archiveTagsError = '';
     try {
       this.blogData = await initBlogTheme(this.blog);
-      const blogId = await apiClient.identity.resolveNameToId(this.blog);
+      const blogId = this.blogData?.id || await apiClient.identity.resolveNameToId(this.blog);
 
       if (!blogId) {
         this.errorMessage = ErrorMessages.BLOG.notFound(this.blog);
@@ -555,8 +573,8 @@ export class ViewArchive extends LitElement {
       }
 
       this.blogId = blogId;
-      void this.loadArchiveTagCloud();
       await this.loadPosts({ preserveNavigationState: true });
+      this.scheduleArchiveTagCloudLoad();
     } catch (e) {
       this.errorMessage = getContextualErrorMessage(e, 'resolve_blog', { blogName: this.blog });
       const apiError = isApiError(e) ? e : toApiError(e);

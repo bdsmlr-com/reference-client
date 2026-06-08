@@ -26,8 +26,27 @@ describe('page performance guards', () => {
   it('does not block feed rendering on interaction-cluster enrichment', () => {
     const src = readFileSync(join(ROOT, 'pages/view-feed.ts'), 'utf8');
 
+    expect(src).toContain('const MAX_CLUSTER_FETCH_BLOGS = 3;');
     expect(src).toContain('private clusterLoadGeneration = 0;');
     expect(src).toContain('void this.fetchAndAppendInteractionClusters(activeBlogIds.slice(0, MAX_CLUSTER_FETCH_BLOGS), clusterGeneration);');
     expect(src).toContain('private async fetchAndAppendInteractionClusters(blogIds: number[], generation: number): Promise<void>');
+    expect(src).toContain('this.blogData?.id || await apiClient.identity.resolveNameToId(name)');
+  });
+
+  it('reuses themed blog ids on archive and defers tag-cloud loading until after posts', () => {
+    const src = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
+
+    expect(src).toContain('this.blogData?.id || await apiClient.identity.resolveNameToId(this.blog)');
+    expect(src).toContain('await this.loadPosts({ preserveNavigationState: true });');
+    expect(src).toContain('this.scheduleArchiveTagCloudLoad();');
+    expect(src).toContain('private scheduleArchiveTagCloudLoad(): void');
+  });
+
+  it('does not block post detail on optional origin-post hydration', () => {
+    const src = readFileSync(join(ROOT, 'pages/view-post.ts'), 'utf8');
+
+    expect(src).toContain('this.loading = false;');
+    expect(src).toContain('void this.loadOriginPost(resp.post.originPostId, id);');
+    expect(src).toContain('private async loadOriginPost(originPostId: number, expectedPostId: number): Promise<void>');
   });
 });
