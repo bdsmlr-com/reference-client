@@ -12,6 +12,9 @@ describe('post actions strip', () => {
     expect(src).toContain("import { createEngagementStateController } from '../services/engagement-state.js';");
     expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
     expect(src).toContain('engagementState.subscribe(');
+    expect(src).toContain('scheduleSyncActorState()');
+    expect(src).toContain('window.setTimeout(() => {');
+    expect(src).toContain('await Promise.all([');
     expect(src).toContain('unsubscribeLikeState');
     expect(src).toContain('handleSharedStateChanged');
     expect(src).toContain("variant: 'card' | 'detail'");

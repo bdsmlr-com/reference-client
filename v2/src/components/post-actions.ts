@@ -258,6 +258,7 @@ export class PostActions extends LitElement {
   @state() private commentError: string | null = null;
   private syncRequestId = 0;
   private unsubscribeLikeState: (() => void) | null = null;
+  private deferredSyncHandle: number | null = null;
 
   private readonly handleSharedStateChanged = () => {
     void this.syncActorState();
@@ -266,12 +267,16 @@ export class PostActions extends LitElement {
   connectedCallback(): void {
     super.connectedCallback();
     this.unsubscribeLikeState = engagementState.subscribe(this.handleSharedStateChanged);
-    void this.syncActorState();
+    this.scheduleSyncActorState();
   }
 
   disconnectedCallback(): void {
     this.unsubscribeLikeState?.();
     this.unsubscribeLikeState = null;
+    if (this.deferredSyncHandle !== null && typeof window !== 'undefined') {
+      window.clearTimeout(this.deferredSyncHandle);
+      this.deferredSyncHandle = null;
+    }
     super.disconnectedCallback();
   }
 
@@ -280,8 +285,18 @@ export class PostActions extends LitElement {
       this.commentModalOpen = false;
       this.commentBody = '';
       this.commentError = null;
-      void this.syncActorState();
+      this.scheduleSyncActorState();
     }
+  }
+
+  private scheduleSyncActorState(): void {
+    if (this.deferredSyncHandle !== null || typeof window === 'undefined') {
+      return;
+    }
+    this.deferredSyncHandle = window.setTimeout(() => {
+      this.deferredSyncHandle = null;
+      void this.syncActorState();
+    }, 150);
   }
 
   private openEngagementTab(tab: 'likes' | 'reblogs' | 'comments', event: Event): void {
@@ -309,8 +324,10 @@ export class PostActions extends LitElement {
     this.syncing = true;
     const currentPostId = post.id;
     try {
-      await engagementState.hydrateLikeStates([currentPostId]);
-      await engagementState.hydrateReblogStates([currentPostId]);
+      await Promise.all([
+        engagementState.hydrateLikeStates([currentPostId]),
+        engagementState.hydrateReblogStates([currentPostId]),
+      ]);
       if (requestId !== this.syncRequestId || !this.post || this.post.id !== currentPostId) {
         return;
       }
