@@ -155,9 +155,27 @@ export class AppRoot extends LitElement {
   }
 
   connectedCallback() {
+    if (this.normalizeCanonicalPathname()) {
+      return;
+    }
     super.connectedCallback();
     syncAdminModeFromUrl();
     this.addEventListener('post-click', this.handlePostClick as any);
+  }
+
+  private normalizeCanonicalPathname(): boolean {
+    const { pathname, search, hash } = window.location;
+    if (pathname.length <= 1 || !pathname.endsWith('/')) {
+      return false;
+    }
+
+    const normalizedPath = pathname.replace(/\/+$/, '');
+    if (!normalizedPath) {
+      return false;
+    }
+
+    window.location.replace(`${normalizedPath}${search}${hash}`);
+    return true;
   }
 
   private async checkAuth() {

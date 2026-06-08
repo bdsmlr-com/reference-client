@@ -118,6 +118,14 @@ describe('route normalization', () => {
     expect(buildPageUrl('social', 'sam')).toBe('/social/sam');
   });
 
+  it('strips trailing slashes before router boot for canonical content routes', () => {
+    const appRootSrc = readFileSync(join(ROOT, 'app-root.ts'), 'utf8');
+
+    expect(appRootSrc).toContain('if (this.normalizeCanonicalPathname()) {');
+    expect(appRootSrc).toContain("pathname.length <= 1 || !pathname.endsWith('/')");
+    expect(appRootSrc).toContain('window.location.replace(`${normalizedPath}${search}${hash}`)');
+  });
+
   it('documents the canonical and legacy router aliases in app-root', () => {
     const appRootSrc = readFileSync(join(ROOT, 'app-root.ts'), 'utf8');
 
