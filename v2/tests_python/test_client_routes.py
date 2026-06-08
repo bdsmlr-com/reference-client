@@ -60,6 +60,20 @@ class ClientRoutesRedirectTests(unittest.TestCase):
             response = client.get(source, follow_redirects=False)
             self.assertNotEqual(response.status_code, 301)
 
+    def test_v2_asset_namespace_is_served_by_the_client_blueprint(self) -> None:
+        app = make_app()
+        client = app.test_client()
+
+        response = client.get("/v2/assets/does-not-exist.js", follow_redirects=False)
+        self.assertEqual(response.status_code, 404)
+
+    def test_v2_api_paths_are_not_swallowed_by_spa_catch_all(self) -> None:
+        app = make_app()
+        client = app.test_client()
+
+        response = client.get("/v2/api/ping", follow_redirects=False)
+        self.assertEqual(response.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

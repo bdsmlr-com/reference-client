@@ -13,6 +13,7 @@ function spaFallbackPlugin(): Plugin {
         const url = req.url || '';
         if (
           url.startsWith('/api') ||
+          url.startsWith('/v2/api') ||
           url.startsWith('/src/') ||
           url.startsWith('/@') ||
           url.startsWith('/node_modules') ||
@@ -29,6 +30,7 @@ function spaFallbackPlugin(): Plugin {
 }
 
 export default defineConfig({
+  base: '/v2/assets/',
   plugins: [spaFallbackPlugin()],
   build: {
     target: 'es2020',
@@ -41,13 +43,13 @@ export default defineConfig({
   server: {
     open: '/',
     proxy: {
-      '/api/recs': {
+      '/v2/api/recs': {
         target: 'http://100.69.66.115:8000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/recs/, ''),
+        rewrite: (path) => path.replace(/^\/v2\/api\/recs/, ''),
         secure: false,
       },
-      '/api': {
+      '/v2/api': {
         target: 'https://api-staging.bdsmlr.com',
         changeOrigin: true,
         secure: true,

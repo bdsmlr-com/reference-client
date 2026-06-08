@@ -36,7 +36,7 @@ export interface SimilarPostsResponse {
   query_post_id?: number;
 }
 
-const API_BASE = '/api/recs';
+const API_BASE = '/v2/api/recs';
 
 /**
  * Normalizes blog/user names from rec service (e.g. little_ways -> little-ways)

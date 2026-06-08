@@ -72,6 +72,7 @@ def _is_api_path(path):
 # Static Assets
 # =============================================================
 
+@client_blueprint.route('/v2/assets/<path:filename>')
 @client_blueprint.route('/assets/<path:filename>')
 def assets(filename):
     if not _dist_dir:

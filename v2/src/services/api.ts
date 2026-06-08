@@ -97,7 +97,8 @@ import type {
   ListRecommendedBlogsResponse,
 } from '../types/api.js';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const DEFAULT_API_BASE = '/v2/api';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE).replace(/\/$/, '');
 const AUTH_EMAIL = import.meta.env.VITE_AUTH_EMAIL || '';
 const AUTH_PASSWORD = import.meta.env.VITE_AUTH_PASSWORD || '';
 
@@ -231,6 +232,16 @@ function buildApiRequestInflightKey(
   endpointUrl: URL
 ): string {
   return `${normalizedEndpoint}\0${endpointUrl.search}\0${stableSerializeJsonForDedupe(body)}`;
+}
+
+function buildTransportPath(endpoint: string): string {
+  if (API_BASE.endsWith('/v2/api')) {
+    const clean = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    if (clean.startsWith('v2/')) {
+      return `${API_BASE}/${clean.slice(3)}`;
+    }
+  }
+  return `${API_BASE}${endpoint}`;
 }
 
 /**
@@ -402,7 +413,7 @@ async function apiRequest<T>(
     }
   }
 
-  const endpointPath = `${API_BASE}${normalizedEndpoint}`;
+  const endpointPath = buildTransportPath(normalizedEndpoint);
 
   // Normalize follow graph direction payloads to satisfy backend validation
   if (
@@ -2111,7 +2122,7 @@ export async function apiRequestWithPartialRecovery<T>(
   const connectionTimeout = setTimeout(() => controller.abort(), endpointTimeout);
 
   try {
-    const resp = await fetch(`${API_BASE}${endpoint}`, {
+    const resp = await fetch(buildTransportPath(endpoint), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

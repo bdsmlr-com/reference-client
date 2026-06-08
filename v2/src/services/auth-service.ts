@@ -1,4 +1,4 @@
-const DEFAULT_BASE = '/api/v2/auth';
+const DEFAULT_BASE = '/v2/api/auth';
 const DEFAULT_TIMEOUT_MS = 4000;
 
 const resolveBase = () => {
