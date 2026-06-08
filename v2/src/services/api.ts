@@ -141,6 +141,9 @@ const ENDPOINT_TIMEOUTS: Record<string, number> = {
   '/v2/list-post-reblogs': 15000,
   '/v2/batch-get-reblog-states': 15000,
 
+  // Detail endpoints (30s) - single post detail can still trigger heavy backend hydration
+  '/v2/get-post-detail': 30000,
+
   // Slow endpoints (30s) - complex queries with large result sets
   '/v2/search-posts-by-tag': 30000,
   '/v2/search-blogs': 30000,

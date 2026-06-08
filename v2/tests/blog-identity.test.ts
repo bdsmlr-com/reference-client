@@ -15,7 +15,7 @@ describe('blog identity integration', () => {
     expect(src).toContain("@property({ type: String }) avatarUrl = '';");
     expect(src).toContain('@property({ attribute: false }) identityDecorations: IdentityDecoration[] = [];');
     expect(src).toContain("@property({ type: String, reflect: true }) variant: BlogIdentityVariant = 'header';");
-    expect(src).toContain('pickInlineDecoration(');
+    expect(src).toContain('pickInlineDecorations(');
     expect(src).toContain('name-decoration');
     expect(src).toContain('deriveAccentColor(');
     expect(src).toContain('avatar-fallback');
@@ -70,14 +70,16 @@ describe('blog identity integration', () => {
     expect(navSrc).toContain('.blogTitle=${this.profileBlogTitle ?? \'\'}');
   });
 
-  it('supports a micro variant with lazy avatar and decoration hydration by blog id', () => {
+  it('supports a micro variant with shared lazy avatar and decoration hydration by blog id', () => {
     const identitySrc = readFileSync(join(ROOT, 'components/blog-identity.ts'), 'utf8');
 
     expect(identitySrc).toContain("type BlogIdentityVariant = 'header' | 'menu' | 'micro';");
     expect(identitySrc).toContain("@property({ type: Number }) blogId = 0;");
-    expect(identitySrc).toContain('private async hydrateBlogMeta(): Promise<void>');
+    expect(identitySrc).toContain('const hydratedBlogMetaCache = new Map<number');
+    expect(identitySrc).toContain('const hydratedBlogMetaInflight = new Map<number');
+    expect(identitySrc).toContain('async function fetchHydratedBlogMeta(blogId: number)');
     expect(identitySrc).toContain('const cachedAvatar = getCachedAvatarUrl(this.blogId);');
-    expect(identitySrc).toContain('const response = await getBlog({ blog_id: this.blogId });');
+    expect(identitySrc).toContain('const blog = await fetchHydratedBlogMeta(this.blogId);');
     expect(identitySrc).toContain(":host([variant='micro']) .avatar");
     expect(identitySrc).toContain(":host([variant='micro']) .name");
     expect(identitySrc).toContain('font-size: inherit;');
