@@ -333,6 +333,7 @@ export class BlogIdentity extends LitElement {
     }
     if (
       this.variant === 'micro' &&
+      this.showAvatar &&
       this.blogId > 0 &&
       this.hydratedBlogId !== this.blogId &&
       !this.hydrationInFlight
@@ -342,7 +343,7 @@ export class BlogIdentity extends LitElement {
   }
 
   private async hydrateBlogMeta(): Promise<void> {
-    if (this.blogId <= 0 || this.hydratedBlogId === this.blogId || this.hydrationInFlight) {
+    if (this.blogId <= 0 || !this.showAvatar || this.hydratedBlogId === this.blogId || this.hydrationInFlight) {
       return;
     }
 

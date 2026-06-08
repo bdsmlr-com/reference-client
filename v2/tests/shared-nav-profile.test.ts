@@ -48,7 +48,8 @@ describe('shared-nav profile/settings behavior', () => {
   it('normalizes avatar from either camelCase or snake_case API fields', () => {
     const src = readFileSync(NAV_FILE, 'utf8');
 
-    expect(src).toContain('blog?.avatarUrl ?? blog?.avatar_url ?? null');
+    expect(src).toContain('fetchHydratedBlogMetaByName(username)');
+    expect(src).toContain('normalizeAvatarUrl(blog?.avatarUrl ?? null)');
   });
 
   it('uses theme-responsive text color for the profile blog identity and canonical blog routing', () => {

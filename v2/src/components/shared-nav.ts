@@ -16,7 +16,6 @@ import {
   setCurrentUsername,
   PROFILE_EVENTS,
 } from '../services/profile.js';
-import { apiClient } from '../services/client.js';
 import { getAuthUser, updateActiveBlog } from '../state/auth-state.js';
 import { setStoredActiveBlog, clearStoredActiveBlog } from '../utils/storage.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
@@ -24,6 +23,7 @@ import { resolveLink } from '../services/link-resolver.js';
 import { logout as legacyLogout, login as legacyLogin } from '../services/auth-service.js';
 import { normalizeAvatarUrl } from '../services/avatar-url.js';
 import './blog-identity.js';
+import { fetchHydratedBlogMetaByName } from '../services/blog-meta.js';
 
 type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'follower-feed' | 'social' | 'posts';
 const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'staging@unknown/unknown';
@@ -367,16 +367,11 @@ export class SharedNav extends LitElement {
     }
 
     try {
-      const response = await apiClient.blogs.get({ blog_name: username });
+      const blog = await fetchHydratedBlogMetaByName(username);
       if (this.currentUsername !== username) {
         return;
       }
-      const blog = response.blog as {
-        avatarUrl?: string;
-        avatar_url?: string;
-        title?: string;
-      } | undefined;
-      this.profileAvatarUrl = normalizeAvatarUrl(blog?.avatarUrl ?? blog?.avatar_url ?? null);
+      this.profileAvatarUrl = normalizeAvatarUrl(blog?.avatarUrl ?? null);
       this.profileBlogTitle = blog?.title ?? null;
     } catch {
       if (this.currentUsername === username) {

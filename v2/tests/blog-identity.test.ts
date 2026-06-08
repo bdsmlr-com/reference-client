@@ -77,6 +77,7 @@ describe('blog identity integration', () => {
     expect(identitySrc).toContain("@property({ type: Number }) blogId = 0;");
     expect(identitySrc).toContain("from '../services/blog-meta.js'");
     expect(identitySrc).toContain('fetchHydratedBlogMetaById(this.blogId)');
+    expect(identitySrc).toContain("this.variant === 'micro' &&\n      this.showAvatar &&");
     expect(identitySrc).toContain('const cachedAvatar = getCachedAvatarUrl(this.blogId);');
     expect(identitySrc).toContain(":host([variant='micro']) .avatar");
     expect(identitySrc).toContain(":host([variant='micro']) .name");
