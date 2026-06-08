@@ -79,6 +79,14 @@ export class PostDetailContent extends LitElement {
         max-height: calc(min(78vh, 920px) - 20px);
         flex: 0 1 auto;
       }
+      .post-title {
+        margin: 0;
+        font-size: clamp(28px, 4vw, 40px);
+        line-height: 1.08;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: var(--text);
+      }
       .body-text {
         border-bottom: 1px solid var(--border-subtle);
         padding-bottom: 20px;
@@ -164,6 +172,7 @@ export class PostDetailContent extends LitElement {
     const originTags = this.originPost ? extractRenderableTags(this.originPost) : [];
     const tags = presentation.identity.isReblog ? [] : reblogTags;
     const bodyHtml = p.content?.html || p.body || p.content?.text || p.content?.title || '';
+    const titleText = (p.title || p.content?.title || '').trim();
     const media = p._media;
     const rawUrl = media?.type === 'video'
       ? (media.videoUrl || media.url)
@@ -216,6 +225,8 @@ export class PostDetailContent extends LitElement {
           </div>
           <time class="post-date" title=${getTooltipDate(p.createdAtUnix)}>${formatDateShort(p.createdAtUnix)}</time>
         </div>
+
+        ${titleText ? html`<h1 class="post-title">${titleText}</h1>` : nothing}
 
         ${rawUrl ? html`
           <div class="media-stage">

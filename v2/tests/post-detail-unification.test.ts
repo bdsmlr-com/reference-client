@@ -29,6 +29,9 @@ describe('post detail unification', () => {
     const detailSrc = readFileSync(join(ROOT, 'components/post-detail-content.ts'), 'utf8');
 
     expect(detailSrc).toContain('const bodyHtml =');
+    expect(detailSrc).toContain('const titleText =');
+    expect(detailSrc).toContain('p.title || p.content?.title');
+    expect(detailSrc).toContain('class="post-title"');
     expect(detailSrc).toContain('p.content?.html');
     expect(detailSrc).toContain('p.body');
     expect(detailSrc).toContain('p.content?.text');
