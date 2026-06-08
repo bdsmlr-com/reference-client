@@ -24,6 +24,8 @@ describe('v2 transport namespace wiring', () => {
 
     expect(routesSrc).toContain("@client_blueprint.route('/v2/assets/<path:filename>')");
     expect(routesSrc).toContain("@client_blueprint.route('/assets/<path:filename>')");
+    expect(routesSrc).toContain("root_candidate = os.path.join(_dist_dir, filename)");
+    expect(routesSrc).toContain("return send_from_directory(_dist_dir, filename)");
   });
 
   it('defaults runtime API and auth calls to the /v2 namespace', () => {

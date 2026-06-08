@@ -77,6 +77,9 @@ def _is_api_path(path):
 def assets(filename):
     if not _dist_dir:
         abort(500, "Client routes not initialized")
+    root_candidate = os.path.join(_dist_dir, filename)
+    if os.path.exists(root_candidate):
+        return send_from_directory(_dist_dir, filename)
     return send_from_directory(os.path.join(_dist_dir, 'assets'), filename)
 
 @client_blueprint.route('/favicon.ico')
