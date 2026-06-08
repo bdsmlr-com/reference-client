@@ -212,6 +212,11 @@ export class ActivityItem extends LitElement {
         )
       );
 
+    const visibleDateUnix =
+      (this.interactionType === 'like' || this.interactionType === 'comment')
+        ? (p.updatedAtUnix || p.createdAtUnix)
+        : p.createdAtUnix;
+
     return html`
       <article class="card" @click=${this.handleClick}>
         <div class="media-container">
@@ -239,7 +244,7 @@ export class ActivityItem extends LitElement {
                   .showAvatar=${false}
                 ></blog-identity>
               </span>
-            ` : html`<span>${formatDate(p.createdAtUnix, 'date')}</span>`}
+            ` : html`<span>${formatDate(visibleDateUnix, 'date')}</span>`}
           </div>
           <div class="stats-line">
             ${presentation.actions.like.count ? html`<div class="stat-item">${presentation.actions.like.icon} ${presentation.actions.like.count}</div>` : ''}
