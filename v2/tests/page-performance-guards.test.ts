@@ -71,11 +71,12 @@ describe('page performance guards', () => {
     expect(src).toContain("import { resolveTransportBase } from './transport-base.js';");
     expect(src).toContain("function resolveApiBase(): string");
     expect(src).toContain("return resolveTransportBase('api', {");
-    expect(helperSrc).toContain("const DEFAULT_PUBLIC_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';");
+    expect(helperSrc).toContain("const DEFAULT_ANONYMOUS_APEX_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';");
     expect(helperSrc).toContain("normalized === 'bdsmlr.com' || normalized === 'www.bdsmlr.com'");
-    expect(helperSrc).toContain("return publicBase;");
+    expect(helperSrc).toContain("return DEFAULT_ANONYMOUS_APEX_API_BASE;");
     expect(helperSrc).toContain("return `${publicBase}/auth`;");
     expect(helperSrc).toContain("return `${publicBase}/recs`;");
+    expect(helperSrc).not.toContain('VITE_PUBLIC_API_BASE_URL');
   });
 
   it('routes anonymous apex auth traffic directly to api-prod instead of the redirected apex /v2/api/auth path', () => {
