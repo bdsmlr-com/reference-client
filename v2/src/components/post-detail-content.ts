@@ -79,6 +79,13 @@ export class PostDetailContent extends LitElement {
         max-height: calc(min(78vh, 920px) - 20px);
         flex: 0 1 auto;
       }
+      .media-gallery {
+        display: grid;
+        gap: 14px;
+      }
+      .media-gallery .media-stage {
+        max-height: none;
+      }
       .post-title {
         margin: 0;
         font-size: clamp(28px, 4vw, 40px);
@@ -174,6 +181,8 @@ export class PostDetailContent extends LitElement {
     const bodyHtml = p.content?.html || p.body || p.content?.text || p.content?.title || '';
     const titleText = (p.title || p.content?.title || '').trim();
     const media = p._media;
+    const mediaFiles = p.content?.files || [];
+    const multiImageUrls = p.type === 2 && mediaFiles.length > 1 ? mediaFiles : [];
     const rawUrl = media?.type === 'video'
       ? (media.videoUrl || media.url)
       : (media?.url || media?.videoUrl || media?.audioUrl);
@@ -228,7 +237,18 @@ export class PostDetailContent extends LitElement {
 
         ${titleText ? html`<h1 class="post-title">${titleText}</h1>` : nothing}
 
-        ${rawUrl ? html`
+        ${multiImageUrls.length > 0 ? html`
+          <div class="media-gallery">
+            ${multiImageUrls.map((fileUrl) => html`
+              <div class="media-stage">
+                <media-renderer
+                  .src=${fileUrl}
+                  .type=${'detail'}
+                ></media-renderer>
+              </div>
+            `)}
+          </div>
+        ` : rawUrl ? html`
           <div class="media-stage">
             <media-renderer
               .src=${rawUrl}

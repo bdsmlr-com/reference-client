@@ -64,6 +64,11 @@ describe('post route media behavior', () => {
     expect(src).toContain(".type=${'detail'}");
     expect(src).not.toContain(".type=${'post-detail'}");
     expect(src).toContain('.media-stage media-renderer {');
+    expect(src).toContain('.media-gallery {');
+    expect(src).toContain('const mediaFiles = p.content?.files || [];');
+    expect(src).toContain('const multiImageUrls = p.type === 2 && mediaFiles.length > 1 ? mediaFiles : [];');
+    expect(src).toContain('${multiImageUrls.map((fileUrl) => html`');
+    expect(src).toContain('.src=${fileUrl}');
     expect(src).toContain('width: auto;');
     expect(src).toContain('height: auto;');
     expect(src).toContain('max-width: min(100%, calc(100vw - 40px));');
