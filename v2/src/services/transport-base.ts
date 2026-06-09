@@ -10,7 +10,8 @@ export type TransportContext = {
   env?: TransportEnv;
 };
 
-const DEFAULT_PRIVATE_API_BASE = ['','v2','api'].join('/');
+const PRIVATE_API_SEGMENTS = ['v2', 'api'] as const;
+const DEFAULT_PRIVATE_API_BASE = `/${PRIVATE_API_SEGMENTS.map((segment) => segment).join('/')}`;
 const DEFAULT_APEX_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';
 
 function normalizeBase(base: string): string {
