@@ -75,4 +75,13 @@ describe('page performance guards', () => {
     expect(src).toContain("const apiBase = resolveApiBase(endpoint);");
   });
 
+  it('routes anonymous apex auth traffic directly to api-prod instead of the redirected apex /v2/api/auth path', () => {
+    const src = readFileSync(join(ROOT, 'services/auth-service.ts'), 'utf8');
+
+    expect(src).toContain("const DEFAULT_PUBLIC_READ_BASE = 'https://api-prod.bdsmlr.com/v2/api/auth';");
+    expect(src).toContain("function isApexRuntimeHost(): boolean");
+    expect(src).toContain("if (getAuthUser()) return false;");
+    expect(src).toContain("return PUBLIC_READ_BASE;");
+  });
+
 });
