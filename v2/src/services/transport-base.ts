@@ -2,7 +2,6 @@ export type TransportScope = 'api' | 'auth' | 'recs';
 
 export type TransportEnv = {
   VITE_API_BASE_URL?: string;
-  VITE_PUBLIC_API_BASE_URL?: string;
 };
 
 export type TransportContext = {
@@ -12,7 +11,7 @@ export type TransportContext = {
 };
 
 const DEFAULT_PRIVATE_API_BASE = '/v2/api';
-const DEFAULT_PUBLIC_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';
+const DEFAULT_ANONYMOUS_APEX_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';
 
 function normalizeBase(base: string): string {
   return base.replace(/\/$/, '');
@@ -31,13 +30,15 @@ function resolvePrivateBase(env: TransportEnv | undefined): string {
   return normalizeBase(env?.VITE_API_BASE_URL || DEFAULT_PRIVATE_API_BASE);
 }
 
-function resolvePublicBase(env: TransportEnv | undefined): string {
-  return normalizeBase(env?.VITE_PUBLIC_API_BASE_URL || DEFAULT_PUBLIC_API_BASE);
+function resolveAnonymousApexBase(): string {
+  // Anonymous browser reads on apex must always go directly to api-prod.
+  // This must not be altered by per-service or per-build env overrides.
+  return DEFAULT_ANONYMOUS_APEX_API_BASE;
 }
 
 export function resolveTransportBase(scope: TransportScope, context: TransportContext): string {
   if (isAnonymousApexRuntime(context)) {
-    const publicBase = resolvePublicBase(context.env);
+    const publicBase = resolveAnonymousApexBase();
     switch (scope) {
       case 'auth':
         return `${publicBase}/auth`;
