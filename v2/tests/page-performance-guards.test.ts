@@ -84,4 +84,13 @@ describe('page performance guards', () => {
     expect(src).toContain("return PUBLIC_READ_BASE;");
   });
 
+  it('routes anonymous apex recommendation traffic directly to api-prod instead of the redirected apex /v2/api/recs path', () => {
+    const src = readFileSync(join(ROOT, 'services/recommendation-api.ts'), 'utf8');
+
+    expect(src).toContain("const DEFAULT_PUBLIC_READ_RECS_BASE = 'https://api-prod.bdsmlr.com/v2/api/recs';");
+    expect(src).toContain("function shouldUseDirectPublicReadRecs(): boolean");
+    expect(src).toContain("if (getAuthUser()) return false;");
+    expect(src).toContain("return PUBLIC_READ_RECS_BASE;");
+  });
+
 });

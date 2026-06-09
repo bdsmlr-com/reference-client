@@ -6,6 +6,7 @@
 import { extractMedia, type ProcessedPost } from '../types/post.js';
 import type { Post, SearchPostsByTagResponse } from '../types/api.js';
 import { applyRetrievalPostPolicies, type RetrievalPostPolicyMap } from './retrieval-presentation.js';
+import { getAuthUser } from '../state/auth-state.js';
 
 export interface RecResult {
   user_id?: string;
@@ -37,6 +38,27 @@ export interface SimilarPostsResponse {
 }
 
 const API_BASE = '/v2/api/recs';
+const DEFAULT_PUBLIC_READ_RECS_BASE = 'https://api-prod.bdsmlr.com/v2/api/recs';
+const PUBLIC_READ_RECS_BASE = ((import.meta as any).env?.VITE_PUBLIC_READ_RECS_BASE_URL || DEFAULT_PUBLIC_READ_RECS_BASE).replace(/\/$/, '');
+
+function isApexRuntimeHost(): boolean {
+  if (typeof window === 'undefined') return false;
+  const hostname = window.location.hostname.toLowerCase();
+  return hostname === 'bdsmlr.com' || hostname === 'www.bdsmlr.com';
+}
+
+function shouldUseDirectPublicReadRecs(): boolean {
+  if (!isApexRuntimeHost()) return false;
+  if (getAuthUser()) return false;
+  return true;
+}
+
+function resolveRecsBase(): string {
+  if (shouldUseDirectPublicReadRecs()) {
+    return PUBLIC_READ_RECS_BASE;
+  }
+  return API_BASE;
+}
 
 /**
  * Normalizes blog/user names from rec service (e.g. little_ways -> little-ways)
@@ -64,7 +86,7 @@ export function materializeRecommendedPosts(
 
 export const recService = {
   async getSimilarBlogs(blogName: string, limit = 10): Promise<RecResult[]> {
-    const res = await fetch(`${API_BASE}/similar-content/${encodeURIComponent(blogName.replace(/-/g, '_'))}?limit=${limit}&exclude_self=true`);
+    const res = await fetch(`${resolveRecsBase()}/similar-content/${encodeURIComponent(blogName.replace(/-/g, '_'))}?limit=${limit}&exclude_self=true`);
     const data: RecResponse = await res.json();
     const items = data.similar_content || data.recommendations || [];
     return items.map(item => ({
@@ -74,7 +96,7 @@ export const recService = {
   },
 
   async getRecommendedBlogsForUser(userId: string, limit = 10): Promise<RecResult[]> {
-    const res = await fetch(`${API_BASE}/recommendations/content/${encodeURIComponent(userId)}?limit=${limit}`);
+    const res = await fetch(`${resolveRecsBase()}/recommendations/content/${encodeURIComponent(userId)}?limit=${limit}`);
     const data: RecResponse = await res.json();
     const items = data.recommendations || [];
     return items.map(item => ({
@@ -97,7 +119,7 @@ export const recService = {
     if (perspectiveBlogName) {
       params.set('perspective_blog_name', perspectiveBlogName);
     }
-    const res = await fetch(`${API_BASE}/similar-posts/${postId}?${params.toString()}`);
+    const res = await fetch(`${resolveRecsBase()}/similar-posts/${postId}?${params.toString()}`);
     const data: SimilarPostsResponse = await res.json();
     if (Array.isArray(data.posts) && data.posts.length > 0) {
       return data;
@@ -117,7 +139,7 @@ export const recService = {
   },
 
   async getRecommendedPostsForUser(userId: string, limit = 10, offset = 0): Promise<SimilarPostsResponse> {
-    const res = await fetch(`${API_BASE}/recommendations/posts/${encodeURIComponent(userId)}?limit=${limit}&offset=${offset}`);
+    const res = await fetch(`${resolveRecsBase()}/recommendations/posts/${encodeURIComponent(userId)}?limit=${limit}&offset=${offset}`);
     const data: SimilarPostsResponse = await res.json();
     if (Array.isArray(data.posts)) {
       return data;
