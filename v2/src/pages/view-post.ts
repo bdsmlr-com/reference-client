@@ -38,6 +38,16 @@ export class ViewPost extends LitElement {
   @state() private post: ProcessedPost | null = null;
   @state() private originPost: ProcessedPost | null = null;
 
+  private originLoadHandle: number | null = null;
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this.originLoadHandle !== null && typeof window !== 'undefined') {
+      window.clearTimeout(this.originLoadHandle);
+      this.originLoadHandle = null;
+    }
+  }
+
   protected updated(changedProperties: Map<string, any>): void {
     if (changedProperties.has('postId')) {
       this.loadPost();
@@ -66,7 +76,7 @@ export class ViewPost extends LitElement {
           && !resp.post.originPostMissing
           && resp.post.originPostId !== resp.post.id
         ) {
-          void this.loadOriginPost(resp.post.originPostId, id);
+          this.scheduleOriginPostLoad(resp.post.originPostId, id);
         }
         return;
       }
@@ -77,6 +87,21 @@ export class ViewPost extends LitElement {
     } finally {
       this.loading = false;
     }
+  }
+
+
+  private scheduleOriginPostLoad(originPostId: number, expectedPostId: number): void {
+    if (typeof window === 'undefined') {
+      void this.loadOriginPost(originPostId, expectedPostId);
+      return;
+    }
+    if (this.originLoadHandle !== null) {
+      window.clearTimeout(this.originLoadHandle);
+    }
+    this.originLoadHandle = window.setTimeout(() => {
+      this.originLoadHandle = null;
+      void this.loadOriginPost(originPostId, expectedPostId);
+    }, 200);
   }
 
   private async loadOriginPost(originPostId: number, expectedPostId: number): Promise<void> {

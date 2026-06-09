@@ -46,7 +46,9 @@ describe('page performance guards', () => {
     const src = readFileSync(join(ROOT, 'pages/view-post.ts'), 'utf8');
 
     expect(src).toContain('this.loading = false;');
-    expect(src).toContain('void this.loadOriginPost(resp.post.originPostId, id);');
-    expect(src).toContain('private async loadOriginPost(originPostId: number, expectedPostId: number): Promise<void>');
+    expect(src).toContain('this.scheduleOriginPostLoad(resp.post.originPostId, id);');
+    expect(src).toContain('private scheduleOriginPostLoad(originPostId: number, expectedPostId: number): void');
+    expect(src).toContain('window.setTimeout(() => {');
+    expect(src).toContain('void this.loadOriginPost(originPostId, expectedPostId);');
   });
 });
