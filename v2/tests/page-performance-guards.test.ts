@@ -71,6 +71,8 @@ describe('page performance guards', () => {
     expect(src).toContain("import { resolveTransportBase } from './transport-base.js';");
     expect(src).toContain("function resolveApiBase(): string");
     expect(src).toContain("return resolveTransportBase('api', {");
+    expect(src).toContain("baseUrl: resolveApiBase,");
+    expect(src).not.toContain("baseUrl: STATIC_API_BASE,");
     expect(helperSrc).toContain("const DEFAULT_APEX_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';");
     expect(helperSrc).toContain("normalized === 'bdsmlr.com' || normalized === 'www.bdsmlr.com'");
     expect(helperSrc).toContain("return DEFAULT_APEX_API_BASE;");

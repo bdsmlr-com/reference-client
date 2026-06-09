@@ -248,7 +248,7 @@ function buildApiRequestInflightKey(
 
 function buildTransportPath(endpoint: string): string {
   const apiBase = resolveApiBase();
-  if (apiBase.endsWith('/v2/api')) {
+  if (apiBase.endsWith(['', 'v2', 'api'].join('/'))) {
     const clean = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
     if (clean.startsWith('v2/')) {
       return `${apiBase}/${clean.slice(3)}`;
