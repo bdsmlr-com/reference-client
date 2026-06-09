@@ -62,4 +62,17 @@ describe('page performance guards', () => {
     expect(src).toContain('window.setTimeout(() => {');
     expect(src).toContain('void this.loadOriginPost(originPostId, expectedPostId);');
   });
+
+
+  it('routes anonymous apex API traffic directly to api-prod instead of the redirected apex /v2/api path', () => {
+    const src = readFileSync(join(ROOT, 'services/api.ts'), 'utf8');
+
+    expect(src).toContain("const DEFAULT_PUBLIC_READ_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';");
+    expect(src).toContain("function isApexRuntimeHost(): boolean");
+    expect(src).toContain("return hostname === 'bdsmlr.com' || hostname === 'www.bdsmlr.com';");
+    expect(src).toContain("if (getAuthUser()) return false;");
+    expect(src).toContain("return !endpoint.startsWith('/v2/auth/');");
+    expect(src).toContain("const apiBase = resolveApiBase(endpoint);");
+  });
+
 });
