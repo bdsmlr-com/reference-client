@@ -73,7 +73,7 @@ describe('page performance guards', () => {
     expect(src).toContain("return resolveTransportBase('api', {");
     expect(src).toContain("baseUrl: resolveApiBase,");
     expect(src).not.toContain("baseUrl: STATIC_API_BASE,");
-    expect(helperSrc).toContain("const DEFAULT_APEX_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';");
+    expect(helperSrc).toContain("const DEFAULT_APEX_API_BASE = ['https://api-prod.bdsmlr.com', ...PRIVATE_API_SEGMENTS].join(API_PATH_SEPARATOR);");
     expect(helperSrc).toContain("normalized === 'bdsmlr.com' || normalized === 'www.bdsmlr.com'");
     expect(helperSrc).toContain("return DEFAULT_APEX_API_BASE;");
     expect(helperSrc).toContain("return `${apexBase}/auth`;");

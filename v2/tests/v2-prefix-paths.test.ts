@@ -35,7 +35,7 @@ describe('v2 transport namespace wiring', () => {
     const transportSrc = read(join(ROOT, 'services/transport-base.ts'));
 
     expect(transportSrc).toContain("export function resolveTransportBase(scope: TransportScope, context: TransportContext): string");
-    expect(transportSrc).toContain("const DEFAULT_APEX_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';");
+    expect(transportSrc).toContain("const DEFAULT_APEX_API_BASE = ['https://api-prod.bdsmlr.com', ...PRIVATE_API_SEGMENTS].join(API_PATH_SEPARATOR);");
     expect(transportSrc).toContain("return `${apexBase}/auth`;");
     expect(transportSrc).toContain("return `${apexBase}/recs`;");
     expect(transportSrc).not.toContain('VITE_PUBLIC_API_BASE_URL');

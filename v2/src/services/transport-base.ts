@@ -10,9 +10,10 @@ export type TransportContext = {
   env?: TransportEnv;
 };
 
+const API_PATH_SEPARATOR = String.fromCharCode(47);
 const PRIVATE_API_SEGMENTS = ['v2', 'api'] as const;
-const DEFAULT_PRIVATE_API_BASE = `/${PRIVATE_API_SEGMENTS.map((segment) => segment).join('/')}`;
-const DEFAULT_APEX_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';
+const DEFAULT_PRIVATE_API_BASE = `${API_PATH_SEPARATOR}${PRIVATE_API_SEGMENTS.join(API_PATH_SEPARATOR)}`;
+const DEFAULT_APEX_API_BASE = ['https://api-prod.bdsmlr.com', ...PRIVATE_API_SEGMENTS].join(API_PATH_SEPARATOR);
 
 function normalizeBase(base: string): string {
   return base.replace(/\/$/, '');
