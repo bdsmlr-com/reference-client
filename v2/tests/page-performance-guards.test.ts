@@ -64,31 +64,32 @@ describe('page performance guards', () => {
   });
 
 
-  it('routes anonymous apex API traffic directly to api-prod instead of the redirected apex /v2/api path', () => {
+  it('routes apex API traffic directly to api-prod instead of the redirected apex /v2/api path', () => {
     const src = readFileSync(join(ROOT, 'services/api.ts'), 'utf8');
     const helperSrc = readFileSync(join(ROOT, 'services/transport-base.ts'), 'utf8');
 
     expect(src).toContain("import { resolveTransportBase } from './transport-base.js';");
     expect(src).toContain("function resolveApiBase(): string");
     expect(src).toContain("return resolveTransportBase('api', {");
-    expect(helperSrc).toContain("const DEFAULT_ANONYMOUS_APEX_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';");
+    expect(helperSrc).toContain("const DEFAULT_APEX_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';");
     expect(helperSrc).toContain("normalized === 'bdsmlr.com' || normalized === 'www.bdsmlr.com'");
-    expect(helperSrc).toContain("return DEFAULT_ANONYMOUS_APEX_API_BASE;");
-    expect(helperSrc).toContain("return `${publicBase}/auth`;");
-    expect(helperSrc).toContain("return `${publicBase}/recs`;");
+    expect(helperSrc).toContain("return DEFAULT_APEX_API_BASE;");
+    expect(helperSrc).toContain("return `${apexBase}/auth`;");
+    expect(helperSrc).toContain("return `${apexBase}/recs`;");
     expect(helperSrc).not.toContain('VITE_PUBLIC_API_BASE_URL');
   });
 
-  it('routes anonymous apex auth traffic directly to api-prod instead of the redirected apex /v2/api/auth path', () => {
+  it('routes apex auth traffic directly to api-prod instead of the redirected apex /v2/api/auth path', () => {
     const src = readFileSync(join(ROOT, 'services/auth-service.ts'), 'utf8');
 
-    expect(src).toContain("import { isAnonymousApexRuntime, resolveTransportBase } from './transport-base.js';");
+    expect(src).toContain("import { isApexRuntime, resolveTransportBase } from './transport-base.js';")
+    expect(src).toContain("const hostname = typeof window === 'undefined' ? 'localhost' : window.location.hostname;")
     expect(src).toContain("return resolveTransportBase('auth', {");
-    expect(src).toContain("mode: isAnonymousApexRuntime({");
+    expect(src).toContain("mode: isApexRuntime({")
     expect(src).not.toContain('VITE_PUBLIC_READ_AUTH_BASE_URL');
   });
 
-  it('routes anonymous apex recommendation traffic directly to api-prod instead of the redirected apex /v2/api/recs path', () => {
+  it('routes apex recommendation traffic directly to api-prod instead of the redirected apex /v2/api/recs path', () => {
     const src = readFileSync(join(ROOT, 'services/recommendation-api.ts'), 'utf8');
 
     expect(src).toContain("import { resolveTransportBase } from './transport-base.js';");

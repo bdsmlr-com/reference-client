@@ -100,12 +100,6 @@ import type {
 
 const AUTH_EMAIL = import.meta.env.VITE_AUTH_EMAIL || '';
 const AUTH_PASSWORD = import.meta.env.VITE_AUTH_PASSWORD || '';
-const STATIC_API_BASE = resolveTransportBase('api', {
-  hostname: typeof window === 'undefined' ? 'localhost' : window.location.hostname,
-  hasAuthUser: true,
-  env: import.meta.env,
-});
-
 function resolveApiBase(): string {
   const hostname = typeof window === 'undefined' ? 'localhost' : window.location.hostname;
   return resolveTransportBase('api', {
@@ -3457,7 +3451,7 @@ export class IdentityApi {
  */
 export interface ApiClientConfig {
   /** Base URL for API requests (e.g., 'https://api.bdsmlr.com') */
-  baseUrl: string;
+  baseUrl: string | (() => string);
   /** Authentication credentials */
   credentials: {
     email: string;
@@ -3624,7 +3618,7 @@ export class ApiClient {
    * @throws Error if authentication fails
    */
   async login(): Promise<string> {
-    const resp = await fetch(`${this.config.baseUrl}/auth/login`, {
+    const resp = await fetch(`${this.getBaseUrl()}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -3776,7 +3770,7 @@ export class ApiClient {
    * @returns The base URL string
    */
   getBaseUrl(): string {
-    return this.config.baseUrl;
+    return typeof this.config.baseUrl === 'function' ? this.config.baseUrl() : this.config.baseUrl;
   }
 
   /**
@@ -3811,7 +3805,7 @@ export class ApiClient {
  * ```
  */
 export const defaultApiClient = new ApiClient({
-  baseUrl: STATIC_API_BASE,
+  baseUrl: resolveApiBase,
   credentials: {
     email: AUTH_EMAIL,
     password: AUTH_PASSWORD,

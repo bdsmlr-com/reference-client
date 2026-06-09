@@ -35,9 +35,9 @@ describe('v2 transport namespace wiring', () => {
     const transportSrc = read(join(ROOT, 'services/transport-base.ts'));
 
     expect(transportSrc).toContain("export function resolveTransportBase(scope: TransportScope, context: TransportContext): string");
-    expect(transportSrc).toContain("const DEFAULT_ANONYMOUS_APEX_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';");
-    expect(transportSrc).toContain("return `${publicBase}/auth`;");
-    expect(transportSrc).toContain("return `${publicBase}/recs`;");
+    expect(transportSrc).toContain("const DEFAULT_APEX_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';");
+    expect(transportSrc).toContain("return `${apexBase}/auth`;");
+    expect(transportSrc).toContain("return `${apexBase}/recs`;");
     expect(transportSrc).not.toContain('VITE_PUBLIC_API_BASE_URL');
 
     expect(apiSrc).toContain("import { resolveTransportBase } from './transport-base.js';");
@@ -45,7 +45,7 @@ describe('v2 transport namespace wiring', () => {
     expect(apiSrc).toContain("return resolveTransportBase('api', {");
     expect(apiSrc).toContain("const endpointPath = buildTransportPath(normalizedEndpoint);");
 
-    expect(authSrc).toContain("import { isAnonymousApexRuntime, resolveTransportBase } from './transport-base.js';");
+    expect(authSrc).toContain("import { isApexRuntime, resolveTransportBase } from './transport-base.js';");
     expect(authSrc).toContain("return resolveTransportBase('auth', {");
 
     expect(recSrc).toContain("import { resolveTransportBase } from './transport-base.js';");

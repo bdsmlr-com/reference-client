@@ -11,7 +11,7 @@ export type TransportContext = {
 };
 
 const DEFAULT_PRIVATE_API_BASE = '/v2/api';
-const DEFAULT_ANONYMOUS_APEX_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';
+const DEFAULT_APEX_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';
 
 function normalizeBase(base: string): string {
   return base.replace(/\/$/, '');
@@ -22,31 +22,30 @@ function isApexHost(hostname: string): boolean {
   return normalized === 'bdsmlr.com' || normalized === 'www.bdsmlr.com';
 }
 
-export function isAnonymousApexRuntime(context: TransportContext): boolean {
-  return isApexHost(context.hostname) && !context.hasAuthUser;
+export function isApexRuntime(context: TransportContext): boolean {
+  return isApexHost(context.hostname);
 }
 
 function resolvePrivateBase(env: TransportEnv | undefined): string {
   return normalizeBase(env?.VITE_API_BASE_URL || DEFAULT_PRIVATE_API_BASE);
 }
 
-function resolveAnonymousApexBase(): string {
-  // Anonymous browser reads on apex must always go directly to api-prod.
-  // This must not be altered by per-service or per-build env overrides.
-  return DEFAULT_ANONYMOUS_APEX_API_BASE;
+function resolveApexBase(): string {
+  // Apex browsers must always hit api-prod directly for v2 runtime API traffic.
+  return DEFAULT_APEX_API_BASE;
 }
 
 export function resolveTransportBase(scope: TransportScope, context: TransportContext): string {
-  if (isAnonymousApexRuntime(context)) {
-    const publicBase = resolveAnonymousApexBase();
+  if (isApexRuntime(context)) {
+    const apexBase = resolveApexBase();
     switch (scope) {
       case 'auth':
-        return `${publicBase}/auth`;
+        return `${apexBase}/auth`;
       case 'recs':
-        return `${publicBase}/recs`;
+        return `${apexBase}/recs`;
       case 'api':
       default:
-        return publicBase;
+        return apexBase;
     }
   }
 

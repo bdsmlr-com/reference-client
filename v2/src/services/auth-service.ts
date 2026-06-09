@@ -1,5 +1,5 @@
 import { getAuthUser } from '../state/auth-state.js';
-import { isAnonymousApexRuntime, resolveTransportBase } from './transport-base.js';
+import { isApexRuntime, resolveTransportBase } from './transport-base.js';
 
 const DEFAULT_TIMEOUT_MS = 4000;
 
@@ -23,12 +23,13 @@ const fetchJson = async <T>(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   let resp: Response;
   const env = (import.meta as any).env || {};
+  const hostname = typeof window === 'undefined' ? 'localhost' : window.location.hostname;
   try {
     resp = await fetch(`${resolveBase()}${path}`, {
       credentials: 'include',
       cache: 'no-store',
-      mode: isAnonymousApexRuntime({
-        hostname: typeof window === 'undefined' ? 'localhost' : window.location.hostname,
+      mode: isApexRuntime({
+        hostname,
         hasAuthUser: Boolean(getAuthUser()),
         env,
       }) ? 'cors' : 'same-origin',
