@@ -12,10 +12,11 @@ describe('post actions strip', () => {
     expect(src).toContain("import { createEngagementStateController } from '../services/engagement-state.js';");
     expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
     expect(src).toContain('engagementState.subscribe(');
-    expect(src).toContain('scheduleSyncActorState()');
-    expect(src).toContain('window.setTimeout(() => {');
+    expect(src).toContain('syncLocalStateFromCache()');
+    expect(src).toContain('ensureActorStateHydrated()');
     expect(src).toContain('await Promise.all([');
     expect(src).toContain('unsubscribeLikeState');
+    expect(src).not.toContain('scheduleSyncActorState()');
     expect(src).toContain('handleSharedStateChanged');
     expect(src).toContain("variant: 'card' | 'detail'");
     expect(src).toContain('likeState');
@@ -49,9 +50,10 @@ describe('post actions strip', () => {
     expect(src).toContain('commenting');
     expect(src).toContain('const presentation = toPresentationModel');
     expect(src).toContain('const likeCount = likeAction.count ?? 0;');
-    expect(src).toContain('const reblogCount = reblogAction.count ?? 0;');
+    expect(src).toContain('const totalReblogCount = reblogAction.count ?? 0;');
+    expect(src).toContain('const actorReblogCount = this.reblogCount ?? 0;');
     expect(src).toContain('const commentCount = this.commentCount ?? commentAction.count ?? 0;');
-    expect(src).toContain("const shouldShowReblogCount = this.variant === 'detail' || reblogCount > 0;");
+    expect(src).toContain("const shouldShowReblogCount = this.variant === 'detail' || totalReblogCount > 0;");
     expect(src).toContain("const shouldShowCommentCount = this.variant === 'detail' || commentCount > 0;");
     expect(src).toContain("const shouldShowLikeCount = this.variant === 'detail' || likeCount > 0;");
     expect(src).not.toContain('You reblogged');

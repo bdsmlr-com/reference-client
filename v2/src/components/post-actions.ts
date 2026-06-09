@@ -258,25 +258,20 @@ export class PostActions extends LitElement {
   @state() private commentError: string | null = null;
   private syncRequestId = 0;
   private unsubscribeLikeState: (() => void) | null = null;
-  private deferredSyncHandle: number | null = null;
 
   private readonly handleSharedStateChanged = () => {
-    void this.syncActorState();
+    this.syncLocalStateFromCache();
   };
 
   connectedCallback(): void {
     super.connectedCallback();
     this.unsubscribeLikeState = engagementState.subscribe(this.handleSharedStateChanged);
-    this.scheduleSyncActorState();
+    this.syncLocalStateFromCache();
   }
 
   disconnectedCallback(): void {
     this.unsubscribeLikeState?.();
     this.unsubscribeLikeState = null;
-    if (this.deferredSyncHandle !== null && typeof window !== 'undefined') {
-      window.clearTimeout(this.deferredSyncHandle);
-      this.deferredSyncHandle = null;
-    }
     super.disconnectedCallback();
   }
 
@@ -285,18 +280,57 @@ export class PostActions extends LitElement {
       this.commentModalOpen = false;
       this.commentBody = '';
       this.commentError = null;
-      this.scheduleSyncActorState();
+      this.syncLocalStateFromCache();
     }
   }
 
-  private scheduleSyncActorState(): void {
-    if (this.deferredSyncHandle !== null || typeof window === 'undefined') {
+  private syncLocalStateFromCache(): void {
+    const post = this.post;
+    const actor = getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId ?? null;
+    if (!post || !actor) {
+      this.likeState = undefined;
+      this.reblogCount = undefined;
+      this.commentCount = post?.commentsCount ?? 0;
+      this.syncing = false;
       return;
     }
-    this.deferredSyncHandle = window.setTimeout(() => {
-      this.deferredSyncHandle = null;
-      void this.syncActorState();
-    }, 150);
+    this.likeState = engagementState.getLikeState(post.id);
+    this.reblogCount = engagementState.getReblogCount(post.id);
+    this.commentCount = engagementState.getCommentCount(post.id) ?? post.commentsCount ?? 0;
+  }
+
+  private async ensureActorStateHydrated(): Promise<void> {
+    const post = this.post;
+    const actor = getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId ?? null;
+    if (!post || !actor) {
+      this.syncLocalStateFromCache();
+      return;
+    }
+    if (this.likeState !== undefined && this.reblogCount !== undefined) {
+      return;
+    }
+    const requestId = ++this.syncRequestId;
+    this.syncing = true;
+    try {
+      await Promise.all([
+        engagementState.hydrateLikeStates([post.id]),
+        engagementState.hydrateReblogStates([post.id]),
+      ]);
+      if (requestId !== this.syncRequestId || this.post?.id !== post.id) {
+        return;
+      }
+      this.syncLocalStateFromCache();
+      if (this.likeState === undefined) {
+        this.likeState = false;
+      }
+      if (this.reblogCount === undefined) {
+        this.reblogCount = 0;
+      }
+    } finally {
+      if (requestId === this.syncRequestId) {
+        this.syncing = false;
+      }
+    }
   }
 
   private openEngagementTab(tab: 'likes' | 'reblogs' | 'comments', event: Event): void {
@@ -309,41 +343,6 @@ export class PostActions extends LitElement {
     }));
   }
 
-  private async syncActorState(): Promise<void> {
-    const post = this.post;
-    const actor = getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId ?? null;
-    if (!post || !actor) {
-      this.likeState = undefined;
-      this.reblogCount = undefined;
-      this.commentCount = post?.commentsCount ?? 0;
-      this.syncing = false;
-      return;
-    }
-
-    const requestId = ++this.syncRequestId;
-    this.syncing = true;
-    const currentPostId = post.id;
-    try {
-      await Promise.all([
-        engagementState.hydrateLikeStates([currentPostId]),
-        engagementState.hydrateReblogStates([currentPostId]),
-      ]);
-      if (requestId !== this.syncRequestId || !this.post || this.post.id !== currentPostId) {
-        return;
-      }
-      this.likeState = engagementState.getLikeState(currentPostId);
-      if (this.likeState === undefined) {
-        this.likeState = false;
-      }
-      this.reblogCount = engagementState.getReblogCount(currentPostId) ?? 0;
-      this.commentCount = engagementState.getCommentCount(currentPostId) ?? post.commentsCount ?? 0;
-    } finally {
-      if (requestId === this.syncRequestId) {
-        this.syncing = false;
-      }
-    }
-  }
-
   private async toggleLike(event: Event): Promise<void> {
     event.preventDefault();
     event.stopPropagation();
@@ -351,7 +350,8 @@ export class PostActions extends LitElement {
     const post = this.post;
     if (!post || this.liking) return;
 
-    const nextLikeState = !this.likeState;
+    await this.ensureActorStateHydrated();
+    const nextLikeState = !(this.likeState ?? false);
     this.liking = true;
     this.likeState = nextLikeState;
     try {
@@ -376,6 +376,7 @@ export class PostActions extends LitElement {
     const post = this.post;
     if (!post) return;
 
+    await this.ensureActorStateHydrated();
     const previousReblogCount = this.reblogCount ?? 0;
     this.reblogging = true;
     this.reblogCount = previousReblogCount + 1;
@@ -461,27 +462,28 @@ export class PostActions extends LitElement {
     const commentAction = presentation.actions.comment;
     const likeAction = presentation.actions.like;
     const likeCount = likeAction.count ?? 0;
-    const reblogCount = reblogAction.count ?? 0;
+    const totalReblogCount = reblogAction.count ?? 0;
+    const actorReblogCount = this.reblogCount ?? 0;
     const commentCount = this.commentCount ?? commentAction.count ?? 0;
-    const shouldShowReblogCount = this.variant === 'detail' || reblogCount > 0;
+    const shouldShowReblogCount = this.variant === 'detail' || totalReblogCount > 0;
     const shouldShowCommentCount = this.variant === 'detail' || commentCount > 0;
     const shouldShowLikeCount = this.variant === 'detail' || likeCount > 0;
     return html`
       <div class="actions-row">
         <div class="action-group">
           <button
-            class="icon-btn ${reblogCount > 0 ? 'reblog-active' : ''}"
+            class="icon-btn ${actorReblogCount > 0 ? 'reblog-active' : ''}"
             type="button"
-            aria-pressed=${reblogCount > 0 ? 'true' : 'false'}
-            title=${reblogCount > 0 ? 'Reblogged' : reblogAction.label}
+            aria-pressed=${actorReblogCount > 0 ? 'true' : 'false'}
+            title=${actorReblogCount > 0 ? 'Reblogged' : reblogAction.label}
             ?disabled=${!Boolean(getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId) || this.syncing}
             @click=${this.triggerReblog}
           >
             ${this.reblogging ? '⟳' : reblogAction.icon}
           </button>
           ${shouldShowReblogCount
-            ? html`<button class="count-chip count-chip-button ${reblogCount > 0 ? 'reblog-active' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('reblogs', event)}>
-                ${reblogCount}
+            ? html`<button class="count-chip count-chip-button ${totalReblogCount > 0 ? 'reblog-active' : ''}" type="button" @click=${(event: Event) => this.openEngagementTab('reblogs', event)}>
+                ${totalReblogCount}
               </button>`
             : nothing}
         </div>

@@ -42,6 +42,16 @@ describe('page performance guards', () => {
     expect(src).toContain('private scheduleArchiveTagCloudLoad(): void');
   });
 
+
+  it('does not eagerly hydrate post action viewer state on initial render', () => {
+    const src = readFileSync(join(ROOT, 'components/post-actions.ts'), 'utf8');
+
+    expect(src).toContain('this.syncLocalStateFromCache();');
+    expect(src).toContain('await this.ensureActorStateHydrated();');
+    expect(src).not.toContain('void this.syncActorState();');
+    expect(src).not.toContain('scheduleSyncActorState()');
+  });
+
   it('does not block post detail on optional origin-post hydration', () => {
     const src = readFileSync(join(ROOT, 'pages/view-post.ts'), 'utf8');
 
