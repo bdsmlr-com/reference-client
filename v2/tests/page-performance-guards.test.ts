@@ -37,6 +37,7 @@ describe('page performance guards', () => {
     const src = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
 
     expect(src).toContain('this.blogData?.id || await apiClient.identity.resolveNameToId(this.blog)');
+    expect(src).toContain('await initBlogTheme(this.blog, { includeArchiveBounds: true })');
     expect(src).toContain('await this.loadPosts({ preserveNavigationState: true });');
     expect(src).toContain('this.scheduleArchiveTagCloudLoad();');
     expect(src).toContain('private scheduleArchiveTagCloudLoad(): void');

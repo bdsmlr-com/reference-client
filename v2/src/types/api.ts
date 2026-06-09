@@ -440,6 +440,7 @@ export interface ListBlogsRecentActivityRequest {
 export interface GetBlogRequest {
   blog_id?: number;
   blog_name?: string;
+  includeArchiveBounds?: boolean;
 }
 
 export interface ListBlogTopTagsRequest {

@@ -85,7 +85,7 @@ function setCachedBlogTheme(blogName: string, blog: Blog | null): void {
 /**
  * Fetch blog metadata for theming.
  */
-export async function fetchBlogForTheming(blogName: string): Promise<Blog | null> {
+export async function fetchBlogForTheming(blogName: string, options: { includeArchiveBounds?: boolean } = {}): Promise<Blog | null> {
   if (!blogName) return null;
 
   // Check cache first
@@ -95,7 +95,7 @@ export async function fetchBlogForTheming(blogName: string): Promise<Blog | null
   }
 
   try {
-    const response = await apiClient.blogs.get({ blog_name: blogName });
+    const response = await apiClient.blogs.get({ blog_name: blogName, includeArchiveBounds: Boolean(options.includeArchiveBounds) });
     const blog = response.blog || null;
     setCachedBlogTheme(blogName, blog);
     return blog;
@@ -468,7 +468,7 @@ function installThemeChangeListener(): void {
  * @param blogName - The current blog name
  * @returns The blog data (useful for displaying title, avatar, etc.)
  */
-export async function initBlogTheme(blogName: string): Promise<Blog | null> {
+export async function initBlogTheme(blogName: string, options: { includeArchiveBounds?: boolean } = {}): Promise<Blog | null> {
   // Install listener on first use
   installThemeChangeListener();
 
@@ -478,7 +478,7 @@ export async function initBlogTheme(blogName: string): Promise<Blog | null> {
     return null;
   }
 
-  const blog = await fetchBlogForTheming(blogName);
+  const blog = await fetchBlogForTheming(blogName, options);
   currentBlog = blog;
   applyBlogTheme(blog);
   return blog;

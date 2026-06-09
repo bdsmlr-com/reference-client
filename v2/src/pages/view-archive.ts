@@ -563,7 +563,7 @@ export class ViewArchive extends LitElement {
     this.errorMessage = '';
     this.archiveTagsError = '';
     try {
-      this.blogData = await initBlogTheme(this.blog);
+      this.blogData = await initBlogTheme(this.blog, { includeArchiveBounds: true });
       const blogId = this.blogData?.id || await apiClient.identity.resolveNameToId(this.blog);
 
       if (!blogId) {
