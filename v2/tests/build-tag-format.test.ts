@@ -11,11 +11,11 @@ describe('build tag format', () => {
     expect(build).toContain('VITE_BUILD_ENV=${VITE_BUILD_ENV:-staging}');
     expect(build).toContain('VITE_FE_SHA=');
     expect(build).toContain('VITE_BE_SHA=');
-    expect(build).toContain('${VITE_BUILD_ENV}@${VITE_FE_SHA}/${VITE_BE_SHA}');
+    expect(build).toContain('${VITE_BUILD_ENV}@${VITE_BE_SHA}-${VITE_FE_SHA}');
   });
 
-  it('shared nav fallback uses env@unknown/unknown shape', () => {
+  it('shared nav fallback uses env@unknown-unknown shape', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/shared-nav.ts'), 'utf8');
-    expect(src).toContain("|| 'staging@unknown/unknown'");
+    expect(src).toContain("|| 'staging@unknown-unknown'");
   });
 });

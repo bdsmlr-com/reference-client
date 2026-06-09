@@ -26,7 +26,7 @@ import './blog-identity.js';
 import { fetchHydratedBlogMetaByName } from '../services/blog-meta.js';
 
 type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'follower-feed' | 'social' | 'posts';
-const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'staging@unknown/unknown';
+const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'staging@unknown-unknown';
 
 @customElement('shared-nav')
 export class SharedNav extends LitElement {
