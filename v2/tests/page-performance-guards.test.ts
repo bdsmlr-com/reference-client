@@ -66,31 +66,33 @@ describe('page performance guards', () => {
 
   it('routes anonymous apex API traffic directly to api-prod instead of the redirected apex /v2/api path', () => {
     const src = readFileSync(join(ROOT, 'services/api.ts'), 'utf8');
+    const helperSrc = readFileSync(join(ROOT, 'services/transport-base.ts'), 'utf8');
 
-    expect(src).toContain("const DEFAULT_PUBLIC_READ_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';");
-    expect(src).toContain("function isApexRuntimeHost(): boolean");
-    expect(src).toContain("return hostname === 'bdsmlr.com' || hostname === 'www.bdsmlr.com';");
-    expect(src).toContain("if (getAuthUser()) return false;");
-    expect(src).toContain("return !endpoint.startsWith('/v2/auth/');");
-    expect(src).toContain("const apiBase = resolveApiBase(endpoint);");
+    expect(src).toContain("import { resolveTransportBase } from './transport-base.js';");
+    expect(src).toContain("function resolveApiBase(): string");
+    expect(src).toContain("return resolveTransportBase('api', {");
+    expect(helperSrc).toContain("const DEFAULT_PUBLIC_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';");
+    expect(helperSrc).toContain("normalized === 'bdsmlr.com' || normalized === 'www.bdsmlr.com'");
+    expect(helperSrc).toContain("return publicBase;");
+    expect(helperSrc).toContain("return `${publicBase}/auth`;");
+    expect(helperSrc).toContain("return `${publicBase}/recs`;");
   });
 
   it('routes anonymous apex auth traffic directly to api-prod instead of the redirected apex /v2/api/auth path', () => {
     const src = readFileSync(join(ROOT, 'services/auth-service.ts'), 'utf8');
 
-    expect(src).toContain("const DEFAULT_PUBLIC_READ_BASE = 'https://api-prod.bdsmlr.com/v2/api/auth';");
-    expect(src).toContain("function isApexRuntimeHost(): boolean");
-    expect(src).toContain("if (getAuthUser()) return false;");
-    expect(src).toContain("return PUBLIC_READ_BASE;");
+    expect(src).toContain("import { isAnonymousApexRuntime, resolveTransportBase } from './transport-base.js';");
+    expect(src).toContain("return resolveTransportBase('auth', {");
+    expect(src).toContain("mode: isAnonymousApexRuntime({");
+    expect(src).not.toContain('VITE_PUBLIC_READ_AUTH_BASE_URL');
   });
 
   it('routes anonymous apex recommendation traffic directly to api-prod instead of the redirected apex /v2/api/recs path', () => {
     const src = readFileSync(join(ROOT, 'services/recommendation-api.ts'), 'utf8');
 
-    expect(src).toContain("const DEFAULT_PUBLIC_READ_RECS_BASE = 'https://api-prod.bdsmlr.com/v2/api/recs';");
-    expect(src).toContain("function shouldUseDirectPublicReadRecs(): boolean");
-    expect(src).toContain("if (getAuthUser()) return false;");
-    expect(src).toContain("return PUBLIC_READ_RECS_BASE;");
+    expect(src).toContain("import { resolveTransportBase } from './transport-base.js';");
+    expect(src).toContain("return resolveTransportBase('recs', {");
+    expect(src).not.toContain('VITE_PUBLIC_READ_RECS_BASE_URL');
   });
 
 });

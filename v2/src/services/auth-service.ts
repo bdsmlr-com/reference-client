@@ -1,29 +1,16 @@
 import { getAuthUser } from '../state/auth-state.js';
+import { isAnonymousApexRuntime, resolveTransportBase } from './transport-base.js';
 
-const DEFAULT_BASE = '/v2/api/auth';
-const DEFAULT_PUBLIC_READ_BASE = 'https://api-prod.bdsmlr.com/v2/api/auth';
-const PUBLIC_READ_BASE = ((import.meta as any).env?.VITE_PUBLIC_READ_AUTH_BASE_URL || DEFAULT_PUBLIC_READ_BASE).replace(/\/$/, '');
 const DEFAULT_TIMEOUT_MS = 4000;
-
-function isApexRuntimeHost(): boolean {
-  if (typeof window === 'undefined') return false;
-  const hostname = window.location.hostname.toLowerCase();
-  return hostname === 'bdsmlr.com' || hostname === 'www.bdsmlr.com';
-}
-
-function shouldUseDirectPublicReadAuth(): boolean {
-  if (!isApexRuntimeHost()) return false;
-  if (getAuthUser()) return false;
-  return true;
-}
 
 const resolveBase = () => {
   const env = (import.meta as any).env || {};
-  if (!env.VITE_AUTH_BASE && shouldUseDirectPublicReadAuth()) {
-    return PUBLIC_READ_BASE;
-  }
-  const apiBase = env.VITE_AUTH_BASE || DEFAULT_BASE;
-  return apiBase.replace(/\/$/, '');
+  const hostname = typeof window === 'undefined' ? 'localhost' : window.location.hostname;
+  return resolveTransportBase('auth', {
+    hostname,
+    hasAuthUser: Boolean(getAuthUser()),
+    env,
+  });
 };
 
 const fetchJson = async <T>(
@@ -40,7 +27,11 @@ const fetchJson = async <T>(
     resp = await fetch(`${resolveBase()}${path}`, {
       credentials: 'include',
       cache: 'no-store',
-      mode: env.VITE_AUTH_BASE || shouldUseDirectPublicReadAuth() ? 'cors' : 'same-origin',
+      mode: isAnonymousApexRuntime({
+        hostname: typeof window === 'undefined' ? 'localhost' : window.location.hostname,
+        hasAuthUser: Boolean(getAuthUser()),
+        env,
+      }) ? 'cors' : 'same-origin',
       redirect: 'follow',
       signal: controller.signal,
       ...init

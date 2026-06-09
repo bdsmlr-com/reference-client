@@ -28,18 +28,27 @@ describe('v2 transport namespace wiring', () => {
     expect(routesSrc).toContain("return send_from_directory(_dist_dir, filename)");
   });
 
-  it('defaults runtime API and auth calls to the /v2 namespace', () => {
+  it('defaults runtime API, auth, and recommendation calls through the shared transport resolver', () => {
     const apiSrc = read(join(ROOT, 'services/api.ts'));
     const authSrc = read(join(ROOT, 'services/auth-service.ts'));
     const recSrc = read(join(ROOT, 'services/recommendation-api.ts'));
+    const transportSrc = read(join(ROOT, 'services/transport-base.ts'));
 
-    expect(apiSrc).toContain("const DEFAULT_API_BASE = '/v2/api';");
-    expect(apiSrc).toContain("API_BASE.endsWith('/v2/api')");
-    expect(apiSrc).toContain("return `${API_BASE}/${clean.slice(3)}`;");
+    expect(transportSrc).toContain("export function resolveTransportBase(scope: TransportScope, context: TransportContext): string");
+    expect(transportSrc).toContain("const DEFAULT_PUBLIC_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';");
+    expect(transportSrc).toContain("return `${publicBase}/auth`;");
+    expect(transportSrc).toContain("return `${publicBase}/recs`;");
+
+    expect(apiSrc).toContain("import { resolveTransportBase } from './transport-base.js';");
+    expect(apiSrc).toContain("function resolveApiBase(): string");
+    expect(apiSrc).toContain("return resolveTransportBase('api', {");
     expect(apiSrc).toContain("const endpointPath = buildTransportPath(normalizedEndpoint);");
-    expect(apiSrc).toContain("fetch(buildTransportPath(endpoint), {");
 
-    expect(authSrc).toContain("const DEFAULT_BASE = '/v2/api/auth';");
-    expect(recSrc).toContain("const API_BASE = '/v2/api/recs';");
+    expect(authSrc).toContain("import { isAnonymousApexRuntime, resolveTransportBase } from './transport-base.js';");
+    expect(authSrc).toContain("return resolveTransportBase('auth', {");
+
+    expect(recSrc).toContain("import { resolveTransportBase } from './transport-base.js';");
+    expect(recSrc).toContain("return resolveTransportBase('recs', {");
+    expect(recSrc).not.toContain('VITE_PUBLIC_READ_RECS_BASE_URL');
   });
 });

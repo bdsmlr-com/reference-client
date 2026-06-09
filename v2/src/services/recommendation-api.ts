@@ -7,6 +7,7 @@ import { extractMedia, type ProcessedPost } from '../types/post.js';
 import type { Post, SearchPostsByTagResponse } from '../types/api.js';
 import { applyRetrievalPostPolicies, type RetrievalPostPolicyMap } from './retrieval-presentation.js';
 import { getAuthUser } from '../state/auth-state.js';
+import { resolveTransportBase } from './transport-base.js';
 
 export interface RecResult {
   user_id?: string;
@@ -37,27 +38,14 @@ export interface SimilarPostsResponse {
   query_post_id?: number;
 }
 
-const API_BASE = '/v2/api/recs';
-const DEFAULT_PUBLIC_READ_RECS_BASE = 'https://api-prod.bdsmlr.com/v2/api/recs';
-const PUBLIC_READ_RECS_BASE = ((import.meta as any).env?.VITE_PUBLIC_READ_RECS_BASE_URL || DEFAULT_PUBLIC_READ_RECS_BASE).replace(/\/$/, '');
-
-function isApexRuntimeHost(): boolean {
-  if (typeof window === 'undefined') return false;
-  const hostname = window.location.hostname.toLowerCase();
-  return hostname === 'bdsmlr.com' || hostname === 'www.bdsmlr.com';
-}
-
-function shouldUseDirectPublicReadRecs(): boolean {
-  if (!isApexRuntimeHost()) return false;
-  if (getAuthUser()) return false;
-  return true;
-}
-
 function resolveRecsBase(): string {
-  if (shouldUseDirectPublicReadRecs()) {
-    return PUBLIC_READ_RECS_BASE;
-  }
-  return API_BASE;
+  const env = (import.meta as any).env || {};
+  const hostname = typeof window === 'undefined' ? 'localhost' : window.location.hostname;
+  return resolveTransportBase('recs', {
+    hostname,
+    hasAuthUser: Boolean(getAuthUser()),
+    env,
+  });
 }
 
 /**

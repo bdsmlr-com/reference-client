@@ -38,6 +38,7 @@ import {
   refreshHttpCacheTimestamp,
 } from './storage.js';
 import { isAdminMode, syncAdminModeFromUrl } from './blog-resolver.js';
+import { resolveTransportBase } from './transport-base.js';
 import {
   getCachedPosts,
   setCachedPosts,
@@ -97,31 +98,21 @@ import type {
   ListRecommendedBlogsResponse,
 } from '../types/api.js';
 
-const DEFAULT_API_BASE = '/v2/api';
-const DEFAULT_PUBLIC_READ_API_BASE = 'https://api-prod.bdsmlr.com/v2/api';
-const STATIC_API_BASE = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE).replace(/\/$/, '');
-const PUBLIC_READ_API_BASE = ((import.meta.env.VITE_PUBLIC_READ_API_BASE_URL || DEFAULT_PUBLIC_READ_API_BASE) as string).replace(/\/$/, '');
 const AUTH_EMAIL = import.meta.env.VITE_AUTH_EMAIL || '';
 const AUTH_PASSWORD = import.meta.env.VITE_AUTH_PASSWORD || '';
+const STATIC_API_BASE = resolveTransportBase('api', {
+  hostname: typeof window === 'undefined' ? 'localhost' : window.location.hostname,
+  hasAuthUser: true,
+  env: import.meta.env,
+});
 
-
-function isApexRuntimeHost(): boolean {
-  if (typeof window === 'undefined') return false;
-  const hostname = window.location.hostname.toLowerCase();
-  return hostname === 'bdsmlr.com' || hostname === 'www.bdsmlr.com';
-}
-
-function shouldUseDirectPublicReadApi(endpoint: string): boolean {
-  if (!isApexRuntimeHost()) return false;
-  if (getAuthUser()) return false;
-  return !endpoint.startsWith('/v2/auth/');
-}
-
-function resolveApiBase(endpoint: string): string {
-  if (shouldUseDirectPublicReadApi(endpoint)) {
-    return PUBLIC_READ_API_BASE;
-  }
-  return STATIC_API_BASE;
+function resolveApiBase(): string {
+  const hostname = typeof window === 'undefined' ? 'localhost' : window.location.hostname;
+  return resolveTransportBase('api', {
+    hostname,
+    hasAuthUser: Boolean(getAuthUser()),
+    env: import.meta.env,
+  });
 }
 
 /** Flip to `false` to disable in-flight coalescing of identical `apiRequest` calls. */
@@ -262,7 +253,7 @@ function buildApiRequestInflightKey(
 }
 
 function buildTransportPath(endpoint: string): string {
-  const apiBase = resolveApiBase(endpoint);
+  const apiBase = resolveApiBase();
   if (apiBase.endsWith('/v2/api')) {
     const clean = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
     if (clean.startsWith('v2/')) {
