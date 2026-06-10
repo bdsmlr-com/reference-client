@@ -17,6 +17,8 @@ describe('v2 transport namespace wiring', () => {
     expect(src).toContain("url.startsWith('/v2/api')");
     expect(src).toContain("'/v2/api/recs'");
     expect(src).toContain("'/v2/api'");
+    expect(src).toContain("import { stabilizeEntryBundle } from './scripts/stabilize-entry-bundle.mjs';");
+    expect(src).toContain("plugins: [spaFallbackPlugin(), stableEntryBundlePlugin()]");
   });
 
   it('serves assets from /v2/assets while retaining the legacy asset alias', () => {

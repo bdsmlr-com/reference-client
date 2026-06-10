@@ -1,10 +1,23 @@
 import { defineConfig, type Plugin } from 'vite';
 import { resolve } from 'path';
+import { stabilizeEntryBundle } from './scripts/stabilize-entry-bundle.mjs';
 
 /**
  * Simple SPA fallback plugin for Vite.
  * Serves index.html for all non-file/non-api requests.
  */
+
+function stableEntryBundlePlugin(): Plugin {
+  return {
+    name: 'stable-entry-bundle',
+    apply: 'build',
+    writeBundle(outputOptions) {
+      const outDir = typeof outputOptions.dir === 'string' ? resolve(__dirname, outputOptions.dir) : resolve(__dirname, 'dist');
+      stabilizeEntryBundle(outDir);
+    },
+  };
+}
+
 function spaFallbackPlugin(): Plugin {
   return {
     name: 'spa-fallback',
@@ -31,7 +44,7 @@ function spaFallbackPlugin(): Plugin {
 
 export default defineConfig({
   base: '/v2/assets/',
-  plugins: [spaFallbackPlugin()],
+  plugins: [spaFallbackPlugin(), stableEntryBundlePlugin()],
   build: {
     target: 'es2020',
     assetsDir: '',

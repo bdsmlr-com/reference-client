@@ -19,8 +19,8 @@ function rewriteIndexHtml(indexPath, hashedEntry) {
   writeFileSync(indexPath, rewritten);
 }
 
-function main() {
-  const distDir = resolve(process.argv[2] || 'dist');
+export function stabilizeEntryBundle(distDirInput) {
+  const distDir = resolve(distDirInput || 'dist');
   const indexPath = join(distDir, 'index.html');
   if (!existsSync(indexPath)) {
     throw new Error(`Missing index.html in ${distDir}`);
@@ -31,4 +31,6 @@ function main() {
   rewriteIndexHtml(indexPath, hashedEntry);
 }
 
-main();
+if (import.meta.url === `file://${process.argv[1]}`) {
+  stabilizeEntryBundle(process.argv[2] || 'dist');
+}
