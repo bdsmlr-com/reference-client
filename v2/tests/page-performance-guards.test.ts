@@ -43,6 +43,13 @@ describe('page performance guards', () => {
     expect(src).toContain('private scheduleArchiveTagCloudLoad(): void');
   });
 
+  it('reuses themed blog ids on the activity/blog surface instead of forcing a second identity lookup', () => {
+    const src = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
+
+    expect(src).toContain('this.blogData?.id || await apiClient.identity.resolveNameToId(this.blog)');
+    expect(src).toContain('this.blogData = await initBlogTheme(this.blog);');
+  });
+
 
   it('does not eagerly hydrate post action viewer state on initial render', () => {
     const src = readFileSync(join(ROOT, 'components/post-actions.ts'), 'utf8');

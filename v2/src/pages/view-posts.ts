@@ -81,7 +81,7 @@ export class ViewPosts extends LitElement {
     if (!this.blog) return;
     try {
       this.blogData = await initBlogTheme(this.blog);
-      const blogId = await apiClient.identity.resolveNameToId(this.blog);
+      const blogId = this.blogData?.id || await apiClient.identity.resolveNameToId(this.blog);
       if (!blogId) { this.errorMessage = `Blog @${this.blog} not found`; return; }
       this.blogId = blogId;
       await this.loadPosts();
