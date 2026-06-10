@@ -258,6 +258,7 @@ export class ViewArchive extends LitElement {
   private forcedPaginatedFromUrl = false;
   private paginationKey = '';
   private replaceArchiveUrlOnPageBoundary = false;
+  private activeArchiveLoadId = 0;
 
   private scheduleArchiveTagCloudLoad(): void {
     const run = () => {
@@ -624,10 +625,14 @@ export class ViewArchive extends LitElement {
       extra: { blog: this.blog },
     }));
 
+    const loadId = ++this.activeArchiveLoadId;
+
     try {
-      await this.fillPage(this.currentPage);
+      await this.fillPage(this.currentPage, loadId);
     } catch (e) {
-      this.errorMessage = getContextualErrorMessage(e, 'load_posts', { blogName: this.blog });
+      if (loadId === this.activeArchiveLoadId) {
+        this.errorMessage = getContextualErrorMessage(e, 'load_posts', { blogName: this.blog });
+      }
     }
 
     if (this.navigationMode === 'infinite') {
@@ -651,11 +656,14 @@ export class ViewArchive extends LitElement {
     });
   }
 
-  private async fillPage(targetPage: number = this.currentPage): Promise<void> {
+  private async fillPage(targetPage: number = this.currentPage, loadId: number = this.activeArchiveLoadId): Promise<void> {
     this.loading = true;
 
     try {
       const resp = await this.fetchArchivePageResponse(targetPage);
+      if (loadId !== this.activeArchiveLoadId) {
+        return;
+      }
       if (!resp) {
         return;
       }
@@ -701,7 +709,9 @@ export class ViewArchive extends LitElement {
         this.syncArchiveUrlState();
       }
     } finally {
-      this.loading = false;
+      if (loadId === this.activeArchiveLoadId) {
+        this.loading = false;
+      }
     }
   }
 

@@ -211,6 +211,73 @@ describe('archive pagination mode', () => {
     expect(listMock).toHaveBeenCalledWith(expect.objectContaining({ when: '2026-05', session_id: 'sess-live', page_number: 2 }));
   });
 
+  it('ignores stale archive load responses after a when-change restart', async () => {
+    let resolveFirst: ((value: unknown) => void) | null = null;
+    let resolveSecond: ((value: unknown) => void) | null = null;
+    const firstPromise = new Promise((resolve) => { resolveFirst = resolve; });
+    const secondPromise = new Promise((resolve) => { resolveSecond = resolve; });
+
+    const view = Object.assign(Object.create(ViewArchive.prototype), {
+      blog: 'demo-blog',
+      blogId: 123,
+      sortValue: 'newest',
+      selectedTypes: [1, 2, 3],
+      selectedVariants: [],
+      archiveWhen: '',
+      query: '',
+      searchSessionId: '',
+      infiniteScroll: false,
+      forcedPaginatedFromUrl: false,
+      currentPage: 1,
+      navigationMode: 'infinite',
+      replaceArchiveUrlOnPageBoundary: false,
+      seenIds: new Set(),
+      stats: { found: 0, deleted: 0, dupes: 0, notFound: 0 },
+      resultUnits: [],
+      statusMessage: '',
+      errorMessage: '',
+      hasNextPage: false,
+      exhausted: false,
+      loading: false,
+      activeArchiveLoadId: 0,
+      syncArchiveUrlState: vi.fn(),
+      observeSentinel: vi.fn(),
+      buildArchiveScopedQuery: () => 'blog:demo-blog',
+      paginationKey: '',
+    });
+
+    const listMock = vi.mocked(apiClient.posts.list);
+    listMock.mockImplementationOnce(() => firstPromise as Promise<never>);
+    listMock.mockImplementationOnce(() => secondPromise as Promise<never>);
+
+    const firstLoad = view.loadPosts();
+    await view.handleWhenChange({ detail: { value: '2026' } } as CustomEvent<{ value: string }>);
+
+    resolveSecond?.({
+      posts: [{ id: 42, blogName: 'demo-blog' }],
+      resultUnits: [{ post: { id: 42, blogName: 'demo-blog' } }],
+      pageNumber: 1,
+      hasMore: false,
+      sessionId: 'sess-2026',
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    resolveFirst?.({
+      posts: [],
+      resultUnits: [],
+      pageNumber: 1,
+      hasMore: false,
+      sessionId: 'sess-old',
+    });
+    await firstLoad;
+    await Promise.resolve();
+
+    expect(view.resultUnits).toHaveLength(1);
+    expect(view.statusMessage).toBe('');
+    expect(view.searchSessionId).toBe('sess-2026');
+  });
+
   it('changes archive when state and forces paginated reloads when the picker emits a new value', async () => {
     const view = Object.assign(Object.create(ViewArchive.prototype), {
       archiveWhen: '',
