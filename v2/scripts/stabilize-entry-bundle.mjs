@@ -12,6 +12,9 @@ function findHashedEntry(distDir) {
 
 function rewriteIndexHtml(indexPath, hashedEntry) {
   const html = readFileSync(indexPath, 'utf8');
+  if (html.includes('/v2/assets/main.js')) {
+    return;
+  }
   const rewritten = html.replace(`/v2/assets/${hashedEntry}`, '/v2/assets/main.js');
   if (rewritten === html) {
     throw new Error(`Could not find /v2/assets/${hashedEntry} in ${indexPath}`);
