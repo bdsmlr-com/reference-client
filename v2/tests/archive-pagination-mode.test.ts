@@ -123,7 +123,7 @@ describe('archive pagination mode', () => {
     const src = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
 
     expect(src).toContain('buildContentRouteUrlParams({');
-    expect(src).toContain('sessionId: this.searchSessionId');
+    expect(src).toContain("sessionId: this.currentPage > 1 ? this.searchSessionId : ''");
     expect(src).not.toContain('resolveArchivePageCursor');
     expect(src).not.toContain('currentPageCursor');
     expect(src).not.toContain('pageStartCursors');
@@ -168,6 +168,27 @@ describe('archive pagination mode', () => {
     await view.fetchArchivePageResponse(1);
 
     expect(listMock).toHaveBeenCalledWith(expect.objectContaining({ when: '2026-05', session_id: undefined }));
+  });
+
+  it('omits archive session ids from the page-one URL state', () => {
+    const view = Object.assign(Object.create(ViewArchive.prototype), {
+      query: '',
+      sortValue: 'newest',
+      selectedTypes: [1, 2, 3],
+      selectedVariants: [],
+      archiveWhen: '2026-05',
+      currentPage: 1,
+      navigationMode: 'paginated',
+      replaceArchiveUrlOnPageBoundary: false,
+      searchSessionId: 'sess-stale',
+      blog: 'demo-blog',
+    });
+
+    expect(view.buildArchiveUrlParams()).toEqual(expect.objectContaining({
+      when: '2026-05',
+      page: '1',
+      session: '',
+    }));
   });
 
   it('keeps archive session ids on subsequent page requests', async () => {

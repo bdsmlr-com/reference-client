@@ -426,7 +426,7 @@ export class ViewArchive extends LitElement {
       currentPage: this.currentPage,
       navigationMode: this.navigationMode,
       replaceUrlOnPageBoundary: this.replaceArchiveUrlOnPageBoundary,
-      sessionId: this.searchSessionId,
+      sessionId: this.currentPage > 1 ? this.searchSessionId : '',
       extraParams: !isBlogInPath() ? { blog: this.blog } : {},
     });
   }
