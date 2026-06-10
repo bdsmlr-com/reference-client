@@ -17,10 +17,12 @@ describe('activity route alias', () => {
     expect(links.contexts.post_via_blog).toBeDefined();
   });
 
-  it('app router exposes canonical blog routes and legacy activity aliases', () => {
+  it('app router exposes canonical blog routes, direct activity aliases, and legacy activity aliases', () => {
     const appRootSrc = readFileSync(join(ROOT, 'app-root.ts'), 'utf8');
 
     expect(appRootSrc).toContain("{ path: '/blog/:blogname'");
+    expect(appRootSrc).toContain("{ path: '/activity/you'");
+    expect(appRootSrc).toContain("{ path: '/activity/:blogname'");
     expect(appRootSrc).toContain("{ path: '/:blog/activity'");
     expect(appRootSrc).not.toContain("{ path: '/:blog/posts'");
   });

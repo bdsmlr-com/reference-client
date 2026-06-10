@@ -118,6 +118,8 @@ export class AppRoot extends LitElement {
     { path: '/follower-feed/:blogname', render: ({ blogname }) => html`<view-feed .blog=${this.resolveRouteBlogName(blogname || '')} .mode=${'followers'}></view-feed>` },
     { path: '/blog/you', render: () => html`<view-posts .blog=${this.resolveRouteBlogName('you')}></view-posts>` },
     { path: '/blog/:blogname', render: ({ blogname }) => html`<view-posts .blog=${this.resolveRouteBlogName(blogname || '')}></view-posts>` },
+    { path: '/activity/you', render: () => html`<view-posts .blog=${this.resolveRouteBlogName('you')}></view-posts>` },
+    { path: '/activity/:blogname', render: ({ blogname }) => html`<view-posts .blog=${this.resolveRouteBlogName(blogname || '')}></view-posts>` },
     { path: '/archive/you', render: () => html`<view-archive .blog=${this.resolveRouteBlogName('you')}></view-archive>` },
     { path: '/archive/:blogname', render: ({ blogname }) => html`<view-archive .blog=${this.resolveRouteBlogName(blogname || '')}></view-archive>` },
     { path: '/settings/you', render: () => html`<view-settings-user></view-settings-user>` },
