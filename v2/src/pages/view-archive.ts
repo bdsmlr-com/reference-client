@@ -483,12 +483,14 @@ export class ViewArchive extends LitElement {
     }
 
     const sortOpt = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
+    const sessionId = targetPage > 1 ? this.searchSessionId || undefined : undefined;
+
     return apiClient.posts.list({
       blog_id: this.blogId,
       blog_name: this.blog,
       q: this.query.trim() || undefined,
       activity_kinds: ['post', 'reblog'],
-      session_id: this.searchSessionId || undefined,
+      session_id: sessionId,
       page_number: targetPage,
       page_size: ARCHIVE_PAGE_SIZE,
       sort_field: sortOpt.field as PostSortField,

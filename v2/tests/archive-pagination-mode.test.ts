@@ -150,7 +150,7 @@ describe('archive pagination mode', () => {
     expect(src).toContain('@next-page=${() => this.handleNextPage()}');
   });
 
-  it('forwards when to archive list requests', async () => {
+  it('omits stale archive session ids on the initial page request', async () => {
     const listMock = vi.mocked(apiClient.posts.list);
     listMock.mockResolvedValueOnce({ posts: [], resultUnits: [], pageNumber: 1, hasMore: false } as never);
 
@@ -162,12 +162,32 @@ describe('archive pagination mode', () => {
       selectedVariants: [],
       archiveWhen: '2026-05',
       query: '',
-      searchSessionId: '',
+      searchSessionId: 'sess-stale',
     });
 
     await view.fetchArchivePageResponse(1);
 
-    expect(listMock).toHaveBeenCalledWith(expect.objectContaining({ when: '2026-05' }));
+    expect(listMock).toHaveBeenCalledWith(expect.objectContaining({ when: '2026-05', session_id: undefined }));
+  });
+
+  it('keeps archive session ids on subsequent page requests', async () => {
+    const listMock = vi.mocked(apiClient.posts.list);
+    listMock.mockResolvedValueOnce({ posts: [], resultUnits: [], pageNumber: 2, hasMore: false } as never);
+
+    const view = Object.assign(Object.create(ViewArchive.prototype), {
+      blog: 'demo-blog',
+      blogId: 123,
+      sortValue: 'newest',
+      selectedTypes: [1, 2, 3],
+      selectedVariants: [],
+      archiveWhen: '2026-05',
+      query: '',
+      searchSessionId: 'sess-live',
+    });
+
+    await view.fetchArchivePageResponse(2);
+
+    expect(listMock).toHaveBeenCalledWith(expect.objectContaining({ when: '2026-05', session_id: 'sess-live', page_number: 2 }));
   });
 
   it('changes archive when state and forces paginated reloads when the picker emits a new value', async () => {

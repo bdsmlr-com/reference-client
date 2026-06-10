@@ -62,7 +62,8 @@ describe('archive/search render contract usage', () => {
   it('archive now rides the archive posts contract with session paging and blog scope', () => {
     const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
 
-    expect(archiveSrc).toContain('session_id: this.searchSessionId || undefined');
+    expect(archiveSrc).toContain('const sessionId = targetPage > 1 ? this.searchSessionId || undefined : undefined;');
+    expect(archiveSrc).toContain('session_id: sessionId');
     expect(archiveSrc).toContain('page_number: targetPage');
     expect(archiveSrc).toContain('apiClient.posts.list({');
     expect(archiveSrc).toContain("activity_kinds: ['post', 'reblog']");
