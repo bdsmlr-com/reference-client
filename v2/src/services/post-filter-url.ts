@@ -36,6 +36,11 @@ function uniqueFiniteInts<T extends number>(values: T[]): T[] {
   return [...new Set(values.filter((value) => Number.isFinite(value)))];
 }
 
+export function normalizePostTypes(types: readonly number[]): PostType[] {
+  const valid = new Set<number>(ALL_POST_TYPES);
+  return uniqueFiniteInts(types as PostType[]).filter((type) => valid.has(type)) as PostType[];
+}
+
 export function parsePostTypesParam(raw: string | null | undefined): PostType[] | null {
   if (!raw) return null;
   const parsed = raw
@@ -43,12 +48,12 @@ export function parsePostTypesParam(raw: string | null | undefined): PostType[] 
     .map((token) => token.trim().toLowerCase())
     .filter(Boolean)
     .map((token) => TYPE_NAME_TO_ENUM[token] ?? (parseInt(token, 10) as PostType));
-  const normalized = uniqueFiniteInts(parsed);
+  const normalized = normalizePostTypes(parsed);
   return normalized.length > 0 ? normalized : null;
 }
 
 export function serializePostTypesParam(types: PostType[]): string {
-  return uniqueFiniteInts(types).map((type) => TYPE_ENUM_TO_NAME[type] || String(type)).join(',');
+  return normalizePostTypes(types).map((type) => TYPE_ENUM_TO_NAME[type] || String(type)).join(',');
 }
 
 export function parseVariantsParam(raw: string | null | undefined): PostVariant[] | null {

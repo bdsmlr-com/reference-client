@@ -17,6 +17,12 @@ describe('post filter url codecs', () => {
     expect(serializePostTypesParam([1, 2, 7])).toBe('text,image,quote');
   });
 
+
+  it('drops unsupported legacy post type ids during parse and serialize', () => {
+    expect(parsePostTypesParam('text,image,8,quote')).toEqual([1, 2, 7]);
+    expect(serializePostTypesParam([1, 2, 7, 8] as never)).toBe('text,image,quote');
+  });
+
   it('parses text and numeric variant params compatibly', () => {
     expect(parseVariantsParam('original,reblog')).toEqual([1, 2]);
     expect(parseVariantsParam('1,2')).toEqual([1, 2]);

@@ -1,3 +1,5 @@
+import { normalizePostTypes } from './post-filter-url.js';
+
 /**
  * Unified Storage Service
  *
@@ -2217,16 +2219,17 @@ export function setVariantPreference(variant: VariantSelection, pageName?: strin
 
 export function getTypePreference(pageName?: string): number[] {
   if (pageName) {
-    return getPagePreference(pageName, 'postTypes');
+    return normalizePostTypes(getPagePreference(pageName, 'postTypes'));
   }
-  return getPreferences().postTypes;
+  return normalizePostTypes(getPreferences().postTypes);
 }
 
 export function setTypePreference(types: number[], pageName?: string): void {
+  const normalized = normalizePostTypes(types);
   if (pageName) {
-    setPagePreference(pageName, 'postTypes', types);
+    setPagePreference(pageName, 'postTypes', normalized);
   } else {
-    setPreferences({ postTypes: types });
+    setPreferences({ postTypes: normalized });
   }
 }
 
