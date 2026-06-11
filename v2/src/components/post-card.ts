@@ -220,6 +220,7 @@ export class PostCard extends LitElement {
     titleFallback: string,
     decoration?: IdentityDecoration | null,
     blogId?: number | null,
+    strikethrough = false,
   ) {
     return renderStructuredMicroBlogIdentity({
       link,
@@ -230,6 +231,7 @@ export class PostCard extends LitElement {
       title: titleFallback,
       stopClick: true,
       showAvatar: false,
+      strikethrough,
     });
   }
 
@@ -257,6 +259,7 @@ export class PostCard extends LitElement {
                 `Original post by ${presentation.identity.originBlogLabel}`,
                 presentation.identity.originBlogDecoration,
                 p.originBlogId,
+                presentation.identity.originBlogGone,
               )}
               <span style="opacity: 0.5;">♻️ via</span>
               ${this.renderMicroBlogIdentity(

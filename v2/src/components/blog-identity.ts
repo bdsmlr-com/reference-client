@@ -196,6 +196,12 @@ export class BlogIdentity extends LitElement {
         text-overflow: ellipsis;
       }
 
+      .name.strikethrough {
+        text-decoration: line-through;
+        text-decoration-thickness: 1.5px;
+        text-decoration-skip-ink: auto;
+      }
+
       .name-row {
         display: inline-flex;
         align-items: baseline;
@@ -305,6 +311,7 @@ export class BlogIdentity extends LitElement {
   @property({ type: String }) blogDescription = '';
   @property({ type: String }) avatarUrl = '';
   @property({ type: Boolean }) showAvatar = true;
+  @property({ type: Boolean }) strikethrough = false;
   @property({ attribute: false }) identityDecorations: IdentityDecoration[] = [];
   @property({ type: String, reflect: true }) variant: BlogIdentityVariant = 'header';
 
@@ -424,7 +431,7 @@ export class BlogIdentity extends LitElement {
         ` : nothing}
         <span class="copy">
           <span class="name-row">
-            <span class="name">@${blogName}</span>
+            <span class=${this.strikethrough ? 'name strikethrough' : 'name'}>@${blogName}</span>
             ${decorations.map((decoration) =>
               decoration?.icon
                 ? html`<span class="name-decoration" title=${decoration.label || nothing}>${decoration.icon}</span>`

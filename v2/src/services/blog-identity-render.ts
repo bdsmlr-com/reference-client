@@ -12,6 +12,7 @@ type RenderMicroBlogIdentityOptions = {
   title?: string | null;
   stopClick?: boolean;
   showAvatar?: boolean;
+  strikethrough?: boolean;
 };
 
 export function normalizeStructuredBlogName(label: string | null | undefined, blogId?: number | null): string {
@@ -32,6 +33,7 @@ export function renderStructuredMicroBlogIdentity({
   title,
   stopClick = false,
   showAvatar = false,
+  strikethrough = false,
 }: RenderMicroBlogIdentityOptions): TemplateResult | typeof nothing {
   const normalized = normalizeStructuredBlogName(label, blogId);
   if (!normalized && !(blogId || 0)) {
@@ -44,6 +46,7 @@ export function renderStructuredMicroBlogIdentity({
       .blogName=${normalized}
       .blogId=${blogId || 0}
       .showAvatar=${showAvatar}
+      .strikethrough=${strikethrough}
       .identityDecorations=${identityDecorations}
     ></blog-identity>
   `;

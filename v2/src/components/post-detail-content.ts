@@ -6,13 +6,12 @@ import { extractRenderableTags, type ProcessedPost } from '../types/post.js';
 import { formatDateShort, getTooltipDate } from '../services/date-formatter.js';
 import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
 import { toPresentationModel } from '../services/post-presentation.js';
-import { resolveLink } from '../services/link-resolver.js';
+import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';
 import {
   buildContextualTagSearchHref,
   buildScopedReblogDetailTagHref,
   type PostRouteSource,
 } from '../services/post-route-context.js';
-import type { IdentityDecoration } from '../types/api.js';
 import './media-renderer.js';
 import './blog-identity.js';
 import './post-engagement.js';
@@ -145,27 +144,6 @@ export class PostDetailContent extends LitElement {
   @property({ type: String }) surface: 'detail' | 'lightbox' = 'detail';
   @property({ type: String }) from = 'direct';
 
-  private renderMicroBlogIdentity(
-    link: ReturnType<typeof resolveLink> | null | undefined,
-    label: string,
-    decoration?: IdentityDecoration | null,
-    blogId?: number | null,
-  ) {
-    const raw = `${label || link?.label || ''}`.trim().replace(/^@+/, '');
-    const normalized = raw.toLowerCase() === 'unknown' && (blogId || 0) > 0 ? '' : raw;
-    if (!normalized && !(blogId || 0)) return nothing;
-    const identity = html`
-      <blog-identity
-        variant="micro"
-        .blogName=${normalized}
-        .blogId=${blogId || 0}
-        .identityDecorations=${decoration ? [decoration] : []}
-      ></blog-identity>
-    `;
-    if (!link) return identity;
-    return html`<a href=${link.href} target=${link.target} rel=${link.rel || nothing} title=${link.title || nothing}>${identity}</a>`;
-  }
-
   render() {
     if (!this.post) return nothing;
     const p = this.post;
@@ -199,33 +177,34 @@ export class PostDetailContent extends LitElement {
             <span>${typeIcon}</span>
             ${presentation.identity.isReblog
               ? html`
-                  ${this.renderMicroBlogIdentity(
-                    presentation.identity.originBlog,
-                    presentation.identity.originBlogLabel,
-                    presentation.identity.originBlogDecoration,
-                    p.originBlogId,
-                  )}
+                  ${renderStructuredMicroBlogIdentity({
+                    link: presentation.identity.originBlog,
+                    label: presentation.identity.originBlogLabel,
+                    blogId: p.originBlogId,
+                    decoration: presentation.identity.originBlogDecoration,
+                    strikethrough: presentation.identity.originBlogGone,
+                  })}
                   ${presentation.identity.originPostPermalink
                     ? html`<span class="identity-slash">/</span><a href=${presentation.identity.originPostPermalink.href} target=${presentation.identity.originPostPermalink.target} rel=${presentation.identity.originPostPermalink.rel || nothing}>${presentation.identity.originPostPermalink.label || p.originPostId}<span class="identity-outlink">${presentation.identity.originPostPermalink.icon || '↗'}</span></a>`
                     : nothing}
                   <span>via ♻️</span>
-                  ${this.renderMicroBlogIdentity(
-                    presentation.identity.viaBlog,
-                    presentation.identity.viaBlogLabel,
-                    presentation.identity.viaBlogDecoration,
-                    p.blogId,
-                  )}
+                  ${renderStructuredMicroBlogIdentity({
+                    link: presentation.identity.viaBlog,
+                    label: presentation.identity.viaBlogLabel,
+                    blogId: p.blogId,
+                    decoration: presentation.identity.viaBlogDecoration,
+                  })}
                   ${presentation.identity.viaPostPermalink
                     ? html`<span class="identity-slash">/</span><a href=${presentation.identity.viaPostPermalink.href} target=${presentation.identity.viaPostPermalink.target} rel=${presentation.identity.viaPostPermalink.rel || nothing}>${presentation.identity.viaPostPermalink.label || p.id}<span class="identity-outlink">${presentation.identity.viaPostPermalink.icon || '↗'}</span></a>`
                     : nothing}
                 `
               : html`
-                  ${this.renderMicroBlogIdentity(
-                    presentation.identity.viaBlog || presentation.identity.originBlog,
-                    presentation.identity.primaryBlogLabel,
-                    presentation.identity.viaBlogDecoration || presentation.identity.originBlogDecoration,
-                    p.blogId,
-                  )}
+                  ${renderStructuredMicroBlogIdentity({
+                    link: presentation.identity.viaBlog || presentation.identity.originBlog,
+                    label: presentation.identity.primaryBlogLabel,
+                    blogId: p.blogId,
+                    decoration: presentation.identity.viaBlogDecoration || presentation.identity.originBlogDecoration,
+                  })}
                   <span class="identity-slash">/</span>
                   <a href=${permalink.href} target=${permalink.target} rel=${permalink.rel || nothing}>
                     ${permalink.label || p.id}<span class="identity-outlink">${permalink.icon || '↗'}</span>

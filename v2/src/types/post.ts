@@ -132,6 +132,7 @@ export interface PresentationIdentity {
   permalink: ResolvedLink;
   originPostPermalink?: ResolvedLink | null;
   originPostMissing?: boolean;
+  originBlogGone?: boolean;
   viaPostPermalink?: ResolvedLink | null;
   originBlog?: ResolvedLink | null;
   viaBlog?: ResolvedLink | null;

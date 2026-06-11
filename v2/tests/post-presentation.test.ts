@@ -101,6 +101,16 @@ describe('toPresentationModel', () => {
     expect(model.identity.originPostMissing).toBe(true);
   });
 
+  it('carries removed-origin state through the shared identity descriptor', () => {
+    const model = toPresentationModel(
+      makePost({ originBlogName: 'OriginBlog', originPostId: 123, originBlogGone: true }),
+      { surface: 'detail', page: 'post' },
+    );
+
+    expect(model.identity.isReblog).toBe(true);
+    expect(model.identity.originBlogGone).toBe(true);
+  });
+
   it('selects the top inline identity decorations for origin and via blog identities', () => {
     const model = toPresentationModel(
       makePost({

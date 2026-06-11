@@ -104,6 +104,7 @@ export interface Post {
   blogIdentityDecorations?: IdentityDecoration[];
   originBlogIdentityDecorations?: IdentityDecoration[];
   originPostMissing?: boolean;
+  originBlogGone?: boolean;
   authorization?: PostAuthorization;
 }
 

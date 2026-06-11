@@ -153,6 +153,7 @@ function buildIdentity(post: ProcessedPost) {
     permalink,
     originPostPermalink,
     originPostMissing,
+    originBlogGone: Boolean(isReblog && post.originBlogGone),
     viaPostPermalink,
     originBlog,
     viaBlog,

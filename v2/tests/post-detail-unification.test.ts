@@ -13,6 +13,7 @@ describe('post detail unification', () => {
     expect(postViewSrc).toContain("import '../components/post-detail-content.js';");
     expect(postViewSrc).not.toContain("import '../components/post-feed-item.js';");
     expect(detailSrc).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
+    expect(detailSrc).toContain("import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';");
     expect(detailSrc).toContain("import './media-renderer.js';");
     expect(detailSrc).toContain("@property({ type: String }) surface: 'detail' | 'lightbox' = 'detail';");
     expect(detailSrc).toContain("const presentation = toPresentationModel(p, {");
@@ -57,3 +58,18 @@ describe('post detail unification', () => {
     expect(detailSrc).toContain("class=\"tag-section-label\">${originBlogName || 'Origin'} tagged:</div>");
   });
 });
+
+
+  it('uses the shared micro identity renderer for removed-origin strikethrough instead of a detail-only code path', () => {
+    const cardSrc = readFileSync(join(ROOT, 'components/post-card.ts'), 'utf8');
+    const detailSrc = readFileSync(join(ROOT, 'components/post-detail-content.ts'), 'utf8');
+    const identityRenderSrc = readFileSync(join(ROOT, 'services/blog-identity-render.ts'), 'utf8');
+    const identitySrc = readFileSync(join(ROOT, 'components/blog-identity.ts'), 'utf8');
+
+    expect(cardSrc).toContain('presentation.identity.originBlogGone');
+    expect(detailSrc).toContain('presentation.identity.originBlogGone');
+    expect(detailSrc).toContain('renderStructuredMicroBlogIdentity({');
+    expect(identityRenderSrc).toContain('strikethrough');
+    expect(identitySrc).toContain('@property({ type: Boolean }) strikethrough = false;');
+    expect(identitySrc).toContain('text-decoration: line-through;');
+  });
