@@ -149,6 +149,7 @@ export class ViewPosts extends LitElement {
     this.loading = true;
     try {
       const sortOption = SORT_OPTIONS.find((o) => o.value === this.sortValue) || SORT_OPTIONS[0];
+      const requestedPageToken = this.backendCursor;
       const resp = await apiClient.posts.list({
         blog_id: this.blogId,
         sort_field: sortOption.field as PostSortField,
@@ -163,7 +164,7 @@ export class ViewPosts extends LitElement {
       if (!this.backendCursor) this.exhausted = true;
 
       // DUMB FRONTEND: Just append the pre-processed timeline items
-      const newItems = (resp.timelineItems || []).map(item => {
+      const newItems = (resp.timelineItems || []).map((item, index) => {
         if (item.type === 1 && item.post) { // ITEM_TYPE_POST
           const p = item.post as ProcessedPost;
           p._media = extractMedia(p);
@@ -172,6 +173,9 @@ export class ViewPosts extends LitElement {
             const p = post as ProcessedPost;
             p._media = extractMedia(p);
           });
+          if (requestedPageToken) {
+            item.cluster.sourceBoundaryKey = `page:${requestedPageToken}:${index}`;
+          }
         }
         return item;
       });

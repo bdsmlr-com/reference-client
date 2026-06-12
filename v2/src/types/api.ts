@@ -111,6 +111,7 @@ export interface Post {
 export interface InteractionCluster {
   label?: string;
   interactions?: Post[];
+  sourceBoundaryKey?: string;
 }
 
 export interface TimelineItem {

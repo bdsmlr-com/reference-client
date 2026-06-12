@@ -14,6 +14,7 @@ export type ActivityRunBucket = {
   kind: 'like' | 'comment';
   actor: string;
   actorKey: string;
+  sourceClusterKey: string;
   likeCount: number;
   commentCount: number;
   oldestInteractionUnix: number;
@@ -48,6 +49,7 @@ type TimelineEvent =
       post: ProcessedPost;
       actor: string;
       actorKey: string;
+      sourceClusterKey: string;
     };
 
 function normalizeBlogName(name: string | undefined | null): string {
@@ -146,6 +148,7 @@ function buildTimelineEvents({
     }
 
     const clusterPosts = (item.cluster.interactions || []).map((raw) => raw as ProcessedPost);
+    const sourceClusterKey = item.cluster.sourceBoundaryKey || "";
 
     if (kind === 'reblog') {
       for (const post of clusterPosts) {
@@ -175,6 +178,7 @@ function buildTimelineEvents({
         post,
         actor: showActorInCluster ? (post.blogName || '') : '',
         actorKey: showActorInCluster ? normalizeBlogName(post.blogName) : '',
+        sourceClusterKey,
       });
     }
   }
@@ -195,7 +199,7 @@ export function buildRenderableTimelineItems(args: BuildRenderableTimelineItemsA
     currentRun = null;
   };
 
-  const createRun = (kind: 'like' | 'comment', actor: string, actorKey: string): ActivityRunBucket => ({
+  const createRun = (kind: 'like' | 'comment', actor: string, actorKey: string, sourceClusterKey: string): ActivityRunBucket => ({
     key: `run:${runIndex += 1}`,
     kind,
     actor,
@@ -206,7 +210,8 @@ export function buildRenderableTimelineItems(args: BuildRenderableTimelineItemsA
     latestInteractionUnix: 0,
     interactions: [],
     interactionIndex: new Map<string, number>(),
-  });
+    sourceClusterKey,
+  } as ActivityRunBucket & { sourceClusterKey: string });
 
   const events = buildTimelineEvents(args);
 
@@ -219,8 +224,8 @@ export function buildRenderableTimelineItems(args: BuildRenderableTimelineItemsA
 
     const interactionEvent = event as Extract<TimelineEvent, { kind: 'like' | 'comment' }>;
 
-    if (!currentRun || currentRun.kind !== interactionEvent.kind || currentRun.actorKey !== interactionEvent.actorKey) {
-      currentRun = createRun(interactionEvent.kind, interactionEvent.actor, interactionEvent.actorKey);
+    if (!currentRun || currentRun.kind !== interactionEvent.kind || currentRun.actorKey !== interactionEvent.actorKey || currentRun.sourceClusterKey !== interactionEvent.sourceClusterKey) {
+      currentRun = createRun(interactionEvent.kind, interactionEvent.actor, interactionEvent.actorKey, interactionEvent.sourceClusterKey);
       renderable.push({ type: 'activity-bucket', bucket: currentRun });
     }
     const run: ActivityRunBucket = currentRun;

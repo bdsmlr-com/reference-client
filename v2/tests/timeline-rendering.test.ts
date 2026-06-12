@@ -157,3 +157,39 @@ describe('timeline rendering', () => {
     expect(renderable.map((item) => item.bucket.interactions[0].post.id)).toEqual([10, 10, 11]);
   });
 });
+
+
+it('keeps separate backend interaction clusters as separate buckets', () => {
+  const first = {
+    type: 2,
+    cluster: {
+      label: 'Likes',
+      sourceBoundaryKey: 'page:abc:0',
+      interactions: [
+        { id: 101, blogName: 'actor-a', createdAtUnix: 1700000000, updatedAtUnix: 1700000100, _activityCreatedAtUnix: 1700000100 },
+      ],
+    },
+  } as any;
+  const second = {
+    type: 2,
+    cluster: {
+      label: 'Likes',
+      sourceBoundaryKey: 'page:def:0',
+      interactions: [
+        { id: 102, blogName: 'actor-a', createdAtUnix: 1699999000, updatedAtUnix: 1699999900, _activityCreatedAtUnix: 1699999900 },
+      ],
+    },
+  } as any;
+
+  const renderable = buildRenderableTimelineItems({
+    items: [first, second],
+    activityKinds: ['like'],
+    showActorInCluster: false,
+    presentationPage: 'activity',
+    viewedBlogName: 'demo-blog',
+  });
+
+  expect(renderable).toHaveLength(2);
+  expect(renderable[0].type).toBe('activity-bucket');
+  expect(renderable[1].type).toBe('activity-bucket');
+});
