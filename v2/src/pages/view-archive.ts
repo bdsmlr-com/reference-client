@@ -12,7 +12,7 @@ import {
   getVariantPreference,
 } from '../services/storage.js';
 import { normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
-import type { Blog, PostType, PostSortField, Order, PostVariant, Tag } from '../types/api.js';
+import type { Blog, PostType, PostSortField, Order, PostVariant, Tag, BlogTagAffinity } from '../types/api.js';
 import { contentGridItems, flattenContentResultPosts, prepareContentResultUnits } from '../services/content-results.js';
 import {
   forcePaginatedContentRouteNavigation,
@@ -57,8 +57,10 @@ import '../components/skeleton-loader.js';
 import '../components/error-state.js';
 import '../components/blog-header.js';
 import '../components/archive-tag-cloud.js';
+import '../components/affinity-tag-cloud.js';
 import '../components/render-card.js';
 import '../components/route-shell-card.js';
+import { toggleAffinityTagExpression } from '../services/tag-affinity.js';
 
 const ARCHIVE_PAGE_SIZE = 20;
 
@@ -247,6 +249,9 @@ export class ViewArchive extends LitElement {
   @state() private archiveTagItems: Tag[] = [];
   @state() private archiveTagsLoading = false;
   @state() private archiveTagsError = '';
+  @state() private archiveAffinity: BlogTagAffinity | null = null;
+  @state() private archiveAffinityLoading = false;
+  @state() private archiveAffinityError = '';
   @state() private viewerCapabilities: string[] = getViewerCapabilities();
   @state() private archiveRoadblock: { kind: 'sort' | 'variant' | 'gallery' } | null = null;
   @state() private autoRetryAttempt = 0;
@@ -263,6 +268,7 @@ export class ViewArchive extends LitElement {
   private scheduleArchiveTagCloudLoad(): void {
     const run = () => {
       void this.loadArchiveTagCloud();
+      void this.loadArchiveAffinityCloud();
     };
 
     const maybeWindow = globalThis as typeof globalThis & {
@@ -475,6 +481,27 @@ export class ViewArchive extends LitElement {
       this.archiveTagsError = getContextualErrorMessage(error, 'load_posts', { blogName: this.blog });
     } finally {
       this.archiveTagsLoading = false;
+    }
+  }
+
+  async loadArchiveAffinityCloud(): Promise<void> {
+    if (!this.blog) {
+      this.archiveAffinity = null;
+      this.archiveAffinityError = '';
+      return;
+    }
+    this.archiveAffinityLoading = true;
+    this.archiveAffinityError = '';
+    try {
+      const response = await apiClient.blogs.getTagAffinity({
+        blog_name: this.blog,
+      });
+      this.archiveAffinity = response.tagAffinity || null;
+    } catch (error) {
+      this.archiveAffinity = null;
+      this.archiveAffinityError = getContextualErrorMessage(error, 'load_posts', { blogName: this.blog });
+    } finally {
+      this.archiveAffinityLoading = false;
     }
   }
 
@@ -787,6 +814,11 @@ export class ViewArchive extends LitElement {
     await this.loadPosts();
   }
 
+  private async handleArchiveAffinityTagSelect(e: CustomEvent<{ tag: string }>): Promise<void> {
+    this.query = toggleAffinityTagExpression(this.query, e.detail.tag);
+    await this.loadPosts();
+  }
+
   private handlePostClick(e: CustomEvent): void {
     e.stopPropagation();
     const post = e.detail.post as ProcessedPost;
@@ -906,6 +938,19 @@ export class ViewArchive extends LitElement {
                 .error=${this.archiveTagsError}
                 @tag-select=${this.handleArchiveTagSelect}
               ></archive-tag-cloud>
+
+              <affinity-tag-cloud
+                .title=${'Affinity Tags'}
+                .subtitle=${'All-time tags based on what this blog engages with'}
+                .blogName=${this.blog}
+                .tagAffinity=${this.archiveAffinity}
+                .loading=${this.archiveAffinityLoading}
+                .error=${this.archiveAffinityError}
+                .showControls=${false}
+                .interactionMode=${'both'}
+                .horizon=${'all'}
+                @tag-select=${this.handleArchiveAffinityTagSelect}
+              ></affinity-tag-cloud>
             </div>
 
             <control-panel

@@ -150,6 +150,22 @@ export interface Tag {
   postsCount?: number;
 }
 
+export interface AffinityTag {
+  tag: string;
+  count: number;
+}
+
+export interface BlogTagAffinityBucket {
+  likes: AffinityTag[];
+  reblogs: AffinityTag[];
+  both: AffinityTag[];
+}
+
+export interface BlogTagAffinity {
+  all: BlogTagAffinityBucket;
+  recent: BlogTagAffinityBucket;
+}
+
 export interface BlogPublicInterests {
   maledom?: boolean;
   femdom?: boolean;
@@ -656,6 +672,18 @@ export interface ListBlogTopTagsResponse {
 
 export interface GetBlogResponse {
   blog?: Blog;
+  error?: string;
+}
+
+export interface GetBlogTagAffinityRequest {
+  blog_id?: number;
+  blog_name?: string;
+}
+
+export interface GetBlogTagAffinityResponse {
+  blogId?: number;
+  blogName?: string;
+  tagAffinity?: BlogTagAffinity;
   error?: string;
 }
 

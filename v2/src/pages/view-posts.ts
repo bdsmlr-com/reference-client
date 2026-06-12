@@ -3,11 +3,11 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { getContextualErrorMessage, ErrorMessages } from '../services/api-error.js';
-import { getUrlParam, setUrlParams } from '../services/blog-resolver.js';
+import { buildPageUrl, getUrlParam, setUrlParams } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { extractMedia, SORT_OPTIONS, type ProcessedPost } from '../types/post.js';
-import type { PostType, Blog, TimelineItem, PostSortField, Order } from '../types/api.js';
+import type { PostType, Blog, TimelineItem, PostSortField, Order, BlogTagAffinity } from '../types/api.js';
 import {
   type ActivityKind,
 } from '../services/profile.js';
@@ -28,6 +28,8 @@ import '../components/loading-spinner.js';
 import '../components/error-state.js';
 import '../components/blog-header.js';
 import '../components/render-card.js';
+import '../components/affinity-tag-cloud.js';
+import { buildAffinityTagExpression } from '../services/tag-affinity.js';
 
 const PAGE_SIZE = 15;
 
@@ -56,6 +58,9 @@ export class ViewPosts extends LitElement {
   @state() private statusMessage = '';
   @state() private activityKinds: ActivityKind[] = getTimelineRouteDefinition('activity').readStoredActivityKinds();
   @state() private blogData: Blog | null = null;
+  @state() private blogAffinity: BlogTagAffinity | null = null;
+  @state() private blogAffinityLoading = false;
+  @state() private blogAffinityError = '';
   private readonly mainSlotConfig: RenderSlotConfig = getPageSlotConfig('activity', 'main_stream');
   private readonly timelineRoute = getTimelineRouteDefinition('activity');
 
@@ -84,10 +89,35 @@ export class ViewPosts extends LitElement {
       const blogId = this.blogData?.id || await apiClient.identity.resolveNameToId(this.blog);
       if (!blogId) { this.errorMessage = `Blog @${this.blog} not found`; return; }
       this.blogId = blogId;
+      await this.loadBlogAffinityCloud();
       await this.loadPosts();
     } catch (e) {
       this.errorMessage = getContextualErrorMessage(e, 'resolve_blog');
     }
+  }
+
+  async loadBlogAffinityCloud(): Promise<void> {
+    if (!this.blog) {
+      this.blogAffinity = null;
+      this.blogAffinityError = '';
+      return;
+    }
+    this.blogAffinityLoading = true;
+    this.blogAffinityError = '';
+    try {
+      const response = await apiClient.blogs.getTagAffinity({ blog_name: this.blog });
+      this.blogAffinity = response.tagAffinity || null;
+    } catch (error) {
+      this.blogAffinity = null;
+      this.blogAffinityError = getContextualErrorMessage(error, 'load_posts', { blogName: this.blog });
+    } finally {
+      this.blogAffinityLoading = false;
+    }
+  }
+
+  private handleBlogAffinityTagSelect(e: CustomEvent<{ tag: string }>): void {
+    const nextQuery = buildAffinityTagExpression(e.detail.tag);
+    window.location.href = buildPageUrl('search', this.blog, { q: nextQuery });
   }
 
   private async loadPosts(): Promise<void> {
@@ -271,6 +301,21 @@ export class ViewPosts extends LitElement {
           .avatarUrl=${this.blogData?.avatarUrl || ''}
           .identityDecorations=${this.blogData?.identityDecorations || []}
         ></blog-header>
+
+        <div style="max-width:900px;margin:0 auto 20px;padding:0 16px;">
+          <affinity-tag-cloud
+            .title=${'Recently Into'}
+            .subtitle=${'Recent tags based on what this blog liked and reblogged'}
+            .blogName=${this.blog}
+            .tagAffinity=${this.blogAffinity}
+            .loading=${this.blogAffinityLoading}
+            .error=${this.blogAffinityError}
+            .showControls=${false}
+            .interactionMode=${'both'}
+            .horizon=${'recent'}
+            @tag-select=${this.handleBlogAffinityTagSelect}
+          ></affinity-tag-cloud>
+        </div>
 
         <control-panel
           .framed=${true}

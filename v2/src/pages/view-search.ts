@@ -11,7 +11,7 @@ import {
   setCachedPaginationCursor,
 } from '../services/storage.js';
 import { normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } from '../types/post.js';
-import type { PostType, PostSortField, Order, PostVariant } from '../types/api.js';
+import type { PostType, PostSortField, Order, PostVariant, BlogTagAffinity } from '../types/api.js';
 import { parsePostTypesParam, parseVariantsParam } from '../services/post-filter-url.js';
 import { materializeSearchResultUnits, type SearchResultUnit } from '../services/search-result-units.js';
 import { contentGridItems, flattenContentResultPosts, prepareContentResultUnits } from '../services/content-results.js';
@@ -49,6 +49,7 @@ import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { ACTIVE_ENV } from '../config.js';
 import { materializeRecommendedPosts } from '../services/recommendation-api.js';
+import { toggleAffinityTagExpression } from '../services/tag-affinity.js';
 import '../components/control-panel.js';
 import '../components/activity-grid.js';
 import '../components/post-grid.js';
@@ -58,6 +59,7 @@ import '../components/skeleton-loader.js';
 import '../components/error-state.js';
 import '../components/render-card.js';
 import '../components/result-group.js';
+import '../components/affinity-tag-cloud.js';
 
 const SEARCH_PAGE_SIZE = 20;
 
@@ -325,6 +327,12 @@ export class ViewSearch extends LitElement {
         cursor: wait;
       }
 
+      .affinity-panel {
+        max-width: 900px;
+        margin: 0 auto 20px;
+        padding: 0 16px;
+      }
+
       .match-box {
         max-width: 600px;
         margin: 0 auto 20px;
@@ -463,6 +471,11 @@ export class ViewSearch extends LitElement {
   @state() private galleryMode: GalleryMode = normalizeGalleryModeForCapabilities(getGalleryMode('search'), getViewerCapabilities());
   @state() private teaserPosts: ProcessedPost[] = [];
   @state() private teaserLoading = false;
+  @state() private searchAffinity: BlogTagAffinity | null = null;
+  @state() private searchAffinityLoading = false;
+  @state() private searchAffinityError = '';
+  @state() private searchAffinityInteraction: 'both' | 'likes' | 'reblogs' = 'both';
+  @state() private searchAffinityHorizon: 'recent' | 'all' = 'recent';
   @state() private hasNextPage = false;
   @state() private showSyntaxGuide = false;
   @state() private roadblockPost: ProcessedPost | null = null;
@@ -514,6 +527,9 @@ export class ViewSearch extends LitElement {
     super.connectedCallback();
     this.loadFromUrl();
     void this.loadTeasers();
+    void (async () => {
+      await this.loadSearchAffinity();
+    })();
     window.addEventListener('beforeunload', this.savePaginationState);
     window.addEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
     window.addEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
@@ -537,6 +553,7 @@ export class ViewSearch extends LitElement {
 
   private handleAuthUserChanged = (): void => {
     this.galleryMode = normalizeGalleryModeForCapabilities(getGalleryMode('search'), getViewerCapabilities());
+    void this.loadSearchAffinity();
   };
 
   private canUseMasonry(): boolean {
@@ -646,6 +663,41 @@ export class ViewSearch extends LitElement {
     } finally {
       this.teaserLoading = false;
     }
+  }
+
+  async loadSearchAffinity(): Promise<void> {
+    const subjectBlog = getBlogNameFromPath() || getPrimaryBlogName() || '';
+    if (!subjectBlog) {
+      this.searchAffinity = null;
+      this.searchAffinityError = '';
+      return;
+    }
+    this.searchAffinityLoading = true;
+    this.searchAffinityError = '';
+    try {
+      const response = await apiClient.blogs.getTagAffinity({ blog_name: subjectBlog });
+      this.searchAffinity = response.tagAffinity || null;
+    } catch (error) {
+      this.searchAffinity = null;
+      this.searchAffinityError = getContextualErrorMessage(error, 'load_posts', { blogName: subjectBlog });
+    } finally {
+      this.searchAffinityLoading = false;
+    }
+  }
+
+  private async handleSearchAffinityTagSelect(e: CustomEvent<{ tag: string }>): Promise<void> {
+    this.query = toggleAffinityTagExpression(this.query, e.detail.tag);
+    if (this.hasSearched) {
+      await this.search();
+    }
+  }
+
+  private handleSearchAffinityInteractionChange(e: CustomEvent<{ value: 'both' | 'likes' | 'reblogs' }>): void {
+    this.searchAffinityInteraction = e.detail.value;
+  }
+
+  private handleSearchAffinityHorizonChange(e: CustomEvent<{ value: 'recent' | 'all' }>): void {
+    this.searchAffinityHorizon = e.detail.value;
   }
 
   private observeSentinel(): void {
@@ -1174,6 +1226,25 @@ export class ViewSearch extends LitElement {
             ${this.searching ? 'Searching...' : 'Search'}
           </button>
         </div>
+
+        ${(getBlogNameFromPath() || getPrimaryBlogName() || '') ? html`
+          <div class="affinity-panel">
+            <affinity-tag-cloud
+              .title=${'Your Affinity Tags'}
+              .subtitle=${'Based on posts your active blog liked and reblogged'}
+              .blogName=${getBlogNameFromPath() || getPrimaryBlogName() || ''}
+              .tagAffinity=${this.searchAffinity}
+              .loading=${this.searchAffinityLoading}
+              .error=${this.searchAffinityError}
+              .showControls=${true}
+              .interactionMode=${this.searchAffinityInteraction}
+              .horizon=${this.searchAffinityHorizon}
+              @tag-select=${this.handleSearchAffinityTagSelect}
+              @interaction-mode-change=${this.handleSearchAffinityInteractionChange}
+              @horizon-change=${this.handleSearchAffinityHorizonChange}
+            ></affinity-tag-cloud>
+          </div>
+        ` : ''}
 
         ${routePerspectiveBlog ? html`
           <div class="match-box">

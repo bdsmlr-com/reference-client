@@ -96,6 +96,8 @@ import type {
   BatchGetPostsResponse,
   GetBlogRequest,
   GetBlogResponse,
+  GetBlogTagAffinityRequest,
+  GetBlogTagAffinityResponse,
   ListBlogTopTagsRequest,
   ListBlogTopTagsResponse,
   ListBlogFamilyBlogsRequest,
@@ -144,6 +146,7 @@ const ENDPOINT_TIMEOUTS: Record<string, number> = {
   // Fast endpoints (5s) - simple lookups, single record
   '/v2/resolve-identifier': 5000,
   '/v2/get-blog': 5000,
+  '/v2/blog-tag-affinity': 5000,
   '/v2/list-blog-family-blogs': 5000,
   '/v2/sign-url': 5000,
 
@@ -1648,6 +1651,15 @@ export async function listBlogTopTags(
   );
 }
 
+export async function getBlogTagAffinity(
+  req: GetBlogTagAffinityRequest
+): Promise<GetBlogTagAffinityResponse> {
+  return apiRequest<GetBlogTagAffinityResponse>(
+    '/v2/blog-tag-affinity',
+    req
+  );
+}
+
 export async function listBlogFamilyBlogs(
   req: ListBlogFamilyBlogsRequest
 ): Promise<ListBlogFamilyBlogsResponse> {
@@ -2851,6 +2863,13 @@ export class BlogsApi {
    */
   async getTopTags(req: ListBlogTopTagsRequest): Promise<ListBlogTopTagsResponse> {
     return listBlogTopTags(req);
+  }
+
+  /**
+   * Get tag affinity buckets for a blog.
+   */
+  async getTagAffinity(req: GetBlogTagAffinityRequest): Promise<GetBlogTagAffinityResponse> {
+    return getBlogTagAffinity(req);
   }
 
   /**
