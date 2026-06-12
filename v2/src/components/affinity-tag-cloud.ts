@@ -413,12 +413,26 @@ export class AffinityTagCloud extends LitElement {
               : html`
                   <div class="cloud" style=${`height:${Math.max(this.cloudHeight, 240)}px`}>
                     ${this.positionedTags.map((tag) => html`
-                      <div class="tag-slot" style=${`left:${tag.left}px; top:${tag.top}px; width:${tag.width}px; height:${tag.height}px;`}>
-                        <div class="tag-anchor" style=${`transform: translate(-50%, -50%) rotate(${tag.rotated ? -6 : 0}deg);`}>
-                          <button class="tag" type="button" style=${`font-size:${tag.fontSize}px; font-weight:600;`} @click=${() => this.selectTag(tag.name)}>
-                            #${tag.name}
-                          </button>
-                        </div>
+                      <div
+                        class="tag-slot"
+                        style=${`left:${tag.left}px;top:${tag.top}px;width:${tag.boxWidth}px;height:${tag.boxHeight}px;`}
+                      >
+                        <button
+                          class="tag tag-anchor"
+                          type="button"
+                          style=${[
+                            `font-size:${tag.fontSize}px`,
+                            `width:${tag.width}px`,
+                            `height:${tag.height}px`,
+                            `margin-left:${-tag.width / 2}px`,
+                            `margin-top:${-tag.height / 2}px`,
+                            `transform:${tag.rotated ? 'rotate(90deg)' : 'none'}`,
+                          ].join(';')}
+                          title=${`${tag.postsCount || 0} posts`}
+                          @click=${() => this.selectTag(tag.name)}
+                        >
+                          #${tag.name}
+                        </button>
                       </div>
                     `)}
                   </div>

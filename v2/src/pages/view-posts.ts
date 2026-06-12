@@ -310,7 +310,7 @@ export class ViewPosts extends LitElement {
             .tagAffinity=${this.blogAffinity}
             .loading=${this.blogAffinityLoading}
             .error=${this.blogAffinityError}
-            .showControls=${false}
+            .showControls=${true}
             .interactionMode=${'both'}
             .horizon=${'recent'}
             @tag-select=${this.handleBlogAffinityTagSelect}

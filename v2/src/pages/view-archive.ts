@@ -946,7 +946,7 @@ export class ViewArchive extends LitElement {
                 .tagAffinity=${this.archiveAffinity}
                 .loading=${this.archiveAffinityLoading}
                 .error=${this.archiveAffinityError}
-                .showControls=${false}
+                .showControls=${true}
                 .interactionMode=${'both'}
                 .horizon=${'all'}
                 @tag-select=${this.handleArchiveAffinityTagSelect}

@@ -16,5 +16,7 @@ describe('affinity tag cloud', () => {
     expect(src).toContain("['recent', 'all']");
     expect(src).toContain('role="radiogroup"');
     expect(src).toContain('aria-checked=${selected}');
+    expect(src).toContain("transform:${tag.rotated ? 'rotate(90deg)' : 'none'}");
+    expect(src).not.toContain('rotate(${tag.rotated ? -6 : 0}deg)');
   });
 });

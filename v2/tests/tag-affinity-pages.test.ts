@@ -31,6 +31,7 @@ describe('tag affinity page wiring', () => {
     expect(src).toContain(".title=${'Affinity Tags'}");
     expect(src).toContain(".interactionMode=${'both'}");
     expect(src).toContain(".horizon=${'all'}");
+    expect(src).toContain('.showControls=${true}');
   });
 
   it('blog renders a compact recent-both affinity panel that navigates into profiled search', () => {
@@ -43,6 +44,7 @@ describe('tag affinity page wiring', () => {
     expect(src).toContain(".title=${'Recently Into'}");
     expect(src).toContain(".interactionMode=${'both'}");
     expect(src).toContain(".horizon=${'recent'}");
+    expect(src).toContain('.showControls=${true}');
     expect(src).toContain("buildPageUrl('search', this.blog, { q: nextQuery })");
   });
 });
