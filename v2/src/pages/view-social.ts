@@ -710,7 +710,8 @@ export class ViewSocial extends LitElement {
           ? html`
               <blog-header
                 page="social"
-                .blogName=${this.blog}
+                .blogId=${this.blogData?.id || 0}
+          .blogName=${this.blog}
                 .blogTitle=${this.blogData?.title || ''}
                 .blogDescription=${this.blogData?.description || ''}
                 .avatarUrl=${this.blogData?.avatarUrl || ''}

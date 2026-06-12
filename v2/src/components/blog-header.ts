@@ -5,6 +5,8 @@ import { buildPageUrl } from '../services/blog-resolver.js';
 import { handleAvatarImageError, normalizeAvatarUrl } from '../services/avatar-url.js';
 import { BREAKPOINTS, SPACING } from '../types/ui-constants.js';
 import type { IdentityDecoration } from '../types/api.js';
+import { getAuthUser } from '../state/auth-state.js';
+import { followStateController } from '../services/follow-state.js';
 import './route-shell-card.js';
 import './blog-identity.js';
 
@@ -38,19 +40,58 @@ export class BlogHeader extends LitElement {
       .summary-card {
         width: min(100%, 900px);
         display: grid;
-        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr) auto;
         gap: 14px;
-        align-items: start;
+        align-items: center;
         padding: 14px 16px;
         border-radius: 16px;
         border: 1px solid var(--border);
         background: var(--bg-panel);
+        text-align: left;
+      }
+
+      .summary-card-main {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 14px;
+        align-items: start;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
         cursor: pointer;
         text-align: left;
       }
 
-      .summary-card:hover {
-        background: var(--bg-panel-alt);
+      .summary-card-main:hover {
+        opacity: 0.96;
+      }
+
+      .summary-follow {
+        justify-self: end;
+        align-self: center;
+        min-height: 36px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text-primary);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .summary-follow[data-followed='true'] {
+        background: var(--text-primary);
+        color: var(--bg);
+        border-color: var(--text-primary);
+      }
+
+      .summary-follow:disabled {
+        opacity: 0.66;
+        cursor: default;
       }
 
       .summary-avatar,
@@ -216,15 +257,27 @@ export class BlogHeader extends LitElement {
           text-align: center;
         }
 
+        .summary-card-main {
+          width: 100%;
+          grid-template-columns: 1fr;
+          justify-items: center;
+          text-align: center;
+        }
+
         .summary-copy {
           width: 100%;
           align-items: center;
+        }
+
+        .summary-follow {
+          justify-self: center;
         }
       }
     `,
   ];
 
   @property({ type: String }) page: PageName = 'timeline';
+  @property({ type: Number }) blogId = 0;
   @property({ type: String }) blogName = '';
   @property({ type: String }) blogTitle = '';
   @property({ type: String }) blogDescription = '';
@@ -232,6 +285,32 @@ export class BlogHeader extends LitElement {
   @property({ attribute: false }) identityDecorations: IdentityDecoration[] = [];
 
   @state() private modalOpen = false;
+  @state() private followState: boolean | undefined = undefined;
+  @state() private followLoading = false;
+  @state() private followPending = false;
+
+  private unsubscribeFollowState?: () => void;
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this.unsubscribeFollowState = followStateController.subscribe(() => {
+      this.syncFollowStateFromCache();
+    });
+  }
+
+  disconnectedCallback(): void {
+    this.unsubscribeFollowState?.();
+    this.unsubscribeFollowState = undefined;
+    super.disconnectedCallback();
+  }
+
+  protected updated(changed: Map<string, unknown>): void {
+    super.updated(changed);
+    if (changed.has('blogId') || changed.has('blogName')) {
+      this.syncFollowStateFromCache();
+      void this.hydrateFollowState();
+    }
+  }
 
   private getSubnavUrl(page: string, blogName: string): string {
     if (page === 'feed') return `/feed/for/${blogName}`;
@@ -261,6 +340,65 @@ export class BlogHeader extends LitElement {
     return (this.blogName.trim().replace(/^@+/, '').charAt(0) || '?').toUpperCase();
   }
 
+  private get currentActorBlogId(): number | null {
+    const user = getAuthUser();
+    return user?.activeBlogId ?? user?.blogId ?? null;
+  }
+
+  private get canRenderFollowButton(): boolean {
+    const actorBlogId = this.currentActorBlogId;
+    return Boolean(actorBlogId && this.blogId > 0 && actorBlogId !== this.blogId);
+  }
+
+  private syncFollowStateFromCache(): void {
+    if (!this.canRenderFollowButton) {
+      this.followState = undefined;
+      return;
+    }
+    this.followState = followStateController.getFollowState(this.blogId);
+  }
+
+  private async hydrateFollowState(): Promise<void> {
+    if (!this.canRenderFollowButton) {
+      this.followLoading = false;
+      return;
+    }
+    this.followLoading = this.followState === undefined;
+    try {
+      const value = await followStateController.hydrateFollowState(this.blogId);
+      this.followState = value;
+    } catch (error) {
+      console.error('Failed to hydrate follow state', error);
+    } finally {
+      this.followLoading = false;
+    }
+  }
+
+  private handleFollowClick = async (event: Event): Promise<void> => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!this.canRenderFollowButton || this.followPending) return;
+
+    const targetLabel = `@${this.blogName.replace(/^@+/, '')}`;
+    this.followPending = true;
+    try {
+      if (this.followState) {
+        if (!window.confirm(`Unfollow ${targetLabel}?`)) {
+          return;
+        }
+        await followStateController.unfollowBlog(this.blogId);
+        this.followState = false;
+      } else {
+        await followStateController.followBlog(this.blogId);
+        this.followState = true;
+      }
+    } catch (error) {
+      console.error('Failed to update follow state', error);
+    } finally {
+      this.followPending = false;
+    }
+  };
+
   private openModal = (): void => {
     this.modalOpen = true;
   };
@@ -289,7 +427,8 @@ export class BlogHeader extends LitElement {
     return html`
       <div role="region" aria-label="Blog header">
         <div class="header-container">
-          <button class="summary-card" type="button" @click=${this.openModal} aria-label=${`View details for @${this.blogName}`}>
+          <div class="summary-card">
+            <button class="summary-card-main" type="button" @click=${this.openModal} aria-label=${`View details for @${this.blogName}`}>
             ${this.avatarSrc
               ? html`<img class="summary-avatar" src=${this.avatarSrc} alt=${`Avatar for @${this.blogName}`} @error=${handleAvatarImageError} />`
               : html`<div class="summary-avatar-fallback" aria-hidden="true">${this.avatarInitial}</div>`}
@@ -305,7 +444,16 @@ export class BlogHeader extends LitElement {
               ${this.summaryTitle ? html`<div class="summary-title">${this.summaryTitle}</div>` : nothing}
               ${this.summaryDescription ? html`<div class="summary-description">${this.summaryDescription}</div>` : nothing}
             </div>
-          </button>
+            </button>
+            ${this.canRenderFollowButton ? html`<button
+              class="summary-follow"
+              type="button"
+              data-followed=${String(Boolean(this.followState))}
+              ?disabled=${this.followPending || this.followLoading}
+              @click=${this.handleFollowClick}
+              aria-label=${this.followState ? `Unfollow @${this.blogName}` : `Follow @${this.blogName}`}
+            >${this.followLoading && this.followState === undefined ? '...' : (this.followState ? 'Following' : 'Follow')}</button>` : nothing}
+          </div>
         </div>
         <route-shell-card compact>
           <nav class="subnav" aria-label="Blog navigation">

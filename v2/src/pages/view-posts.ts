@@ -264,6 +264,7 @@ export class ViewPosts extends LitElement {
       <div class="content">
         <blog-header
           page="activity"
+          .blogId=${this.blogData?.id || 0}
           .blogName=${this.blog}
           .blogTitle=${this.blogData?.title || ''}
           .blogDescription=${this.blogData?.description || ''}

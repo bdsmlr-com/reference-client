@@ -68,6 +68,12 @@ import type {
   BatchGetLikeStatesResponse,
   BatchGetReblogStatesRequest,
   BatchGetReblogStatesResponse,
+  BlogFollowStateRequest,
+  BlogFollowStateResponse,
+  FollowBlogRequest,
+  FollowBlogResponse,
+  UnfollowBlogRequest,
+  UnfollowBlogResponse,
   LikePostRequest,
   LikePostResponse,
   CommentPostRequest,
@@ -1272,6 +1278,33 @@ export async function commentPost(
 ): Promise<CommentPostResponse> {
   return apiRequest<CommentPostResponse>(
     '/v2/internal-write/comment',
+    req
+  );
+}
+
+export async function blogFollowState(
+  req: BlogFollowStateRequest
+): Promise<BlogFollowStateResponse> {
+  return apiRequest<BlogFollowStateResponse>(
+    '/v2/blog-follow-state',
+    req
+  );
+}
+
+export async function followBlog(
+  req: FollowBlogRequest
+): Promise<FollowBlogResponse> {
+  return apiRequest<FollowBlogResponse>(
+    '/v2/internal-write/follow',
+    req
+  );
+}
+
+export async function unfollowBlog(
+  req: UnfollowBlogRequest
+): Promise<UnfollowBlogResponse> {
+  return apiRequest<UnfollowBlogResponse>(
+    '/v2/internal-write/unfollow',
     req
   );
 }

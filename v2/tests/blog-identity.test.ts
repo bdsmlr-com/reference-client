@@ -30,10 +30,14 @@ describe('blog identity integration', () => {
     const archiveSrc = readFileSync(join(ROOT, 'pages/view-archive.ts'), 'utf8');
     const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
     const socialSrc = readFileSync(join(ROOT, 'pages/view-social.ts'), 'utf8');
+    const feedSrc = readFileSync(join(ROOT, 'pages/view-feed.ts'), 'utf8');
 
     expect(headerSrc).toContain("import './blog-identity.js';");
     expect(headerSrc).toContain("type PageName = 'archive' | 'timeline' | 'social' | 'following' | 'activity' | 'feed' | 'follower-feed';");
     expect(headerSrc).toContain('summary-card');
+    expect(headerSrc).toContain('summary-follow');
+    expect(headerSrc).toContain("from '../services/follow-state.js'");
+    expect(headerSrc).toContain("window.confirm(`Unfollow ${targetLabel}?`)");
     expect(headerSrc).toContain("import './route-shell-card.js';");
     expect(headerSrc).toContain('<route-shell-card compact>');
     expect(headerSrc).toContain('class="subnav"');
@@ -53,6 +57,7 @@ describe('blog identity integration', () => {
     expect(archiveSrc).toContain('.avatarUrl=${this.blogData?.avatarUrl || \'\'}');
     expect(archiveSrc).toContain('.identityDecorations=${this.blogData?.identityDecorations || []}');
     expect(postsSrc).toContain('page="activity"');
+    expect(postsSrc).toContain('.blogId=${this.blogData?.id || 0}');
     expect(postsSrc).toContain('.avatarUrl=${this.blogData?.avatarUrl || \'\'}');
     expect(postsSrc).toContain('.identityDecorations=${this.blogData?.identityDecorations || []}');
     expect(socialSrc).toContain('.blogDescription=${this.blogData?.description || \'\'}');

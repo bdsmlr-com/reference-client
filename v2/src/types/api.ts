@@ -249,6 +249,48 @@ export interface UnlikePostResponse {
   error?: WriteError;
 }
 
+export interface BlogFollowStateRequest {
+  actingBlogId: number;
+  targetBlogId?: number;
+  targetBlogName?: string;
+}
+
+export interface BlogFollowStateResponse {
+  ok?: boolean;
+  actingBlogId?: number;
+  targetBlogId?: number;
+  isFollowed?: boolean;
+  error?: WriteError;
+}
+
+export interface FollowBlogRequest {
+  actingBlogId?: number;
+  targetBlogId: number;
+}
+
+export interface FollowBlogResponse {
+  ok?: boolean;
+  action?: string;
+  targetBlogId?: number;
+  actingBlogId?: number;
+  state?: { followed?: boolean };
+  error?: WriteError;
+}
+
+export interface UnfollowBlogRequest {
+  actingBlogId?: number;
+  targetBlogId: number;
+}
+
+export interface UnfollowBlogResponse {
+  ok?: boolean;
+  action?: string;
+  targetBlogId?: number;
+  actingBlogId?: number;
+  state?: { followed?: boolean };
+  error?: WriteError;
+}
+
 export interface ReblogPostRequest {
   actor?: SignedActorAssertion;
   actingBlogId?: number;

@@ -629,6 +629,7 @@ export class ViewFeed extends LitElement {
       <div class="content">
         <blog-header
           .page=${this.isFollowerFeed ? 'follower-feed' : 'feed'}
+          .blogId=${this.blogData?.id || 0}
           .blogName=${this.resolvedBlogName || this.blogNameInput.trim().replace(/^@/, '')}
           .blogTitle=${this.blogData?.title || ''}
           .blogDescription=${this.blogData?.description || ''}

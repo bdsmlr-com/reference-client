@@ -872,6 +872,7 @@ export class ViewArchive extends LitElement {
       <div class="content">
         <blog-header
           page="archive"
+          .blogId=${this.blogData?.id || 0}
           .blogName=${this.blog}
           .blogTitle=${this.blogData?.title || ''}
           .blogDescription=${this.blogData?.description || ''}
@@ -898,7 +899,8 @@ export class ViewArchive extends LitElement {
               </div>
 
               <archive-tag-cloud
-                .blogName=${this.blog}
+                .blogId=${this.blogData?.id || 0}
+          .blogName=${this.blog}
                 .tags=${this.archiveTagItems}
                 .loading=${this.archiveTagsLoading}
                 .error=${this.archiveTagsError}
