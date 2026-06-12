@@ -34,6 +34,22 @@ type BuildRenderableTimelineItemsArgs = {
   viewedBlogName: string;
 };
 
+type TimelineEvent =
+  | {
+      kind: 'post' | 'reblog';
+      ts: number;
+      sequence: number;
+      post: ProcessedPost;
+    }
+  | {
+      kind: 'like' | 'comment';
+      ts: number;
+      sequence: number;
+      post: ProcessedPost;
+      actor: string;
+      actorKey: string;
+    };
+
 function normalizeBlogName(name: string | undefined | null): string {
   return (name || '').trim().toLowerCase();
 }
@@ -86,33 +102,15 @@ function shouldSuppressSelfSameDayLike(
   return Boolean(postDateKey) && postDateKey === interactionDateKey;
 }
 
-export function buildRenderableTimelineItems({
+function buildTimelineEvents({
   items,
   activityKinds,
   showActorInCluster,
   presentationPage,
   viewedBlogName,
-}: BuildRenderableTimelineItemsArgs): RenderableTimelineItem[] {
-  const renderable: RenderableTimelineItem[] = [];
-  let currentRun: ActivityRunBucket | null = null;
-  let runIndex = 0;
-
-  const endCurrentRun = () => {
-    currentRun = null;
-  };
-
-  const createRun = (kind: 'like' | 'comment', actor: string, actorKey: string): ActivityRunBucket => ({
-      key: `run:${runIndex += 1}`,
-      kind,
-      actor,
-      actorKey,
-      likeCount: 0,
-      commentCount: 0,
-      oldestInteractionUnix: 0,
-      latestInteractionUnix: 0,
-      interactions: [],
-      interactionIndex: new Map<number, number>(),
-    });
+}: BuildRenderableTimelineItemsArgs): TimelineEvent[] {
+  const events: TimelineEvent[] = [];
+  let sequence = 0;
 
   for (const item of items) {
     const kind = inferTimelineItemKind(item, presentationPage);
@@ -121,22 +119,25 @@ export function buildRenderableTimelineItems({
     }
 
     if (item.type === 1 && item.post) {
-      endCurrentRun();
-      renderable.push({ type: 'post', post: item.post as ProcessedPost });
+      const post = item.post as ProcessedPost;
+      const ts = post.createdAtUnix || post.updatedAtUnix || getTimelineInteractionUnix(post);
+      const eventKind: 'post' | 'reblog' = kind === 'reblog' ? 'reblog' : 'post';
+      events.push({ kind: eventKind, ts, sequence: sequence++, post });
       continue;
     }
 
     if (item.type !== 2 || !item.cluster) {
-      endCurrentRun();
       continue;
     }
 
+    const clusterPosts = (item.cluster.interactions || []).map((raw) => raw as ProcessedPost);
+
     if (kind === 'reblog') {
-      endCurrentRun();
-      for (const raw of (item.cluster.interactions || [])) {
-        const post = raw as ProcessedPost;
-        renderable.push({
-          type: 'post',
+      for (const post of clusterPosts) {
+        events.push({
+          kind: 'reblog',
+          ts: getTimelineInteractionUnix(post),
+          sequence: sequence++,
           post: {
             ...post,
             _activityCreatedAtUnix: getTimelineInteractionUnix(post),
@@ -147,50 +148,90 @@ export function buildRenderableTimelineItems({
     }
 
     if (kind !== 'like' && kind !== 'comment') {
+      continue;
+    }
+
+    const interactions = clusterPosts.filter((post) => !shouldSuppressSelfSameDayLike(post, kind, presentationPage, showActorInCluster, viewedBlogName));
+    for (const post of interactions) {
+      events.push({
+        kind,
+        ts: getTimelineInteractionUnix(post),
+        sequence: sequence++,
+        post,
+        actor: showActorInCluster ? (post.blogName || '') : '',
+        actorKey: showActorInCluster ? normalizeBlogName(post.blogName) : '',
+      });
+    }
+  }
+
+  events.sort((a, b) => {
+    if (b.ts !== a.ts) return b.ts - a.ts;
+    return a.sequence - b.sequence;
+  });
+  return events;
+}
+
+export function buildRenderableTimelineItems(args: BuildRenderableTimelineItemsArgs): RenderableTimelineItem[] {
+  const renderable: RenderableTimelineItem[] = [];
+  let currentRun: ActivityRunBucket | null = null;
+  let runIndex = 0;
+
+  const endCurrentRun = () => {
+    currentRun = null;
+  };
+
+  const createRun = (kind: 'like' | 'comment', actor: string, actorKey: string): ActivityRunBucket => ({
+    key: `run:${runIndex += 1}`,
+    kind,
+    actor,
+    actorKey,
+    likeCount: 0,
+    commentCount: 0,
+    oldestInteractionUnix: 0,
+    latestInteractionUnix: 0,
+    interactions: [],
+    interactionIndex: new Map<number, number>(),
+  });
+
+  const events = buildTimelineEvents(args);
+
+  for (const event of events) {
+    if (event.kind === 'post' || event.kind === 'reblog') {
       endCurrentRun();
+      renderable.push({ type: 'post', post: event.post });
       continue;
     }
 
-    const interactions = (item.cluster.interactions || [])
-      .map((raw) => raw as ProcessedPost)
-      .filter((post) => !shouldSuppressSelfSameDayLike(post, kind, presentationPage, showActorInCluster, viewedBlogName));
+    const interactionEvent = event as Extract<TimelineEvent, { kind: 'like' | 'comment' }>;
 
-    if (interactions.length === 0) {
-      continue;
-    }
-
-    const actorLabel = showActorInCluster ? (interactions[0].blogName || '') : '';
-    const actorKey = normalizeBlogName(interactions[0].blogName);
-    if (!currentRun || currentRun.kind !== kind || currentRun.actorKey !== actorKey) {
-      currentRun = createRun(kind, actorLabel, actorKey);
+    if (!currentRun || currentRun.kind !== interactionEvent.kind || currentRun.actorKey !== interactionEvent.actorKey) {
+      currentRun = createRun(interactionEvent.kind, interactionEvent.actor, interactionEvent.actorKey);
       renderable.push({ type: 'activity-bucket', bucket: currentRun });
     }
-    const run: ActivityRunBucket = currentRun;
+    const run = currentRun;
+    const interactionUnix = interactionEvent.ts;
 
-    for (const post of interactions) {
-      const interactionUnix = getTimelineInteractionUnix(post);
+    if (!run.latestInteractionUnix || interactionUnix > run.latestInteractionUnix) {
+      run.latestInteractionUnix = interactionUnix;
+    }
+    if (!run.oldestInteractionUnix || interactionUnix < run.oldestInteractionUnix) {
+      run.oldestInteractionUnix = interactionUnix;
+    }
 
-      if (!run.latestInteractionUnix || interactionUnix > run.latestInteractionUnix) {
-        run.latestInteractionUnix = interactionUnix;
-      }
-      if (!run.oldestInteractionUnix || interactionUnix < run.oldestInteractionUnix) {
-        run.oldestInteractionUnix = interactionUnix;
-      }
+    const post = interactionEvent.post;
+    if (!Number.isFinite(post.id)) {
+      run.interactions.push({ post, type: interactionEvent.kind });
+      if (interactionEvent.kind === 'like') run.likeCount += 1;
+      if (interactionEvent.kind === 'comment') run.commentCount += 1;
+      continue;
+    }
 
-      if (!Number.isFinite(post.id)) {
-        run.interactions.push({ post, type: kind });
-        if (kind === 'like') run.likeCount += 1;
-        if (kind === 'comment') run.commentCount += 1;
-        continue;
-      }
-
-      const existingIndex = run.interactionIndex.get(post.id);
-      if (existingIndex === undefined) {
-        run.interactionIndex.set(post.id, run.interactions.length);
-        run.interactions.push({ post, type: kind });
-        if (kind === 'like') run.likeCount += 1;
-        if (kind === 'comment') run.commentCount += 1;
-      }
+    const existingIndex = run.interactionIndex.get(post.id);
+    if (existingIndex === undefined) {
+      run.interactionIndex.set(post.id, run.interactions.length);
+      run.interactions.push({ post, type: interactionEvent.kind });
+      if (interactionEvent.kind === 'like') run.likeCount += 1;
+      if (interactionEvent.kind === 'comment') run.commentCount += 1;
     }
   }
 

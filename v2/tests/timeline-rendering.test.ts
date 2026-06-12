@@ -72,6 +72,36 @@ describe('timeline rendering', () => {
     expect(renderable[0].bucket.interactions.map((item) => item.post.id)).toEqual([1, 2]);
   });
 
+
+  it('splits activity buckets when older interactions would fall behind a newer post card', () => {
+    const likeNew = makePost(1, 'Actor', 1700000000, 1710000000);
+    likeNew._activityCreatedAtUnix = 1710000000;
+    const likeOld = makePost(2, 'Actor', 1700000000, 1708000000);
+    likeOld._activityCreatedAtUnix = 1708000000;
+    const interveningPost = makePost(3, 'Actor', 1709000000, 1709000000);
+    const items: TimelineItem[] = [
+      makeCluster('Likes', [likeNew, likeOld]),
+      { type: 1, post: interveningPost } as TimelineItem,
+    ];
+
+    const renderable = buildRenderableTimelineItems({
+      items,
+      activityKinds: ['like', 'comment', 'post', 'reblog'],
+      showActorInCluster: false,
+      presentationPage: 'activity',
+      viewedBlogName: 'Actor',
+    });
+
+    expect(renderable).toHaveLength(3);
+    expect(renderable[0].type).toBe('activity-bucket');
+    expect(renderable[1].type).toBe('post');
+    expect(renderable[2].type).toBe('activity-bucket');
+    if (renderable[0].type !== 'activity-bucket' || renderable[2].type !== 'activity-bucket' || renderable[1].type !== 'post') return;
+    expect(renderable[0].bucket.interactions.map((item) => item.post.id)).toEqual([1]);
+    expect(renderable[1].post.id).toBe(3);
+    expect(renderable[2].bucket.interactions.map((item) => item.post.id)).toEqual([2]);
+  });
+
   it('keeps different activity kinds in separate runs even for the same post', () => {
     const repeated = makePost(10, 'Actor', 1700000000, 1710000000);
     const items: TimelineItem[] = [
