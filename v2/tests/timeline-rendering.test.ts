@@ -3,7 +3,7 @@ import { buildRenderableTimelineItems } from '../src/services/timeline-rendering
 import type { TimelineItem } from '../src/types/api.js';
 import type { ProcessedPost } from '../src/types/post.js';
 
-function makePost(id: number, blogName: string, createdAtUnix: number, updatedAtUnix: number): ProcessedPost {
+function makePost(id: number, blogName: string, createdAtUnix: number, updatedAtUnix: number, overrides: Partial<ProcessedPost> = {}): ProcessedPost {
   return {
     id,
     blogName,
@@ -33,6 +33,7 @@ function makePost(id: number, blogName: string, createdAtUnix: number, updatedAt
       quoteSource: null,
     },
     _media: { type: 'image', url: '' },
+    ...overrides,
   } as ProcessedPost;
 }
 
@@ -100,6 +101,37 @@ describe('timeline rendering', () => {
     expect(renderable[0].bucket.interactions.map((item) => item.post.id)).toEqual([1]);
     expect(renderable[1].post.id).toBe(3);
     expect(renderable[2].bucket.interactions.map((item) => item.post.id)).toEqual([2]);
+  });
+
+
+  it('dedupes origin/reblog twins inside an activity bucket and prefers the reblog artifact', () => {
+    const original = makePost(496441965, 'GrandpaJames', 1700000000, 1710000000, {
+      originPostId: 496441965,
+      blogId: 1,
+      originBlogId: 1,
+    });
+    original._activityCreatedAtUnix = 1710000000;
+    const reblog = makePost(870224235, 'GrandpaJames', 1700001000, 1710000001, {
+      originPostId: 496441965,
+      blogId: 2,
+      originBlogId: 1,
+    });
+    reblog._activityCreatedAtUnix = 1710000001;
+
+    const renderable = buildRenderableTimelineItems({
+      items: [makeCluster('Likes', [original, reblog])],
+      activityKinds: ['like', 'comment', 'post', 'reblog'],
+      showActorInCluster: false,
+      presentationPage: 'activity',
+      viewedBlogName: 'someoneelse',
+    });
+
+    expect(renderable).toHaveLength(1);
+    expect(renderable[0].type).toBe('activity-bucket');
+    if (renderable[0].type !== 'activity-bucket') return;
+    expect(renderable[0].bucket.likeCount).toBe(1);
+    expect(renderable[0].bucket.interactions).toHaveLength(1);
+    expect(renderable[0].bucket.interactions[0].post.id).toBe(870224235);
   });
 
   it('keeps different activity kinds in separate runs even for the same post', () => {

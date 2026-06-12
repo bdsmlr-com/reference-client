@@ -19,7 +19,7 @@ export type ActivityRunBucket = {
   oldestInteractionUnix: number;
   latestInteractionUnix: number;
   interactions: BucketInteraction[];
-  interactionIndex: Map<number, number>;
+  interactionIndex: Map<string, number>;
 };
 
 export type RenderableTimelineItem =
@@ -78,6 +78,21 @@ function inferTimelineItemKind(item: TimelineItem, presentationPage: 'feed' | 'a
     return 'like';
   }
   return 'post';
+}
+
+
+function getInteractionDedupKey(post: ProcessedPost): string {
+  if (post.originPostId) return `origin:${post.originPostId}`;
+  if (Number.isFinite(post.id)) return `post:${post.id}`;
+  const mediaUrl = post._media?.url || post._media?.videoUrl || post._media?.audioUrl || '';
+  return mediaUrl ? `media:${mediaUrl.split('?')[0]}` : `fallback:${post.blogId || ''}:${post.createdAtUnix || 0}`;
+}
+
+function shouldPreferInteractionPost(candidate: ProcessedPost, incumbent: ProcessedPost): boolean {
+  const candidateIsReblog = Boolean(candidate.originPostId && candidate.originPostId !== candidate.id);
+  const incumbentIsReblog = Boolean(incumbent.originPostId && incumbent.originPostId !== incumbent.id);
+  if (candidateIsReblog !== incumbentIsReblog) return candidateIsReblog;
+  return getTimelineInteractionUnix(candidate) > getTimelineInteractionUnix(incumbent);
 }
 
 function shouldSuppressSelfSameDayLike(
@@ -190,7 +205,7 @@ export function buildRenderableTimelineItems(args: BuildRenderableTimelineItemsA
     oldestInteractionUnix: 0,
     latestInteractionUnix: 0,
     interactions: [],
-    interactionIndex: new Map<number, number>(),
+    interactionIndex: new Map<string, number>(),
   });
 
   const events = buildTimelineEvents(args);
@@ -208,7 +223,7 @@ export function buildRenderableTimelineItems(args: BuildRenderableTimelineItemsA
       currentRun = createRun(interactionEvent.kind, interactionEvent.actor, interactionEvent.actorKey);
       renderable.push({ type: 'activity-bucket', bucket: currentRun });
     }
-    const run = currentRun;
+    const run: ActivityRunBucket = currentRun;
     const interactionUnix = interactionEvent.ts;
 
     if (!run.latestInteractionUnix || interactionUnix > run.latestInteractionUnix) {
@@ -226,12 +241,19 @@ export function buildRenderableTimelineItems(args: BuildRenderableTimelineItemsA
       continue;
     }
 
-    const existingIndex = run.interactionIndex.get(post.id);
+    const dedupKey = getInteractionDedupKey(post);
+    const existingIndex = run.interactionIndex.get(dedupKey);
     if (existingIndex === undefined) {
-      run.interactionIndex.set(post.id, run.interactions.length);
+      run.interactionIndex.set(dedupKey, run.interactions.length);
       run.interactions.push({ post, type: interactionEvent.kind });
       if (interactionEvent.kind === 'like') run.likeCount += 1;
       if (interactionEvent.kind === 'comment') run.commentCount += 1;
+      continue;
+    }
+
+    const incumbent = run.interactions[existingIndex]?.post;
+    if (incumbent && shouldPreferInteractionPost(post, incumbent)) {
+      run.interactions[existingIndex] = { post, type: interactionEvent.kind };
     }
   }
 
