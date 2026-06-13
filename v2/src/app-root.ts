@@ -29,6 +29,7 @@ import { setStoredBlogName } from './services/blog-resolver.js';
 import { getStoredActiveBlog, setStoredActiveBlog } from './utils/storage.js';
 import { buildPostHref } from './services/post-route-context.js';
 import { isAnonymousReadableRoute } from './services/route-access-policy.js';
+import { initNavigationTracking } from './services/google-analytics.js';
 import './components/auth-gate.js';
 
 @customElement('app-root')
@@ -160,6 +161,7 @@ export class AppRoot extends LitElement {
     if (this.normalizeCanonicalPathname()) {
       return;
     }
+    initNavigationTracking();
     super.connectedCallback();
     syncAdminModeFromUrl();
     this.addEventListener('post-click', this.handlePostClick as any);
