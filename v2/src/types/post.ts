@@ -56,6 +56,13 @@ export function extractMedia(post: Post): MediaInfo {
   }
 }
 
+export function resolvePrimaryMediaUrl(media: MediaInfo | undefined): string {
+  if (!media) return '';
+  if (media.type === 'video') return media.videoUrl || media.url || '';
+  if (media.type === 'audio') return media.audioUrl || media.url || '';
+  return media.url || media.videoUrl || media.audioUrl || '';
+}
+
 export interface ProcessedPost extends Post {
   _media: MediaInfo;
   _reblog_variants?: { id: number; blogName?: string }[];

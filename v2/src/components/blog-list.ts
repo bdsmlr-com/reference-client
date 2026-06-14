@@ -7,7 +7,7 @@ import { buildBlogPageUrl } from '../services/blog-resolver.js';
 import { BREAKPOINTS, SPACING, CONTAINER_SPACING } from '../types/ui-constants.js';
 import { loadRenderContract } from '../services/render-contract.js';
 import { handleAvatarImageError, normalizeAvatarUrl } from '../services/avatar-url.js';
-import { extractMedia, POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
+import { extractMedia, POST_TYPE_ICONS, resolvePrimaryMediaUrl, type ProcessedPost } from '../types/post.js';
 import './media-renderer.js';
 import './blog-identity.js';
 
@@ -286,7 +286,7 @@ export class BlogList extends LitElement {
                 ${recentPosts.length > 0
                   ? recentPosts.map((post) => {
                       const media = post._media;
-                      const rawUrl = media.url || media.videoUrl || media.audioUrl;
+                      const rawUrl = resolvePrimaryMediaUrl(media);
                       const previewText = this.sanitizeSingleLine(post.body || post.content?.text || post.content?.title || '');
                       return html`
                         <div class="recent-item">

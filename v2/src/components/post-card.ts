@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { type ProcessedPost } from '../types/post.js';
+import { resolvePrimaryMediaUrl, type ProcessedPost } from '../types/post.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
@@ -243,7 +243,7 @@ export class PostCard extends LitElement {
     const mediaRenderType = presentation.media.preset as MediaRenderType;
     
     // Media URLs
-    const rawUrl = media.url || media.videoUrl || media.audioUrl;
+    const rawUrl = resolvePrimaryMediaUrl(media);
     const isAdmin = isAdminMode();
     const isTombstone = !rawUrl && !p.body;
     const isDeleted = Boolean(p.deletedAtUnix);

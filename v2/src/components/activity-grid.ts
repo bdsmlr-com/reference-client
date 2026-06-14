@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { extractRenderableTags, type ProcessedPost } from '../types/post.js';
+import { extractRenderableTags, resolvePrimaryMediaUrl, type ProcessedPost } from '../types/post.js';
 import { formatDate } from '../services/date-formatter.js';
 import { getBlogNameFromPath, isAdminMode } from '../services/blog-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
@@ -170,7 +170,7 @@ export class ActivityItem extends LitElement {
   render() {
     const p = this.post;
     const media = p._media;
-    const rawUrl = media.url || media.videoUrl || media.audioUrl;
+    const rawUrl = resolvePrimaryMediaUrl(media);
 
     const presentation = toPresentationModel(p, { surface: 'card', page: this.page, interactionKind: this.interactionType, role: 'cluster' });
     let typeIcon = presentation.identity.postTypeIcon || '📄';

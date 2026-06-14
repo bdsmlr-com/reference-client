@@ -3,7 +3,7 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { type RecResult, type SimilarPostsResponse } from '../services/recommendation-api.js';
-import { extractMedia, type ProcessedPost } from '../types/post.js';
+import { extractMedia, resolvePrimaryMediaUrl, type ProcessedPost } from '../types/post.js';
 import type { Post } from '../types/api.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { scrollObserver } from '../services/scroll-observer.js';
@@ -470,7 +470,7 @@ export class PostRecommendations extends LitElement {
                 const h = (r as any)._hydratedPost;
                 if (!h) return html`<div class="gutter-skeleton"></div>`;
                 const postLink = resolveLink('recommendation_post', { postId: h.id });
-                const raw = h._media?.url || h._media?.videoUrl || h.content?.thumbnail;
+                const raw = resolvePrimaryMediaUrl(h._media) || h.content?.thumbnail;
                 const blogLabel = `${h.blogName || h.originBlogName || ''}`.trim();
                 return html`
                   <div class="gutter-item" @click=${(event: Event) => this.navigateToRelated(r, event)}>

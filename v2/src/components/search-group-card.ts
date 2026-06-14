@@ -3,7 +3,7 @@ import { customElement, property } from 'lit/decorators.js';
 import { nothing } from 'lit';
 import { baseStyles } from '../styles/theme.js';
 import type { ProcessedPost } from '../types/post.js';
-import { extractMedia } from '../types/post.js';
+import { extractMedia, resolvePrimaryMediaUrl } from '../types/post.js';
 import { formatDate } from '../services/date-formatter.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import './media-renderer.js';
@@ -167,7 +167,7 @@ export class SearchGroupCard extends LitElement {
 
   render() {
     const media = this.post?._media || extractMedia(this.post);
-    const rawUrl = media.url || media.videoUrl || media.audioUrl;
+    const rawUrl = resolvePrimaryMediaUrl(media);
     const presentation = toPresentationModel(this.post, { surface: 'card', page: this.page, interactionKind: 'reblog', role: 'cluster' });
     const reblogCount = this.post.reblogsCount ?? this.count;
     const archiveReblogDate = this.page === 'archive' ? formatDate(this.post.createdAtUnix, 'date') : '';
