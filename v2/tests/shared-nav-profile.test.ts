@@ -7,15 +7,11 @@ const NAV_FILE = join(process.cwd(), 'src/components/shared-nav.ts');
 describe('shared-nav profile/settings behavior', () => {
   it('removes Discover from top nav and routes logo to feed context', () => {
     const src = readFileSync(NAV_FILE, 'utf8');
-    const config = JSON.parse(readFileSync(join(process.cwd(), 'media-config.json'), 'utf8'));
-
     expect(src).not.toContain("{ name: 'blogs', label: 'Discover'");
     expect(src).toContain("{ name: 'search', label: 'Search'");
     expect(src).toContain('private getLogoLink()');
-    expect(src).toContain("const link = resolveLink('nav_logo', { blog: primaryBlog });");
-    expect(config.links.contexts.nav_logo.mode).toBe('internal');
-    expect(config.links.contexts.nav_logo.pattern).toBe('/{blog}/feed');
-    expect(config.links.contexts.nav_logo.labelTemplate).toBe('BDSMLR');
+    expect(src).toContain("href: buildPageUrl('feed', primaryBlog)");
+    expect(src).not.toContain("resolveLink('nav_logo'");
   });
 
   it('contains profile and settings menu with login + logout and no route preference controls', () => {

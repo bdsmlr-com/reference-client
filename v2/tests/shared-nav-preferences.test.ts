@@ -12,7 +12,6 @@ describe('shared nav preferences', () => {
     expect(src).not.toContain('Gallery view');
     expect(src).not.toContain('Archive default sort');
     expect(src).not.toContain('Search default sort');
-    expect(src).not.toContain("buildPageUrl('feed'");
     expect(src).not.toContain("buildPageUrl('follower-feed'");
     expect(src).toContain("buildPageUrl('for'");
     expect(src).toContain('href="/dashboard"');

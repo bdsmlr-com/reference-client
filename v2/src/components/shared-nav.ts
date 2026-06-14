@@ -19,7 +19,6 @@ import {
 import { getAuthUser, updateActiveBlog } from '../state/auth-state.js';
 import { setStoredActiveBlog, clearStoredActiveBlog } from '../utils/storage.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
-import { resolveLink } from '../services/link-resolver.js';
 import { logout as legacyLogout, login as legacyLogin } from '../services/auth-service.js';
 import { normalizeAvatarUrl } from '../services/avatar-url.js';
 import './blog-identity.js';
@@ -412,11 +411,10 @@ export class SharedNav extends LitElement {
   private getLogoLink(): { href: string; label: string; title: string } {
     const primaryBlog = this.currentUsername || getCurrentUsername() || getPrimaryBlogName();
     if (primaryBlog) {
-      const link = resolveLink('nav_logo', { blog: primaryBlog });
       return {
-        href: link.href,
-        label: link.label || 'BDSMLR',
-        title: link.title || 'Go to feed',
+        href: buildPageUrl('feed', primaryBlog),
+        label: 'BDSMLR',
+        title: `Open @${primaryBlog} following feed`,
       };
     }
     // If no blog yet (unauthenticated), keep users on home.
