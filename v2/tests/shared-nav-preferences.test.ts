@@ -15,6 +15,7 @@ describe('shared nav preferences', () => {
     expect(src).not.toContain("buildPageUrl('feed'");
     expect(src).not.toContain("buildPageUrl('follower-feed'");
     expect(src).toContain("buildPageUrl('for'");
+    expect(src).toContain('href="/dashboard"');
     expect(src).toContain('href="/settings/you"');
   });
 });

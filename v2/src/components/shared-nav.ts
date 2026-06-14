@@ -538,6 +538,7 @@ export class SharedNav extends LitElement {
                 .blogTitle=${this.profileBlogTitle ?? ''}
                 .avatarUrl=${this.profileAvatarUrl ?? ''}
               ></blog-identity>
+              <a class="menu-button" href="/dashboard">Post</a>
               <div class="menu-section-title">Routes</div>
               <a class="menu-button" href=${buildPageUrl('for', this.currentUsername || getPrimaryBlogName() || getViewedBlogName() || '')}>For you</a>
               <div class="menu-section-title">Settings</div>
@@ -560,6 +561,7 @@ export class SharedNav extends LitElement {
               <div class="menu-build-tag" aria-label="Build tag">${BUILD_TAG}</div>
             `
           : html`
+              <a class="menu-button" href="/dashboard">Post</a>
               <div class="menu-section-title">Settings</div>
               <a class="menu-button" href="/settings/you">Settings</a>
               <button class="menu-button" @click=${this.openLoginModal}>Log in</button>
