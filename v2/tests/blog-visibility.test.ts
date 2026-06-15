@@ -12,8 +12,8 @@ describe('blog visibility helpers', () => {
     };
 
     expect(blogIsRestrictedForViewer(blog)).toBe(true);
-    expect(getRestrictedEmptyStateMessage(blog, 'archive')).toBe('This archive is follower-only. Follow and get approved to browse these posts.');
-    expect(getRestrictedEmptyStateMessage(blog, 'activity')).toBe('This activity is follower-only. Follow and get approved to view it.');
+    expect(getRestrictedEmptyStateMessage(blog, 'archive')).toBe('This blog is private.');
+    expect(getRestrictedEmptyStateMessage(blog, 'activity')).toBe('This blog is private.');
   });
 
   it('does not treat unrestricted blogs as gated-empty states', () => {

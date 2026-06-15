@@ -7,6 +7,7 @@ import { formatDateShort, getTooltipDate } from '../services/date-formatter.js';
 import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';
+import { resolvePostDetailMediaUrl } from '../services/media-resolver.js';
 import {
   buildContextualTagSearchHref,
   buildScopedReblogDetailTagHref,
@@ -161,10 +162,8 @@ export class PostDetailContent extends LitElement {
     const media = p._media;
     const mediaFiles = p.content?.files || [];
     const multiImageUrls = p.type === 2 && mediaFiles.length > 1 ? mediaFiles : [];
-    const rawUrl = media?.type === 'video'
-      ? (media.videoUrl || media.url)
-      : (media?.url || media?.videoUrl || media?.audioUrl);
-    const posterSrc = media?.type === 'video' && media.url && media.url !== rawUrl ? media.url : undefined;
+    const rawUrl = resolvePostDetailMediaUrl(media?.type === 'video' ? (media.videoUrl || media.url) : (media?.url || media?.videoUrl || media?.audioUrl));
+    const posterSrc = media?.type === 'video' && media.url && media.url !== rawUrl ? resolvePostDetailMediaUrl(media.url) : undefined;
     const permalink = presentation.identity.permalink;
     const typeIcon = presentation.identity.postTypeIcon || '📄';
     const viaBlogName = `${p.blogName || presentation.identity.viaBlogLabel || ''}`.trim().replace(/^@+/, '');
@@ -221,7 +220,7 @@ export class PostDetailContent extends LitElement {
             ${multiImageUrls.map((fileUrl) => html`
               <div class="media-stage">
                 <media-renderer
-                  .src=${fileUrl}
+                  .src=${resolvePostDetailMediaUrl(fileUrl)}
                   .type=${'detail'}
                 ></media-renderer>
               </div>

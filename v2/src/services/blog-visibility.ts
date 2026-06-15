@@ -12,11 +12,9 @@ export function getRestrictedEmptyStateMessage(
   blog: Blog | null | undefined,
   surface: 'archive' | 'activity',
 ): string {
+  void surface;
   if (!blogIsRestrictedForViewer(blog)) {
     return '';
   }
-  if (surface === 'archive') {
-    return 'This archive is follower-only. Follow and get approved to browse these posts.';
-  }
-  return 'This activity is follower-only. Follow and get approved to view it.';
+  return 'This blog is private.';
 }

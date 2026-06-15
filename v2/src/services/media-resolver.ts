@@ -93,6 +93,10 @@ export function toS3Scheme(url: string): [string, string] {
 export function resolveMediaUrl(url: string | undefined, type: MediaRenderType): string {
   if (!url) return '';
 
+  if (url.includes('/raw/s3://')) {
+    return url;
+  }
+
   // Preserve URLs that already encode an explicit obscuration transform.
   // Search/archive policy can return pixelated variants directly from the API,
   // and re-deriving them from the render type would silently downgrade them
@@ -198,6 +202,29 @@ export function toOriginFallbackUrl(url: string | undefined): string {
   if (!s3Url) return url;
   const queryString = queryParams ? `?${queryParams}` : '';
   return s3Url.replace('s3://', 'https://') + queryString;
+}
+
+export function resolvePostDetailMediaUrl(url: string | undefined): string {
+  if (!url) return '';
+
+  const params = new URLSearchParams(window.location.search);
+  const modeOverride = (isAdminMode() && params.get('media_mode')) || null;
+  if (modeOverride === 'origin') {
+    return toOriginFallbackUrl(url);
+  }
+
+  if (url.includes('/raw/s3://')) {
+    return url;
+  }
+
+  const [s3Url, queryParams] = toS3Scheme(url);
+  if (!s3Url || !s3Url.startsWith('s3://')) {
+    return url;
+  }
+
+  const base = CONFIG.mediaProxyBase.replace('imgproxy.i.', 'media.i.');
+  const queryString = queryParams ? `?${queryParams}` : '';
+  return `${base}/raw/${s3Url}${queryString}`;
 }
 
 /**

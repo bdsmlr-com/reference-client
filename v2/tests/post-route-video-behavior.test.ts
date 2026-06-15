@@ -67,8 +67,11 @@ describe('post route media behavior', () => {
     expect(src).toContain('.media-gallery {');
     expect(src).toContain('const mediaFiles = p.content?.files || [];');
     expect(src).toContain('const multiImageUrls = p.type === 2 && mediaFiles.length > 1 ? mediaFiles : [];');
+    expect(src).toContain("import { resolvePostDetailMediaUrl } from '../services/media-resolver.js';");
+    expect(src).toContain("const rawUrl = resolvePostDetailMediaUrl(media?.type === 'video' ? (media.videoUrl || media.url) : (media?.url || media?.videoUrl || media?.audioUrl));");
+    expect(src).toContain(".src=${resolvePostDetailMediaUrl(fileUrl)}");
     expect(src).toContain('${multiImageUrls.map((fileUrl) => html`');
-    expect(src).toContain('.src=${fileUrl}');
+    expect(src).not.toContain('.src=${fileUrl}');
     expect(src).toContain('width: auto;');
     expect(src).toContain('height: auto;');
     expect(src).toContain('max-width: min(100%, calc(100vw - 40px));');

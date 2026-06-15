@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { toS3Scheme, resolveMediaUrl, isAnimation, isNativeVideo, toOriginFallbackUrl, probeNextBucket } from '../src/services/media-resolver.js';
+import { toS3Scheme, resolveMediaUrl, isAnimation, isNativeVideo, toOriginFallbackUrl, probeNextBucket, resolvePostDetailMediaUrl } from '../src/services/media-resolver.js';
 import { CONFIG } from '../src/config.js';
 import { BUCKET_LIST } from '../src/services/media-resolver.js';
 
@@ -69,6 +69,24 @@ describe('Media Resolver', () => {
       const ergonomicS3 = 'https://media.i.bdsmlr.com/gutter/s3://ocdn012.bdsmlr.com/uploads/foo.gif?e=123&t=abc';
       const [s3Url] = toS3Scheme(ergonomicS3);
       expect(s3Url).toBe('s3://ocdn012.bdsmlr.com/uploads/foo.gif');
+    });
+  });
+
+  describe('resolvePostDetailMediaUrl', () => {
+    it('uses the raw alias for signed s3-backed detail media', () => {
+      CONFIG.imgproxyMode = 'fixed';
+      CONFIG.mediaProxyBase = 'https://media.i.bdsmlr.com';
+      const src = 'https://ocdn012.bdsmlr.com/uploads/photos/2022/04/10603709/bdsmlr-10603709-T81lsQVXjf.jpg?e=1781533847&t=2EHzapbTks7Eo12VKQQU-mFAzx3J0WLTv-DEtah6DZQ';
+      const url = resolvePostDetailMediaUrl(src);
+      expect(url).toBe('https://media.i.bdsmlr.com/raw/s3://ocdn012.bdsmlr.com/uploads/photos/2022/04/10603709/bdsmlr-10603709-T81lsQVXjf.jpg?e=1781533847&t=2EHzapbTks7Eo12VKQQU-mFAzx3J0WLTv-DEtah6DZQ');
+    });
+
+    it('keeps non-detail resizing behavior separate from the raw detail helper', () => {
+      CONFIG.imgproxyMode = 'fixed';
+      CONFIG.mediaProxyBase = 'https://media.i.bdsmlr.com';
+      const src = 'https://ocdn012.bdsmlr.com/uploads/photos/2022/04/10603709/bdsmlr-10603709-T81lsQVXjf.jpg?e=1781533847&t=2EHzapbTks7Eo12VKQQU-mFAzx3J0WLTv-DEtah6DZQ';
+      expect(resolveMediaUrl(src, 'feed')).toContain('/masonry/s3://');
+      expect(resolvePostDetailMediaUrl(src)).toContain('/raw/s3://');
     });
   });
 
