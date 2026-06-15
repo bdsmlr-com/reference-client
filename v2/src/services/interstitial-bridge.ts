@@ -1,7 +1,7 @@
 const INTERSTITIAL_TEST_KEY = 'interstitial-test';
 
 export function maybeDeployInterstitial(authenticated: boolean): void {
-  if (authenticated || localStorage.getItem(INTERSTITIAL_TEST_KEY) != 1) {
+  if (authenticated || Number(localStorage.getItem(INTERSTITIAL_TEST_KEY)) != 1) {
     return;
   }
 
