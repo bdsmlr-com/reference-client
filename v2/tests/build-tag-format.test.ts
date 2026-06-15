@@ -18,4 +18,15 @@ describe('build tag format', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/shared-nav.ts'), 'utf8');
     expect(src).toContain("|| 'staging@unknown-unknown'");
   });
+
+  it('api image dockerfile builds frontend from the shared reference-client tree', () => {
+    const dockerfile = readFileSync(join(process.cwd(), '../../../images/api.Dockerfile'), 'utf8');
+
+    expect(dockerfile).toContain('COPY apps/reference-client/v2/package.json ./');
+    expect(dockerfile).toContain('COPY apps/reference-client/v2/package-lock.json ./');
+    expect(dockerfile).toContain('COPY apps/reference-client/v2/ ./');
+    expect(dockerfile).toContain("VITE_FE_SHA_COMPUTED=\"${VITE_FE_SHA:-$(find . -path './node_modules' -prune -o -type f -print0 | sort -z | xargs -0 sha1sum | sha1sum | cut -c1-7)}\"");
+    expect(dockerfile).not.toContain('COPY apps/api/v2/third-party/reference-client/v2/');
+    expect(dockerfile).not.toContain('build-meta/api-fe.sha');
+  });
 });
