@@ -61,6 +61,7 @@ import '../components/affinity-tag-cloud.js';
 import '../components/render-card.js';
 import '../components/route-shell-card.js';
 import { toggleAffinityTagExpression } from '../services/tag-affinity.js';
+import { getRestrictedEmptyStateMessage } from '../services/blog-visibility.js';
 
 const ARCHIVE_PAGE_SIZE = 20;
 
@@ -715,7 +716,9 @@ export class ViewArchive extends LitElement {
       });
 
       if (targetPage === 1) {
-        this.statusMessage = newUnits.length === 0 ? 'No posts found' : '';
+        this.statusMessage = newUnits.length === 0
+          ? (getRestrictedEmptyStateMessage(this.blogData, 'archive') || 'No posts found')
+          : '';
         if (newUnits.length === 0) {
           this.hasNextPage = false;
           this.exhausted = true;

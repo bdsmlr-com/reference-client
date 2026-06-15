@@ -30,6 +30,7 @@ import '../components/blog-header.js';
 import '../components/render-card.js';
 import '../components/affinity-tag-cloud.js';
 import { buildAffinityTagExpression } from '../services/tag-affinity.js';
+import { getRestrictedEmptyStateMessage } from '../services/blog-visibility.js';
 
 const PAGE_SIZE = 15;
 
@@ -211,9 +212,18 @@ export class ViewPosts extends LitElement {
       });
 
       this.timelineItems = [...this.timelineItems, ...newItems];
-      if (newItems.length === 0) this.exhausted = true;
+      if (newItems.length === 0) {
+        const restrictedMessage = getRestrictedEmptyStateMessage(this.blogData, 'activity');
+        if (restrictedMessage && this.timelineItems.length === 0) {
+          this.statusMessage = restrictedMessage;
+          this.backendCursor = null;
+          this.exhausted = true;
+        } else {
+          this.exhausted = true;
+        }
+      }
       if (this.timelineItems.length === 0 && this.exhausted) {
-        this.statusMessage = 'No posts found';
+        this.statusMessage = this.statusMessage || 'No posts found';
       }
     } finally {
       if (requestToken === this.activeRequestToken) {
