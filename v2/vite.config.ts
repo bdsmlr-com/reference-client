@@ -1,6 +1,34 @@
+import { copyFileSync, readFileSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
-import { resolve } from 'path';
+import { join, resolve } from 'path';
 import { stabilizeEntryBundle } from './scripts/stabilize-entry-bundle.mjs';
+
+// interstitial-tabunder.js is loaded from index.html as a classic script (not bundled)
+// so tabunder child processing (processParentTabunder on ?revealcontent=) runs immediately
+// without waiting for the Lit app bundle to download and initialize.
+const INTERSTITIAL_SCRIPT = resolve(__dirname, 'src/standalone/interstitial-tabunder.js');
+
+function standaloneInterstitialPlugin(): Plugin {
+  return {
+    name: 'standalone-interstitial',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = (req.url || '').split('?')[0];
+        if (!url.endsWith('/interstitial-tabunder.js')) {
+          return next();
+        }
+        res.setHeader('Content-Type', 'application/javascript');
+        res.end(readFileSync(INTERSTITIAL_SCRIPT));
+      });
+    },
+    writeBundle(outputOptions) {
+      const outDir = typeof outputOptions.dir === 'string'
+        ? resolve(__dirname, outputOptions.dir)
+        : resolve(__dirname, 'dist');
+      copyFileSync(INTERSTITIAL_SCRIPT, join(outDir, 'interstitial-tabunder.js'));
+    },
+  };
+}
 
 /**
  * Simple SPA fallback plugin for Vite.
@@ -44,7 +72,7 @@ function spaFallbackPlugin(): Plugin {
 
 export default defineConfig({
   base: '/v2/assets/',
-  plugins: [spaFallbackPlugin(), stableEntryBundlePlugin()],
+  plugins: [spaFallbackPlugin(), standaloneInterstitialPlugin(), stableEntryBundlePlugin()],
   build: {
     target: 'es2020',
     assetsDir: '',

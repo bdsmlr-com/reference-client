@@ -5,6 +5,17 @@ declare global {
     dataLayer?: unknown[];
     gtag?: (...args: unknown[]) => void;
   }
+
+  // Standalone interstitial-tabunder.js
+  var deployInterstitial: (() => void) | undefined;
+  var tabunderBounceOut: (() => void) | undefined;
+  var processParentTabunder: (() => void) | undefined;
+
+  interface GlobalThis {
+    deployInterstitial?: () => void;
+    tabunderBounceOut?: () => void;
+    processParentTabunder?: () => void;
+  }
 }
 
 interface ImportMetaEnv {

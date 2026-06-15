@@ -30,6 +30,7 @@ import { getStoredActiveBlog, setStoredActiveBlog } from './utils/storage.js';
 import { buildPostHref } from './services/post-route-context.js';
 import { isAnonymousReadableRoute } from './services/route-access-policy.js';
 import { initNavigationTracking } from './services/google-analytics.js';
+import { maybeDeployInterstitial } from './services/interstitial-bridge.js';
 import './components/auth-gate.js';
 
 @customElement('app-root')
@@ -229,6 +230,7 @@ export class AppRoot extends LitElement {
       this.authenticated = false;
     } finally {
       this.checkingAuth = false;
+      maybeDeployInterstitial(this.authenticated);
     }
   }
 
