@@ -16,6 +16,17 @@ describe('blog visibility helpers', () => {
     expect(getRestrictedEmptyStateMessage(blog, 'activity')).toBe('This blog is private.');
   });
 
+  it('treats private blogs from the privacy contract as gated-empty states', () => {
+    const blog: Blog = {
+      id: 10713028,
+      name: 'BDSMBFF',
+      privacy: { isPrivate: true },
+    };
+
+    expect(blogIsRestrictedForViewer(blog)).toBe(true);
+    expect(getRestrictedEmptyStateMessage(blog, 'archive')).toBe('This blog is private.');
+  });
+
   it('does not treat unrestricted blogs as gated-empty states', () => {
     const blog: Blog = {
       id: 42,

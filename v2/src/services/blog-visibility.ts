@@ -5,7 +5,7 @@ function decorationTokens(blog: Blog | null | undefined): Set<string> {
 }
 
 export function blogIsRestrictedForViewer(blog: Blog | null | undefined): boolean {
-  return decorationTokens(blog).has('restricted');
+  return Boolean(blog?.privacy?.isPrivate) || decorationTokens(blog).has('restricted');
 }
 
 export function getRestrictedEmptyStateMessage(
