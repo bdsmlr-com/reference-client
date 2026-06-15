@@ -45,7 +45,8 @@ describe('post route media behavior', () => {
     expect(src).toContain("const detailFitStyle = 'object-fit: contain; max-width: min(100%, calc(100vw - 40px)); max-height: calc(min(78vh, 920px) - 20px); width: auto; height: auto; margin: 0 auto;';");
     expect(src).toContain("const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';");
     expect(src).toContain('const isAnim = isAnimation(this.src);');
-    expect(src).toContain("const isVideoSource = isAnim || isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');");
+    expect(src).toContain("const treatAnimationAsVideo = isAnim && !isDetailSurface;");
+    expect(src).toContain("const isVideoSource = treatAnimationAsVideo || isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');");
     expect(src).toContain('const behavior = getMediaBehavior(this.type);');
     expect(src).toContain('const effectiveAutoplay = this.autoplayVideo ?? behavior.autoplay;');
     expect(src).toContain("const defaultPreload = behavior.preload ?? 'none';");

@@ -190,8 +190,11 @@ export class MediaRenderer extends LitElement {
 
     const isAnim = isAnimation(this.src);
     const resolvedUrl = resolveMediaUrl(this.src, this.type);
-    // Treat animations as video to leverage mp4 transcoding; also video if explicit format:mp4 or native video.
-    const isVideoSource = isAnim || isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');
+    const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';
+    // Detail view now uses raw still assets for gif/webp, so only non-detail surfaces
+    // should coerce animations through the mp4/video path.
+    const treatAnimationAsVideo = isAnim && !isDetailSurface;
+    const isVideoSource = treatAnimationAsVideo || isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');
     const posterSource = this.posterSrc || this.src;
     const posterUrl = resolveMediaUrl(posterSource, 'poster');
     const effectivePoster = posterUrl || resolvedUrl;
@@ -203,7 +206,6 @@ export class MediaRenderer extends LitElement {
       this.type === 'lightbox';
     this.toggleAttribute('fill-mode', fillMode);
     const detailFitStyle = 'object-fit: contain; max-width: min(100%, calc(100vw - 40px)); max-height: calc(min(78vh, 920px) - 20px); width: auto; height: auto; margin: 0 auto;';
-    const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';
     this.toggleAttribute('detail-mode', isDetailSurface);
     const mediaStyle = isDetailSurface
       ? detailFitStyle
