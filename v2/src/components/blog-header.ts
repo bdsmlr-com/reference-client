@@ -1,4 +1,5 @@
 import { LitElement, html, css, unsafeCSS, nothing } from 'lit';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { buildPageUrl } from '../services/blog-resolver.js';
@@ -9,6 +10,7 @@ import { getAuthUser } from '../state/auth-state.js';
 import { followStateController } from '../services/follow-state.js';
 import { blockedStateController } from '../services/blocked-state.js';
 import { reportBlog } from '../services/api.js';
+import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
 import './route-shell-card.js';
 import './blog-identity.js';
 
@@ -207,6 +209,23 @@ export class BlogHeader extends LitElement {
       .summary-description {
         font-size: 13px;
         line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .summary-description :is(p, h1, h2, h3, h4, h5, h6, blockquote, ul, ol) {
+        margin: 0;
+      }
+
+      .summary-description a,
+      .modal-description a {
+        color: var(--link);
+      }
+
+      .modal-description :is(p, h1, h2, h3, h4, h5, h6, blockquote, ul, ol) {
+        margin: 0 0 8px;
       }
 
       .subnav {
@@ -445,11 +464,12 @@ export class BlogHeader extends LitElement {
     return truncateWithEllipsis(this.blogTitle, 72);
   }
 
-  private get summaryDescription(): string {
-    const trimmed = this.blogDescription.trim();
-    if (!trimmed) return '';
-    if (trimmed.length <= 88) return trimmed;
-    return `${trimmed.slice(0, 88).trimEnd()} [more...]`;
+  private get summaryDescriptionHtml(): string {
+    return sanitizeHtmlFragment(this.blogDescription);
+  }
+
+  private get modalDescriptionHtml(): string {
+    return sanitizeHtmlFragment(this.blogDescription);
   }
 
   private get avatarSrc(): string | null {
@@ -734,7 +754,7 @@ export class BlogHeader extends LitElement {
                   ></blog-identity>
                 </div>
                 ${this.summaryTitle ? html`<div class="summary-title">${this.summaryTitle}</div>` : nothing}
-                ${this.summaryDescription ? html`<div class="summary-description">${this.summaryDescription}</div>` : nothing}
+                ${this.summaryDescriptionHtml ? html`<div class="summary-description">${unsafeHTML(this.summaryDescriptionHtml)}</div>` : nothing}
               </div>
             </button>
             ${this.renderActionMenu()}
@@ -762,7 +782,7 @@ export class BlogHeader extends LitElement {
               : html`<div class="modal-avatar-fallback" aria-hidden="true">${this.avatarInitial}</div>`}
             <h3 class="modal-title">@${this.blogName.replace(/^@+/, '')}</h3>
             ${this.blogTitle ? html`<div class="modal-subtitle">${this.blogTitle}</div>` : nothing}
-            ${this.blogDescription ? html`<div class="modal-description">${this.blogDescription}</div>` : nothing}
+            ${this.modalDescriptionHtml ? html`<div class="modal-description">${unsafeHTML(this.modalDescriptionHtml)}</div>` : nothing}
             <button class="modal-close" type="button" @click=${this.closeModal}>Close</button>
           </section>
         </div>
