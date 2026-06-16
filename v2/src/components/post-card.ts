@@ -40,6 +40,17 @@ export class PostCard extends LitElement {
         box-shadow: 0 16px 32px rgba(0, 0, 0, 0.18);
       }
 
+      .card-overlay-link {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+      }
+
+      .card > :not(.card-overlay-link) {
+        position: relative;
+        z-index: 2;
+      }
+
       .card:hover {
         transform: translateY(-4px);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
@@ -204,13 +215,19 @@ export class PostCard extends LitElement {
     );
   }
 
-  private handlePermalinkClick(event: Event): void {
-    const mode = this.isNavigationBlocked() ? 'open_modal' : resolveRetrievalClickMode(this.post._retrievalPolicy);
-    if (mode === 'navigate') {
+  private shouldLetBrowserHandle(event: MouseEvent): boolean {
+    return event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+  }
+
+  private handlePermalinkClick(event: MouseEvent): void {
+    if (this.shouldLetBrowserHandle(event)) {
       return;
     }
+    const mode = this.isNavigationBlocked() ? 'open_modal' : resolveRetrievalClickMode(this.post._retrievalPolicy);
     event.preventDefault();
-    event.stopPropagation();
+    if (mode !== 'navigate') {
+      event.stopPropagation();
+    }
     this.handleClick();
   }
 
@@ -249,7 +266,16 @@ export class PostCard extends LitElement {
     const isDeleted = Boolean(p.deletedAtUnix);
     const isOriginDeleted = Boolean(p.originDeletedAtUnix);
     return html`
-      <article class="card" @click=${this.handleClick}>
+      <article class="card">
+        <a
+          class="card-overlay-link"
+          href=${presentation.identity.permalink.href}
+          target=${presentation.identity.permalink.target}
+          rel=${presentation.identity.permalink.rel || nothing}
+          title=${presentation.identity.permalink.title || nothing}
+          aria-label=${`Open post ${p.id}`}
+          @click=${this.handlePermalinkClick}
+        ></a>
         <div class="card-header">
           <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
             ${presentation.identity.isReblog ? html`

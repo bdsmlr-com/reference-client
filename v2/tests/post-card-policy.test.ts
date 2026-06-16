@@ -42,6 +42,12 @@ describe('post card retrieval click policy', () => {
     stubBrowserState();
     const dispatchEvent = vi.fn();
     const event = {
+      button: 0,
+      metaKey: false,
+      ctrlKey: false,
+      shiftKey: false,
+      altKey: false,
+      defaultPrevented: false,
       preventDefault: vi.fn(),
       stopPropagation: vi.fn(),
     } as any;
@@ -51,6 +57,7 @@ describe('post card retrieval click policy', () => {
       post: makePost(),
       dispatchEvent,
       isNavigationBlocked: () => PostCard.prototype.isNavigationBlocked.call(card),
+      shouldLetBrowserHandle: (e: MouseEvent) => PostCard.prototype.shouldLetBrowserHandle.call(card, e),
       handleClick: () => PostCard.prototype.handleClick.call(card),
     } as any;
 
@@ -67,6 +74,12 @@ describe('post card retrieval click policy', () => {
     stubBrowserState();
     const dispatchEvent = vi.fn();
     const event = {
+      button: 0,
+      metaKey: false,
+      ctrlKey: false,
+      shiftKey: false,
+      altKey: false,
+      defaultPrevented: false,
       preventDefault: vi.fn(),
       stopPropagation: vi.fn(),
     } as any;
@@ -84,6 +97,7 @@ describe('post card retrieval click policy', () => {
       }),
       dispatchEvent,
       isNavigationBlocked: () => PostCard.prototype.isNavigationBlocked.call(card),
+      shouldLetBrowserHandle: (e: MouseEvent) => PostCard.prototype.shouldLetBrowserHandle.call(card, e),
       handleClick: () => PostCard.prototype.handleClick.call(card),
     } as any;
 

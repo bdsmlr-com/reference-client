@@ -53,9 +53,21 @@ export class PostFeedItem extends LitElement {
         border: 1px solid var(--border);
         margin-bottom: 16px;
         box-shadow: 0 16px 32px rgba(0, 0, 0, 0.18);
+        position: relative;
       }
       .card.non-interactive {
         cursor: default;
+      }
+
+      .card-overlay-link {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+      }
+
+      .card > :not(.card-overlay-link) {
+        position: relative;
+        z-index: 2;
       }
 
       .card:hover {
@@ -223,6 +235,18 @@ export class PostFeedItem extends LitElement {
     }));
   }
 
+  private shouldLetBrowserHandle(event: MouseEvent): boolean {
+    return event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+  }
+
+  private handleOverlayClick(event: MouseEvent): void {
+    if (this.disableClick || this.shouldLetBrowserHandle(event)) {
+      return;
+    }
+    event.preventDefault();
+    this.handlePostClick();
+  }
+
   private renderMicroBlogIdentity(link: ReturnType<typeof resolveLink> | null | undefined, label: string, decoration?: IdentityDecoration | null, blogId?: number | null) {
     return renderStructuredMicroBlogIdentity({
       link,
@@ -297,7 +321,18 @@ export class PostFeedItem extends LitElement {
     }
 
     return html`
-      <article class="card ${this.disableClick ? 'non-interactive' : ''} ${isPostShell ? 'post-shell' : ''}" @click=${this.handlePostClick}>
+      <article class="card ${this.disableClick ? 'non-interactive' : ''} ${isPostShell ? 'post-shell' : ''}">
+        ${!this.disableClick && !isPostShell ? html`
+          <a
+            class="card-overlay-link"
+            href=${presentation.identity.permalink.href}
+            target=${presentation.identity.permalink.target}
+            rel=${presentation.identity.permalink.rel || nothing}
+            title=${presentation.identity.permalink.title || nothing}
+            aria-label=${`Open post ${post.id}`}
+            @click=${this.handleOverlayClick}
+          ></a>
+        ` : nothing}
         <header class="card-header">
           <div class="blog-info">
             ${isReblog ? html`

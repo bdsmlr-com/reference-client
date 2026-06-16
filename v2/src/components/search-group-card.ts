@@ -64,6 +64,17 @@ export class SearchGroupCard extends LitElement {
         z-index: 1;
       }
 
+      .card-overlay-link {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+      }
+
+      .card > :not(.card-overlay-link) {
+        position: relative;
+        z-index: 2;
+      }
+
       .media {
         aspect-ratio: 1 / 1;
         background: #000;
@@ -151,6 +162,18 @@ export class SearchGroupCard extends LitElement {
     }));
   }
 
+  private shouldLetBrowserHandle(event: MouseEvent): boolean {
+    return event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+  }
+
+  private handleOverlayClick(event: MouseEvent): void {
+    if (this.shouldLetBrowserHandle(event)) {
+      return;
+    }
+    event.preventDefault();
+    this.handleClick();
+  }
+
   private renderOriginIdentity(originName: string, originBlogId: number) {
     if (!originName && !originBlogId) {
       return nothing;
@@ -179,7 +202,16 @@ export class SearchGroupCard extends LitElement {
 
     return html`
       <div class="stack">
-        <article class="card" @click=${this.handleClick}>
+        <article class="card">
+          <a
+            class="card-overlay-link"
+            href=${presentation.identity.permalink.href}
+            target=${presentation.identity.permalink.target}
+            rel=${presentation.identity.permalink.rel || nothing}
+            title=${presentation.identity.permalink.title || nothing}
+            aria-label=${`Open post ${this.post.id}`}
+            @click=${this.handleOverlayClick}
+          ></a>
           <div class="media">
             <media-renderer
               .src=${rawUrl}
