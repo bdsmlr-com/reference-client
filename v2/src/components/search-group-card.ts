@@ -8,6 +8,7 @@ import { formatDate } from '../services/date-formatter.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import './media-renderer.js';
 import './blog-identity.js';
+import { renderCardOverlayLink, shouldLetBrowserHandleCardLink } from '../services/card-overlay.js';
 
 @customElement('search-group-card')
 export class SearchGroupCard extends LitElement {
@@ -167,12 +168,8 @@ export class SearchGroupCard extends LitElement {
     }));
   }
 
-  private shouldLetBrowserHandle(event: MouseEvent): boolean {
-    return event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
-  }
-
   private handleOverlayClick(event: MouseEvent): void {
-    if (this.shouldLetBrowserHandle(event)) {
+    if (shouldLetBrowserHandleCardLink(event)) {
       return;
     }
     event.preventDefault();
@@ -208,15 +205,7 @@ export class SearchGroupCard extends LitElement {
     return html`
       <div class="stack">
         <article class="card">
-          <a
-            class="card-overlay-link"
-            href=${presentation.identity.permalink.href}
-            target=${presentation.identity.permalink.target}
-            rel=${presentation.identity.permalink.rel || nothing}
-            title=${presentation.identity.permalink.title || nothing}
-            aria-label=${`Open post ${this.post.id}`}
-            @click=${this.handleOverlayClick}
-          ></a>
+          ${renderCardOverlayLink(presentation.identity.permalink, `Open post ${this.post.id}`, (event: MouseEvent) => this.handleOverlayClick(event))}
           <div class="media">
             <media-renderer
               .src=${rawUrl}

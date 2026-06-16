@@ -14,12 +14,14 @@ describe('native card link behavior', () => {
     const feedItemSrc = read('post-feed-item.ts');
     const groupCardSrc = read('search-group-card.ts');
     const activityGridSrc = read('activity-grid.ts');
+    const helperSrc = readFileSync(join(process.cwd(), 'src/services/card-overlay.ts'), 'utf8');
 
+    expect(helperSrc).toContain('renderCardOverlayLink');
+    expect(helperSrc).toContain('shouldLetBrowserHandleCardLink');
     for (const src of [postCardSrc, feedItemSrc, groupCardSrc, activityGridSrc]) {
-      expect(src).toContain('class="card-overlay-link"');
-      expect(src).toContain('event.metaKey || event.ctrlKey || event.shiftKey || event.altKey');
-      expect(src).toContain('event.preventDefault();');
-      expect(src).toContain('z-index: 2;');
+      expect(src).toContain("from '../services/card-overlay.js'");
+      expect(src).toContain('renderCardOverlayLink(');
+      expect(src).toContain('shouldLetBrowserHandleCardLink(');
     }
   });
 
@@ -28,13 +30,13 @@ describe('native card link behavior', () => {
     const feedItemSrc = read('post-feed-item.ts');
     const groupCardSrc = read('search-group-card.ts');
 
-    expect(postCardSrc).toContain('event.button !== 0');
+    expect(postCardSrc).toContain('shouldLetBrowserHandleCardLink(event)');
     expect(postCardSrc).toContain('this.handleClick();');
-    expect(feedItemSrc).toContain('event.button !== 0');
+    expect(feedItemSrc).toContain('shouldLetBrowserHandleCardLink(event)');
     expect(feedItemSrc).toContain('this.handlePostClick();');
-    expect(groupCardSrc).toContain('event.button !== 0');
+    expect(groupCardSrc).toContain('shouldLetBrowserHandleCardLink(event)');
     expect(groupCardSrc).toContain('this.handleClick();');
-    expect(read('activity-grid.ts')).toContain('event.button !== 0');
+    expect(read('activity-grid.ts')).toContain('shouldLetBrowserHandleCardLink(event)');
     expect(read('activity-grid.ts')).toContain('this.handleClick();');
   });
 

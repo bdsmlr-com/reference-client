@@ -8,6 +8,7 @@ import { MAX_VISIBLE_TAGS } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';
 import { toPresentationModel } from '../services/post-presentation.js';
+import { renderCardOverlayLink, shouldLetBrowserHandleCardLink } from '../services/card-overlay.js';
 import { getViewedBlogName } from '../services/blog-resolver.js';
 import type { PostRouteSource } from '../services/post-route-context.js';
 import type { MediaRenderType } from '../services/media-resolver.js';
@@ -232,12 +233,8 @@ export class PostFeedItem extends LitElement {
     }));
   }
 
-  private shouldLetBrowserHandle(event: MouseEvent): boolean {
-    return event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
-  }
-
   private handleOverlayClick(event: MouseEvent): void {
-    if (this.disableClick || this.shouldLetBrowserHandle(event)) {
+    if (this.disableClick || shouldLetBrowserHandleCardLink(event)) {
       return;
     }
     event.preventDefault();
@@ -305,17 +302,7 @@ export class PostFeedItem extends LitElement {
       if (rawUrl) {
         mediaHtml = html`
           <div class="media-container">
-            ${useMediaClickZone ? html`
-              <a
-                class="card-overlay-link"
-                href=${presentation.identity.permalink.href}
-                target=${presentation.identity.permalink.target}
-                rel=${presentation.identity.permalink.rel || nothing}
-                title=${presentation.identity.permalink.title || nothing}
-                aria-label=${`Open post ${post.id}`}
-                @click=${this.handleOverlayClick}
-              ></a>
-            ` : nothing}
+            ${useMediaClickZone ? renderCardOverlayLink(presentation.identity.permalink, `Open post ${post.id}`, (event: MouseEvent) => this.handleOverlayClick(event)) : nothing}
             <media-renderer
               .src=${rawUrl}
               .posterSrc=${posterSrc}

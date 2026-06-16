@@ -5,6 +5,7 @@ import { extractRenderableTags, resolvePrimaryMediaUrl, type ProcessedPost } fro
 import { formatDate } from '../services/date-formatter.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
+import { renderCardOverlayLink, shouldLetBrowserHandleCardLink } from '../services/card-overlay.js';
 import './media-renderer.js';
 import './search-group-card.js';
 import './blog-identity.js';
@@ -170,12 +171,8 @@ export class ActivityItem extends LitElement {
     }));
   }
 
-  private shouldLetBrowserHandle(event: MouseEvent): boolean {
-    return event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
-  }
-
   private handleOverlayClick(event: MouseEvent): void {
-    if (this.shouldLetBrowserHandle(event)) {
+    if (shouldLetBrowserHandleCardLink(event)) {
       return;
     }
     event.preventDefault();
@@ -238,15 +235,7 @@ export class ActivityItem extends LitElement {
 
     return html`
       <article class="card">
-        <a
-          class="card-overlay-link"
-          href=${presentation.identity.permalink.href}
-          target=${presentation.identity.permalink.target}
-          rel=${presentation.identity.permalink.rel || nothing}
-          title=${presentation.identity.permalink.title || nothing}
-          aria-label=${`Open post ${p.id}`}
-          @click=${this.handleOverlayClick}
-        ></a>
+        ${renderCardOverlayLink(presentation.identity.permalink, `Open post ${p.id}`, (event: MouseEvent) => this.handleOverlayClick(event))}
         <div class="media-container">
           <media-renderer
             .src=${rawUrl}

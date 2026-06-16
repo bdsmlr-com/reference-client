@@ -6,6 +6,7 @@ import { EventNames, type PostSelectDetail } from '../types/events.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { resolveRetrievalClickMode } from '../services/retrieval-presentation.js';
+import { renderCardOverlayLink, shouldLetBrowserHandleCardLink } from '../services/card-overlay.js';
 import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';
 import type { MediaRenderType } from '../services/media-resolver.js';
 import type { IdentityDecoration } from '../types/api.js';
@@ -222,12 +223,8 @@ export class PostCard extends LitElement {
     );
   }
 
-  private shouldLetBrowserHandle(event: MouseEvent): boolean {
-    return event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
-  }
-
   private handlePermalinkClick(event: MouseEvent): void {
-    if (this.shouldLetBrowserHandle(event)) {
+    if (shouldLetBrowserHandleCardLink(event)) {
       return;
     }
     const mode = this.isNavigationBlocked() ? 'open_modal' : resolveRetrievalClickMode(this.post._retrievalPolicy);
@@ -274,15 +271,7 @@ export class PostCard extends LitElement {
     const isOriginDeleted = Boolean(p.originDeletedAtUnix);
     return html`
       <article class="card">
-        <a
-          class="card-overlay-link"
-          href=${presentation.identity.permalink.href}
-          target=${presentation.identity.permalink.target}
-          rel=${presentation.identity.permalink.rel || nothing}
-          title=${presentation.identity.permalink.title || nothing}
-          aria-label=${`Open post ${p.id}`}
-          @click=${this.handlePermalinkClick}
-        ></a>
+        ${renderCardOverlayLink(presentation.identity.permalink, `Open post ${p.id}`, (event: MouseEvent) => this.handlePermalinkClick(event))}
         <div class="card-header">
           <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
             ${presentation.identity.isReblog ? html`
