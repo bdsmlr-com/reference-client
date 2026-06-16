@@ -52,6 +52,15 @@ describe('post route media behavior', () => {
     expect(src).toContain('const effectiveAutoplay = this.autoplayVideo ?? behavior.autoplay;');
     expect(src).toContain("const defaultPreload = behavior.preload ?? 'none';");
     expect(src).toContain("this.type === 'card' ||");
+    expect(src).toContain("const squareCropMode =");
+    expect(src).toContain("this.type === 'card' ||");
+    expect(src).toContain("this.type === 'gallery-grid' ||");
+    expect(src).toContain("this.type === 'gutter';");
+    expect(src).toContain("this.toggleAttribute('square-crop-mode', squareCropMode);");
+    expect(src).toContain(":host([square-crop-mode]) {");
+    expect(src).toContain("align-items: center;");
+    expect(src).toContain("justify-content: center;");
+    expect(src).toContain("object-position: center center;");
     expect(src).toContain("this.type === 'gallery-grid' ||");
     expect(src).toContain("@click=${this.handleRetryInteraction}");
     expect(src).toContain('Load Failed. Retry ⟳');

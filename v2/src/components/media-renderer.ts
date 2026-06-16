@@ -33,11 +33,19 @@ export class MediaRenderer extends LitElement {
       height: 100%;
     }
 
+    :host([square-crop-mode]) {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     img, video {
       width: 100%;
       height: 100%;
       display: block;
       object-fit: inherit;
+      object-position: center center;
     }
     .video-shell {
       width: 100%;
@@ -216,7 +224,12 @@ export class MediaRenderer extends LitElement {
       this.type === 'gallery-masonry' ||
       this.type === 'gutter' ||
       this.type === 'lightbox';
+    const squareCropMode =
+      this.type === 'card' ||
+      this.type === 'gallery-grid' ||
+      this.type === 'gutter';
     this.toggleAttribute('fill-mode', fillMode);
+    this.toggleAttribute('square-crop-mode', squareCropMode);
     const detailFitStyle = 'object-fit: contain; max-width: min(100%, calc(100vw - 40px)); max-height: calc(min(78vh, 920px) - 20px); width: auto; height: auto; margin: 0 auto;';
     this.toggleAttribute('detail-mode', isDetailSurface);
     const mediaStyle = isDetailSurface
