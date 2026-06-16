@@ -67,12 +67,12 @@ export class SearchGroupCard extends LitElement {
       .card-overlay-link {
         position: absolute;
         inset: 0;
-        z-index: 1;
+        z-index: 2;
       }
 
       .card > :not(.card-overlay-link) {
         position: relative;
-        z-index: 2;
+        z-index: 1;
       }
 
       .media {
@@ -143,6 +143,11 @@ export class SearchGroupCard extends LitElement {
         display: inline-flex;
         align-items: center;
         gap: 3px;
+      }
+
+      blog-identity {
+        position: relative;
+        z-index: 3;
       }
     `,
   ];

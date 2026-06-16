@@ -43,12 +43,12 @@ export class PostCard extends LitElement {
       .card-overlay-link {
         position: absolute;
         inset: 0;
-        z-index: 1;
+        z-index: 2;
       }
 
       .card > :not(.card-overlay-link) {
         position: relative;
-        z-index: 2;
+        z-index: 1;
       }
 
       .card:hover {
@@ -190,6 +190,13 @@ export class PostCard extends LitElement {
 
       .status-badge.origin-deleted {
         background: rgba(143, 54, 214, 0.92);
+      }
+
+      .blog-link,
+      post-actions,
+      blog-identity {
+        position: relative;
+        z-index: 3;
       }
     `,
   ];

@@ -62,12 +62,12 @@ export class PostFeedItem extends LitElement {
       .card-overlay-link {
         position: absolute;
         inset: 0;
-        z-index: 1;
+        z-index: 2;
       }
 
       .card > :not(.card-overlay-link) {
         position: relative;
-        z-index: 2;
+        z-index: 1;
       }
 
       .card:hover {
@@ -213,6 +213,15 @@ export class PostFeedItem extends LitElement {
         font-size: 12px;
         color: var(--text-muted);
         word-break: break-all;
+      }
+
+      .blog-name,
+      .tag-link,
+      .link-container,
+      post-actions,
+      blog-identity {
+        position: relative;
+        z-index: 3;
       }
     `,
   ];
