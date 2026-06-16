@@ -67,6 +67,7 @@ describe('post-actions reblog composer', () => {
     expect(textarea).toBeTruthy();
     expect(textarea?.value).toBe('');
     expect(el.shadowRoot?.querySelector('[aria-label="Reblog composer"]')).toBeTruthy();
+      expect(el.shadowRoot?.textContent).toContain('Tags (optional)');
     expect(el.shadowRoot?.querySelector('.reblog-note')).toBe(textarea);
   });
 

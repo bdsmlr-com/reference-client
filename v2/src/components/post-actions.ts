@@ -796,7 +796,7 @@ export class PostActions extends LitElement {
             }}
           ></textarea>
           <div class="tags-field">
-            <div class="tags-label">Tags</div>
+            <div class="tags-label">Tags (optional)</div>
             <div class="tags-shell">
               ${this.reblogTags.map((tag, index) => html`
                 <span class="tag-chip">
