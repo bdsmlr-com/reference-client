@@ -3,7 +3,7 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
-import { getContextualErrorMessage } from '../services/api-error.js';
+import { getContextualErrorMessage, isApiError } from '../services/api-error.js';
 import '../components/skeleton-loader.js';
 import '../components/post-detail-content.js';
 import type { PostRouteSource } from '../services/post-route-context.js';
@@ -83,7 +83,12 @@ export class ViewPost extends LitElement {
 
       this.error = 'Post not found.';
     } catch (e) {
-      this.error = getContextualErrorMessage(e, 'load_posts');
+      const apiError = isApiError(e) ? e : null;
+      if (apiError?.statusCode === 410) {
+        this.error = '410 Gone. This post has been deleted.';
+      } else {
+        this.error = getContextualErrorMessage(e, 'load_posts');
+      }
     } finally {
       this.loading = false;
     }

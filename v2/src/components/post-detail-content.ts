@@ -8,6 +8,7 @@ import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';
 import { resolvePostDetailMediaUrl } from '../services/media-resolver.js';
+import { isAdminMode } from '../services/blog-resolver.js';
 import {
   buildContextualTagSearchHref,
   buildScopedReblogDetailTagHref,
@@ -47,6 +48,10 @@ export class PostDetailContent extends LitElement {
         color: inherit;
         text-decoration: none;
       }
+      .identity-post-link.strikethrough {
+        text-decoration: line-through;
+        opacity: 0.72;
+      }
       .identity-line a:hover {
         color: var(--accent);
       }
@@ -60,6 +65,29 @@ export class PostDetailContent extends LitElement {
       .post-date {
         font-size: 12px;
         color: var(--text-muted);
+      }
+      .admin-state-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .state-pill {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+      }
+      .state-pill.deleted,
+      .state-pill.origin-deleted {
+        border-color: color-mix(in srgb, var(--error) 45%, var(--border));
+        color: var(--error);
       }
       .media-stage {
         width: 100%;
@@ -166,11 +194,21 @@ export class PostDetailContent extends LitElement {
     const posterSrc = media?.type === 'video' && media.url && media.url !== rawUrl ? resolvePostDetailMediaUrl(media.url) : undefined;
     const permalink = presentation.identity.permalink;
     const typeIcon = presentation.identity.postTypeIcon || '📄';
+    const isAdmin = isAdminMode();
+    const isDeleted = Boolean(p.deletedAtUnix);
+    const isOriginDeleted = Boolean(p.originDeletedAtUnix);
     const viaBlogName = `${p.blogName || presentation.identity.viaBlogLabel || ''}`.trim().replace(/^@+/, '');
     const originBlogName = `${p.originBlogName || presentation.identity.originBlogLabel || ''}`.trim().replace(/^@+/, '');
 
     return html`
       <section class="post-page">
+        ${isAdmin && (isDeleted || isOriginDeleted) ? html`
+          <div class="admin-state-strip">
+            ${isDeleted ? html`<span class="state-pill deleted">deleted</span>` : nothing}
+            ${isOriginDeleted ? html`<span class="state-pill origin-deleted">origin deleted</span>` : nothing}
+          </div>
+        ` : nothing}
+
         <div class="identity-row">
           <div class="identity-line">
             <span>${typeIcon}</span>
@@ -184,7 +222,7 @@ export class PostDetailContent extends LitElement {
                     strikethrough: presentation.identity.originBlogGone,
                   })}
                   ${presentation.identity.originPostPermalink
-                    ? html`<span class="identity-slash">/</span><a href=${presentation.identity.originPostPermalink.href} target=${presentation.identity.originPostPermalink.target} rel=${presentation.identity.originPostPermalink.rel || nothing}>${presentation.identity.originPostPermalink.label || p.originPostId}<span class="identity-outlink">${presentation.identity.originPostPermalink.icon || '↗'}</span></a>`
+                    ? html`<span class="identity-slash">/</span><a class=${isOriginDeleted ? 'identity-post-link strikethrough' : 'identity-post-link'} href=${presentation.identity.originPostPermalink.href} target=${presentation.identity.originPostPermalink.target} rel=${presentation.identity.originPostPermalink.rel || nothing}>${presentation.identity.originPostPermalink.label || p.originPostId}<span class="identity-outlink">${presentation.identity.originPostPermalink.icon || '↗'}</span></a>`
                     : nothing}
                   <span>via ♻️</span>
                   ${renderStructuredMicroBlogIdentity({
@@ -194,7 +232,7 @@ export class PostDetailContent extends LitElement {
                     decoration: presentation.identity.viaBlogDecoration,
                   })}
                   ${presentation.identity.viaPostPermalink
-                    ? html`<span class="identity-slash">/</span><a href=${presentation.identity.viaPostPermalink.href} target=${presentation.identity.viaPostPermalink.target} rel=${presentation.identity.viaPostPermalink.rel || nothing}>${presentation.identity.viaPostPermalink.label || p.id}<span class="identity-outlink">${presentation.identity.viaPostPermalink.icon || '↗'}</span></a>`
+                    ? html`<span class="identity-slash">/</span><a class=${isDeleted ? 'identity-post-link strikethrough' : 'identity-post-link'} href=${presentation.identity.viaPostPermalink.href} target=${presentation.identity.viaPostPermalink.target} rel=${presentation.identity.viaPostPermalink.rel || nothing}>${presentation.identity.viaPostPermalink.label || p.id}<span class="identity-outlink">${presentation.identity.viaPostPermalink.icon || '↗'}</span></a>`
                     : nothing}
                   ${presentation.identity.legacyPostPermalink
                     ? html`<span class="identity-slash">/</span><a href=${presentation.identity.legacyPostPermalink.href} target=${presentation.identity.legacyPostPermalink.target} rel=${presentation.identity.legacyPostPermalink.rel || nothing} title=${presentation.identity.legacyPostPermalink.title || nothing}>${presentation.identity.legacyPostPermalink.icon || '🗿↗'}</a>`
@@ -208,7 +246,7 @@ export class PostDetailContent extends LitElement {
                     decoration: presentation.identity.viaBlogDecoration || presentation.identity.originBlogDecoration,
                   })}
                   <span class="identity-slash">/</span>
-                  <a href=${permalink.href} target=${permalink.target} rel=${permalink.rel || nothing}>
+                  <a class=${isDeleted ? 'identity-post-link strikethrough' : 'identity-post-link'} href=${permalink.href} target=${permalink.target} rel=${permalink.rel || nothing}>
                     ${permalink.label || p.id}<span class="identity-outlink">${permalink.icon || '↗'}</span>
                   </a>
                   ${presentation.identity.legacyPostPermalink
