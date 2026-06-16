@@ -26,6 +26,7 @@ describe('post feed context', () => {
     const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
     const postSrc = readFileSync(join(ROOT, 'pages/view-post.ts'), 'utf8');
     const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
+    const routeControllerSrc = readFileSync(join(ROOT, 'services/timeline-route-controller.ts'), 'utf8');
 
     expect(feedSrc).toContain('<timeline-stream');
     expect(feedSrc).toContain('.page=${this.timelineRoute.streamPage}');
@@ -39,6 +40,11 @@ describe('post feed context', () => {
     expect(postSrc).not.toContain('<post-feed-item');
     expect(streamSrc).toContain("@property({ type: String }) page: 'feed' | 'follower-feed' | 'activity' = 'feed';");
     expect(streamSrc).toContain("@post-select=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}");
+    expect(routeControllerSrc).toContain("interactionGroupingMode: 'date' | 'date+actor';");
+    expect(routeControllerSrc).toContain("activityCardVariant: 'self-context' | 'actor-context';");
+    expect(routeControllerSrc).toContain("interactionGroupingMode: 'date',");
+    expect(routeControllerSrc).toContain("activityCardVariant: 'actor-context',");
+    expect(routeControllerSrc).toContain("activityCardVariant: 'self-context',");
     expect(streamSrc).toContain("detail: { post, posts, index: index >= 0 ? index : 0, from },");
     expect(streamSrc).toContain(".page=${this.page}");
   });
