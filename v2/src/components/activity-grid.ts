@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { extractRenderableTags, resolvePrimaryMediaUrl, type ProcessedPost } from '../types/post.js';
 import { formatDate } from '../services/date-formatter.js';
@@ -162,6 +162,11 @@ export class ActivityItem extends LitElement {
   @property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'activity';
   @property({ type: Boolean }) showBlogChip = true;
   @property({ type: String }) viewedBlogName = '';
+  @state() private mediaFailed = false;
+
+  private handleMediaStateChange(event: CustomEvent<{ failed: boolean }>): void {
+    this.mediaFailed = Boolean(event.detail?.failed);
+  }
 
   private handleClick() {
     this.dispatchEvent(new CustomEvent('activity-click', {
@@ -235,12 +240,13 @@ export class ActivityItem extends LitElement {
 
     return html`
       <article class="card">
-        ${renderCardOverlayLink(presentation.identity.permalink, `Open post ${p.id}`, (event: MouseEvent) => this.handleOverlayClick(event))}
+        ${renderCardOverlayLink(presentation.identity.permalink, `Open post ${p.id}`, (event: MouseEvent) => this.handleOverlayClick(event), this.mediaFailed)}
         <div class="media-container">
           <media-renderer
             .src=${rawUrl}
             .type=${renderType}
             style="object-fit: ${this.mode === 'masonry' ? 'contain' : 'cover'};"
+            @media-state-change=${this.handleMediaStateChange}
           ></media-renderer>
 
           ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge" title="Post contains ${p.content.files.length} items">1 / ${p.content.files.length}</div>` : ''}

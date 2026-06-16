@@ -48,4 +48,20 @@ describe('native card link behavior', () => {
     expect(feedItemSrc).toContain('<div class="media-container">');
     expect(presentationSrc).toContain("clickZone: ctx.surface === 'timeline' ? 'media' : 'card'");
   });
+  it('disables overlay links while media has failed so retry remains clickable', () => {
+    const helperSrc = readFileSync(join(process.cwd(), 'src/services/card-overlay.ts'), 'utf8');
+    const mediaSrc = readFileSync(join(process.cwd(), 'src/components/media-renderer.ts'), 'utf8');
+    const postCardSrc = read('post-card.ts');
+    const feedItemSrc = read('post-feed-item.ts');
+    const groupCardSrc = read('search-group-card.ts');
+    const activityGridSrc = read('activity-grid.ts');
+
+    expect(mediaSrc).toContain("this.dispatchEvent(new CustomEvent('media-state-change'");
+    expect(helperSrc).toContain('mediaFailed');
+    for (const src of [postCardSrc, feedItemSrc, groupCardSrc, activityGridSrc]) {
+      expect(src).toContain('@media-state-change=${this.handleMediaStateChange}');
+      expect(src).toContain('this.mediaFailed');
+    }
+  });
+
 });

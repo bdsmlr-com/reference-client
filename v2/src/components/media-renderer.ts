@@ -112,7 +112,16 @@ export class MediaRenderer extends LitElement {
     if (changed.has('src') || changed.has('posterSrc')) {
       this.showPlaceholder = false;
       this.showPosterFrame = true;
+      this.dispatchMediaStateChange(false);
     }
+  }
+
+  private dispatchMediaStateChange(failed: boolean): void {
+    this.dispatchEvent(new CustomEvent('media-state-change', {
+      detail: { failed },
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   private handleVideoReady = (): void => {
@@ -130,12 +139,14 @@ export class MediaRenderer extends LitElement {
     // Only retry within the media gateway path. Do not fall back to direct CDN URLs.
     if (probeNextBucket(el)) return;
     this.showPlaceholder = true;
+    this.dispatchMediaStateChange(true);
   }
 
   private handleRetry = (): void => {
     this.showPlaceholder = false;
     this.showPosterFrame = true;
     this.retryGeneration += 1;
+    this.dispatchMediaStateChange(false);
   };
 
   private handleRetryInteraction = (event: Event): void => {

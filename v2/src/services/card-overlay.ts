@@ -9,7 +9,9 @@ export function renderCardOverlayLink(
   permalink: ResolvedLink,
   ariaLabel: string,
   onClick: (event: MouseEvent) => void,
-): TemplateResult {
+  mediaFailed = false,
+): TemplateResult | typeof nothing {
+  if (mediaFailed) return nothing;
   return html`<a
     class="card-overlay-link"
     href=${permalink.href}

@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { extractRenderableTags, type ProcessedPost } from '../types/post.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
@@ -222,6 +222,11 @@ export class PostFeedItem extends LitElement {
   @property({ type: Boolean }) videoControls?: boolean;
   @property({ type: Boolean }) videoLoop?: boolean;
   @property({ type: Boolean }) showActions = false;
+  @state() private mediaFailed = false;
+
+  private handleMediaStateChange(event: CustomEvent<{ failed: boolean }>): void {
+    this.mediaFailed = Boolean(event.detail?.failed);
+  }
 
   private handlePostClick(): void {
     if (this.disableClick) return;
@@ -302,7 +307,7 @@ export class PostFeedItem extends LitElement {
       if (rawUrl) {
         mediaHtml = html`
           <div class="media-container">
-            ${useMediaClickZone ? renderCardOverlayLink(presentation.identity.permalink, `Open post ${post.id}`, (event: MouseEvent) => this.handleOverlayClick(event)) : nothing}
+            ${useMediaClickZone ? renderCardOverlayLink(presentation.identity.permalink, `Open post ${post.id}`, (event: MouseEvent) => this.handleOverlayClick(event), this.mediaFailed) : nothing}
             <media-renderer
               .src=${rawUrl}
               .posterSrc=${posterSrc}
@@ -310,6 +315,7 @@ export class PostFeedItem extends LitElement {
               .autoplayVideo=${this.videoAutoplay}
               .controlsVideo=${this.videoControls}
               .loopVideo=${this.videoLoop}
+              @media-state-change=${this.handleMediaStateChange}
             ></media-renderer>
           </div>
         `;

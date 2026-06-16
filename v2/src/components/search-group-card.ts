@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { nothing } from 'lit';
 import { baseStyles } from '../styles/theme.js';
 import type { ProcessedPost } from '../types/post.js';
@@ -159,6 +159,11 @@ export class SearchGroupCard extends LitElement {
   @property({ type: Number }) originPostId = 0;
   @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
   @property({ type: String }) page: 'archive' | 'search' | 'post' | 'activity' | 'feed' | 'social' = 'search';
+  @state() private mediaFailed = false;
+
+  private handleMediaStateChange(event: CustomEvent<{ failed: boolean }>): void {
+    this.mediaFailed = Boolean(event.detail?.failed);
+  }
 
   private handleClick() {
     this.dispatchEvent(new CustomEvent('post-click', {
@@ -205,12 +210,13 @@ export class SearchGroupCard extends LitElement {
     return html`
       <div class="stack">
         <article class="card">
-          ${renderCardOverlayLink(presentation.identity.permalink, `Open post ${this.post.id}`, (event: MouseEvent) => this.handleOverlayClick(event))}
+          ${renderCardOverlayLink(presentation.identity.permalink, `Open post ${this.post.id}`, (event: MouseEvent) => this.handleOverlayClick(event), this.mediaFailed)}
           <div class="media">
             <media-renderer
               .src=${rawUrl}
               .type=${this.mode === 'masonry' ? 'masonry' : 'card'}
               style="object-fit: ${this.mode === 'masonry' ? 'contain' : 'cover'};"
+              @media-state-change=${this.handleMediaStateChange}
             ></media-renderer>
           </div>
           <div class="meta">

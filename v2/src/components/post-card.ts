@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { resolvePrimaryMediaUrl, type ProcessedPost } from '../types/post.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
@@ -204,12 +204,17 @@ export class PostCard extends LitElement {
 
   @property({ type: Object }) post!: ProcessedPost;
   @property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'archive';
+  @state() private mediaFailed = false;
 
   private isNavigationBlocked(): boolean {
     if (this.post?.authorization?.navigation === 'denied') {
       return true;
     }
     return this.post?.id == null;
+  }
+
+  private handleMediaStateChange(event: CustomEvent<{ failed: boolean }>): void {
+    this.mediaFailed = Boolean(event.detail?.failed);
   }
 
   private handleClick(): void {
@@ -271,7 +276,7 @@ export class PostCard extends LitElement {
     const isOriginDeleted = Boolean(p.originDeletedAtUnix);
     return html`
       <article class="card">
-        ${renderCardOverlayLink(presentation.identity.permalink, `Open post ${p.id}`, (event: MouseEvent) => this.handlePermalinkClick(event))}
+        ${renderCardOverlayLink(presentation.identity.permalink, `Open post ${p.id}`, (event: MouseEvent) => this.handlePermalinkClick(event), this.mediaFailed)}
         <div class="card-header">
           <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
             ${presentation.identity.isReblog ? html`
@@ -317,6 +322,7 @@ export class PostCard extends LitElement {
             .src=${rawUrl} 
             .type=${mediaRenderType}
             style="object-fit: cover;"
+            @media-state-change=${this.handleMediaStateChange}
           ></media-renderer>
           
           ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge">1 / ${p.content.files.length}</div>` : ''}
