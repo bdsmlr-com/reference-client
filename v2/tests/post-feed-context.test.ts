@@ -9,10 +9,10 @@ describe('post feed context', () => {
     const src = readFileSync(join(ROOT, 'components/post-feed-item.ts'), 'utf8');
 
     expect(src).toContain("import { toPresentationModel } from '../services/post-presentation.js';");
-    expect(src).toContain("@property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'feed';");
+    expect(src).toContain("@property({ type: String }) page: 'feed' | 'follower-feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'feed';");
     expect(src).toContain("const presentation = toPresentationModel(post, {");
     expect(src).toContain("surface: this.page === 'post' ? 'detail' : 'timeline'");
-    expect(src).toContain("page: this.page === 'activity' ? 'activity' : this.page");
+    expect(src).toContain("page: this.page === 'activity' ? 'activity' : this.page === 'follower-feed' ? 'feed' : this.page");
     expect(src).toContain("const from: PostRouteSource = this.page === 'post' ? 'direct' : this.page;");
     expect(src).toContain('EventNames.POST_SELECT');
     expect(src).toContain("detail: { post: this.post, from },");

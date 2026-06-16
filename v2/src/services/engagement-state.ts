@@ -374,8 +374,18 @@ export class EngagementStateController {
       : request;
     const postId = normalizedInput.postId;
     const comment = normalizedInput.comment?.trim() || undefined;
-    const tags = normalizedInput.tags?.filter((tag) => tag.trim().length > 0);
+    const tags = normalizedInput.tags?.map((tag) => tag.trim()).filter((tag) => tag.length > 0);
     const mode = normalizedInput.mode ?? 'live';
+
+    if (mode === 'queue') {
+      return {
+        ok: true,
+        action: 'queue_reblog_mock',
+        postId,
+        actingBlogId: actorBlogId,
+      };
+    }
+
     const requestPayload: ReblogPostRequest = {
       postId,
       actingBlogId: actorBlogId,
@@ -383,21 +393,6 @@ export class EngagementStateController {
       tags: tags && tags.length > 0 ? tags : undefined,
       mode,
     };
-
-    if (mode === 'queue') {
-      try {
-        return await this.engagementApi.reblogPost(requestPayload);
-      } catch (error) {
-        console.warn('Queue mode fell back to a FE-only success response', error);
-        return {
-          ok: true,
-          action: 'queue_reblog_mock',
-          postId,
-          actingBlogId: actorBlogId,
-        };
-      }
-    }
-
     const cacheKey = buildReblogStateCacheKey(postId, actorBlogId);
     const previous = this.reblogStateCache.get(cacheKey);
     const currentCount = previous?.count ?? 0;

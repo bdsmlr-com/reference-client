@@ -109,8 +109,8 @@ describe('post-actions reblog composer', () => {
 
       tagInput.value = 'beta';
       tagInput.dispatchEvent(new Event('input', { bubbles: true }));
-      const buttons = Array.from(el.shadowRoot?.querySelectorAll('.comment-btn') || []) as HTMLButtonElement[];
-      buttons.at(-1)?.click();
+      const liveButton = el.shadowRoot?.querySelector('[data-mode="live"]') as HTMLButtonElement;
+      liveButton.click();
       await flush();
       await flush();
       await el.updateComplete;
@@ -121,6 +121,7 @@ describe('post-actions reblog composer', () => {
         actingBlogId: 11,
         comment: 'quoted hello',
         tags: ['Alpha', 'beta'],
+        mode: 'live',
       });
       expect(el.shadowRoot?.querySelector('.reblog-note')).toBeNull();
       expect((el.shadowRoot?.querySelector('.icon-btn') as HTMLButtonElement).className).toContain('reblog-active');
@@ -135,9 +136,9 @@ describe('post-actions reblog composer', () => {
     setAuthUser({ userId: 7, blogId: 11, activeBlogId: 11, blogs: [{ id: 11, name: 'alpha' }] });
 
     const originalReblog = apiClient.engagement.reblogPost;
-    let called = false;
-    apiClient.engagement.reblogPost = async () => {
-      called = true;
+    const calls: any[] = [];
+    apiClient.engagement.reblogPost = async (req: any) => {
+      calls.push(req);
       return { ok: true } as any;
     };
 
@@ -157,13 +158,14 @@ describe('post-actions reblog composer', () => {
       tagInput.value = 'queue-tag';
       tagInput.dispatchEvent(new Event('input', { bubbles: true }));
 
-      const buttons = Array.from(el.shadowRoot?.querySelectorAll('.comment-btn') || []) as HTMLButtonElement[];
-      buttons[1]?.click();
+      const queueButton = el.shadowRoot?.querySelector('[data-mode="queue"]') as HTMLButtonElement;
+      queueButton.click();
       await flush();
       await flush();
       await el.updateComplete;
 
-      expect(called).toBe(false);
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toEqual({ postId: 91, actingBlogId: 11, tags: ['queue-tag'], mode: 'queue' });
       expect(el.shadowRoot?.querySelector('.reblog-note')).toBeNull();
       expect((el.shadowRoot?.querySelector('.icon-btn') as HTMLButtonElement).className).not.toContain('reblog-active');
     } finally {

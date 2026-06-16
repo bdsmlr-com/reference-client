@@ -213,7 +213,7 @@ describe('engagement-state controller', () => {
     resolveReblog({ ok: true, action: 'reblog', postId: 5, actingBlogId: 11, createdReblogPostId: 44 });
     await pending;
     expect(controller.getReblogCount(5)).toBe(2);
-    expect(engagementApi.reblogPost).toHaveBeenCalledWith({ postId: 5, actingBlogId: 11 });
+    expect(engagementApi.reblogPost).toHaveBeenCalledWith({ postId: 5, actingBlogId: 11, comment: undefined, tags: undefined, mode: 'live' });
   });
 
   it('treats queued reblogs as a UI-only mock and does not mutate actor reblog state', async () => {

@@ -219,11 +219,10 @@ export class PostFeedItem extends LitElement {
 
   @property({ type: Object, hasChanged: postHasChanged }) post!: ProcessedPost;
   @property({ type: Boolean }) disableClick = false;
-  @property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'feed';
+  @property({ type: String }) page: 'feed' | 'follower-feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'feed';
   @property({ type: Boolean }) videoAutoplay?: boolean;
   @property({ type: Boolean }) videoControls?: boolean;
   @property({ type: Boolean }) videoLoop?: boolean;
-  @property({ type: Boolean }) showActions = false;
   @state() private mediaFailed = false;
 
   private handleMediaStateChange(event: CustomEvent<{ failed: boolean }>): void {
@@ -246,6 +245,10 @@ export class PostFeedItem extends LitElement {
     }
     event.preventDefault();
     this.handlePostClick();
+  }
+
+  private get shouldShowActions(): boolean {
+    return this.page === 'activity' || this.page === 'feed' || this.page === 'follower-feed';
   }
 
   private renderMicroBlogIdentity(link: ReturnType<typeof resolveLink> | null | undefined, label: string, decoration?: IdentityDecoration | null, blogId?: number | null) {
@@ -283,7 +286,7 @@ export class PostFeedItem extends LitElement {
     const post = this.post;
     const presentation = toPresentationModel(post, {
       surface: this.page === 'post' ? 'detail' : 'timeline',
-      page: this.page === 'activity' ? 'activity' : this.page,
+      page: this.page === 'activity' ? 'activity' : this.page === 'follower-feed' ? 'feed' : this.page,
       interactionKind: post._activityKindOverride,
     });
     const media = post._media;
@@ -358,7 +361,7 @@ export class PostFeedItem extends LitElement {
 
         ${!isPostShell ? html`
           <footer class="card-footer">
-            ${this.showActions
+            ${this.shouldShowActions
               ? html`<post-actions variant="card" .post=${post}></post-actions>`
               : html`
                   <div class="card-stats">
