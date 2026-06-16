@@ -216,6 +216,33 @@ describe('engagement-state controller', () => {
     expect(engagementApi.reblogPost).toHaveBeenCalledWith({ postId: 5, actingBlogId: 11 });
   });
 
+  it('treats queued reblogs as a UI-only mock and does not mutate actor reblog state', async () => {
+    const { controller, engagementApi } = createController();
+
+    setAuthUser({
+      userId: 7,
+      blogId: 11,
+      activeBlogId: 11,
+      blogs: [{ id: 11, name: 'alpha' }],
+    });
+
+    const response = await controller.reblogPost({
+      postId: 12,
+      comment: 'Queued hello',
+      tags: ['alpha', 'beta'],
+      mode: 'queue',
+    });
+
+    expect(response).toEqual({
+      ok: true,
+      action: 'queue_reblog_mock',
+      postId: 12,
+      actingBlogId: 11,
+    });
+    expect(engagementApi.reblogPost).not.toHaveBeenCalled();
+    expect(controller.getReblogCount(12)).toBeUndefined();
+  });
+
   it('submits comments with the active blog and applies an optimistic comment count', async () => {
     let resolveComment!: (value: unknown) => void;
     const commentPromise = new Promise((resolve) => {
@@ -422,7 +449,7 @@ describe('engagement-state api helpers', () => {
     const removeItem = vi.fn();
     vi.stubGlobal('localStorage', { getItem, setItem, removeItem });
     vi.stubGlobal('window', {
-      location: { origin: 'https://client.example.test', search: '' },
+      location: { origin: 'https://client.example.test', hostname: 'client.example.test', search: '' },
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),

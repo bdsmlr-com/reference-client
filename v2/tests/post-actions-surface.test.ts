@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const ROOT = join(process.cwd(), 'src/components');
 
 describe('post action surfaces', () => {
-  it('enables post-actions on blog and feed timeline cards through the explicit showActions flag', () => {
+  it('keeps full-card action rendering on the shared post-actions rail for activity, feed, and follower-feed surfaces', () => {
     const streamSrc = readFileSync(join(ROOT, 'timeline-stream.ts'), 'utf8');
     const itemSrc = readFileSync(join(ROOT, 'post-feed-item.ts'), 'utf8');
     expect(streamSrc).toContain(".showActions=${this.page === 'activity' || this.page === 'feed' || this.page === 'follower-feed'}");

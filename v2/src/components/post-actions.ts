@@ -239,6 +239,73 @@ export class PostActions extends LitElement {
         cursor: default;
       }
 
+      .modal-note {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .tags-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .tags-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+
+      .tags-shell {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--bg-primary);
+      }
+
+      .tag-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+        background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel-alt));
+        color: var(--text);
+        font-size: 12px;
+        line-height: 1;
+      }
+
+      .tag-chip-remove {
+        border: none;
+        background: transparent;
+        color: inherit;
+        padding: 0;
+        margin: 0;
+        cursor: pointer;
+        font: inherit;
+        line-height: 1;
+      }
+
+      .tag-input {
+        flex: 1 1 160px;
+        min-width: 120px;
+        border: none;
+        outline: none;
+        background: transparent;
+        color: var(--text);
+        font: inherit;
+      }
+
+      .tag-input:disabled {
+        cursor: default;
+      }
+
       .modal-actions {
         display: flex;
         justify-content: flex-end;
@@ -265,6 +332,12 @@ export class PostActions extends LitElement {
   @state() private commentBody = '';
   @state() private commenting = false;
   @state() private commentError: string | null = null;
+  @state() private reblogComposerOpen = false;
+  @state() private reblogNote = '';
+  @state() private reblogTagInput = '';
+  @state() private reblogTags: string[] = [];
+  @state() private reblogError: string | null = null;
+  @state() private reblogSubmitting = false;
   @state() private deleting = false;
   private syncRequestId = 0;
   private unsubscribeLikeState: (() => void) | null = null;
@@ -290,8 +363,47 @@ export class PostActions extends LitElement {
       this.commentModalOpen = false;
       this.commentBody = '';
       this.commentError = null;
+      this.resetReblogComposer();
       this.syncLocalStateFromCache();
     }
+    if (changedProperties.has('reblogComposerOpen') && this.reblogComposerOpen) {
+      requestAnimationFrame(() => {
+        const textarea = this.shadowRoot?.querySelector<HTMLTextAreaElement>('.reblog-note');
+        textarea?.focus();
+      });
+    }
+  }
+
+  private resetReblogComposer(): void {
+    this.reblogComposerOpen = false;
+    this.reblogNote = '';
+    this.reblogTagInput = '';
+    this.reblogTags = [];
+    this.reblogError = null;
+    this.reblogSubmitting = false;
+  }
+
+  private normalizeReblogTag(raw: string): string | null {
+    const normalized = raw.trim().replace(/^#+/, '').trim();
+    if (!normalized) return null;
+    const duplicate = this.reblogTags.some((tag) => tag.localeCompare(normalized, undefined, { sensitivity: 'base' }) === 0);
+    return duplicate ? null : normalized;
+  }
+
+  private commitReblogTag(raw: string): void {
+    const normalized = this.normalizeReblogTag(raw);
+    if (!normalized) {
+      return;
+    }
+    this.reblogTags = [...this.reblogTags, normalized];
+  }
+
+  private flushReblogTagInput(): string[] {
+    if (this.reblogTagInput.trim()) {
+      this.commitReblogTag(this.reblogTagInput);
+      this.reblogTagInput = '';
+    }
+    return [...this.reblogTags];
   }
 
   private syncLocalStateFromCache(): void {
@@ -383,21 +495,119 @@ export class PostActions extends LitElement {
     event.preventDefault();
     event.stopPropagation();
 
-    const post = this.post;
-    if (!post) return;
+    if (!this.post || this.reblogSubmitting) return;
 
-    await this.ensureActorStateHydrated();
+    this.commentModalOpen = false;
+    this.commentBody = '';
+    this.commentError = null;
+    this.reblogComposerOpen = true;
+    this.reblogError = null;
+  }
+
+  private closeReblogComposer(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (this.reblogSubmitting) {
+      return;
+    }
+    this.resetReblogComposer();
+  }
+
+  private removeReblogTag(index: number): void {
+    this.reblogTags = this.reblogTags.filter((_, tagIndex) => tagIndex !== index);
+  }
+
+  private handleReblogTagKeydown(event: KeyboardEvent): void {
+    if (event.key === ',' || event.key === 'Enter') {
+      event.preventDefault();
+      this.flushReblogTagInput();
+      return;
+    }
+    if (event.key === 'Backspace' && !this.reblogTagInput && this.reblogTags.length > 0) {
+      event.preventDefault();
+      this.reblogTags = this.reblogTags.slice(0, -1);
+    }
+  }
+
+  private handleReblogTagInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    if (this.reblogError) {
+      this.reblogError = null;
+    }
+    if (!value.includes(',')) {
+      this.reblogTagInput = value;
+      return;
+    }
+
+    const segments = value.split(',');
+    const pending = segments.pop() ?? '';
+    segments.forEach((segment) => this.commitReblogTag(segment));
+    this.reblogTagInput = pending;
+  }
+
+  private async submitReblog(mode: 'live' | 'queue', event: Event): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const post = this.post;
+    if (!post || this.reblogSubmitting) {
+      return;
+    }
+
+    const comment = this.reblogNote.trim();
+    const tags = this.flushReblogTagInput();
+
+    this.reblogSubmitting = true;
+    this.reblogError = null;
+
+    if (mode === 'queue') {
+      try {
+        await engagementState.reblogPost({
+          postId: post.id,
+          comment: comment || undefined,
+          tags: tags.length > 0 ? tags : undefined,
+          mode: 'queue',
+        });
+        this.dispatchEvent(new CustomEvent('reblog-compose-submit', {
+          detail: { postId: post.id, mode: 'queue', comment, tags },
+          bubbles: true,
+          composed: true,
+        }));
+        this.resetReblogComposer();
+      } catch (error) {
+        console.error('Failed to queue reblog', error);
+        this.reblogError = error instanceof Error ? error.message : 'Failed to queue reblog';
+        this.reblogSubmitting = false;
+      }
+      return;
+    }
+
     const previousReblogCount = this.reblogCount ?? 0;
-    this.reblogging = true;
-    this.reblogCount = previousReblogCount + 1;
+
     try {
-      await engagementState.reblogPost(post.id);
+      await this.ensureActorStateHydrated();
+      this.reblogging = true;
+      this.reblogCount = previousReblogCount + 1;
+      await engagementState.reblogPost({
+        postId: post.id,
+        comment: comment || undefined,
+        tags: tags.length > 0 ? tags : undefined,
+        mode: 'live',
+      });
       this.reblogCount = engagementState.getReblogCount(post.id) ?? previousReblogCount + 1;
+      this.dispatchEvent(new CustomEvent('reblog-compose-submit', {
+        detail: { postId: post.id, mode: 'live', comment, tags },
+        bubbles: true,
+        composed: true,
+      }));
+      this.resetReblogComposer();
     } catch (error) {
       console.error('Failed to reblog post', error);
       this.reblogCount = engagementState.getReblogCount(post.id) ?? previousReblogCount;
+      this.reblogError = error instanceof Error ? error.message : 'Failed to reblog post';
     } finally {
       this.reblogging = false;
+      this.reblogSubmitting = false;
     }
   }
 
@@ -512,7 +722,7 @@ export class PostActions extends LitElement {
             type="button"
             aria-pressed=${actorReblogCount > 0 ? 'true' : 'false'}
             title=${actorReblogCount > 0 ? 'Reblogged' : reblogAction.label}
-            ?disabled=${!Boolean(getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId) || this.syncing}
+            ?disabled=${!Boolean(getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId) || this.syncing || this.reblogSubmitting || this.reblogging}
             @click=${this.triggerReblog}
           >
             ${this.reblogging ? '⟳' : reblogAction.icon}
@@ -563,6 +773,71 @@ export class PostActions extends LitElement {
     `;
   }
 
+  private renderReblogModal() {
+    if (!this.reblogComposerOpen || !this.post) {
+      return nothing;
+    }
+
+    return html`
+      <div class="modal-backdrop" @click=${this.closeReblogComposer}>
+        <section class="modal" role="dialog" aria-modal="true" aria-label="Reblog composer" @click=${(event: Event) => event.stopPropagation()}>
+          <h3>Reblog post</h3>
+          <p>Add a note if you want. Tags are optional.</p>
+          <textarea
+            class="composer reblog-note"
+            placeholder="Add a note (optional)..."
+            .value=${this.reblogNote}
+            ?disabled=${this.reblogSubmitting}
+            @input=${(event: Event) => {
+              this.reblogNote = (event.target as HTMLTextAreaElement).value;
+              if (this.reblogError) {
+                this.reblogError = null;
+              }
+            }}
+          ></textarea>
+          <div class="tags-field">
+            <div class="tags-label">Tags</div>
+            <div class="tags-shell">
+              ${this.reblogTags.map((tag, index) => html`
+                <span class="tag-chip">
+                  #${tag}
+                  <button
+                    class="tag-chip-remove"
+                    type="button"
+                    aria-label=${`Remove tag ${tag}`}
+                    ?disabled=${this.reblogSubmitting}
+                    @click=${() => this.removeReblogTag(index)}
+                  >×</button>
+                </span>
+              `)}
+              <input
+                class="tag-input"
+                type="text"
+                placeholder="Type a tag, then comma"
+                .value=${this.reblogTagInput}
+                ?disabled=${this.reblogSubmitting}
+                @input=${this.handleReblogTagInput}
+                @keydown=${this.handleReblogTagKeydown}
+                @blur=${() => this.flushReblogTagInput()}
+              />
+            </div>
+          </div>
+          <div class="modal-note">Queue is UI-only in this build while backend queue wiring is pending.</div>
+          ${this.reblogError ? html`<div class="modal-error">${this.reblogError}</div>` : ''}
+          <div class="modal-actions">
+            <button type="button" class="comment-btn" ?disabled=${this.reblogSubmitting} @click=${this.closeReblogComposer}>Cancel</button>
+            <button type="button" class="comment-btn" data-mode="queue" ?disabled=${this.reblogSubmitting} @click=${(event: Event) => this.submitReblog('queue', event)}>
+              ${this.reblogSubmitting ? 'Saving…' : 'Queue'}
+            </button>
+            <button type="button" class="comment-btn" data-mode="live" ?disabled=${this.reblogSubmitting} @click=${(event: Event) => this.submitReblog('live', event)}>
+              ${this.reblogSubmitting ? 'Reblogging…' : 'Reblog'}
+            </button>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
   private renderCommentModal() {
     if (!this.commentModalOpen || !this.post) {
       return nothing;
@@ -609,6 +884,7 @@ export class PostActions extends LitElement {
       <div class="actions ${isDetail ? 'detail' : 'card'}">
         ${this.renderCounts()}
       </div>
+      ${this.renderReblogModal()}
       ${this.renderCommentModal()}
     `;
   }

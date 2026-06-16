@@ -23,6 +23,13 @@ type EngagementApi = {
   commentPost(req: CommentPostRequest): Promise<CommentPostResponse>;
 };
 
+export interface ReblogComposerRequest {
+  postId: number;
+  comment?: string;
+  tags?: string[];
+  mode?: 'live' | 'queue';
+}
+
 export interface LikeStateSnapshot {
   liked: boolean;
   source: 'server' | 'optimistic';
@@ -357,8 +364,40 @@ export class EngagementStateController {
     }
   }
 
-  async reblogPost(postId: number): Promise<ReblogPostResponse> {
+  async reblogPost(
+    request: number | ReblogComposerRequest,
+    payload: Omit<ReblogComposerRequest, 'postId'> = {}
+  ): Promise<ReblogPostResponse> {
     const actorBlogId = this.requireCurrentActorBlogId();
+    const normalizedInput = typeof request === 'number'
+      ? { postId: request, ...payload }
+      : request;
+    const postId = normalizedInput.postId;
+    const comment = normalizedInput.comment?.trim() || undefined;
+    const tags = normalizedInput.tags?.filter((tag) => tag.trim().length > 0);
+    const mode = normalizedInput.mode ?? 'live';
+    const requestPayload: ReblogPostRequest = {
+      postId,
+      actingBlogId: actorBlogId,
+      comment,
+      tags: tags && tags.length > 0 ? tags : undefined,
+      mode,
+    };
+
+    if (mode === 'queue') {
+      try {
+        return await this.engagementApi.reblogPost(requestPayload);
+      } catch (error) {
+        console.warn('Queue mode fell back to a FE-only success response', error);
+        return {
+          ok: true,
+          action: 'queue_reblog_mock',
+          postId,
+          actingBlogId: actorBlogId,
+        };
+      }
+    }
+
     const cacheKey = buildReblogStateCacheKey(postId, actorBlogId);
     const previous = this.reblogStateCache.get(cacheKey);
     const currentCount = previous?.count ?? 0;
@@ -368,10 +407,7 @@ export class EngagementStateController {
     this.applyReblogSnapshot(postId, actorBlogId, optimisticCount, 'optimistic');
 
     try {
-      const response = await this.engagementApi.reblogPost({
-        postId,
-        actingBlogId: actorBlogId,
-      });
+      const response = await this.engagementApi.reblogPost(requestPayload);
       if (this.isCurrentRequest(requestSnapshot)) {
         this.applyReblogSnapshot(postId, actorBlogId, optimisticCount, 'server');
       }

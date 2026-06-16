@@ -24,6 +24,10 @@ describe('post actions strip', () => {
     expect(src).toContain('commentCount');
     expect(src).toContain('toggleLike');
     expect(src).toContain('triggerReblog');
+    expect(src).toContain('reblogComposerOpen');
+    expect(src).toContain("querySelector<HTMLTextAreaElement>('.reblog-note')");
+    expect(src).toContain('textarea?.focus()');
+    expect(src).toContain("Queue is UI-only in this build while backend queue wiring is pending.");
     expect(src).toContain('openCommentModal');
     expect(src).toContain('submitComment');
     expect(src).toContain('hydrateReblogStates');

@@ -380,6 +380,7 @@ export interface ReblogPostRequest {
   comment?: string;
   keepComments?: boolean;
   tags?: string[];
+  mode?: 'live' | 'queue';
 }
 
 export interface ReblogPostResponse {
