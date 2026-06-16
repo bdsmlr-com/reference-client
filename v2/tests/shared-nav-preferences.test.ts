@@ -14,7 +14,10 @@ describe('shared nav preferences', () => {
     expect(src).not.toContain('Search default sort');
     expect(src).not.toContain("buildPageUrl('follower-feed'");
     expect(src).toContain("buildPageUrl('for'");
-    expect(src).toContain('href="/dashboard"');
+    expect(src).toContain('href="/dashboard" target="_blank" rel="noreferrer noopener"');
+    expect(src).toContain('Post ↗');
+    expect(src).toContain('href="https://bdsmlr.com/queuev2" target="_blank" rel="noreferrer noopener"');
+    expect(src).toContain('Queue ↗');
     expect(src).toContain('href="/settings/you"');
   });
 });
