@@ -13,8 +13,9 @@ describe('native card link behavior', () => {
     const postCardSrc = read('post-card.ts');
     const feedItemSrc = read('post-feed-item.ts');
     const groupCardSrc = read('search-group-card.ts');
+    const activityGridSrc = read('activity-grid.ts');
 
-    for (const src of [postCardSrc, feedItemSrc, groupCardSrc]) {
+    for (const src of [postCardSrc, feedItemSrc, groupCardSrc, activityGridSrc]) {
       expect(src).toContain('class="card-overlay-link"');
       expect(src).toContain('event.metaKey || event.ctrlKey || event.shiftKey || event.altKey');
       expect(src).toContain('event.preventDefault();');
@@ -33,6 +34,8 @@ describe('native card link behavior', () => {
     expect(feedItemSrc).toContain('this.handlePostClick();');
     expect(groupCardSrc).toContain('event.button !== 0');
     expect(groupCardSrc).toContain('this.handleClick();');
+    expect(read('activity-grid.ts')).toContain('event.button !== 0');
+    expect(read('activity-grid.ts')).toContain('this.handleClick();');
   });
 
   it('uses surface-driven click zones so large timeline cards only bind the media area', () => {

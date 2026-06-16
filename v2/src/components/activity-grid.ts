@@ -42,6 +42,12 @@ export class ActivityItem extends LitElement {
         min-width: 0;
       }
 
+      .card-overlay-link {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+      }
+
       .card:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -164,6 +170,18 @@ export class ActivityItem extends LitElement {
     }));
   }
 
+  private shouldLetBrowserHandle(event: MouseEvent): boolean {
+    return event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+  }
+
+  private handleOverlayClick(event: MouseEvent): void {
+    if (this.shouldLetBrowserHandle(event)) {
+      return;
+    }
+    event.preventDefault();
+    this.handleClick();
+  }
+
   private normalizeBlogName(name: string | undefined): string {
     return (name || '').trim().toLowerCase();
   }
@@ -219,7 +237,16 @@ export class ActivityItem extends LitElement {
         : p.createdAtUnix;
 
     return html`
-      <article class="card" @click=${this.handleClick}>
+      <article class="card">
+        <a
+          class="card-overlay-link"
+          href=${presentation.identity.permalink.href}
+          target=${presentation.identity.permalink.target}
+          rel=${presentation.identity.permalink.rel || nothing}
+          title=${presentation.identity.permalink.title || nothing}
+          aria-label=${`Open post ${p.id}`}
+          @click=${this.handleOverlayClick}
+        ></a>
         <div class="media-container">
           <media-renderer
             .src=${rawUrl}
