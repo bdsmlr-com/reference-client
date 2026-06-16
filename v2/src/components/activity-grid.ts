@@ -3,7 +3,7 @@ import { customElement, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { extractRenderableTags, resolvePrimaryMediaUrl, type ProcessedPost } from '../types/post.js';
 import { formatDate } from '../services/date-formatter.js';
-import { getBlogNameFromPath, isAdminMode } from '../services/blog-resolver.js';
+import { isAdminMode } from '../services/blog-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import './media-renderer.js';
 import './search-group-card.js';
@@ -154,6 +154,7 @@ export class ActivityItem extends LitElement {
   @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
   @property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'activity';
   @property({ type: Boolean }) showBlogChip = true;
+  @property({ type: String }) viewedBlogName = '';
 
   private handleClick() {
     this.dispatchEvent(new CustomEvent('activity-click', {
@@ -193,7 +194,7 @@ export class ActivityItem extends LitElement {
       }
       return raw;
     })();
-    const viewedBlog = this.normalizeBlogName(getBlogNameFromPath());
+    const viewedBlog = this.normalizeBlogName(this.viewedBlogName);
     const chipBlog = this.normalizeBlogName(normalizedChipBlogName || chipBlogName);
     const shouldHideSelfInteractionChip =
       (this.interactionType === 'like' || this.interactionType === 'comment')
@@ -335,6 +336,7 @@ export class ActivityGrid extends LitElement {
   @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
   @property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'activity';
   @property({ type: Boolean }) showBlogChip = true;
+  @property({ type: String }) viewedBlogName = '';
 
   private getMasonryColumnCount(): number {
     if (typeof window === 'undefined') {
@@ -364,7 +366,7 @@ export class ActivityGrid extends LitElement {
               ${column.map((item) => html`
                 ${isResultGroupItem(item)
                   ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label} .originPostId=${item.originPostId} .page=${this.page} mode="masonry"></search-group-card>`
-                  : html`<activity-item .post=${item.post} .interactionType=${item.type} .page=${this.page} .showBlogChip=${this.showBlogChip} mode="masonry"></activity-item>`}
+                  : html`<activity-item .post=${item.post} .interactionType=${item.type} .page=${this.page} .showBlogChip=${this.showBlogChip} .viewedBlogName=${this.viewedBlogName} mode="masonry"></activity-item>`}
               `)}
             </div>
           `)}
@@ -377,7 +379,7 @@ export class ActivityGrid extends LitElement {
         ${this.items.map((item) => html`
           ${isResultGroupItem(item)
             ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label} .originPostId=${item.originPostId} .page=${this.page} mode="grid"></search-group-card>`
-            : html`<activity-item .post=${item.post} .interactionType=${item.type} .page=${this.page} .showBlogChip=${this.showBlogChip} mode="grid"></activity-item>`}
+            : html`<activity-item .post=${item.post} .interactionType=${item.type} .page=${this.page} .showBlogChip=${this.showBlogChip} .viewedBlogName=${this.viewedBlogName} mode="grid"></activity-item>`}
         `)}
       </section>
     `;

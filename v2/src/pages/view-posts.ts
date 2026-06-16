@@ -358,6 +358,7 @@ export class ViewPosts extends LitElement {
           <timeline-stream
             .items=${this.timelineItems}
             .page=${this.timelineRoute.streamPage}
+            .viewedBlogName=${this.blog}
             .activityKinds=${this.activityKinds}
             .showActorInCluster=${this.timelineRoute.showActorInCluster}
             @post-click=${this.handlePostClick}

@@ -20,6 +20,17 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(feedSrc).toContain('this.timelineItems = [];');
   });
 
+
+  it('renders a retryable error instead of leaving the following feed blank when all fetched posts collapse during filtering', () => {
+    const feedSrc = readFileSync(join(ROOT, 'pages/view-feed.ts'), 'utf8');
+
+    expect(feedSrc).toContain("else if (this.timelineItems.length === 0) {");
+    expect(feedSrc).toContain('TODO: Emit telemetry here with sourceCount, fetched post count, and filter reasons when feed results collapse to zero displayable items.');
+    expect(feedSrc).toContain("this.errorMessage = `Could not load posts for @${this.resolvedBlogName || this.blogNameInput.trim().replace(/^@/, '')}. This may be a temporary issue - try again.`;");
+    expect(feedSrc).toContain('this.isRetryableError = true;');
+    expect(feedSrc).toContain('<error-state');
+  });
+
   it('links feed following-count text to the social following tab', () => {
     const feedSrc = readFileSync(join(ROOT, 'pages/view-feed.ts'), 'utf8');
     const config = readFileSync(join(process.cwd(), 'media-config.json'), 'utf8');
@@ -131,5 +142,20 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(feedCardSrc).toContain('💬 Self-commented');
     expect(feedCardSrc).toContain('❤️ Liked own post');
     expect(feedCardSrc).toContain('💬 Commented on own post');
+  });
+
+  it('uses the resolved viewed blog name instead of raw /blog/you path aliases for self-activity clustering', () => {
+    const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
+    const gridSrc = readFileSync(join(ROOT, 'components/activity-grid.ts'), 'utf8');
+    const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
+
+    expect(streamSrc).toContain("@property({ type: String }) viewedBlogName = '';");
+    expect(streamSrc).toContain('.viewedBlogName=${this.viewedBlogName}');
+    expect(streamSrc).toContain('viewedBlogName: this.viewedBlogName');
+    expect(streamSrc).not.toContain('getViewedBlogFromPath');
+    expect(gridSrc).toContain("@property({ type: String }) viewedBlogName = '';");
+    expect(gridSrc).toContain('const viewedBlog = this.normalizeBlogName(this.viewedBlogName);');
+    expect(gridSrc).not.toContain('getBlogNameFromPath()');
+    expect(postsSrc).toContain('.viewedBlogName=${this.blog}');
   });
 });

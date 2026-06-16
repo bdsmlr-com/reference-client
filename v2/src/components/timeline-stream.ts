@@ -24,6 +24,7 @@ export class TimelineStream extends LitElement {
   @property({ type: Array }) activityKinds: ActivityKind[] = [...DEFAULT_ACTIVITY_KINDS];
   @property({ type: Boolean }) showActorInCluster = false;
   @property({ type: String }) page: 'feed' | 'follower-feed' | 'activity' = 'feed';
+  @property({ type: String }) viewedBlogName = '';
   @state() private clusterVisibleCounts = new Map<string, number>();
   private readonly clusterPageSize = 12;
 
@@ -56,11 +57,6 @@ export class TimelineStream extends LitElement {
     return format(new Date(ts * 1000), 'yyyy-MM-dd');
   }
 
-  private getViewedBlogFromPath(): string {
-    const parts = window.location.pathname.split('/').filter(Boolean);
-    if (parts.length === 0) return '';
-    return parts[0].toLowerCase();
-  }
 
   private get presentationPage(): 'feed' | 'activity' {
     return this.page === 'follower-feed' ? 'feed' : this.page;
@@ -105,6 +101,7 @@ export class TimelineStream extends LitElement {
           compact
           .items=${visibleItems}
           .showBlogChip=${!this.showActorInCluster}
+          .viewedBlogName=${this.viewedBlogName}
           @activity-click=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}
         ></activity-grid>
       </result-group>
@@ -117,7 +114,7 @@ export class TimelineStream extends LitElement {
       activityKinds: this.activityKinds,
       showActorInCluster: this.showActorInCluster,
       presentationPage: this.presentationPage,
-      viewedBlogName: this.getViewedBlogFromPath(),
+      viewedBlogName: this.viewedBlogName,
     });
     return html`
       <div class="stream">

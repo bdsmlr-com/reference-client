@@ -452,6 +452,11 @@ export class ViewFeed extends LitElement {
         this.timelineItems = [...this.timelineItems, ...feedItems].sort((a, b) => this.itemTimestamp(b) - this.itemTimestamp(a));
       } else if (this.timelineItems.length === 0 && this.exhausted) {
         this.statusMessage = 'No posts found';
+      } else if (this.timelineItems.length === 0) {
+        // TODO: Emit telemetry here with sourceCount, fetched post count, and filter reasons when feed results collapse to zero displayable items.
+        this.statusMessage = '';
+        this.errorMessage = `Could not load posts for @${this.resolvedBlogName || this.blogNameInput.trim().replace(/^@/, '')}. This may be a temporary issue - try again.`;
+        this.isRetryableError = true;
       }
 
       if (activeBlogIds.length > 0) {
