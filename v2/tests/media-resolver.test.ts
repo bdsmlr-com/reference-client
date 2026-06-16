@@ -33,7 +33,7 @@ describe('Media Resolver', () => {
     // Default to staging-like config
     CONFIG.imgproxyMode = 'unsafe';
     CONFIG.mediaProxyBase = 'https://imgproxy.i.bdsmlr.com';
-    FEATURE_FLAGS.media_raw_by_surface = { 'post-detail': true };
+    FEATURE_FLAGS.media_format_by_surface = { 'post-detail': 'raw' };
   });
 
   it('supports staging fixed host media.i for alias URLs', () => {
@@ -95,7 +95,7 @@ describe('Media Resolver', () => {
     it('can force raw alias resolution for card surfaces via feature flag', () => {
       CONFIG.imgproxyMode = 'fixed';
       CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
-      FEATURE_FLAGS.media_raw_by_surface = { card: true };
+      FEATURE_FLAGS.media_format_by_surface = { card: 'raw' };
 
       const url = resolveMediaUrl('/uploads/foo.jpg', 'card');
 
@@ -105,7 +105,7 @@ describe('Media Resolver', () => {
     it('can force raw alias resolution for lightbox surfaces via feature flag', () => {
       CONFIG.imgproxyMode = 'fixed';
       CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
-      FEATURE_FLAGS.media_raw_by_surface = { lightbox: true };
+      FEATURE_FLAGS.media_format_by_surface = { lightbox: 'raw' };
 
       const url = resolveMediaUrl('/uploads/foo.jpg', 'lightbox');
 
@@ -115,7 +115,7 @@ describe('Media Resolver', () => {
     it('keeps animated feed media as raw gif/webp when raw feed mode is enabled', () => {
       CONFIG.imgproxyMode = 'fixed';
       CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
-      FEATURE_FLAGS.media_raw_by_surface = { feed: true };
+      FEATURE_FLAGS.media_format_by_surface = { feed: 'raw' };
       const src = 'https://ocdn012.bdsmlr.com/uploads/foo.gif?e=123&t=abc';
 
       const url = resolveMediaUrl(src, 'feed');

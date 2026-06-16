@@ -449,17 +449,17 @@
   "features": {
     "more_like_this_on_post": false,
     "reblog_composer": false,
-    "media_raw_by_surface": {
-      "card": false,
-      "masonry": false,
-      "detail": false,
-      "poster": false,
-      "gallery-grid": false,
-      "gallery-masonry": false,
-      "feed": false,
-      "lightbox": false,
-      "post-detail": true,
-      "gutter": false
+    "media_format_by_surface": {
+      "card": "card",
+      "masonry": "masonry",
+      "detail": "detail",
+      "poster": "poster",
+      "gallery-grid": "card",
+      "gallery-masonry": "masonry",
+      "feed": "masonry",
+      "lightbox": "detail",
+      "post-detail": "raw",
+      "gutter": "card"
     }
   },
   "render": {

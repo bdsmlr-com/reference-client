@@ -6,7 +6,8 @@ import mediaConfig from '../media-config.json';
 
 export type ImgproxyMode = 'unsafe' | 'fixed';
 export type LinkMode = 'internal' | 'legacy' | 'external';
-export type MediaRawSurface = 'card' | 'masonry' | 'detail' | 'poster' | 'gallery-grid' | 'gallery-masonry' | 'feed' | 'lightbox' | 'post-detail' | 'gutter';
+export type MediaSurface = 'card' | 'masonry' | 'detail' | 'poster' | 'gallery-grid' | 'gallery-masonry' | 'feed' | 'lightbox' | 'post-detail' | 'gutter';
+export type MediaSurfaceFormat = 'raw' | MediaSurface;
 
 export interface MediaPreset {
   width: number;
@@ -117,7 +118,7 @@ export interface RenderInteractionConfig {
 export interface FeatureFlagsConfig {
   more_like_this_on_post?: boolean;
   reblog_composer?: boolean;
-  media_raw_by_surface?: Partial<Record<MediaRawSurface, boolean>>;
+  media_format_by_surface?: Partial<Record<MediaSurface, MediaSurfaceFormat>>;
 }
 
 export interface RenderContractConfig {
@@ -135,47 +136,61 @@ export const LINK_CONFIG: LinkConfig = (mediaConfig as any).links as LinkConfig;
 export const POST_RENDER_POLICY_CONFIG: PostRenderPolicyConfig = (mediaConfig as any).post_render_policy as PostRenderPolicyConfig;
 export const RENDER_CONTRACT_CONFIG: RenderContractConfig = (mediaConfig as any).render as RenderContractConfig;
 
-const MEDIA_RAW_SURFACE_ENV_KEYS: Record<MediaRawSurface, string> = {
-  card: 'VITE_MEDIA_RAW_CARD',
-  masonry: 'VITE_MEDIA_RAW_MASONRY',
-  detail: 'VITE_MEDIA_RAW_DETAIL',
-  poster: 'VITE_MEDIA_RAW_POSTER',
-  'gallery-grid': 'VITE_MEDIA_RAW_GALLERY_GRID',
-  'gallery-masonry': 'VITE_MEDIA_RAW_GALLERY_MASONRY',
-  feed: 'VITE_MEDIA_RAW_FEED',
-  lightbox: 'VITE_MEDIA_RAW_LIGHTBOX',
-  'post-detail': 'VITE_MEDIA_RAW_POST_DETAIL',
-  gutter: 'VITE_MEDIA_RAW_GUTTER',
+const MEDIA_FORMAT_SURFACE_ENV_KEYS: Record<MediaSurface, string> = {
+  card: 'VITE_MEDIA_FORMAT_CARD',
+  masonry: 'VITE_MEDIA_FORMAT_MASONRY',
+  detail: 'VITE_MEDIA_FORMAT_DETAIL',
+  poster: 'VITE_MEDIA_FORMAT_POSTER',
+  'gallery-grid': 'VITE_MEDIA_FORMAT_GALLERY_GRID',
+  'gallery-masonry': 'VITE_MEDIA_FORMAT_GALLERY_MASONRY',
+  feed: 'VITE_MEDIA_FORMAT_FEED',
+  lightbox: 'VITE_MEDIA_FORMAT_LIGHTBOX',
+  'post-detail': 'VITE_MEDIA_FORMAT_POST_DETAIL',
+  gutter: 'VITE_MEDIA_FORMAT_GUTTER',
 };
 
-function parseBooleanEnvFlag(value: unknown): boolean | undefined {
+function readEnvString(name: string): string | undefined {
+  const value = (import.meta as any).env?.[name];
   if (typeof value !== 'string') return undefined;
-  const normalized = value.trim().toLowerCase();
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function readEnvBooleanFlag(name: string): boolean | undefined {
+  const value = readEnvString(name);
+  if (!value) return undefined;
+  const normalized = value.toLowerCase();
   if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
   if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
   return undefined;
 }
 
-function readEnvFlag(name: string): boolean | undefined {
-  return parseBooleanEnvFlag((import.meta as any).env?.[name]);
+function readEnvSurfaceFormat(name: string): MediaSurfaceFormat | undefined {
+  const value = readEnvString(name);
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  const allowed = new Set<MediaSurfaceFormat>(['raw', 'card', 'masonry', 'detail', 'poster', 'gallery-grid', 'gallery-masonry', 'feed', 'lightbox', 'post-detail', 'gutter']);
+  return allowed.has(normalized as MediaSurfaceFormat) ? (normalized as MediaSurfaceFormat) : undefined;
 }
 
 function buildFeatureFlags(): FeatureFlagsConfig {
   const defaults = ((mediaConfig as any).features || {}) as FeatureFlagsConfig;
-  const mediaRawDefaults = { ...(defaults.media_raw_by_surface || {}) } as Partial<Record<MediaRawSurface, boolean>>;
+  // Default per-surface formats live in media-config.json. Current intended defaults are:
+  // post-detail -> raw, everything else -> its normal surface alias (card, masonry, detail, etc.)
+  const mediaFormatDefaults = { ...(defaults.media_format_by_surface || {}) } as Partial<Record<MediaSurface, MediaSurfaceFormat>>;
 
-  for (const [surface, envKey] of Object.entries(MEDIA_RAW_SURFACE_ENV_KEYS)) {
-    const override = readEnvFlag(envKey);
+  for (const [surface, envKey] of Object.entries(MEDIA_FORMAT_SURFACE_ENV_KEYS)) {
+    const override = readEnvSurfaceFormat(envKey);
     if (override !== undefined) {
-      mediaRawDefaults[surface as MediaRawSurface] = override;
+      mediaFormatDefaults[surface as MediaSurface] = override;
     }
   }
 
   return {
     ...defaults,
-    more_like_this_on_post: readEnvFlag('VITE_FF_MORE_LIKE_THIS_ON_POST') ?? defaults.more_like_this_on_post,
-    reblog_composer: readEnvFlag('VITE_FF_REBLOG_COMPOSER') ?? defaults.reblog_composer,
-    media_raw_by_surface: mediaRawDefaults,
+    more_like_this_on_post: readEnvBooleanFlag('VITE_FF_MORE_LIKE_THIS_ON_POST') ?? defaults.more_like_this_on_post,
+    reblog_composer: readEnvBooleanFlag('VITE_FF_REBLOG_COMPOSER') ?? defaults.reblog_composer,
+    media_format_by_surface: mediaFormatDefaults,
   };
 }
 

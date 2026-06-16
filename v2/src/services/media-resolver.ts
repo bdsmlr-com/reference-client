@@ -45,19 +45,19 @@ function mediaAliasBase(): string {
   return CONFIG.mediaProxyBase.replace('imgproxy.i.', 'media.i.');
 }
 
-function isRawMediaEnabled(type: MediaRenderType): boolean {
-  return FEATURE_FLAGS.media_raw_by_surface?.[type] === true;
+function mediaFormatForSurface(type: MediaRenderType): string | undefined {
+  return FEATURE_FLAGS.media_format_by_surface?.[type];
 }
 
-function toRawAliasUrl(url: string | undefined): string {
+function toAliasFormatUrl(url: string | undefined, format: string): string {
   if (!url) return '';
-  if (url.includes('/raw/s3://')) return url;
+  if (format === 'raw' && url.includes('/raw/s3://')) return url;
   const [s3Url, queryParams] = toS3Scheme(url);
   if (!s3Url || !s3Url.startsWith('s3://')) {
     return url;
   }
   const queryString = queryParams ? `?${queryParams}` : '';
-  return `${mediaAliasBase()}/raw/${s3Url}${queryString}`;
+  return `${mediaAliasBase()}/${format}/${s3Url}${queryString}`;
 }
 
 /**
@@ -135,8 +135,9 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
 
   const [s3Url, queryParams] = toS3Scheme(url);
 
-  if (isRawMediaEnabled(type)) {
-    return toRawAliasUrl(url);
+  const formatOverride = mediaFormatForSurface(type);
+  if (formatOverride) {
+    return toAliasFormatUrl(url, formatOverride);
   }
 
   const canonicalType = canonicalMediaType(type);
@@ -241,8 +242,9 @@ export function resolvePostDetailMediaUrl(url: string | undefined): string {
     return url;
   }
 
-  if (isRawMediaEnabled('post-detail')) {
-    return toRawAliasUrl(url);
+  const formatOverride = mediaFormatForSurface('post-detail');
+  if (formatOverride) {
+    return toAliasFormatUrl(url, formatOverride);
   }
 
   const [s3Url, queryParams] = toS3Scheme(url);
