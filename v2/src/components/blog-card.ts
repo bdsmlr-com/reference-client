@@ -1,4 +1,5 @@
 import { LitElement, html, css } from 'lit';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import type { Blog } from '../types/api.js';
@@ -6,6 +7,7 @@ import { EventNames, type BlogClickDetail } from '../types/events.js';
 import { getCachedAvatarUrl, setCachedAvatarUrl } from '../services/storage.js';
 import { apiClient } from '../services/client.js';
 import { handleAvatarImageError, normalizeAvatarUrl } from '../services/avatar-url.js';
+import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
 
 @customElement('blog-card')
 export class BlogCard extends LitElement {
@@ -76,6 +78,14 @@ export class BlogCard extends LitElement {
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         line-height: 1.4;
+      }
+
+      .blog-title :is(p, h1, h2, h3, h4, h5, h6, blockquote, ul, ol) {
+        margin: 0;
+      }
+
+      .blog-title :is(strong, b) {
+        color: var(--text-primary);
       }
 
       .stats {
@@ -189,31 +199,32 @@ export class BlogCard extends LitElement {
 
     const initial = (blog.name || 'B').charAt(0).toUpperCase();
     const blogName = blog.name || 'unknown';
+    const summaryHtml = sanitizeHtmlFragment(blog.description || blog.title || '');
     const followersCountRaw = blog.followersCount;
-    const postsCountRaw = blog.postsCount;
+    const followingCountRaw = blog.followingCount;
     const followersDisplay =
       followersCountRaw !== undefined && followersCountRaw !== null
         ? followersCountRaw.toLocaleString()
         : '—';
-    const postsDisplay =
-      postsCountRaw !== undefined && postsCountRaw !== null
-        ? postsCountRaw.toLocaleString()
+    const followingDisplay =
+      followingCountRaw !== undefined && followingCountRaw !== null
+        ? followingCountRaw.toLocaleString()
         : '—';
     const followersAria =
       followersCountRaw !== undefined && followersCountRaw !== null
         ? `${followersDisplay} followers`
         : 'unknown follower count';
-    const postsAria =
-      postsCountRaw !== undefined && postsCountRaw !== null
-        ? `${postsDisplay} posts`
-        : 'unknown post count';
+    const followingAria =
+      followingCountRaw !== undefined && followingCountRaw !== null
+        ? `${followingDisplay} following`
+        : 'unknown following count';
 
     return html`
       <article
         class="card"
         @click=${this.handleClick}
         role="article"
-        aria-label="Blog ${blogName} with ${followersAria} and ${postsAria}"
+        aria-label="Blog ${blogName} with ${followersAria} and ${followingAria}"
         tabindex="0"
         @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.handleClick()}
       >
@@ -229,7 +240,7 @@ export class BlogCard extends LitElement {
             `
           : html`<div class="avatar-placeholder" aria-label="No avatar, showing initial ${initial}">${initial}</div>`}
         <div class="blog-name">@${blogName}</div>
-        ${blog.title ? html`<div class="blog-title">${blog.title}</div>` : ''}
+        ${summaryHtml ? html`<div class="blog-title">${unsafeHTML(summaryHtml)}</div>` : ''}
         <div class="stats" aria-label="Blog statistics">
           <span class="stat" aria-label="${followersAria}">
             <span aria-hidden="true">👥</span>
@@ -238,11 +249,11 @@ export class BlogCard extends LitElement {
               <span class="stat-label">Followers</span>
             </span>
           </span>
-          <span class="stat" aria-label="${postsAria}">
-            <span aria-hidden="true">📝</span>
+          <span class="stat" aria-label="${followingAria}">
+            <span aria-hidden="true">➡️</span>
             <span class="stat-text">
-              <span class="stat-value">${postsDisplay}</span>
-              <span class="stat-label">Posts</span>
+              <span class="stat-value">${followingDisplay}</span>
+              <span class="stat-label">Following</span>
             </span>
           </span>
         </div>

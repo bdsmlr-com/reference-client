@@ -127,6 +127,7 @@ export interface Blog {
   description?: string;
   ownerUserId?: number;
   followersCount?: number;
+  followingCount?: number;
   postsCount?: number;
   createdAt?: string;
   updatedAt?: string;
