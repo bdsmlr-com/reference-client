@@ -34,8 +34,10 @@ describe('hybrid activity stream', () => {
 
     expect(feedSrc).toContain('<timeline-stream');
     expect(postsSrc).toContain('<timeline-stream');
-    expect(feedSrc).toContain('.showActorInCluster=${this.timelineRoute.showActorInCluster}');
-    expect(postsSrc).toContain('.showActorInCluster=${this.timelineRoute.showActorInCluster}');
+    expect(feedSrc).toContain('.interactionGroupingMode=${this.timelineRoute.interactionGroupingMode}');
+    expect(feedSrc).toContain('.activityCardVariant=${this.timelineRoute.activityCardVariant}');
+    expect(postsSrc).toContain('.interactionGroupingMode=${this.timelineRoute.interactionGroupingMode}');
+    expect(postsSrc).toContain('.activityCardVariant=${this.timelineRoute.activityCardVariant}');
   });
 
   it('following view augments merged posts with interaction clusters and shared control wiring', () => {
@@ -55,18 +57,19 @@ describe('hybrid activity stream', () => {
     expect(streamSrc).toContain('item.type === 2 && item.cluster');
     expect(streamSrc).toContain('<activity-grid');
     expect(streamSrc).toContain('<result-group');
-    expect(streamSrc).toContain('showActorInCluster');
+    expect(streamSrc).toContain('activityCardVariant');
+    expect(streamSrc).toContain('interactionGroupingMode');
     expect(streamSrc).toContain('@activity-click=');
     expect(streamSrc).toContain('@post-select=');
   });
 
   it('groups like/comment interactions into local-date activity cards', () => {
-    const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
+    const renderingSrc = readFileSync(join(ROOT, 'services/timeline-rendering.ts'), 'utf8');
 
-    expect(streamSrc).toContain('getInteractionUnix(post)');
-    expect(streamSrc).toContain('post.updatedAtUnix');
-    expect(streamSrc).toContain('const label = `Activity on ${bucket.dateKey} : ❤️ ${bucket.likeCount} . 💬 ${bucket.commentCount}${actorSuffix}`;');
-    expect(streamSrc).toContain("if (kind !== 'like' && kind !== 'comment')");
+    expect(renderingSrc).toContain('getTimelineInteractionUnix(post)');
+    expect(renderingSrc).toContain('post.updatedAtUnix');
+    expect(renderingSrc).toContain("const actorBoundaryKey = args.interactionGroupingMode === 'date+actor' ? interactionEvent.actorKey : '';");
+    expect(renderingSrc).toContain("if (kind !== 'like' && kind !== 'comment') {");
   });
 
   it('supports per-card load more for date-grouped activity cards', () => {
@@ -78,34 +81,34 @@ describe('hybrid activity stream', () => {
   });
 
   it('deduplicates same post within a date bucket across like/comment clusters', () => {
-    const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
+    const renderingSrc = readFileSync(join(ROOT, 'services/timeline-rendering.ts'), 'utf8');
 
-    expect(streamSrc).toContain('interactionIndex: new Map<number, number>()');
-    expect(streamSrc).toContain('const existingIndex = bucket.interactionIndex.get(postId);');
-    expect(streamSrc).toContain("if (existingIndex === undefined)");
+    expect(renderingSrc).toContain('interactionIndex: new Map<string, number>()');
+    expect(renderingSrc).toContain('const existingIndex = run.interactionIndex.get(dedupKey);');
+    expect(renderingSrc).toContain("if (existingIndex === undefined) {");
   });
 
   it('renders reblog cluster interactions as full-size feed cards', () => {
-    const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
+    const renderingSrc = readFileSync(join(ROOT, 'services/timeline-rendering.ts'), 'utf8');
 
-    expect(streamSrc).toContain("if (kind === 'reblog')");
-    expect(streamSrc).toContain('_activityCreatedAtUnix');
-    expect(streamSrc).toContain("type: 'post'");
+    expect(renderingSrc).toContain("if (kind === 'reblog') {");
+    expect(renderingSrc).toContain('_activityCreatedAtUnix');
+    expect(renderingSrc).toContain("renderable.push({ type: 'post', post: event.post });");
   });
 
   it('sorts mixed reblog cards and interaction buckets by newest timestamp', () => {
-    const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
+    const renderingSrc = readFileSync(join(ROOT, 'services/timeline-rendering.ts'), 'utf8');
 
-    expect(streamSrc).toContain('latestInteractionUnix');
-    expect(streamSrc).toContain('item.post._activityCreatedAtUnix || item.post.createdAtUnix || 0');
-    expect(streamSrc).toContain('renderable.sort((a, b) => this.getRenderableTimestamp(b) - this.getRenderableTimestamp(a));');
+    expect(renderingSrc).toContain('latestInteractionUnix');
+    expect(renderingSrc).toContain('events.sort((a, b) => {');
+    expect(renderingSrc).toContain('if (b.ts !== a.ts) return b.ts - a.ts;');
   });
 
   it('classifies variant=2 timeline posts as reblogs', () => {
-    const streamSrc = readFileSync(join(ROOT, 'components/timeline-stream.ts'), 'utf8');
+    const renderingSrc = readFileSync(join(ROOT, 'services/timeline-rendering.ts'), 'utf8');
 
-    expect(streamSrc).toContain('presentation.identity.isReblog ? \'reblog\' : \'post\'');
-    expect(streamSrc).toContain('presentation.identity.allowSelfSameDayLikeSuppression');
+    expect(renderingSrc).toContain("presentation.identity.isReblog ? 'reblog' : 'post'");
+    expect(renderingSrc).toContain('presentation.identity.allowSelfSameDayLikeSuppression');
   });
 
   it('syncs activity kind filters into posts URL state', () => {

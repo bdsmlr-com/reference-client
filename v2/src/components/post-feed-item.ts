@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { extractRenderableTags, type ProcessedPost } from '../types/post.js';
@@ -10,6 +11,7 @@ import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-ren
 import { toPresentationModel } from '../services/post-presentation.js';
 import { renderCardOverlayLink, shouldLetBrowserHandleCardLink } from '../services/card-overlay.js';
 import { getViewedBlogName } from '../services/blog-resolver.js';
+import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
 import type { PostRouteSource } from '../services/post-route-context.js';
 import type { MediaRenderType } from '../services/media-resolver.js';
 import type { IdentityDecoration } from '../types/api.js';
@@ -294,7 +296,7 @@ export class PostFeedItem extends LitElement {
     const reblogCount = presentation.actions.reblog.count;
     const commentCount = presentation.actions.comment.count;
     const mediaRenderType = presentation.media.preset as MediaRenderType;
-    const bodyText = post.body || post.content?.text || post.content?.title || '';
+    const bodyHtml = post.content?.html || post.body || post.content?.text || post.content?.title || '';
     const isPostShell = this.page === 'post';
     const rawUrl = media.type === 'video'
       ? (media.videoUrl || media.url)
@@ -341,7 +343,7 @@ export class PostFeedItem extends LitElement {
 
         ${mediaHtml}
 
-        ${!isPostShell && bodyText ? html`<div class="card-body">${bodyText}</div>` : ''}
+        ${!isPostShell && bodyHtml ? html`<div class="card-body">${unsafeHTML(sanitizeHtmlFragment(bodyHtml))}</div>` : ''}
 
         ${!isPostShell && tags.length > 0 ? html`
           <div class="card-tags">

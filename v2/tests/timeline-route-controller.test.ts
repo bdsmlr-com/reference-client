@@ -10,7 +10,8 @@ describe('timeline route controller', () => {
   it('exposes distinct timeline route metadata without changing the fetch model', () => {
     expect(getTimelineRouteDefinition('following')).toMatchObject({
       streamPage: 'feed',
-      showActorInCluster: true,
+      interactionGroupingMode: 'date',
+      activityCardVariant: 'actor-context',
       footerMode: 'activity',
       footerPageName: 'following',
       controlPageName: 'following',
@@ -18,7 +19,8 @@ describe('timeline route controller', () => {
 
     expect(getTimelineRouteDefinition('followers')).toMatchObject({
       streamPage: 'follower-feed',
-      showActorInCluster: true,
+      interactionGroupingMode: 'date',
+      activityCardVariant: 'actor-context',
       footerMode: 'activity',
       footerPageName: 'followers',
       controlPageName: 'followers',
@@ -26,7 +28,8 @@ describe('timeline route controller', () => {
 
     expect(getTimelineRouteDefinition('activity')).toMatchObject({
       streamPage: 'activity',
-      showActorInCluster: false,
+      interactionGroupingMode: 'date',
+      activityCardVariant: 'self-context',
       footerMode: 'timeline',
       footerPageName: 'timeline',
       controlPageName: 'timeline',

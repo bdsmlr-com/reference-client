@@ -360,7 +360,8 @@ export class ViewPosts extends LitElement {
             .page=${this.timelineRoute.streamPage}
             .viewedBlogName=${this.blog}
             .activityKinds=${this.activityKinds}
-            .showActorInCluster=${this.timelineRoute.showActorInCluster}
+            .interactionGroupingMode=${this.timelineRoute.interactionGroupingMode}
+                  .activityCardVariant=${this.timelineRoute.activityCardVariant}
             @post-click=${this.handlePostClick}
           ></timeline-stream>
         </div>

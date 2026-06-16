@@ -13,7 +13,7 @@ export type ActivityRunBucket = {
   key: string;
   kind: 'like' | 'comment';
   actor: string;
-  actorKey: string;
+  actorBoundaryKey: string;
   sourceClusterKey: string;
   likeCount: number;
   commentCount: number;
@@ -30,7 +30,8 @@ export type RenderableTimelineItem =
 type BuildRenderableTimelineItemsArgs = {
   items: TimelineItem[];
   activityKinds: ActivityKind[];
-  showActorInCluster: boolean;
+  interactionGroupingMode: 'date' | 'date+actor';
+  activityCardVariant: 'self-context' | 'actor-context';
   presentationPage: 'feed' | 'activity';
   viewedBlogName: string;
 };
@@ -101,10 +102,10 @@ function shouldSuppressSelfSameDayLike(
   post: ProcessedPost,
   kind: ActivityKind,
   presentationPage: 'feed' | 'activity',
-  showActorInCluster: boolean,
+  activityCardVariant: 'self-context' | 'actor-context',
   viewedBlogName: string,
 ): boolean {
-  if (kind !== 'like' || showActorInCluster) return false;
+  if (kind !== 'like' || activityCardVariant === 'actor-context') return false;
   const presentation = toPresentationModel(post, { surface: 'timeline', page: presentationPage, interactionKind: kind });
   if (!presentation.identity.allowSelfSameDayLikeSuppression) return false;
 
@@ -122,7 +123,7 @@ function shouldSuppressSelfSameDayLike(
 function buildTimelineEvents({
   items,
   activityKinds,
-  showActorInCluster,
+  activityCardVariant,
   presentationPage,
   viewedBlogName,
 }: BuildRenderableTimelineItemsArgs): TimelineEvent[] {
@@ -169,15 +170,15 @@ function buildTimelineEvents({
       continue;
     }
 
-    const interactions = clusterPosts.filter((post) => !shouldSuppressSelfSameDayLike(post, kind, presentationPage, showActorInCluster, viewedBlogName));
+    const interactions = clusterPosts.filter((post) => !shouldSuppressSelfSameDayLike(post, kind, presentationPage, activityCardVariant, viewedBlogName));
     for (const post of interactions) {
       events.push({
         kind,
         ts: getTimelineInteractionUnix(post),
         sequence: sequence++,
         post,
-        actor: showActorInCluster ? (post.blogName || '') : '',
-        actorKey: showActorInCluster ? normalizeBlogName(post.blogName) : '',
+        actor: activityCardVariant === 'actor-context' ? (post.blogName || '') : '',
+        actorKey: activityCardVariant === 'actor-context' ? normalizeBlogName(post.blogName) : '',
         sourceClusterKey,
       });
     }
@@ -199,11 +200,11 @@ export function buildRenderableTimelineItems(args: BuildRenderableTimelineItemsA
     currentRun = null;
   };
 
-  const createRun = (kind: 'like' | 'comment', actor: string, actorKey: string, sourceClusterKey: string): ActivityRunBucket => ({
+  const createRun = (kind: 'like' | 'comment', actor: string, actorBoundaryKey: string, sourceClusterKey: string): ActivityRunBucket => ({
     key: `run:${runIndex += 1}`,
     kind,
     actor,
-    actorKey,
+    actorBoundaryKey,
     likeCount: 0,
     commentCount: 0,
     oldestInteractionUnix: 0,
@@ -224,8 +225,10 @@ export function buildRenderableTimelineItems(args: BuildRenderableTimelineItemsA
 
     const interactionEvent = event as Extract<TimelineEvent, { kind: 'like' | 'comment' }>;
 
-    if (!currentRun || currentRun.kind !== interactionEvent.kind || currentRun.actorKey !== interactionEvent.actorKey || currentRun.sourceClusterKey !== interactionEvent.sourceClusterKey) {
-      currentRun = createRun(interactionEvent.kind, interactionEvent.actor, interactionEvent.actorKey, interactionEvent.sourceClusterKey);
+    const actorBoundaryKey = args.interactionGroupingMode === 'date+actor' ? interactionEvent.actorKey : '';
+
+    if (!currentRun || currentRun.kind !== interactionEvent.kind || currentRun.actorBoundaryKey !== actorBoundaryKey || currentRun.sourceClusterKey !== interactionEvent.sourceClusterKey) {
+      currentRun = createRun(interactionEvent.kind, interactionEvent.actor, actorBoundaryKey, interactionEvent.sourceClusterKey);
       renderable.push({ type: 'activity-bucket', bucket: currentRun });
     }
     const run: ActivityRunBucket = currentRun;

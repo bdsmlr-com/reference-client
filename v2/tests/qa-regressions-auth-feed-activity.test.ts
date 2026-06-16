@@ -1,10 +1,25 @@
-import { describe, it, expect } from 'vitest';
+// @vitest-environment happy-dom
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { apiErrorFromStatus } from '../src/services/api-error.js';
+import { apiClient } from '../src/services/client.js';
+import * as blogTheme from '../src/services/blog-theme.js';
+import '../src/pages/view-feed.js';
 
 const ROOT = join(process.cwd(), 'src');
 
+async function flushMicrotasks(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
 describe('QA regressions: auth, feed, activity semantics', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+    vi.restoreAllMocks();
+  });
+
   it('does not prefill home login with hardcoded fallback blog names', () => {
     const homeSrc = readFileSync(join(ROOT, 'pages/view-home.ts'), 'utf8');
 
@@ -70,6 +85,36 @@ describe('QA regressions: auth, feed, activity semantics', () => {
     expect(apiErrorSrc).toContain('Feed for @${context.blogName} is unavailable because its');
   });
 
+
+  it('shows the hidden-following unavailable message on feed pages instead of blog-not-found', async () => {
+    vi.spyOn(blogTheme, 'initBlogTheme').mockResolvedValue({
+      id: 42,
+      name: 'demo',
+      title: '',
+      description: '',
+      avatarUrl: '',
+      identityDecorations: [],
+    } as any);
+    vi.spyOn(apiClient.followGraph, 'getCached').mockRejectedValue(
+      apiErrorFromStatus(404, 'hidden list', '/v2/api/blog-follow-graph'),
+    );
+
+    const el = document.createElement('view-feed') as any;
+    el.blog = 'demo';
+    el.mode = 'following';
+    document.body.appendChild(el);
+
+    await flushMicrotasks();
+    await el.updateComplete;
+    await flushMicrotasks();
+    await el.updateComplete;
+
+    expect(el.errorMessage).toBe(
+      'Feed for @demo is unavailable because its following list is hidden or requires access.',
+    );
+    expect(el.errorMessage).not.toContain('could not be found');
+  });
+
   it('keeps activity URLs focused on activity filters only', () => {
     const postsSrc = readFileSync(join(ROOT, 'pages/view-posts.ts'), 'utf8');
 
@@ -93,7 +138,7 @@ describe('QA regressions: auth, feed, activity semantics', () => {
 
     expect(streamSrc).toContain("import { buildRenderableTimelineItems, type ActivityRunBucket } from '../services/timeline-rendering.js';");
     expect(timelineServiceSrc).toContain('shouldSuppressSelfSameDayLike');
-    expect(streamSrc).toContain('.showBlogChip=${!this.showActorInCluster}');
+    expect(streamSrc).toContain('.activityCardVariant=${this.activityCardVariant}');
     expect(streamSrc).toContain('<result-group');
     expect(gridSrc).toContain('const shouldHideSelfInteractionChip =');
     expect(gridSrc).toContain("this.interactionType === 'like' || this.interactionType === 'comment'");

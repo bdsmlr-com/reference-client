@@ -60,7 +60,8 @@ describe('timeline rendering', () => {
     const renderable = buildRenderableTimelineItems({
       items,
       activityKinds: ['like', 'comment', 'post', 'reblog'],
-      showActorInCluster: false,
+      interactionGroupingMode: 'date',
+      activityCardVariant: 'self-context',
       presentationPage: 'activity',
       viewedBlogName: 'Actor',
     });
@@ -88,7 +89,8 @@ describe('timeline rendering', () => {
     const renderable = buildRenderableTimelineItems({
       items,
       activityKinds: ['like', 'comment', 'post', 'reblog'],
-      showActorInCluster: false,
+      interactionGroupingMode: 'date',
+      activityCardVariant: 'self-context',
       presentationPage: 'activity',
       viewedBlogName: 'Actor',
     });
@@ -121,7 +123,8 @@ describe('timeline rendering', () => {
     const renderable = buildRenderableTimelineItems({
       items: [makeCluster('Likes', [original, reblog])],
       activityKinds: ['like', 'comment', 'post', 'reblog'],
-      showActorInCluster: false,
+      interactionGroupingMode: 'date',
+      activityCardVariant: 'self-context',
       presentationPage: 'activity',
       viewedBlogName: 'someoneelse',
     });
@@ -145,7 +148,8 @@ describe('timeline rendering', () => {
     const renderable = buildRenderableTimelineItems({
       items,
       activityKinds: ['like', 'comment', 'post', 'reblog'],
-      showActorInCluster: false,
+      interactionGroupingMode: 'date',
+      activityCardVariant: 'self-context',
       presentationPage: 'activity',
       viewedBlogName: 'Actor',
     });
@@ -184,7 +188,8 @@ it('keeps separate backend interaction clusters as separate buckets', () => {
   const renderable = buildRenderableTimelineItems({
     items: [first, second],
     activityKinds: ['like'],
-    showActorInCluster: false,
+    interactionGroupingMode: 'date',
+    activityCardVariant: 'self-context',
     presentationPage: 'activity',
     viewedBlogName: 'demo-blog',
   });
@@ -192,4 +197,34 @@ it('keeps separate backend interaction clusters as separate buckets', () => {
   expect(renderable).toHaveLength(2);
   expect(renderable[0].type).toBe('activity-bucket');
   expect(renderable[1].type).toBe('activity-bucket');
+});
+
+it('groups same-day feed likes from different actors into one bucket when grouping mode is date', () => {
+  const items: TimelineItem[] = [
+    {
+      type: 2,
+      cluster: {
+        label: 'Likes',
+        interactions: [
+          { id: 1, blogName: 'ActorOne', updatedAtUnix: 1718400000, createdAtUnix: 1718390000 },
+          { id: 2, blogName: 'ActorTwo', updatedAtUnix: 1718400300, createdAtUnix: 1718390300 },
+        ] as any,
+        sourceBoundaryKey: 'page:1:0',
+      },
+    } as TimelineItem,
+  ];
+
+  const renderable = buildRenderableTimelineItems({
+    items,
+    activityKinds: ['like', 'comment', 'post', 'reblog'],
+    interactionGroupingMode: 'date',
+    activityCardVariant: 'actor-context',
+    presentationPage: 'feed',
+    viewedBlogName: '',
+  });
+
+  expect(renderable).toHaveLength(1);
+  expect(renderable[0].type).toBe('activity-bucket');
+  if (renderable[0].type !== 'activity-bucket') return;
+  expect(renderable[0].bucket.interactions).toHaveLength(2);
 });

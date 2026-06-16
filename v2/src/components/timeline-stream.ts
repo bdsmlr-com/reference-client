@@ -22,7 +22,8 @@ export class TimelineStream extends LitElement {
 
   @property({ type: Array }) items: TimelineItem[] = [];
   @property({ type: Array }) activityKinds: ActivityKind[] = [...DEFAULT_ACTIVITY_KINDS];
-  @property({ type: Boolean }) showActorInCluster = false;
+  @property({ type: String }) interactionGroupingMode: 'date' | 'date+actor' = 'date';
+  @property({ type: String }) activityCardVariant: 'self-context' | 'actor-context' = 'self-context';
   @property({ type: String }) page: 'feed' | 'follower-feed' | 'activity' = 'feed';
   @property({ type: String }) viewedBlogName = '';
   @state() private clusterVisibleCounts = new Map<string, number>();
@@ -80,7 +81,7 @@ export class TimelineStream extends LitElement {
     const visibleCount = this.getVisibleCount(bucket.key, bucket.interactions.length);
     const visibleItems = bucket.interactions.slice(0, visibleCount);
     const remaining = bucket.interactions.length - visibleItems.length;
-    const actorSuffix = this.showActorInCluster && bucket.actor ? ` by @${bucket.actor}` : '';
+    const actorSuffix = this.interactionGroupingMode === 'date+actor' && bucket.actor ? ` by @${bucket.actor}` : '';
     const oldestDate = this.getDateKey(bucket.oldestInteractionUnix || bucket.latestInteractionUnix);
     const newestDate = this.getDateKey(bucket.latestInteractionUnix || bucket.oldestInteractionUnix);
     const dateLabel = oldestDate === newestDate
@@ -100,7 +101,8 @@ export class TimelineStream extends LitElement {
         <activity-grid
           compact
           .items=${visibleItems}
-          .showBlogChip=${!this.showActorInCluster}
+          .showBlogChip=${true}
+          .activityCardVariant=${this.activityCardVariant}
           .viewedBlogName=${this.viewedBlogName}
           @activity-click=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}
         ></activity-grid>
@@ -112,7 +114,8 @@ export class TimelineStream extends LitElement {
     const renderable = buildRenderableTimelineItems({
       items: this.items,
       activityKinds: this.activityKinds,
-      showActorInCluster: this.showActorInCluster,
+      interactionGroupingMode: this.interactionGroupingMode,
+      activityCardVariant: this.activityCardVariant,
       presentationPage: this.presentationPage,
       viewedBlogName: this.viewedBlogName,
     });

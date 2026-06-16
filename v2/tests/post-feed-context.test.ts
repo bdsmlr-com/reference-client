@@ -39,12 +39,15 @@ describe('post feed context', () => {
     expect(postSrc).toContain('<post-detail-content');
     expect(postSrc).not.toContain('<post-feed-item');
     expect(streamSrc).toContain("@property({ type: String }) page: 'feed' | 'follower-feed' | 'activity' = 'feed';");
+    expect(streamSrc).toContain("@property({ type: String }) interactionGroupingMode: 'date' | 'date+actor' = 'date';");
+    expect(streamSrc).toContain("@property({ type: String }) activityCardVariant: 'self-context' | 'actor-context' = 'self-context';");
     expect(streamSrc).toContain("@post-select=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}");
     expect(routeControllerSrc).toContain("interactionGroupingMode: 'date' | 'date+actor';");
     expect(routeControllerSrc).toContain("activityCardVariant: 'self-context' | 'actor-context';");
-    expect(routeControllerSrc).toContain("interactionGroupingMode: 'date',");
-    expect(routeControllerSrc).toContain("activityCardVariant: 'actor-context',");
-    expect(routeControllerSrc).toContain("activityCardVariant: 'self-context',");
+    expect(feedSrc).toContain('.interactionGroupingMode=${this.timelineRoute.interactionGroupingMode}');
+    expect(feedSrc).toContain('.activityCardVariant=${this.timelineRoute.activityCardVariant}');
+    expect(postsSrc).toContain('.interactionGroupingMode=${this.timelineRoute.interactionGroupingMode}');
+    expect(postsSrc).toContain('.activityCardVariant=${this.timelineRoute.activityCardVariant}');
     expect(streamSrc).toContain("detail: { post, posts, index: index >= 0 ? index : 0, from },");
     expect(streamSrc).toContain(".page=${this.page}");
   });
@@ -75,7 +78,8 @@ describe('post feed context', () => {
     const engagementSrc = readFileSync(join(ROOT, 'components/post-engagement.ts'), 'utf8');
 
     expect(feedItemSrc).toContain("const isPostShell = this.page === 'post';");
-    expect(feedItemSrc).toContain("${!isPostShell && bodyText ? html`<div class=\"card-body\">${bodyText}</div>` : ''}");
+    expect(feedItemSrc).toContain("const bodyHtml = post.content?.html || post.body || post.content?.text || post.content?.title || '';");
+    expect(feedItemSrc).toContain("${!isPostShell && bodyHtml ? html`<div class=\"card-body\">${unsafeHTML(sanitizeHtmlFragment(bodyHtml))}</div>` : ''}");
     expect(feedItemSrc).toContain("${!isPostShell && tags.length > 0 ? html`");
     expect(feedItemSrc).toContain("${!isPostShell ? html`");
     expect(detailSrc).toContain('<post-engagement');

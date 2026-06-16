@@ -22,7 +22,6 @@ export type TimelineFooterMode = 'timeline' | 'activity';
 
 type TimelineRouteDefinition = {
   streamPage: TimelineStreamPage;
-  showActorInCluster: boolean;
   interactionGroupingMode: 'date' | 'date+actor';
   activityCardVariant: 'self-context' | 'actor-context';
   footerMode: TimelineFooterMode;
@@ -35,7 +34,6 @@ type TimelineRouteDefinition = {
 const TIMELINE_ROUTE_DEFINITIONS: Record<TimelineRouteKind, TimelineRouteDefinition> = {
   following: {
     streamPage: 'feed',
-    showActorInCluster: true,
     interactionGroupingMode: 'date',
     activityCardVariant: 'actor-context',
     footerMode: 'activity',
@@ -46,7 +44,6 @@ const TIMELINE_ROUTE_DEFINITIONS: Record<TimelineRouteKind, TimelineRouteDefinit
   },
   followers: {
     streamPage: 'follower-feed',
-    showActorInCluster: true,
     interactionGroupingMode: 'date',
     activityCardVariant: 'actor-context',
     footerMode: 'activity',
@@ -57,7 +54,6 @@ const TIMELINE_ROUTE_DEFINITIONS: Record<TimelineRouteKind, TimelineRouteDefinit
   },
   activity: {
     streamPage: 'activity',
-    showActorInCluster: false,
     interactionGroupingMode: 'date',
     activityCardVariant: 'self-context',
     footerMode: 'timeline',

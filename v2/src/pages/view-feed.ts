@@ -717,7 +717,8 @@ export class ViewFeed extends LitElement {
                   .items=${this.timelineItems}
                   .page=${this.timelineRoute.streamPage}
                   .activityKinds=${this.activityKinds}
-                  .showActorInCluster=${this.timelineRoute.showActorInCluster}
+                  .interactionGroupingMode=${this.timelineRoute.interactionGroupingMode}
+                  .activityCardVariant=${this.timelineRoute.activityCardVariant}
                   @post-click=${this.handlePostClick}
                 ></timeline-stream>
               </div>

@@ -18,6 +18,22 @@ function isResultGroupItem(item: ActivityGridItem): item is Extract<ActivityGrid
   return 'kind' in item && item.kind === 'result_group';
 }
 
+function truncateSnippet(value: string, limit = 160): string {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  if (normalized.length <= limit) return normalized;
+  return `${normalized.slice(0, Math.max(0, limit - 3)).trimEnd()}...`;
+}
+
+function stripHtml(value: string): string {
+  return value.replace(/<[^>]*>/g, ' ');
+}
+
+function getTextOnlySnippet(post: ProcessedPost, limit = 120): string {
+  const raw = post.content?.text || post.body || post.content?.title || post.content?.quoteText || stripHtml(post.content?.html || '');
+  return truncateSnippet(raw || '', limit);
+}
+
 @customElement('activity-item')
 export class ActivityItem extends LitElement {
   static styles = [
@@ -61,6 +77,23 @@ export class ActivityItem extends LitElement {
         background: #000;
         position: relative;
         overflow: hidden;
+      }
+
+      .text-preview {
+        min-height: 180px;
+        padding: 14px 12px;
+        background: linear-gradient(180deg, color-mix(in srgb, var(--bg-panel-alt) 82%, white 18%), var(--bg-panel));
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: flex-start;
+      }
+
+      .text-snippet {
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--text-primary);
+        white-space: pre-wrap;
+        word-break: break-word;
       }
 
       :host([mode='masonry']) .media-container {
@@ -161,6 +194,7 @@ export class ActivityItem extends LitElement {
   @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
   @property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'activity';
   @property({ type: Boolean }) showBlogChip = true;
+  @property({ type: String }) activityCardVariant: 'self-context' | 'actor-context' = 'self-context';
   @property({ type: String }) viewedBlogName = '';
   @state() private mediaFailed = false;
 
@@ -220,18 +254,21 @@ export class ActivityItem extends LitElement {
       (this.interactionType === 'like' || this.interactionType === 'comment')
       && !!viewedBlog
       && chipBlog === viewedBlog;
-    const showBlogChip = this.showBlogChip
-      && (!!chipBlogName || !!chipBlogId)
-      && (
-        this.page === 'search'
-        || this.page === 'post'
-        || this.page === 'social'
-        || (
-          this.page === 'activity'
-          && (this.interactionType === 'like' || this.interactionType === 'comment' || this.interactionType === 'reblog')
-          && !shouldHideSelfInteractionChip
-        )
-      );
+    const showBlogChip = this.activityCardVariant === 'actor-context'
+      ? this.showBlogChip && (!!chipBlogName || !!chipBlogId)
+      : this.showBlogChip
+        && (!!chipBlogName || !!chipBlogId)
+        && (
+          this.page === 'search'
+          || this.page === 'post'
+          || this.page === 'social'
+          || (
+            this.page === 'activity'
+            && this.interactionType === 'reblog'
+            && !shouldHideSelfInteractionChip
+          )
+        );
+    const textSnippet = getTextOnlySnippet(p);
 
     const visibleDateUnix =
       (this.interactionType === 'like' || this.interactionType === 'comment')
@@ -241,19 +278,31 @@ export class ActivityItem extends LitElement {
     return html`
       <article class="card">
         ${renderCardOverlayLink(presentation.identity.permalink, `Open post ${p.id}`, (event: MouseEvent) => this.handleOverlayClick(event), this.mediaFailed)}
-        <div class="media-container">
-          <media-renderer
-            .src=${rawUrl}
-            .type=${renderType}
-            style="object-fit: ${this.mode === 'masonry' ? 'contain' : 'cover'};"
-            @media-state-change=${this.handleMediaStateChange}
-          ></media-renderer>
+        ${rawUrl ? html`
+          <div class="media-container">
+            <media-renderer
+              .src=${rawUrl}
+              .type=${renderType}
+              style="object-fit: ${this.mode === 'masonry' ? 'contain' : 'cover'};"
+              @media-state-change=${this.handleMediaStateChange}
+            ></media-renderer>
 
-          ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge" title="Post contains ${p.content.files.length} items">1 / ${p.content.files.length}</div>` : ''}
-          ${isAdmin && isDeleted ? html`<div class="admin-label">Deleted</div>` : nothing}
-          ${isAdmin && isOriginDeleted ? html`<div class="admin-label origin-deleted">Origin Deleted</div>` : nothing}
-          ${isAdmin && isTombstone ? html`<div class="admin-label tombstone">Tombstone</div>` : nothing}
-        </div>
+            ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge" title="Post contains ${p.content.files.length} items">1 / ${p.content.files.length}</div>` : ''}
+            ${isAdmin && isDeleted ? html`<div class="admin-label">Deleted</div>` : nothing}
+            ${isAdmin && isOriginDeleted ? html`<div class="admin-label origin-deleted">Origin Deleted</div>` : nothing}
+            ${isAdmin && isTombstone ? html`<div class="admin-label tombstone">Tombstone</div>` : nothing}
+          </div>
+        ` : textSnippet ? html`
+          <div class="text-preview">
+            <div class="text-snippet">${textSnippet}</div>
+          </div>
+        ` : html`
+          <div class="media-container">
+            ${isAdmin && isDeleted ? html`<div class="admin-label">Deleted</div>` : nothing}
+            ${isAdmin && isOriginDeleted ? html`<div class="admin-label origin-deleted">Origin Deleted</div>` : nothing}
+            ${isAdmin && isTombstone ? html`<div class="admin-label tombstone">Tombstone</div>` : nothing}
+          </div>
+        `}
 
         <div class="card-info">
           <div class="meta-line">
@@ -358,6 +407,7 @@ export class ActivityGrid extends LitElement {
   @property({ type: String, reflect: true }) mode: 'grid' | 'masonry' = 'grid';
   @property({ type: String }) page: 'feed' | 'archive' | 'search' | 'activity' | 'post' | 'social' = 'activity';
   @property({ type: Boolean }) showBlogChip = true;
+  @property({ type: String }) activityCardVariant: 'self-context' | 'actor-context' = 'self-context';
   @property({ type: String }) viewedBlogName = '';
 
   private getMasonryColumnCount(): number {
@@ -388,7 +438,7 @@ export class ActivityGrid extends LitElement {
               ${column.map((item) => html`
                 ${isResultGroupItem(item)
                   ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label} .originPostId=${item.originPostId} .page=${this.page} mode="masonry"></search-group-card>`
-                  : html`<activity-item .post=${item.post} .interactionType=${item.type} .page=${this.page} .showBlogChip=${this.showBlogChip} .viewedBlogName=${this.viewedBlogName} mode="masonry"></activity-item>`}
+                  : html`<activity-item .post=${item.post} .interactionType=${item.type} .page=${this.page} .showBlogChip=${this.showBlogChip} .activityCardVariant=${this.activityCardVariant} .viewedBlogName=${this.viewedBlogName} mode="masonry"></activity-item>`}
               `)}
             </div>
           `)}
@@ -401,7 +451,7 @@ export class ActivityGrid extends LitElement {
         ${this.items.map((item) => html`
           ${isResultGroupItem(item)
             ? html`<search-group-card .post=${item.post} .count=${item.count} .label=${item.label} .originPostId=${item.originPostId} .page=${this.page} mode="grid"></search-group-card>`
-            : html`<activity-item .post=${item.post} .interactionType=${item.type} .page=${this.page} .showBlogChip=${this.showBlogChip} .viewedBlogName=${this.viewedBlogName} mode="grid"></activity-item>`}
+            : html`<activity-item .post=${item.post} .interactionType=${item.type} .page=${this.page} .showBlogChip=${this.showBlogChip} .activityCardVariant=${this.activityCardVariant} .viewedBlogName=${this.viewedBlogName} mode="grid"></activity-item>`}
         `)}
       </section>
     `;
