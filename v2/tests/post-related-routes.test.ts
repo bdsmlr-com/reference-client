@@ -26,7 +26,8 @@ describe('post related routes', () => {
     expect(configSrc).toContain('more_like_this_on_post?: boolean;');
     expect(configSrc).toContain('reblog_composer?: boolean;');
     expect(configSrc).toContain("media_format_by_surface?: Partial<Record<MediaSurface, MediaSurfaceFormat>>;");
-    expect(configSrc).toContain("VITE_MEDIA_FORMAT_LIGHTBOX");
+    expect(configSrc).toContain("fetchImpl('/v2/runtime-config'");
+    expect(configSrc).toContain('export interface RuntimeConfigPayload');
     expect(configSrc).toContain('export const FEATURE_FLAGS');
     expect(mediaConfigSrc).toContain('\"reblog_composer\": false');
     expect(mediaConfigSrc).toContain('\"media_format_by_surface\"');

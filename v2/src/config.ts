@@ -121,6 +121,10 @@ export interface FeatureFlagsConfig {
   media_format_by_surface?: Partial<Record<MediaSurface, MediaSurfaceFormat>>;
 }
 
+export interface RuntimeConfigPayload {
+  features?: FeatureFlagsConfig;
+}
+
 export interface RenderContractConfig {
   pages: Record<string, RenderPageConfig>;
   cards: Record<string, RenderCardConfig>;
@@ -136,65 +140,82 @@ export const LINK_CONFIG: LinkConfig = (mediaConfig as any).links as LinkConfig;
 export const POST_RENDER_POLICY_CONFIG: PostRenderPolicyConfig = (mediaConfig as any).post_render_policy as PostRenderPolicyConfig;
 export const RENDER_CONTRACT_CONFIG: RenderContractConfig = (mediaConfig as any).render as RenderContractConfig;
 
-const MEDIA_FORMAT_SURFACE_ENV_KEYS: Record<MediaSurface, string> = {
-  card: 'VITE_MEDIA_FORMAT_CARD',
-  masonry: 'VITE_MEDIA_FORMAT_MASONRY',
-  detail: 'VITE_MEDIA_FORMAT_DETAIL',
-  poster: 'VITE_MEDIA_FORMAT_POSTER',
-  'gallery-grid': 'VITE_MEDIA_FORMAT_GALLERY_GRID',
-  'gallery-masonry': 'VITE_MEDIA_FORMAT_GALLERY_MASONRY',
-  feed: 'VITE_MEDIA_FORMAT_FEED',
-  lightbox: 'VITE_MEDIA_FORMAT_LIGHTBOX',
-  'post-detail': 'VITE_MEDIA_FORMAT_POST_DETAIL',
-  gutter: 'VITE_MEDIA_FORMAT_GUTTER',
-};
+function cloneFeatureFlagsConfig(source: FeatureFlagsConfig): FeatureFlagsConfig {
+  return {
+    ...source,
+    media_format_by_surface: { ...(source.media_format_by_surface || {}) },
+  };
+}
 
-function readEnvString(name: string): string | undefined {
-  const value = (import.meta as any).env?.[name];
+function sanitizeSurfaceFormat(value: unknown): MediaSurfaceFormat | undefined {
   if (typeof value !== 'string') return undefined;
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : undefined;
-}
-
-function readEnvBooleanFlag(name: string): boolean | undefined {
-  const value = readEnvString(name);
-  if (!value) return undefined;
-  const normalized = value.toLowerCase();
-  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
-  return undefined;
-}
-
-function readEnvSurfaceFormat(name: string): MediaSurfaceFormat | undefined {
-  const value = readEnvString(name);
-  if (!value) return undefined;
   const normalized = value.trim().toLowerCase();
   const allowed = new Set<MediaSurfaceFormat>(['raw', 'card', 'masonry', 'detail', 'poster', 'gallery-grid', 'gallery-masonry', 'feed', 'lightbox', 'post-detail', 'gutter']);
   return allowed.has(normalized as MediaSurfaceFormat) ? (normalized as MediaSurfaceFormat) : undefined;
 }
 
-function buildFeatureFlags(): FeatureFlagsConfig {
-  const defaults = ((mediaConfig as any).features || {}) as FeatureFlagsConfig;
-  // Default per-surface formats live in media-config.json. Current intended defaults are:
-  // post-detail -> raw, everything else -> its normal surface alias (card, masonry, detail, etc.)
-  const mediaFormatDefaults = { ...(defaults.media_format_by_surface || {}) } as Partial<Record<MediaSurface, MediaSurfaceFormat>>;
+const DEFAULT_FEATURE_FLAGS: FeatureFlagsConfig = cloneFeatureFlagsConfig(((mediaConfig as any).features || {}) as FeatureFlagsConfig);
 
-  for (const [surface, envKey] of Object.entries(MEDIA_FORMAT_SURFACE_ENV_KEYS)) {
-    const override = readEnvSurfaceFormat(envKey);
-    if (override !== undefined) {
-      mediaFormatDefaults[surface as MediaSurface] = override;
-    }
+export const FEATURE_FLAGS: FeatureFlagsConfig = cloneFeatureFlagsConfig(DEFAULT_FEATURE_FLAGS);
+
+let runtimeConfigLoaded = false;
+let runtimeConfigPromise: Promise<void> | null = null;
+
+function applyRuntimeFeatureFlags(override: FeatureFlagsConfig | undefined): void {
+  if (!override || typeof override !== 'object') return;
+
+  if (typeof override.more_like_this_on_post === 'boolean') {
+    FEATURE_FLAGS.more_like_this_on_post = override.more_like_this_on_post;
   }
-
-  return {
-    ...defaults,
-    more_like_this_on_post: readEnvBooleanFlag('VITE_FF_MORE_LIKE_THIS_ON_POST') ?? defaults.more_like_this_on_post,
-    reblog_composer: readEnvBooleanFlag('VITE_FF_REBLOG_COMPOSER') ?? defaults.reblog_composer,
-    media_format_by_surface: mediaFormatDefaults,
-  };
+  if (typeof override.reblog_composer === 'boolean') {
+    FEATURE_FLAGS.reblog_composer = override.reblog_composer;
+  }
+  if (override.media_format_by_surface && typeof override.media_format_by_surface === 'object') {
+    const merged = { ...(FEATURE_FLAGS.media_format_by_surface || {}) } as Partial<Record<MediaSurface, MediaSurfaceFormat>>;
+    for (const [surface, value] of Object.entries(override.media_format_by_surface)) {
+      const normalized = sanitizeSurfaceFormat(value);
+      if (!normalized) continue;
+      merged[surface as MediaSurface] = normalized;
+    }
+    FEATURE_FLAGS.media_format_by_surface = merged;
+  }
 }
 
-export const FEATURE_FLAGS: FeatureFlagsConfig = buildFeatureFlags();
+export function applyRuntimeConfig(payload: RuntimeConfigPayload | null | undefined): void {
+  if (!payload || typeof payload !== 'object') return;
+  applyRuntimeFeatureFlags(payload.features);
+}
+
+export async function ensureRuntimeConfigLoaded(fetchImpl: typeof fetch = fetch): Promise<void> {
+  if (runtimeConfigLoaded) return;
+  if (runtimeConfigPromise) return runtimeConfigPromise;
+  runtimeConfigPromise = (async () => {
+    try {
+      const response = await fetchImpl('/v2/runtime-config', {
+        credentials: 'same-origin',
+        cache: 'no-store',
+      });
+      if (response.ok) {
+        const payload = (await response.json()) as RuntimeConfigPayload;
+        applyRuntimeConfig(payload);
+      }
+    } catch (error) {
+      console.warn('Failed to load runtime config, using defaults', error);
+    } finally {
+      runtimeConfigLoaded = true;
+      runtimeConfigPromise = null;
+    }
+  })();
+  return runtimeConfigPromise;
+}
+
+export function resetRuntimeConfigForTests(): void {
+  FEATURE_FLAGS.more_like_this_on_post = DEFAULT_FEATURE_FLAGS.more_like_this_on_post;
+  FEATURE_FLAGS.reblog_composer = DEFAULT_FEATURE_FLAGS.reblog_composer;
+  FEATURE_FLAGS.media_format_by_surface = { ...(DEFAULT_FEATURE_FLAGS.media_format_by_surface || {}) };
+  runtimeConfigLoaded = false;
+  runtimeConfigPromise = null;
+}
 
 // Build/runtime environment selection with safe fallback.
 export const ACTIVE_ENV = ((import.meta as any).env?.VITE_BUILD_ENV || 'staging') as string;

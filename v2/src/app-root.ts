@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { Router } from '@lit-labs/router';
-import { FEATURE_FLAGS } from './config.js';
+import { ensureRuntimeConfigLoaded, FEATURE_FLAGS } from './config.js';
 import './pages/view-home.js';
 import './pages/view-posts.js';
 import './pages/view-feed.js';
@@ -146,16 +146,17 @@ export class AppRoot extends LitElement {
   @state() private authError: string | null = null;
   @state() private authenticated = false;
   @state() private checkingAuth = true;
+  @state() private runtimeConfigReady = false;
 
   constructor() {
     super();
     injectGlobalStyles();
     initTheme();
-    this.checkAuth();
     const validation = validateRenderContract(loadRenderContract());
     if (!validation.ok) {
       this.contractErrors = validation.errors;
     }
+    this.initializeApp();
   }
 
   connectedCallback() {
@@ -166,6 +167,12 @@ export class AppRoot extends LitElement {
     super.connectedCallback();
     syncAdminModeFromUrl();
     this.addEventListener('post-click', this.handlePostClick as any);
+  }
+
+  private async initializeApp() {
+    await ensureRuntimeConfigLoaded();
+    this.runtimeConfigReady = true;
+    await this.checkAuth();
   }
 
   private normalizeCanonicalPathname(): boolean {
@@ -255,7 +262,7 @@ export class AppRoot extends LitElement {
   }
 
   render() {
-    if (this.checkingAuth) {
+    if (!this.runtimeConfigReady || this.checkingAuth) {
       return html``;
     }
 
