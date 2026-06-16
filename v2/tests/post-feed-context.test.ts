@@ -17,6 +17,7 @@ describe('post feed context', () => {
     expect(src).toContain('EventNames.POST_SELECT');
     expect(src).toContain("detail: { post: this.post, from },");
     expect(src).toContain('presentation.identity.postTypeIcon');
+    expect(src).toContain("const useMediaClickZone = presentation.layout.clickZone === 'media'");
     expect(src).not.toContain('POST_TYPE_ICONS[post.type as PostType]');
   });
 
@@ -39,6 +40,7 @@ describe('post feed context', () => {
     expect(streamSrc).toContain("@property({ type: String }) page: 'feed' | 'follower-feed' | 'activity' = 'feed';");
     expect(streamSrc).toContain("@post-select=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}");
     expect(streamSrc).toContain("detail: { post, posts, index: index >= 0 ? index : 0, from },");
+    expect(streamSrc).toContain(".page=${this.page}");
   });
 
   it('threads explicit page context into activity-grid for search and archive surfaces', () => {

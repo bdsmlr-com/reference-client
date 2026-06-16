@@ -35,14 +35,12 @@ describe('native card link behavior', () => {
     expect(groupCardSrc).toContain('this.handleClick();');
   });
 
-  it('keeps specific interactive controls above the overlay link', () => {
-    const postCardSrc = read('post-card.ts');
+  it('uses surface-driven click zones so large timeline cards only bind the media area', () => {
     const feedItemSrc = read('post-feed-item.ts');
-    const groupCardSrc = read('search-group-card.ts');
+    const presentationSrc = readFileSync(join(process.cwd(), 'src/services/post-presentation.ts'), 'utf8');
 
-    expect(postCardSrc).toContain('post-actions,');
-    expect(feedItemSrc).toContain('.tag-link,');
-    expect(feedItemSrc).toContain('post-actions,');
-    expect(groupCardSrc).toContain('blog-identity {');
+    expect(feedItemSrc).toContain("const useMediaClickZone = presentation.layout.clickZone === 'media'");
+    expect(feedItemSrc).toContain('<div class="media-container">');
+    expect(presentationSrc).toContain("clickZone: ctx.surface === 'timeline' ? 'media' : 'card'");
   });
 });

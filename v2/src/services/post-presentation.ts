@@ -172,12 +172,13 @@ function buildIdentity(post: ProcessedPost) {
   };
 }
 
-function buildLayout(ctx: NormalizedPresentationContext) {
+function buildLayout(ctx: NormalizedPresentationContext): PostPresentationModel['layout'] {
   return {
     showBlogChip: ctx.surface !== 'lightbox',
     compactMetadata: ctx.surface === 'card' || ctx.page === 'feed',
     showTags: ctx.surface !== 'lightbox',
     showRecommendations: FEATURE_FLAGS.more_like_this_on_post === true && (ctx.page === 'post' || ctx.page === 'activity'),
+    clickZone: ctx.surface === 'timeline' ? 'media' : 'card',
   };
 }
 

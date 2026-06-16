@@ -153,11 +153,14 @@ export interface PresentationIdentity {
   summaryLine: string;
 }
 
+export type PresentationClickZone = 'card' | 'media';
+
 export interface PresentationLayout {
   showBlogChip: boolean;
   compactMetadata: boolean;
   showTags: boolean;
   showRecommendations: boolean;
+  clickZone: PresentationClickZone;
 }
 
 export interface MediaPresentationDescriptor extends MediaInfo {

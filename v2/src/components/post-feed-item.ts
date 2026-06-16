@@ -65,11 +65,6 @@ export class PostFeedItem extends LitElement {
         z-index: 2;
       }
 
-      .card > :not(.card-overlay-link) {
-        position: relative;
-        z-index: 1;
-      }
-
       .card:hover {
         box-shadow: 0 22px 40px rgba(0, 0, 0, 0.22);
         transform: translateY(-2px);
@@ -126,6 +121,7 @@ export class PostFeedItem extends LitElement {
         width: 100%;
         background: #000;
         line-height: 0;
+        position: relative;
       }
 
       .card.post-shell .media-container {
@@ -215,14 +211,6 @@ export class PostFeedItem extends LitElement {
         word-break: break-all;
       }
 
-      .blog-name,
-      .tag-link,
-      .link-container,
-      post-actions,
-      blog-identity {
-        position: relative;
-        z-index: 3;
-      }
     `,
   ];
 
@@ -311,11 +299,23 @@ export class PostFeedItem extends LitElement {
       : (media.url || media.videoUrl || media.audioUrl);
     const posterSrc = media.type === 'video' && media.url && media.url !== rawUrl ? media.url : undefined;
     const selfActivityBadge = this.renderSelfActivityBadge(post);
+    const useMediaClickZone = presentation.layout.clickZone === 'media' && !this.disableClick && !isPostShell;
     let mediaHtml;
     if (media.type === 'image' || media.type === 'video') {
       if (rawUrl) {
         mediaHtml = html`
           <div class="media-container">
+            ${useMediaClickZone ? html`
+              <a
+                class="card-overlay-link"
+                href=${presentation.identity.permalink.href}
+                target=${presentation.identity.permalink.target}
+                rel=${presentation.identity.permalink.rel || nothing}
+                title=${presentation.identity.permalink.title || nothing}
+                aria-label=${`Open post ${post.id}`}
+                @click=${this.handleOverlayClick}
+              ></a>
+            ` : nothing}
             <media-renderer
               .src=${rawUrl}
               .posterSrc=${posterSrc}
@@ -331,17 +331,6 @@ export class PostFeedItem extends LitElement {
 
     return html`
       <article class="card ${this.disableClick ? 'non-interactive' : ''} ${isPostShell ? 'post-shell' : ''}">
-        ${!this.disableClick && !isPostShell ? html`
-          <a
-            class="card-overlay-link"
-            href=${presentation.identity.permalink.href}
-            target=${presentation.identity.permalink.target}
-            rel=${presentation.identity.permalink.rel || nothing}
-            title=${presentation.identity.permalink.title || nothing}
-            aria-label=${`Open post ${post.id}`}
-            @click=${this.handleOverlayClick}
-          ></a>
-        ` : nothing}
         <header class="card-header">
           <div class="blog-info">
             ${isReblog ? html`
