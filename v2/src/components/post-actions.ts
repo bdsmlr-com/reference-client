@@ -7,6 +7,7 @@ import { toPresentationModel } from '../services/post-presentation.js';
 import { getAuthUser } from '../state/auth-state.js';
 import { deletePost as deletePostRequest } from '../services/api.js';
 import { buildPageUrl } from '../services/blog-resolver.js';
+import { FEATURE_FLAGS } from '../config.js';
 import type { ProcessedPost } from '../types/post.js';
 
 const engagementState = createEngagementStateController(apiClient.engagement);
@@ -495,7 +496,25 @@ export class PostActions extends LitElement {
     event.preventDefault();
     event.stopPropagation();
 
-    if (!this.post || this.reblogSubmitting) return;
+    const post = this.post;
+    if (!post || this.reblogSubmitting) return;
+
+    if (FEATURE_FLAGS.reblog_composer !== true) {
+      const previousReblogCount = this.reblogCount ?? 0;
+      try {
+        await this.ensureActorStateHydrated();
+        this.reblogging = true;
+        this.reblogCount = previousReblogCount + 1;
+        await engagementState.reblogPost(post.id);
+        this.reblogCount = engagementState.getReblogCount(post.id) ?? previousReblogCount + 1;
+      } catch (error) {
+        console.error('Failed to reblog post', error);
+        this.reblogCount = engagementState.getReblogCount(post.id) ?? previousReblogCount;
+      } finally {
+        this.reblogging = false;
+      }
+      return;
+    }
 
     this.commentModalOpen = false;
     this.commentBody = '';

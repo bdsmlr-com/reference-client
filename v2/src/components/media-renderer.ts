@@ -202,9 +202,10 @@ export class MediaRenderer extends LitElement {
     const isAnim = isAnimation(this.src);
     const resolvedUrl = resolveMediaUrl(this.src, this.type);
     const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';
-    // Detail view now uses raw still assets for gif/webp, so only non-detail surfaces
-    // should coerce animations through the mp4/video path.
-    const treatAnimationAsVideo = isAnim && !isDetailSurface;
+    const usesRawAlias = resolvedUrl.includes('/raw/s3://');
+    // Detail view and raw-alias surfaces keep gif/webp as still media; only transformed
+    // non-detail surfaces should coerce animations through the mp4/video path.
+    const treatAnimationAsVideo = isAnim && !isDetailSurface && !usesRawAlias;
     const isVideoSource = treatAnimationAsVideo || isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');
     const posterSource = this.posterSrc || this.src;
     const posterUrl = resolveMediaUrl(posterSource, 'poster');

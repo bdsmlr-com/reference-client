@@ -6,6 +6,7 @@ import mediaConfig from '../media-config.json';
 
 export type ImgproxyMode = 'unsafe' | 'fixed';
 export type LinkMode = 'internal' | 'legacy' | 'external';
+export type MediaRawSurface = 'card' | 'masonry' | 'detail' | 'poster' | 'gallery-grid' | 'gallery-masonry' | 'feed' | 'lightbox' | 'post-detail' | 'gutter';
 
 export interface MediaPreset {
   width: number;
@@ -115,6 +116,8 @@ export interface RenderInteractionConfig {
 
 export interface FeatureFlagsConfig {
   more_like_this_on_post?: boolean;
+  reblog_composer?: boolean;
+  media_raw_by_surface?: Partial<Record<MediaRawSurface, boolean>>;
 }
 
 export interface RenderContractConfig {
@@ -131,7 +134,52 @@ export const ENV_CONFIGS: Record<string, AppConfig> = mediaConfig.environments a
 export const LINK_CONFIG: LinkConfig = (mediaConfig as any).links as LinkConfig;
 export const POST_RENDER_POLICY_CONFIG: PostRenderPolicyConfig = (mediaConfig as any).post_render_policy as PostRenderPolicyConfig;
 export const RENDER_CONTRACT_CONFIG: RenderContractConfig = (mediaConfig as any).render as RenderContractConfig;
-export const FEATURE_FLAGS: FeatureFlagsConfig = (mediaConfig as any).features || {};
+
+const MEDIA_RAW_SURFACE_ENV_KEYS: Record<MediaRawSurface, string> = {
+  card: 'VITE_MEDIA_RAW_CARD',
+  masonry: 'VITE_MEDIA_RAW_MASONRY',
+  detail: 'VITE_MEDIA_RAW_DETAIL',
+  poster: 'VITE_MEDIA_RAW_POSTER',
+  'gallery-grid': 'VITE_MEDIA_RAW_GALLERY_GRID',
+  'gallery-masonry': 'VITE_MEDIA_RAW_GALLERY_MASONRY',
+  feed: 'VITE_MEDIA_RAW_FEED',
+  lightbox: 'VITE_MEDIA_RAW_LIGHTBOX',
+  'post-detail': 'VITE_MEDIA_RAW_POST_DETAIL',
+  gutter: 'VITE_MEDIA_RAW_GUTTER',
+};
+
+function parseBooleanEnvFlag(value: unknown): boolean | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return undefined;
+}
+
+function readEnvFlag(name: string): boolean | undefined {
+  return parseBooleanEnvFlag((import.meta as any).env?.[name]);
+}
+
+function buildFeatureFlags(): FeatureFlagsConfig {
+  const defaults = ((mediaConfig as any).features || {}) as FeatureFlagsConfig;
+  const mediaRawDefaults = { ...(defaults.media_raw_by_surface || {}) } as Partial<Record<MediaRawSurface, boolean>>;
+
+  for (const [surface, envKey] of Object.entries(MEDIA_RAW_SURFACE_ENV_KEYS)) {
+    const override = readEnvFlag(envKey);
+    if (override !== undefined) {
+      mediaRawDefaults[surface as MediaRawSurface] = override;
+    }
+  }
+
+  return {
+    ...defaults,
+    more_like_this_on_post: readEnvFlag('VITE_FF_MORE_LIKE_THIS_ON_POST') ?? defaults.more_like_this_on_post,
+    reblog_composer: readEnvFlag('VITE_FF_REBLOG_COMPOSER') ?? defaults.reblog_composer,
+    media_raw_by_surface: mediaRawDefaults,
+  };
+}
+
+export const FEATURE_FLAGS: FeatureFlagsConfig = buildFeatureFlags();
 
 // Build/runtime environment selection with safe fallback.
 export const ACTIVE_ENV = ((import.meta as any).env?.VITE_BUILD_ENV || 'staging') as string;

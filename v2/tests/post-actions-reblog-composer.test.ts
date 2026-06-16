@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import '../src/components/post-actions.js';
 import { apiClient } from '../src/services/client.js';
 import { clearAuthUser, setAuthUser } from '../src/state/auth-state.js';
+import { FEATURE_FLAGS } from '../src/config.js';
 
 async function flush(): Promise<void> {
   await Promise.resolve();
@@ -44,7 +45,14 @@ function makePost(id = 42): any {
 }
 
 describe('post-actions reblog composer', () => {
+  const originalReblogComposerFlag = FEATURE_FLAGS.reblog_composer;
+
+  beforeEach(() => {
+    FEATURE_FLAGS.reblog_composer = true;
+  });
+
   afterEach(() => {
+    FEATURE_FLAGS.reblog_composer = originalReblogComposerFlag;
     clearAuthUser();
     document.body.innerHTML = '';
   });
@@ -67,7 +75,7 @@ describe('post-actions reblog composer', () => {
     expect(textarea).toBeTruthy();
     expect(textarea?.value).toBe('');
     expect(el.shadowRoot?.querySelector('[aria-label="Reblog composer"]')).toBeTruthy();
-      expect(el.shadowRoot?.textContent).toContain('Tags (optional)');
+    expect(el.shadowRoot?.textContent).toContain('Tags (optional)');
     expect(el.shadowRoot?.querySelector('.reblog-note')).toBe(textarea);
   });
 

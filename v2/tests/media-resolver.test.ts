@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { toS3Scheme, resolveMediaUrl, isAnimation, isNativeVideo, toOriginFallbackUrl, probeNextBucket, resolvePostDetailMediaUrl } from '../src/services/media-resolver.js';
-import { CONFIG } from '../src/config.js';
+import { CONFIG, FEATURE_FLAGS } from '../src/config.js';
 import { BUCKET_LIST } from '../src/services/media-resolver.js';
 
 describe('Media Resolver', () => {
@@ -33,6 +33,7 @@ describe('Media Resolver', () => {
     // Default to staging-like config
     CONFIG.imgproxyMode = 'unsafe';
     CONFIG.mediaProxyBase = 'https://imgproxy.i.bdsmlr.com';
+    FEATURE_FLAGS.media_raw_by_surface = { 'post-detail': true };
   });
 
   it('supports staging fixed host media.i for alias URLs', () => {
@@ -91,6 +92,38 @@ describe('Media Resolver', () => {
   });
 
   describe('resolveMediaUrl', () => {
+    it('can force raw alias resolution for card surfaces via feature flag', () => {
+      CONFIG.imgproxyMode = 'fixed';
+      CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
+      FEATURE_FLAGS.media_raw_by_surface = { card: true };
+
+      const url = resolveMediaUrl('/uploads/foo.jpg', 'card');
+
+      expect(url).toBe('https://media.bdsmlr.com/raw/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
+    });
+
+    it('can force raw alias resolution for lightbox surfaces via feature flag', () => {
+      CONFIG.imgproxyMode = 'fixed';
+      CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
+      FEATURE_FLAGS.media_raw_by_surface = { lightbox: true };
+
+      const url = resolveMediaUrl('/uploads/foo.jpg', 'lightbox');
+
+      expect(url).toBe('https://media.bdsmlr.com/raw/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
+    });
+
+    it('keeps animated feed media as raw gif/webp when raw feed mode is enabled', () => {
+      CONFIG.imgproxyMode = 'fixed';
+      CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
+      FEATURE_FLAGS.media_raw_by_surface = { feed: true };
+      const src = 'https://ocdn012.bdsmlr.com/uploads/foo.gif?e=123&t=abc';
+
+      const url = resolveMediaUrl(src, 'feed');
+
+      expect(url).toBe('https://media.bdsmlr.com/raw/s3://ocdn012.bdsmlr.com/uploads/foo.gif?e=123&t=abc');
+      expect(url).not.toContain('format:mp4');
+      expect(url).not.toContain('/masonry/s3://');
+    });
     it('should generate an unsafe URL in staging mode', () => {
       CONFIG.imgproxyMode = 'unsafe';
       const url = resolveMediaUrl('/uploads/foo.jpg', 'gallery-grid');
@@ -124,11 +157,11 @@ describe('Media Resolver', () => {
       expect(url).toContain('media.bdsmlr.com/detail/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
     });
 
-    it('should resolve post-detail through the lightbox alias in fixed mode', () => {
+    it('keeps post-detail on the raw alias by default in fixed mode', () => {
       CONFIG.imgproxyMode = 'fixed';
       CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
       const url = resolveMediaUrl('/uploads/foo.jpg', 'post-detail');
-      expect(url).toContain('media.bdsmlr.com/detail/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
+      expect(url).toContain('media.bdsmlr.com/raw/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
     });
 
     it('should re-alias ergonomic s3 media URLs for lightbox', () => {

@@ -447,7 +447,20 @@
     "by_env": {}
   },
   "features": {
-    "more_like_this_on_post": false
+    "more_like_this_on_post": false,
+    "reblog_composer": false,
+    "media_raw_by_surface": {
+      "card": false,
+      "masonry": false,
+      "detail": false,
+      "poster": false,
+      "gallery-grid": false,
+      "gallery-masonry": false,
+      "feed": false,
+      "lightbox": false,
+      "post-detail": true,
+      "gutter": false
+    }
   },
   "render": {
     "pages": {

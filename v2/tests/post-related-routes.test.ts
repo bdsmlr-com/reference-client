@@ -19,11 +19,18 @@ describe('post related routes', () => {
     const detailSrc = readFileSync(join(ROOT, 'components/post-detail-content.ts'), 'utf8');
     const presentationSrc = readFileSync(join(ROOT, 'services/post-presentation.ts'), 'utf8');
     const configSrc = readFileSync(join(ROOT, 'config.ts'), 'utf8');
+    const mediaConfigSrc = readFileSync(join(process.cwd(), 'media-config.json'), 'utf8');
 
     expect(detailSrc).toContain('.showBrowseLink=${true}');
     expect(presentationSrc).toContain("showRecommendations: FEATURE_FLAGS.more_like_this_on_post === true && (ctx.page === 'post' || ctx.page === 'activity')");
     expect(configSrc).toContain('more_like_this_on_post?: boolean;');
+    expect(configSrc).toContain('reblog_composer?: boolean;');
+    expect(configSrc).toContain('media_raw_by_surface?: Partial<Record<MediaRawSurface, boolean>>;');
+    expect(configSrc).toContain("VITE_MEDIA_RAW_LIGHTBOX");
     expect(configSrc).toContain('export const FEATURE_FLAGS');
+    expect(mediaConfigSrc).toContain('\"reblog_composer\": false');
+    expect(mediaConfigSrc).toContain('\"media_raw_by_surface\"');
+    expect(mediaConfigSrc).toContain('\"post-detail\": true');
   });
 
   it('related page renders perspective tabs for default, you, and blog-scoped variants', () => {

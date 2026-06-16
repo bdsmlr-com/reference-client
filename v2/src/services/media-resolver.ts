@@ -3,7 +3,7 @@
  * Supports environment-specific routing (unsafe vs fixed paths).
  */
 
-import { CONFIG, MEDIA_PRESETS } from '../config.js';
+import { CONFIG, FEATURE_FLAGS, MEDIA_PRESETS } from '../config.js';
 import { isAdminMode } from './blog-resolver.js';
 
 export type MediaRenderType = 'card' | 'masonry' | 'detail' | 'poster' | 'gallery-grid' | 'gallery-masonry' | 'feed' | 'lightbox' | 'post-detail' | 'gutter';
@@ -39,6 +39,25 @@ function mediaPathForDetection(url: string | undefined): string {
     checkUrl = url.split('/plain/s3://')[1];
   }
   return checkUrl.split('?')[0].toLowerCase();
+}
+
+function mediaAliasBase(): string {
+  return CONFIG.mediaProxyBase.replace('imgproxy.i.', 'media.i.');
+}
+
+function isRawMediaEnabled(type: MediaRenderType): boolean {
+  return FEATURE_FLAGS.media_raw_by_surface?.[type] === true;
+}
+
+function toRawAliasUrl(url: string | undefined): string {
+  if (!url) return '';
+  if (url.includes('/raw/s3://')) return url;
+  const [s3Url, queryParams] = toS3Scheme(url);
+  if (!s3Url || !s3Url.startsWith('s3://')) {
+    return url;
+  }
+  const queryString = queryParams ? `?${queryParams}` : '';
+  return `${mediaAliasBase()}/raw/${s3Url}${queryString}`;
 }
 
 /**
@@ -115,6 +134,11 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
   }
 
   const [s3Url, queryParams] = toS3Scheme(url);
+
+  if (isRawMediaEnabled(type)) {
+    return toRawAliasUrl(url);
+  }
+
   const canonicalType = canonicalMediaType(type);
   const preset = MEDIA_PRESETS[canonicalType] || MEDIA_PRESETS[type];
   const aliasType = canonicalType;
@@ -136,7 +160,7 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
   if (currentMode === 'fixed' || currentMode === 'ergonomic') {
     // FIXED PATH MODE: Uses pre-configured gateway aliases
     // Pattern: /media.i.bdsmlr.com/<type>/s3://bucket/path?sig
-    const base = CONFIG.mediaProxyBase.replace('imgproxy.i.', 'media.i.');
+    const base = mediaAliasBase();
     // Note: We use the 'type' (e.g. 'lightbox', 'feed') directly as the Nginx alias
     return `${base}/${aliasType}/${s3Url}${queryString}`;
   }
@@ -217,14 +241,18 @@ export function resolvePostDetailMediaUrl(url: string | undefined): string {
     return url;
   }
 
+  if (isRawMediaEnabled('post-detail')) {
+    return toRawAliasUrl(url);
+  }
+
   const [s3Url, queryParams] = toS3Scheme(url);
   if (!s3Url || !s3Url.startsWith('s3://')) {
     return url;
   }
 
-  const base = CONFIG.mediaProxyBase.replace('imgproxy.i.', 'media.i.');
+  const base = mediaAliasBase();
   const queryString = queryParams ? `?${queryParams}` : '';
-  return `${base}/raw/${s3Url}${queryString}`;
+  return `${base}/detail/${s3Url}${queryString}`;
 }
 
 /**
