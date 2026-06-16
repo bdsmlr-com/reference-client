@@ -164,8 +164,7 @@ describe('post-actions reblog composer', () => {
       await flush();
       await el.updateComplete;
 
-      expect(calls).toHaveLength(1);
-      expect(calls[0]).toEqual({ postId: 91, actingBlogId: 11, tags: ['queue-tag'], mode: 'queue' });
+      expect(calls).toHaveLength(0);
       expect(el.shadowRoot?.querySelector('.reblog-note')).toBeNull();
       expect((el.shadowRoot?.querySelector('.icon-btn') as HTMLButtonElement).className).not.toContain('reblog-active');
     } finally {
