@@ -194,7 +194,8 @@ export class BlogHeader extends LitElement {
       }
 
       .summary-title,
-      .summary-description {
+      .summary-description,
+      .summary-stats {
         color: var(--text-muted);
         min-width: 0;
       }
@@ -213,6 +214,24 @@ export class BlogHeader extends LitElement {
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
         overflow: hidden;
+      }
+
+      .summary-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 12px;
+      }
+
+      .summary-stat {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 4px;
+      }
+
+      .summary-stat-value {
+        color: var(--text-primary);
+        font-weight: 600;
       }
 
       .summary-description :is(p, h1, h2, h3, h4, h5, h6, blockquote, ul, ol) {
@@ -399,6 +418,8 @@ export class BlogHeader extends LitElement {
   @property({ type: String }) blogName = '';
   @property({ type: String }) blogTitle = '';
   @property({ type: String }) blogDescription = '';
+  @property({ type: Number }) followersCount: number | null = null;
+  @property({ type: Number }) followingCount: number | null = null;
   @property({ type: String }) avatarUrl = '';
   @property({ attribute: false }) identityDecorations: IdentityDecoration[] = [];
 
@@ -478,6 +499,10 @@ export class BlogHeader extends LitElement {
 
   private get avatarInitial(): string {
     return (this.blogName.trim().replace(/^@+/, '').charAt(0) || '?').toUpperCase();
+  }
+
+  private formatCount(value: number | null): string | null {
+    return typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString() : null;
   }
 
   private get currentActorBlogId(): number | null {
@@ -755,6 +780,10 @@ export class BlogHeader extends LitElement {
                 </div>
                 ${this.summaryTitle ? html`<div class="summary-title">${this.summaryTitle}</div>` : nothing}
                 ${this.summaryDescriptionHtml ? html`<div class="summary-description">${unsafeHTML(this.summaryDescriptionHtml)}</div>` : nothing}
+                ${(this.formatCount(this.followersCount) || this.formatCount(this.followingCount)) ? html`<div class="summary-stats">
+                  ${this.formatCount(this.followersCount) ? html`<span class="summary-stat"><span class="summary-stat-value">${this.formatCount(this.followersCount)}</span><span>Followers</span></span>` : nothing}
+                  ${this.formatCount(this.followingCount) ? html`<span class="summary-stat"><span class="summary-stat-value">${this.formatCount(this.followingCount)}</span><span>Following</span></span>` : nothing}
+                </div>` : nothing}
               </div>
             </button>
             ${this.renderActionMenu()}

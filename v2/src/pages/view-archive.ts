@@ -911,6 +911,8 @@ export class ViewArchive extends LitElement {
           .blogName=${this.blog}
           .blogTitle=${this.blogData?.title || ''}
           .blogDescription=${this.blogData?.description || ''}
+          .followersCount=${this.blogData?.followersCount ?? null}
+          .followingCount=${this.blogData?.followingCount ?? null}
           .avatarUrl=${this.blogData?.avatarUrl || ''}
           .identityDecorations=${this.blogData?.identityDecorations || []}
         ></blog-header>

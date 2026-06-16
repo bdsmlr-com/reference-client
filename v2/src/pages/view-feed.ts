@@ -638,6 +638,8 @@ export class ViewFeed extends LitElement {
           .blogName=${this.resolvedBlogName || this.blogNameInput.trim().replace(/^@/, '')}
           .blogTitle=${this.blogData?.title || ''}
           .blogDescription=${this.blogData?.description || ''}
+          .followersCount=${this.blogData?.followersCount ?? null}
+          .followingCount=${this.blogData?.followingCount ?? null}
           .avatarUrl=${this.blogData?.avatarUrl || ''}
           .identityDecorations=${this.blogData?.identityDecorations || []}
         ></blog-header>

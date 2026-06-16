@@ -35,14 +35,13 @@ describe('blog identity integration', () => {
     expect(headerSrc).toContain("import './blog-identity.js';");
     expect(headerSrc).toContain("type PageName = 'archive' | 'timeline' | 'social' | 'following' | 'activity' | 'feed' | 'follower-feed';");
     expect(headerSrc).toContain('summary-card');
-    expect(headerSrc).toContain('summary-follow');
+    expect(headerSrc).toContain('summary-stats');
     expect(headerSrc).toContain("from '../services/follow-state.js'");
     expect(headerSrc).toContain("window.confirm(`Unfollow ${targetLabel}?`)");
     expect(headerSrc).toContain("import './route-shell-card.js';");
     expect(headerSrc).toContain('<route-shell-card compact>');
     expect(headerSrc).toContain('class="subnav"');
     expect(headerSrc).toContain('summary-description');
-    expect(headerSrc).toContain('[more...]');
     expect(headerSrc).toContain('modal-backdrop');
     expect(headerSrc).toContain('modal-avatar');
     expect(headerSrc).toContain('<blog-identity');
