@@ -21,6 +21,7 @@ describe('shared-nav profile/settings behavior', () => {
     expect(src).toContain('Log out');
     expect(src).toContain('Clear cache');
     expect(src).toContain('Queue ↗');
+    expect(src.match(/Queue ↗/g)?.length).toBe(2);
     expect(src).not.toContain('Gallery view');
     expect(src).not.toContain('Archive default sort');
     expect(src).not.toContain('Search default sort');

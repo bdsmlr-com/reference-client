@@ -18,6 +18,9 @@ describe('shared nav preferences', () => {
     expect(src).toContain('Post ↗');
     expect(src).toContain('href="https://bdsmlr.com/queuev2" target="_blank" rel="noreferrer noopener"');
     expect(src).toContain('Queue ↗');
+    expect(src.match(/Queue ↗/g)?.length).toBe(2);
     expect(src).toContain('href="/settings/you"');
+    expect(src.indexOf('Post ↗')).toBeLessThan(src.indexOf('Queue ↗'));
+    expect(src.indexOf('Queue ↗')).toBeLessThan(src.indexOf('Settings'));
   });
 });

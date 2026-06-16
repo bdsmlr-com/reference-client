@@ -537,11 +537,10 @@ export class SharedNav extends LitElement {
                 .avatarUrl=${this.profileAvatarUrl ?? ''}
               ></blog-identity>
               <a class="menu-button" href="/dashboard" target="_blank" rel="noreferrer noopener">Post ↗</a>
+              <a class="menu-button" href="https://bdsmlr.com/queuev2" target="_blank" rel="noreferrer noopener">Queue ↗</a>
               <div class="menu-section-title">Routes</div>
               <a class="menu-button" href=${buildPageUrl('for', this.currentUsername || getPrimaryBlogName() || getViewedBlogName() || '')}>For you</a>
               <div class="menu-section-title">Settings</div>
-              <a class="menu-button" href="https://bdsmlr.com/queuev2" target="_blank" rel="noreferrer noopener">Queue ↗</a>
-              <a class="menu-button" href="https://bdsmlr.com/queuev2" target="_blank" rel="noreferrer noopener">Queue ↗</a>
               <a class="menu-button" href="/settings/you">Settings</a>
               ${this.blogs && this.blogs.length > 1
                 ? html`
@@ -562,6 +561,7 @@ export class SharedNav extends LitElement {
             `
           : html`
               <a class="menu-button" href="/dashboard" target="_blank" rel="noreferrer noopener">Post ↗</a>
+              <a class="menu-button" href="https://bdsmlr.com/queuev2" target="_blank" rel="noreferrer noopener">Queue ↗</a>
               <div class="menu-section-title">Settings</div>
               <a class="menu-button" href="/settings/you">Settings</a>
               <button class="menu-button" @click=${this.openLoginModal}>Log in</button>
