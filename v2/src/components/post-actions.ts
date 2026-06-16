@@ -5,6 +5,8 @@ import { apiClient } from '../services/client.js';
 import { createEngagementStateController } from '../services/engagement-state.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { getAuthUser } from '../state/auth-state.js';
+import { deletePost as deletePostRequest } from '../services/api.js';
+import { buildPageUrl } from '../services/blog-resolver.js';
 import type { ProcessedPost } from '../types/post.js';
 
 const engagementState = createEngagementStateController(apiClient.engagement);
@@ -154,7 +156,8 @@ export class PostActions extends LitElement {
         opacity: 0.7;
       }
 
-      .comment-btn {
+      .comment-btn,
+      .danger-btn {
         border: 1px solid var(--border);
         background: var(--bg-panel-alt);
         color: var(--text);
@@ -170,14 +173,20 @@ export class PostActions extends LitElement {
         flex-shrink: 0;
       }
 
-      .comment-btn:hover {
+      .comment-btn:hover,
+      .danger-btn:hover {
         border-color: var(--accent);
         transform: translateY(-1px);
       }
 
-      .comment-btn:disabled {
+      .comment-btn:disabled,
+      .danger-btn:disabled {
         cursor: default;
         opacity: 0.7;
+      }
+
+      .danger-btn {
+        color: #f58f8f;
       }
 
       .modal-backdrop {
@@ -256,6 +265,7 @@ export class PostActions extends LitElement {
   @state() private commentBody = '';
   @state() private commenting = false;
   @state() private commentError: string | null = null;
+  @state() private deleting = false;
   private syncRequestId = 0;
   private unsubscribeLikeState: (() => void) | null = null;
 
@@ -451,6 +461,32 @@ export class PostActions extends LitElement {
     }
   }
 
+  private canDeletePost(): boolean {
+    const post = this.post;
+    const actorBlogId = getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId ?? null;
+    return Boolean(this.variant === 'detail' && post?.blogId && actorBlogId && post.blogId === actorBlogId);
+  }
+
+  private async handleDelete(event: Event): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+    const post = this.post;
+    const actingBlogId = getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId ?? null;
+    if (!post || !actingBlogId || this.deleting || !this.canDeletePost()) return;
+    if (!window.confirm(`Delete post ${post.id}?`)) return;
+
+    this.deleting = true;
+    try {
+      await deletePostRequest({ actingBlogId, postId: post.id });
+      const fallback = post.blogName ? buildPageUrl('activity', post.blogName) : '/';
+      window.location.assign(fallback);
+    } catch (error) {
+      console.error('Failed to delete post', error);
+    } finally {
+      this.deleting = false;
+    }
+  }
+
   private renderCounts() {
     const post = this.post;
     if (!post) return nothing;
@@ -520,6 +556,9 @@ export class PostActions extends LitElement {
               </button>`
             : nothing}
         </div>
+        ${this.canDeletePost()
+          ? html`<button class="danger-btn" type="button" ?disabled=${this.deleting} @click=${this.handleDelete}>${this.deleting ? 'Deleting…' : 'Delete'}</button>`
+          : nothing}
       </div>
     `;
   }

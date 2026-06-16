@@ -196,6 +196,9 @@ export class PostDetailContent extends LitElement {
                   ${presentation.identity.viaPostPermalink
                     ? html`<span class="identity-slash">/</span><a href=${presentation.identity.viaPostPermalink.href} target=${presentation.identity.viaPostPermalink.target} rel=${presentation.identity.viaPostPermalink.rel || nothing}>${presentation.identity.viaPostPermalink.label || p.id}<span class="identity-outlink">${presentation.identity.viaPostPermalink.icon || '↗'}</span></a>`
                     : nothing}
+                  ${presentation.identity.legacyPostPermalink
+                    ? html`<span class="identity-slash">/</span><a href=${presentation.identity.legacyPostPermalink.href} target=${presentation.identity.legacyPostPermalink.target} rel=${presentation.identity.legacyPostPermalink.rel || nothing} title=${presentation.identity.legacyPostPermalink.title || nothing}>${presentation.identity.legacyPostPermalink.icon || '🗿↗'}</a>`
+                    : nothing}
                 `
               : html`
                   ${renderStructuredMicroBlogIdentity({
@@ -208,6 +211,9 @@ export class PostDetailContent extends LitElement {
                   <a href=${permalink.href} target=${permalink.target} rel=${permalink.rel || nothing}>
                     ${permalink.label || p.id}<span class="identity-outlink">${permalink.icon || '↗'}</span>
                   </a>
+                  ${presentation.identity.legacyPostPermalink
+                    ? html`<span class="identity-slash">/</span><a href=${presentation.identity.legacyPostPermalink.href} target=${presentation.identity.legacyPostPermalink.target} rel=${presentation.identity.legacyPostPermalink.rel || nothing} title=${presentation.identity.legacyPostPermalink.title || nothing}>${presentation.identity.legacyPostPermalink.icon || '🗿↗'}</a>`
+                    : nothing}
                 `}
           </div>
           <time class="post-date" title=${getTooltipDate(p.createdAtUnix)}>${formatDateShort(p.createdAtUnix)}</time>

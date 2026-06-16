@@ -74,6 +74,16 @@ import type {
   FollowBlogResponse,
   UnfollowBlogRequest,
   UnfollowBlogResponse,
+  GetBlockedRequest,
+  GetBlockedResponse,
+  BlockBlogRequest,
+  BlockBlogResponse,
+  UnblockBlogRequest,
+  UnblockBlogResponse,
+  ReportBlogRequest,
+  ReportBlogResponse,
+  DeletePostRequest,
+  DeletePostResponse,
   LikePostRequest,
   LikePostResponse,
   CommentPostRequest,
@@ -1308,6 +1318,51 @@ export async function unfollowBlog(
 ): Promise<UnfollowBlogResponse> {
   return apiRequest<UnfollowBlogResponse>(
     '/v2/internal-write/unfollow',
+    req
+  );
+}
+
+export async function getBlocked(
+  req: GetBlockedRequest
+): Promise<GetBlockedResponse> {
+  return apiRequest<GetBlockedResponse>(
+    '/v2/get-blocked',
+    req
+  );
+}
+
+export async function blockBlog(
+  req: BlockBlogRequest
+): Promise<BlockBlogResponse> {
+  return apiRequest<BlockBlogResponse>(
+    '/v2/internal-write/block',
+    req
+  );
+}
+
+export async function unblockBlog(
+  req: UnblockBlogRequest
+): Promise<UnblockBlogResponse> {
+  return apiRequest<UnblockBlogResponse>(
+    '/v2/internal-write/unblock',
+    req
+  );
+}
+
+export async function reportBlog(
+  req: ReportBlogRequest
+): Promise<ReportBlogResponse> {
+  return apiRequest<ReportBlogResponse>(
+    '/v2/internal-write/report-blog',
+    req
+  );
+}
+
+export async function deletePost(
+  req: DeletePostRequest
+): Promise<DeletePostResponse> {
+  return apiRequest<DeletePostResponse>(
+    '/v2/internal-write/delete',
     req
   );
 }

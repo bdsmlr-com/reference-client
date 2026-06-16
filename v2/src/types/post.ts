@@ -137,6 +137,7 @@ export interface PresentationIdentity {
   allowSelfSameDayLikeSuppression: boolean;
   postTypeIcon: string;
   permalink: ResolvedLink;
+  legacyPostPermalink?: ResolvedLink | null;
   originPostPermalink?: ResolvedLink | null;
   originPostMissing?: boolean;
   originBlogGone?: boolean;

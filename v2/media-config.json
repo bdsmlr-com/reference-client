@@ -380,6 +380,14 @@
         "labelTemplate": "{postId}",
         "titleTemplate": "Open post {postId}"
       },
+      "post_legacy_permalink": {
+        "mode": "legacy",
+        "pattern": "https://{blog}.bdsmlr.com/post/{postId}",
+        "target": "_blank",
+        "icon": "🗿↗",
+        "labelTemplate": "🗿",
+        "titleTemplate": "Open legacy post {postId} on @{blog}"
+      },
       "post_origin_blog": {
         "mode": "internal",
         "pattern": "/blog/{blog}",

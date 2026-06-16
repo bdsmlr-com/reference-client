@@ -127,6 +127,7 @@ export class TimelineStream extends LitElement {
               <post-feed-item
                 .post=${item.post}
                 .page=${this.page}
+                .showActions=${this.page === 'activity'}
                 @post-select=${(e: CustomEvent) => this.handlePostClick(e.detail.post)}
               ></post-feed-item>
             `;

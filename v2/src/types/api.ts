@@ -307,6 +307,71 @@ export interface UnfollowBlogResponse {
   error?: WriteError;
 }
 
+export interface GetBlockedRequest {
+  user_id: number;
+}
+
+export interface GetBlockedResponse {
+  blocked_user_ids?: number[];
+  blocked_blog_ids?: number[];
+  error?: WriteError;
+}
+
+export interface BlockBlogRequest {
+  actingBlogId?: number;
+  targetBlogId: number;
+}
+
+export interface BlockBlogResponse {
+  ok?: boolean;
+  action?: string;
+  targetBlogId?: number;
+  actingBlogId?: number;
+  state?: { blocked?: boolean; blockedUserId?: number };
+  error?: WriteError;
+}
+
+export interface UnblockBlogRequest {
+  actingBlogId?: number;
+  targetBlogId: number;
+}
+
+export interface UnblockBlogResponse {
+  ok?: boolean;
+  action?: string;
+  targetBlogId?: number;
+  actingBlogId?: number;
+  state?: { blocked?: boolean; blockedUserId?: number };
+  error?: WriteError;
+}
+
+export interface ReportBlogRequest {
+  actingBlogId?: number;
+  targetBlogId: number;
+  reason: string;
+}
+
+export interface ReportBlogResponse {
+  ok?: boolean;
+  action?: string;
+  targetBlogId?: number;
+  actingBlogId?: number;
+  error?: WriteError;
+}
+
+export interface DeletePostRequest {
+  actingBlogId?: number;
+  postId: number;
+}
+
+export interface DeletePostResponse {
+  ok?: boolean;
+  action?: string;
+  postId?: number;
+  actingBlogId?: number;
+  error?: WriteError;
+}
+
 export interface ReblogPostRequest {
   actor?: SignedActorAssertion;
   actingBlogId?: number;

@@ -14,6 +14,7 @@ import type { MediaRenderType } from '../services/media-resolver.js';
 import type { IdentityDecoration } from '../types/api.js';
 import './media-renderer.js';
 import './blog-identity.js';
+import './post-actions.js';
 
 /**
  * Memoization helper: Determines if post property has meaningfully changed.
@@ -210,6 +211,7 @@ export class PostFeedItem extends LitElement {
   @property({ type: Boolean }) videoAutoplay?: boolean;
   @property({ type: Boolean }) videoControls?: boolean;
   @property({ type: Boolean }) videoLoop?: boolean;
+  @property({ type: Boolean }) showActions = false;
 
   private handlePostClick(): void {
     if (this.disableClick) return;
@@ -328,12 +330,16 @@ export class PostFeedItem extends LitElement {
 
         ${!isPostShell ? html`
           <footer class="card-footer">
-            <div class="card-stats">
-              ${likeCount ? html`<span class="stat">${presentation.actions.like.icon} ${likeCount}</span>` : ''}
-              ${reblogCount ? html`<span class="stat">${presentation.actions.reblog.icon} ${reblogCount}</span>` : ''}
-              ${commentCount ? html`<span class="stat">${presentation.actions.comment.icon} ${commentCount}</span>` : ''}
-            </div>
-            <div class="post-type-icon">${presentation.identity.postTypeIcon}</div>
+            ${this.showActions
+              ? html`<post-actions variant="card" .post=${post}></post-actions>`
+              : html`
+                  <div class="card-stats">
+                    ${likeCount ? html`<span class="stat">${presentation.actions.like.icon} ${likeCount}</span>` : ''}
+                    ${reblogCount ? html`<span class="stat">${presentation.actions.reblog.icon} ${reblogCount}</span>` : ''}
+                    ${commentCount ? html`<span class="stat">${presentation.actions.comment.icon} ${commentCount}</span>` : ''}
+                  </div>
+                  <div class="post-type-icon">${presentation.identity.postTypeIcon}</div>
+                `}
           </footer>
         ` : ''}
       </article>

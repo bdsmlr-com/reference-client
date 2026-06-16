@@ -122,6 +122,10 @@ function buildIdentity(post: ProcessedPost) {
   const isReblog = Boolean(post.originPostId && post.originPostId !== post.id);
   const isCanonicalCard = post.variant === 1 || post.variant === 2;
   const originBlogName = post.originBlogName || post.blogName || '';
+  const legacyBlogName = (post.blogName || originBlogName || '').trim().replace(/^@+/, '');
+  const legacyPostPermalink = legacyBlogName
+    ? resolveLink('post_legacy_permalink', { blog: legacyBlogName, postId: post.id })
+    : null;
   const originBlog = originBlogName
     ? resolveLink('post_origin_blog', { blog: originBlogName })
     : null;
@@ -151,6 +155,7 @@ function buildIdentity(post: ProcessedPost) {
     allowSelfSameDayLikeSuppression: !isReblog && post.variant !== 2,
     postTypeIcon: POST_TYPE_ICONS[post.type] || '❓',
     permalink,
+    legacyPostPermalink,
     originPostPermalink,
     originPostMissing,
     originBlogGone: Boolean(isReblog && post.originBlogGone),
