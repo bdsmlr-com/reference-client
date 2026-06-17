@@ -448,7 +448,6 @@
   },
   "features": {
     "more_like_this_on_post": false,
-    "reblog_composer": false,
     "media_format_by_surface": {
       "card": "card",
       "masonry": "masonry",

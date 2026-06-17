@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import '../src/components/post-actions.js';
 import { apiClient } from '../src/services/client.js';
 import { clearAuthUser, setAuthUser } from '../src/state/auth-state.js';
-import { FEATURE_FLAGS } from '../src/config.js';
 
 async function flush(): Promise<void> {
   await Promise.resolve();
@@ -45,14 +44,7 @@ function makePost(id = 42): any {
 }
 
 describe('post-actions reblog composer', () => {
-  const originalReblogComposerFlag = FEATURE_FLAGS.reblog_composer;
-
-  beforeEach(() => {
-    FEATURE_FLAGS.reblog_composer = true;
-  });
-
   afterEach(() => {
-    FEATURE_FLAGS.reblog_composer = originalReblogComposerFlag;
     clearAuthUser();
     document.body.innerHTML = '';
   });

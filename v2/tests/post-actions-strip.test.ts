@@ -25,7 +25,6 @@ describe('post actions strip', () => {
     expect(src).toContain('toggleLike');
     expect(src).toContain('triggerReblog');
     expect(src).toContain('reblogComposerOpen');
-    expect(src).toContain('FEATURE_FLAGS.reblog_composer !== true');
     expect(src).toContain("querySelector<HTMLTextAreaElement>('.reblog-note')");
     expect(src).toContain('textarea?.focus()');
     expect(src).toContain("Queue saves this reblog for later publishing.");

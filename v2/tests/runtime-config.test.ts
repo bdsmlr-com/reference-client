@@ -9,11 +9,8 @@ describe('runtime config', () => {
 
   it('overlays runtime media formats and feature flags onto defaults', () => {
     expect(FEATURE_FLAGS.media_format_by_surface?.card).toBe('card');
-    expect(FEATURE_FLAGS.reblog_composer).toBe(false);
-
     applyRuntimeConfig({
       features: {
-        reblog_composer: true,
         media_format_by_surface: {
           card: 'raw',
           masonry: 'raw',
@@ -21,7 +18,6 @@ describe('runtime config', () => {
       },
     });
 
-    expect(FEATURE_FLAGS.reblog_composer).toBe(true);
     expect(FEATURE_FLAGS.media_format_by_surface?.card).toBe('raw');
     expect(FEATURE_FLAGS.media_format_by_surface?.masonry).toBe('raw');
     expect(FEATURE_FLAGS.media_format_by_surface?.['post-detail']).toBe('raw');

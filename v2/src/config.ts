@@ -117,7 +117,6 @@ export interface RenderInteractionConfig {
 
 export interface FeatureFlagsConfig {
   more_like_this_on_post?: boolean;
-  reblog_composer?: boolean;
   media_format_by_surface?: Partial<Record<MediaSurface, MediaSurfaceFormat>>;
 }
 
@@ -167,9 +166,6 @@ function applyRuntimeFeatureFlags(override: FeatureFlagsConfig | undefined): voi
   if (typeof override.more_like_this_on_post === 'boolean') {
     FEATURE_FLAGS.more_like_this_on_post = override.more_like_this_on_post;
   }
-  if (typeof override.reblog_composer === 'boolean') {
-    FEATURE_FLAGS.reblog_composer = override.reblog_composer;
-  }
   if (override.media_format_by_surface && typeof override.media_format_by_surface === 'object') {
     const merged = { ...(FEATURE_FLAGS.media_format_by_surface || {}) } as Partial<Record<MediaSurface, MediaSurfaceFormat>>;
     for (const [surface, value] of Object.entries(override.media_format_by_surface)) {
@@ -211,7 +207,6 @@ export async function ensureRuntimeConfigLoaded(fetchImpl: typeof fetch = fetch)
 
 export function resetRuntimeConfigForTests(): void {
   FEATURE_FLAGS.more_like_this_on_post = DEFAULT_FEATURE_FLAGS.more_like_this_on_post;
-  FEATURE_FLAGS.reblog_composer = DEFAULT_FEATURE_FLAGS.reblog_composer;
   FEATURE_FLAGS.media_format_by_surface = { ...(DEFAULT_FEATURE_FLAGS.media_format_by_surface || {}) };
   runtimeConfigLoaded = false;
   runtimeConfigPromise = null;
