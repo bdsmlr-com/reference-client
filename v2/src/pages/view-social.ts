@@ -6,8 +6,6 @@ import { getContextualErrorMessage, ErrorMessages, isApiError, toApiError } from
 import { getPrimaryBlogName, getUrlParam } from '../services/blog-resolver.js';
 import { initBlogTheme, clearBlogTheme } from '../services/blog-theme.js';
 import { scrollObserver } from '../services/scroll-observer.js';
-import { getSocialSortPreference, setSocialSortPreference } from '../services/profile.js';
-import { normalizeSocialSortValue, SOCIAL_SORT_OPTIONS } from '../services/social-sort.js';
 import {
   generatePaginationCursorKey,
   getCachedPaginationCursor,
@@ -24,7 +22,6 @@ import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import type { FollowEdge, Blog, Post } from '../types/api.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
-import '../components/control-panel.js';
 import '../components/blog-list.js';
 import '../components/load-footer.js';
 import '../components/loading-spinner.js';
@@ -141,7 +138,6 @@ export class ViewSocial extends LitElement {
   @state() private followingExhausted = false;
   @state() private loading = false;
   @state() private infiniteScroll = getInfiniteScrollPreference('social');
-  @state() private sortValue = 'default';
   @state() private statusMessage = '';
   @state() private errorMessage = '';
   @state() private retrying = false;
@@ -221,8 +217,6 @@ export class ViewSocial extends LitElement {
     this.recommendedBlogs = [];
     const pathTab = window.location.pathname.split('/').filter(Boolean)[2] as Tab | undefined;
     const tab = pathTab || (getUrlParam('tab') as Tab) || this.initialTab;
-    this.sortValue = getUrlParam('sort') || getSocialSortPreference() || 'default';
-    this.sortValue = normalizeSocialSortValue(this.sortValue);
     if (tab === 'followers' || tab === 'following' || tab === 'siblings') {
       this.activeTab = tab;
     }
@@ -391,7 +385,6 @@ export class ViewSocial extends LitElement {
         direction: direction === 'followers' ? 2 : 1,
         page_size: PAGE_SIZE,
         page_token: cursor || undefined,
-        sortValue: this.sortValue,
       }, { skipCache: shouldSkipCache });
 
       const rawResp = resp as unknown as Record<string, unknown>;
@@ -604,38 +597,6 @@ export class ViewSocial extends LitElement {
     window.location.href = `/social/${encodeURIComponent(normalizedBlog)}/${tab}`;
   }
 
-  private handleInfiniteToggle(e: CustomEvent): void {
-    this.infiniteScroll = e.detail.enabled;
-    if (this.infiniteScroll) {
-      this.observeSentinel();
-    }
-  }
-
-  private async handleSortChange(e: CustomEvent): Promise<void> {
-    this.sortValue = normalizeSocialSortValue(e.detail.value);
-    setSocialSortPreference(this.sortValue);
-    if (this.rootMode) {
-      this.requestUpdate();
-      return;
-    }
-    this.followers = [];
-    this.following = [];
-    this.followersCursor = null;
-    this.followingCursor = null;
-    this.followersExhausted = false;
-    this.followingExhausted = false;
-    this.lastFollowersPageFingerprint = null;
-    this.lastFollowingPageFingerprint = null;
-    this.seenFollowersCursors.clear();
-    this.seenFollowingCursors.clear();
-    this.followersPageAttempts = 0;
-    this.followingPageAttempts = 0;
-    this.errorMessage = '';
-    this.statusMessage = '';
-    await this.fetchPage();
-    this.requestUpdate();
-  }
-
   private async attachRecentPostsToEdges(items: FollowEdge[]): Promise<FollowEdge[]> {
     const ids = [...new Set(items.map((item) => item.blogId).filter((value): value is number => typeof value === 'number' && value > 0))];
     if (!ids.length) {
@@ -696,7 +657,6 @@ export class ViewSocial extends LitElement {
   }
 
   render() {
-    const showControlPanel = !this.rootMode;
     const showList = !this.rootMode && this.currentList.length > 0;
     const showEmptyList = !this.rootMode && this.blogId && !this.loading && !this.errorMessage;
     const primaryBlog = (getPrimaryBlogName() || '').trim().toLowerCase();
@@ -755,21 +715,6 @@ export class ViewSocial extends LitElement {
 
         ${this.statusMessage && !this.errorMessage ? html`<div class="status">${this.statusMessage}</div>` : ''}
 
-        ${showControlPanel
-          ? html`
-              <control-panel
-                .pageName=${'social'}
-                .sortValue=${this.sortValue}
-                .sortOptions=${SOCIAL_SORT_OPTIONS}
-                .showSort=${true}
-                .showInfiniteScroll=${true}
-                .infiniteScroll=${this.infiniteScroll}
-                .settingsHref=${'/settings/you#social'}
-                @sort-change=${this.handleSortChange}
-                @infinite-toggle=${this.handleInfiniteToggle}
-              ></control-panel>
-            `
-          : ''}
 
         ${this.recommendedBlogs.length > 0
           ? html`
