@@ -14,7 +14,7 @@ describe('shared nav preferences', () => {
     expect(src).not.toContain('Search default sort');
     expect(src).not.toContain("buildPageUrl('follower-feed'");
     expect(src).toContain("buildPageUrl('for'");
-    expect(src).toContain("href: '/dashboard'");
+    expect(src).toContain("href: 'https://bdsmlr.com/dashboard'");
     expect(src).toContain("{ name: 'post', label: 'Post ↗', icon: 'fa-solid fa-file-pen'");
     expect(src).toContain('href="https://bdsmlr.com/queuev2" target="_blank" rel="noreferrer noopener"');
     expect(src).toContain("{ name: 'chat', label: 'Chat ↗', icon: 'fa-solid fa-comments'");

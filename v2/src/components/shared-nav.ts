@@ -615,9 +615,9 @@ export class SharedNav extends LitElement {
   render() {
     const pages = [
       { name: 'search', label: 'Search', icon: 'fa-solid fa-magnifying-glass', description: 'Search posts by tags with boolean syntax', newTab: false, href: this.getPageUrl('search') },
-      { name: 'post', label: 'Post ↗', icon: 'fa-solid fa-file-pen', description: 'Create or queue a post on the legacy dashboard', newTab: true, href: '/dashboard' },
+      { name: 'post', label: 'Post ↗', icon: 'fa-solid fa-file-pen', description: 'Create or queue a post on the legacy dashboard', newTab: true, href: 'https://bdsmlr.com/dashboard' },
       { name: 'chat', label: 'Chat ↗', icon: 'fa-solid fa-comments', description: 'Open chat in a new tab', newTab: true, href: 'https://chat.bdsmlr.com/' },
-      { name: 'messages', label: 'Messages ↗', icon: 'fa-solid fa-inbox', description: 'Open messages in a new tab', newTab: true, href: '/messages' },
+      { name: 'messages', label: 'Messages ↗', icon: 'fa-solid fa-inbox', description: 'Open messages in a new tab', newTab: true, href: 'https://bdsmlr.com/messages' },
     ];
 
     const activePage =
