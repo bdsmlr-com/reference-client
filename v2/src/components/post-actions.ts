@@ -841,7 +841,7 @@ export class PostActions extends LitElement {
               />
             </div>
           </div>
-          <div class="modal-note">Queue is UI-only in this build while backend queue wiring is pending.</div>
+          <div class="modal-note">Queue saves this reblog for later publishing.</div>
           ${this.reblogError ? html`<div class="modal-error">${this.reblogError}</div>` : ''}
           <div class="modal-actions">
             <button type="button" class="comment-btn" ?disabled=${this.reblogSubmitting} @click=${this.closeReblogComposer}>Cancel</button>

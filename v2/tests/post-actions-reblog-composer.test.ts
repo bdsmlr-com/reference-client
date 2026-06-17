@@ -141,14 +141,14 @@ describe('post-actions reblog composer', () => {
     }
   });
 
-  it('keeps queue as a non-reblogging mock and does not light up the actor reblog state', async () => {
+  it('submits queued reblogs without lighting up the actor reblog state', async () => {
     setAuthUser({ userId: 7, blogId: 11, activeBlogId: 11, blogs: [{ id: 11, name: 'alpha' }] });
 
     const originalReblog = apiClient.engagement.reblogPost;
     const calls: any[] = [];
     apiClient.engagement.reblogPost = async (req: any) => {
       calls.push(req);
-      return { ok: true } as any;
+      return { ok: true, action: 'queue_reblog', postId: req.postId, actingBlogId: req.actingBlogId, createdReblogPostId: 77 } as any;
     };
 
     try {
@@ -173,7 +173,8 @@ describe('post-actions reblog composer', () => {
       await flush();
       await el.updateComplete;
 
-      expect(calls).toHaveLength(0);
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toMatchObject({ postId: 91, actingBlogId: 11, mode: 'queue', tags: ['queue-tag'] });
       expect(el.shadowRoot?.querySelector('.reblog-note')).toBeNull();
       expect((el.shadowRoot?.querySelector('.icon-btn') as HTMLButtonElement).className).not.toContain('reblog-active');
     } finally {

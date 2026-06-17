@@ -216,8 +216,10 @@ describe('engagement-state controller', () => {
     expect(engagementApi.reblogPost).toHaveBeenCalledWith({ postId: 5, actingBlogId: 11, comment: undefined, tags: undefined, mode: 'live' });
   });
 
-  it('treats queued reblogs as a UI-only mock and does not mutate actor reblog state', async () => {
-    const { controller, engagementApi } = createController();
+  it('submits queued reblogs without mutating live actor reblog state', async () => {
+    const { controller, engagementApi } = createController({
+      reblogPost: vi.fn().mockResolvedValue({ ok: true, action: 'queue_reblog', postId: 12, actingBlogId: 11, createdReblogPostId: 55 }),
+    });
 
     setAuthUser({
       userId: 7,
@@ -235,11 +237,18 @@ describe('engagement-state controller', () => {
 
     expect(response).toEqual({
       ok: true,
-      action: 'queue_reblog_mock',
+      action: 'queue_reblog',
       postId: 12,
       actingBlogId: 11,
+      createdReblogPostId: 55,
     });
-    expect(engagementApi.reblogPost).not.toHaveBeenCalled();
+    expect(engagementApi.reblogPost).toHaveBeenCalledWith({
+      postId: 12,
+      actingBlogId: 11,
+      comment: 'Queued hello',
+      tags: ['alpha', 'beta'],
+      mode: 'queue',
+    });
     expect(controller.getReblogCount(12)).toBeUndefined();
   });
 

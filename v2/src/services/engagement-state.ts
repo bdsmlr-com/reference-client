@@ -377,15 +377,6 @@ export class EngagementStateController {
     const tags = normalizedInput.tags?.map((tag) => tag.trim()).filter((tag) => tag.length > 0);
     const mode = normalizedInput.mode ?? 'live';
 
-    if (mode === 'queue') {
-      return {
-        ok: true,
-        action: 'queue_reblog_mock',
-        postId,
-        actingBlogId: actorBlogId,
-      };
-    }
-
     const requestPayload: ReblogPostRequest = {
       postId,
       actingBlogId: actorBlogId,
@@ -393,6 +384,11 @@ export class EngagementStateController {
       tags: tags && tags.length > 0 ? tags : undefined,
       mode,
     };
+
+    if (mode === 'queue') {
+      return this.engagementApi.reblogPost(requestPayload);
+    }
+
     const cacheKey = buildReblogStateCacheKey(postId, actorBlogId);
     const previous = this.reblogStateCache.get(cacheKey);
     const currentCount = previous?.count ?? 0;

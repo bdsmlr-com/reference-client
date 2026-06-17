@@ -28,7 +28,7 @@ describe('post actions strip', () => {
     expect(src).toContain('FEATURE_FLAGS.reblog_composer !== true');
     expect(src).toContain("querySelector<HTMLTextAreaElement>('.reblog-note')");
     expect(src).toContain('textarea?.focus()');
-    expect(src).toContain("Queue is UI-only in this build while backend queue wiring is pending.");
+    expect(src).toContain("Queue saves this reblog for later publishing.");
     expect(src).toContain('openCommentModal');
     expect(src).toContain('submitComment');
     expect(src).toContain('hydrateReblogStates');
