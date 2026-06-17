@@ -1,4 +1,4 @@
-import { LitElement, html, css, unsafeCSS } from 'lit';
+import { LitElement, html, css, unsafeCSS, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles, getStoredTheme, setStoredTheme, type Theme } from '../styles/theme.js';
 import {
@@ -77,6 +77,14 @@ export class SharedNav extends LitElement {
         font-size: 13px;
         text-decoration: none;
         transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .nav-link i {
+        font-size: 12px;
+        opacity: 0.8;
       }
 
       .nav-link:hover {
@@ -536,7 +544,6 @@ export class SharedNav extends LitElement {
                 .blogTitle=${this.profileBlogTitle ?? ''}
                 .avatarUrl=${this.profileAvatarUrl ?? ''}
               ></blog-identity>
-              <a class="menu-button" href="/dashboard" target="_blank" rel="noreferrer noopener">Post ↗</a>
               <a class="menu-button" href="https://bdsmlr.com/queuev2" target="_blank" rel="noreferrer noopener">Queue ↗</a>
               <div class="menu-section-title">Routes</div>
               <a class="menu-button" href=${buildPageUrl('for', this.currentUsername || getPrimaryBlogName() || getViewedBlogName() || '')}>For you</a>
@@ -560,7 +567,6 @@ export class SharedNav extends LitElement {
               <div class="menu-build-tag" aria-label="Build tag">${BUILD_TAG}</div>
             `
           : html`
-              <a class="menu-button" href="/dashboard" target="_blank" rel="noreferrer noopener">Post ↗</a>
               <a class="menu-button" href="https://bdsmlr.com/queuev2" target="_blank" rel="noreferrer noopener">Queue ↗</a>
               <div class="menu-section-title">Settings</div>
               <a class="menu-button" href="/settings/you">Settings</a>
@@ -608,7 +614,10 @@ export class SharedNav extends LitElement {
 
   render() {
     const pages = [
-      { name: 'search', label: 'Search', description: 'Search posts by tags with boolean syntax' },
+      { name: 'search', label: 'Search', icon: 'fa-solid fa-magnifying-glass', description: 'Search posts by tags with boolean syntax', newTab: false, href: this.getPageUrl('search') },
+      { name: 'post', label: 'Post ↗', icon: 'fa-solid fa-file-pen', description: 'Create or queue a post on the legacy dashboard', newTab: true, href: '/dashboard' },
+      { name: 'chat', label: 'Chat ↗', icon: 'fa-solid fa-comments', description: 'Open chat in a new tab', newTab: true, href: 'https://chat.bdsmlr.com/' },
+      { name: 'messages', label: 'Messages ↗', icon: 'fa-solid fa-inbox', description: 'Open messages in a new tab', newTab: true, href: '/messages' },
     ];
 
     const activePage =
@@ -626,16 +635,19 @@ export class SharedNav extends LitElement {
         <nav aria-label="Main navigation">
           ${pages.map(
             (page) => {
-              const href = this.getPageUrl(page.name);
+              const href = page.href;
               return html`
               <a
                 href=${href}
-                class="nav-link ${activePage === page.name ? 'active' : ''}"
+                class="nav-link ${!page.newTab && activePage === page.name ? 'active' : ''}"
                 title=${page.description}
-                aria-current=${activePage === page.name ? 'page' : 'false'}
-                @click=${(e: Event) => this.handleNavLinkClick(e, href)}
+                aria-current=${!page.newTab && activePage === page.name ? 'page' : 'false'}
+                target=${page.newTab ? '_blank' : nothing}
+                rel=${page.newTab ? 'noreferrer noopener' : nothing}
+                @click=${(e: Event) => (page.newTab ? undefined : this.handleNavLinkClick(e, href))}
               >
-                ${page.label}
+                <i class=${page.icon} aria-hidden="true"></i>
+                <span>${page.label}</span>
               </a>
             `;
             }

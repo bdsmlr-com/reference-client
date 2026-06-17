@@ -8,7 +8,10 @@ describe('shared-nav profile/settings behavior', () => {
   it('removes Discover from top nav and routes logo to feed context', () => {
     const src = readFileSync(NAV_FILE, 'utf8');
     expect(src).not.toContain("{ name: 'blogs', label: 'Discover'");
-    expect(src).toContain("{ name: 'search', label: 'Search'");
+    expect(src).toContain("{ name: 'search', label: 'Search', icon: 'fa-solid fa-magnifying-glass'");
+    expect(src).toContain("{ name: 'post', label: 'Post ↗', icon: 'fa-solid fa-file-pen'");
+    expect(src).toContain("{ name: 'chat', label: 'Chat ↗', icon: 'fa-solid fa-comments'");
+    expect(src).toContain("{ name: 'messages', label: 'Messages ↗', icon: 'fa-solid fa-inbox'");
     expect(src).toContain('private getLogoLink()');
     expect(src).toContain("href: buildPageUrl('feed', primaryBlog)");
     expect(src).not.toContain("resolveLink('nav_logo'");
@@ -22,6 +25,7 @@ describe('shared-nav profile/settings behavior', () => {
     expect(src).toContain('Clear cache');
     expect(src).toContain('Queue ↗');
     expect(src.match(/Queue ↗/g)?.length).toBe(2);
+    expect(src).not.toContain('href="/dashboard" target="_blank" rel="noreferrer noopener">Post ↗</a>');
     expect(src).not.toContain('Gallery view');
     expect(src).not.toContain('Archive default sort');
     expect(src).not.toContain('Search default sort');
