@@ -5,7 +5,7 @@ import { apiClient } from '../services/client.js';
 import { createEngagementStateController } from '../services/engagement-state.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { getAuthUser } from '../state/auth-state.js';
-import { deletePost as deletePostRequest } from '../services/api.js';
+import { deletePost as deletePostRequest, reportPost as reportPostRequest } from '../services/api.js';
 import { buildPageUrl } from '../services/blog-resolver.js';
 import type { ProcessedPost } from '../types/post.js';
 
@@ -338,6 +338,9 @@ export class PostActions extends LitElement {
   @state() private reblogTags: string[] = [];
   @state() private reblogError: string | null = null;
   @state() private reblogSubmitting = false;
+  @state() private reportConfirmOpen = false;
+  @state() private reporting = false;
+  @state() private reportError: string | null = null;
   @state() private deleting = false;
   private syncRequestId = 0;
   private unsubscribeLikeState: (() => void) | null = null;
@@ -364,6 +367,7 @@ export class PostActions extends LitElement {
       this.commentBody = '';
       this.commentError = null;
       this.resetReblogComposer();
+      this.closeReportConfirm();
       this.syncLocalStateFromCache();
     }
     if (changedProperties.has('reblogComposerOpen') && this.reblogComposerOpen) {
@@ -678,6 +682,61 @@ export class PostActions extends LitElement {
     return Boolean(this.variant === 'detail' && post?.blogId && actorBlogId && post.blogId === actorBlogId);
   }
 
+  private canReportPost(): boolean {
+    const post = this.post;
+    const actorBlogId = getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId ?? null;
+    return Boolean(post?.blogId && actorBlogId && post.blogId !== actorBlogId);
+  }
+
+  private openReportConfirm(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!this.post || this.reporting || !this.canReportPost()) {
+      return;
+    }
+    this.commentModalOpen = false;
+    this.commentBody = '';
+    this.commentError = null;
+    this.resetReblogComposer();
+    this.reportConfirmOpen = true;
+    this.reportError = null;
+  }
+
+  private closeReportConfirm(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (this.reporting) {
+      return;
+    }
+    this.reportConfirmOpen = false;
+    this.reportError = null;
+  }
+
+  private async handleReport(event: Event): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+    const post = this.post;
+    const actingBlogId = getAuthUser()?.activeBlogId ?? getAuthUser()?.blogId ?? null;
+    if (!post || !actingBlogId || this.reporting || !this.canReportPost()) return;
+
+    this.reporting = true;
+    this.reportError = null;
+    try {
+      await reportPostRequest({ actingBlogId, postId: post.id });
+      this.dispatchEvent(new CustomEvent('post-report-submit', {
+        detail: { postId: post.id },
+        bubbles: true,
+        composed: true,
+      }));
+      this.reportConfirmOpen = false;
+    } catch (error) {
+      console.error('Failed to report post', error);
+      this.reportError = error instanceof Error ? error.message : 'Failed to report post';
+    } finally {
+      this.reporting = false;
+    }
+  }
+
   private async handleDelete(event: Event): Promise<void> {
     event.preventDefault();
     event.stopPropagation();
@@ -767,6 +826,9 @@ export class PostActions extends LitElement {
               </button>`
             : nothing}
         </div>
+        ${this.canReportPost()
+          ? html`<button class="danger-btn" data-action="report" type="button" title="Report post" ?disabled=${this.reporting} @click=${this.openReportConfirm}>${this.reporting ? '⟳' : '⚠️'}</button>`
+          : nothing}
         ${this.canDeletePost()
           ? html`<button class="danger-btn" type="button" ?disabled=${this.deleting} @click=${this.handleDelete}>${this.deleting ? 'Deleting…' : 'Delete'}</button>`
           : nothing}
@@ -839,6 +901,26 @@ export class PostActions extends LitElement {
     `;
   }
 
+  private renderReportModal() {
+    if (!this.reportConfirmOpen || !this.post) {
+      return nothing;
+    }
+
+    return html`
+      <div class="modal-backdrop" @click=${this.closeReportConfirm}>
+        <section class="modal" role="dialog" aria-modal="true" aria-label="Report post confirmation" @click=${(event: Event) => event.stopPropagation()}>
+          <h3>Report post</h3>
+          <p>Report post ${this.post.id}? Moderators will review this report.</p>
+          ${this.reportError ? html`<div class="modal-error">${this.reportError}</div>` : ''}
+          <div class="modal-actions">
+            <button type="button" class="comment-btn" ?disabled=${this.reporting} @click=${this.closeReportConfirm}>Cancel</button>
+            <button type="button" class="danger-btn" data-confirm="report" ?disabled=${this.reporting} @click=${this.handleReport}>${this.reporting ? 'Reporting…' : 'Report'}</button>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
   private renderCommentModal() {
     if (!this.commentModalOpen || !this.post) {
       return nothing;
@@ -886,6 +968,7 @@ export class PostActions extends LitElement {
         ${this.renderCounts()}
       </div>
       ${this.renderReblogModal()}
+      ${this.renderReportModal()}
       ${this.renderCommentModal()}
     `;
   }

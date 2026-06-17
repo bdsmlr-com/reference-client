@@ -360,6 +360,19 @@ export interface ReportBlogResponse {
   error?: WriteError;
 }
 
+export interface ReportPostRequest {
+  actingBlogId?: number;
+  postId: number;
+}
+
+export interface ReportPostResponse {
+  ok?: boolean;
+  action?: string;
+  postId?: number;
+  actingBlogId?: number;
+  error?: WriteError;
+}
+
 export interface DeletePostRequest {
   actingBlogId?: number;
   postId: number;

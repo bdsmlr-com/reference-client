@@ -95,4 +95,18 @@ describe('post actions strip', () => {
     expect(stateSrc).toContain('commentPost(req: CommentPostRequest)');
     expect(stateSrc).toContain('getCommentCount');
   });
+
+  it('adds a post report helper and a large-card danger action on the shared action rail', () => {
+    const apiSrc = readFileSync(join(ROOT, 'services/api.ts'), 'utf8');
+    const actionSrc = readFileSync(join(ROOT, 'components/post-actions.ts'), 'utf8');
+
+    expect(apiSrc).toContain("'/v2/internal-write/report-post'");
+    expect(apiSrc).toContain('reportPost(');
+    expect(actionSrc).toContain('reportPost as reportPostRequest');
+    expect(actionSrc).toContain('reportConfirmOpen');
+    expect(actionSrc).toContain('handleReport');
+    expect(actionSrc).toContain('canReportPost()');
+    expect(actionSrc).toContain('Report post');
+    expect(actionSrc).toContain('⚠️');
+  });
 });

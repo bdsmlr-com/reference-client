@@ -82,6 +82,8 @@ import type {
   UnblockBlogResponse,
   ReportBlogRequest,
   ReportBlogResponse,
+  ReportPostRequest,
+  ReportPostResponse,
   DeletePostRequest,
   DeletePostResponse,
   LikePostRequest,
@@ -1354,6 +1356,15 @@ export async function reportBlog(
 ): Promise<ReportBlogResponse> {
   return apiRequest<ReportBlogResponse>(
     '/v2/internal-write/report-blog',
+    req
+  );
+}
+
+export async function reportPost(
+  req: ReportPostRequest
+): Promise<ReportPostResponse> {
+  return apiRequest<ReportPostResponse>(
+    '/v2/internal-write/report-post',
     req
   );
 }
