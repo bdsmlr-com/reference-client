@@ -13,8 +13,6 @@ export const SOCIAL_SORT_OPTIONS: SocialSortOption[] = [
   { value: 'followers:asc', label: 'Fewest followers' },
   { value: 'posts:desc', label: 'Most posts' },
   { value: 'posts:asc', label: 'Fewest posts' },
-  { value: 'latest-post:desc', label: 'Most recently posted' },
-  { value: 'latest-post:asc', label: 'Least recently posted' },
   { value: 'created:desc', label: 'Newest blog first' },
   { value: 'created:asc', label: 'Oldest blog first' },
 ];
@@ -58,10 +56,6 @@ export function sortSocialEdges(items: FollowEdge[], sortValue: string): FollowE
         return compareNumber(right.postsCount, left.postsCount) || compareText(left.blogName, right.blogName);
       case 'posts:asc':
         return compareNumber(left.postsCount, right.postsCount) || compareText(left.blogName, right.blogName);
-      case 'latest-post:desc':
-        return compareNumber(right.latestPostCreatedAtUnix, left.latestPostCreatedAtUnix) || compareText(left.blogName, right.blogName);
-      case 'latest-post:asc':
-        return compareNumber(left.latestPostCreatedAtUnix, right.latestPostCreatedAtUnix) || compareText(left.blogName, right.blogName);
       case 'created:desc':
         return compareDateString(right.createdAt, left.createdAt) || compareText(left.blogName, right.blogName);
       case 'created:asc':
