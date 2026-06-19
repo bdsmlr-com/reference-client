@@ -2,7 +2,17 @@ import { LitElement, html, css, nothing } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { extractRenderableTags, type ProcessedPost } from '../types/post.js';
+import {
+  extractRenderableTags,
+  getOrderedContentBlocks,
+  resolveMediaItemAudioSource,
+  resolveMediaItemImageSource,
+  resolveMediaItemPosterSource,
+  resolveMediaItemVideoSource,
+  type MediaItem,
+  type NormalizedContentBlock,
+  type ProcessedPost,
+} from '../types/post.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
 import { formatDateShort, getTooltipDate } from '../services/date-formatter.js';
 import { MAX_VISIBLE_TAGS } from '../types/ui-constants.js';
@@ -19,9 +29,6 @@ import './media-renderer.js';
 import './blog-identity.js';
 import './post-actions.js';
 
-/**
- * Memoization helper: Determines if post property has meaningfully changed.
- */
 function postHasChanged(newVal: ProcessedPost | undefined, oldVal: ProcessedPost | undefined): boolean {
   if (!newVal || !oldVal) return true;
   if (newVal === oldVal) return false;
@@ -30,6 +37,7 @@ function postHasChanged(newVal: ProcessedPost | undefined, oldVal: ProcessedPost
   if (newVal.reblogsCount !== oldVal.reblogsCount) return true;
   if (newVal.commentsCount !== oldVal.commentsCount) return true;
   if (newVal._media?.url !== oldVal._media?.url) return true;
+  if (newVal._media?.videoUrl !== oldVal._media?.videoUrl) return true;
   return false;
 }
 
@@ -116,8 +124,12 @@ export class PostFeedItem extends LitElement {
         color: var(--text-muted);
       }
 
-      .card-content {
-        padding: 16px;
+      .content-flow {
+        display: grid;
+      }
+
+      .content-block {
+        position: relative;
       }
 
       .media-container {
@@ -138,6 +150,11 @@ export class PostFeedItem extends LitElement {
           #050505;
       }
 
+      .media-gallery {
+        display: grid;
+        gap: 10px;
+      }
+
       .card-body {
         padding: 16px;
         font-size: 14px;
@@ -147,6 +164,15 @@ export class PostFeedItem extends LitElement {
 
       .card-body p:first-child { margin-top: 0; }
       .card-body p:last-child { margin-bottom: 0; }
+
+      .audio-shell {
+        padding: 16px;
+        background: var(--bg-panel-alt);
+      }
+
+      .audio-player {
+        width: 100%;
+      }
 
       .card-tags {
         display: flex;
@@ -191,29 +217,6 @@ export class PostFeedItem extends LitElement {
         font-size: 16px;
         opacity: 0.7;
       }
-
-      .link-container {
-        padding: 16px;
-        background: var(--bg-panel-alt);
-        border-radius: 8px;
-        margin: 16px;
-        border: 1px solid var(--border);
-        text-decoration: none;
-        display: block;
-      }
-
-      .link-title {
-        font-weight: 600;
-        color: var(--accent);
-        margin-bottom: 4px;
-      }
-
-      .link-url {
-        font-size: 12px;
-        color: var(--text-muted);
-        word-break: break-all;
-      }
-
     `,
   ];
 
@@ -282,6 +285,90 @@ export class PostFeedItem extends LitElement {
     return kind === 'like' ? '❤️ Liked own post' : '💬 Commented on own post';
   }
 
+  private renderMediaItem(item: MediaItem, mediaRenderType: MediaRenderType, useMediaClickZone: boolean, post: ProcessedPost) {
+    const representationKind = post._media?.representationKind;
+    const animatedAlternateSrc = item.kind === 'IMAGE' && representationKind === 'ANIMATED_VIDEO'
+      ? resolveMediaItemVideoSource(item, representationKind)
+      : '';
+
+    if (item.kind === 'AUDIO') {
+      const audioSrc = resolveMediaItemAudioSource(item);
+      if (!audioSrc) return nothing;
+      return html`
+        <div class="audio-shell">
+          <audio class="audio-player" controls src=${audioSrc}></audio>
+        </div>
+      `;
+    }
+
+    const src = item.kind === 'VIDEO'
+      ? resolveMediaItemVideoSource(item, representationKind)
+      : animatedAlternateSrc
+      ? (item.original?.url || '')
+      : resolveMediaItemImageSource(item, 'preview');
+    const posterSrc = item.kind === 'VIDEO' || animatedAlternateSrc ? (resolveMediaItemPosterSource(item) || undefined) : undefined;
+    const fallbackSrc = animatedAlternateSrc ? (item.original?.url || undefined) : undefined;
+    if (!src) return nothing;
+
+    return html`
+      <div class="media-container">
+        ${useMediaClickZone ? renderCardOverlayLink(post._media ? toPresentationModel(post, {
+          surface: this.page === 'post' ? 'detail' : 'timeline',
+          page: this.page === 'activity' ? 'activity' : this.page === 'follower-feed' ? 'feed' : this.page,
+          interactionKind: post._activityKindOverride,
+        }).identity.permalink : resolveLink('post', { postId: post.id }), `Open post ${post.id}`, (event: MouseEvent) => this.handleOverlayClick(event), this.mediaFailed) : nothing}
+        <media-renderer
+          .src=${src}
+          .posterSrc=${posterSrc}
+          .alternateVideoSrc=${animatedAlternateSrc || undefined}
+          .fallbackSrc=${fallbackSrc}
+          .type=${mediaRenderType}
+          .forceImage=${item.kind === 'IMAGE'}
+          .autoplayVideo=${this.videoAutoplay}
+          .controlsVideo=${this.videoControls}
+          .loopVideo=${this.videoLoop}
+          @media-state-change=${this.handleMediaStateChange}
+        ></media-renderer>
+      </div>
+    `;
+  }
+
+  private renderMediaBlock(items: MediaItem[], mediaRenderType: MediaRenderType, useMediaClickZone: boolean, post: ProcessedPost) {
+    if (items.length === 0) return nothing;
+    if (items.length === 1) {
+      return this.renderMediaItem(items[0], mediaRenderType, useMediaClickZone, post);
+    }
+    return html`
+      <div class="media-gallery">
+        ${items.map((item) => this.renderMediaItem(item, mediaRenderType, false, post))}
+      </div>
+    `;
+  }
+
+  private renderContentBlock(block: NormalizedContentBlock, index: number, mediaRenderType: MediaRenderType, useMediaClickZone: boolean, post: ProcessedPost) {
+    if (block.kind === 'media') {
+      return html`
+        <div class="content-block" data-content-block="media" data-block-index=${String(index)}>
+          ${this.renderMediaBlock(block.items, mediaRenderType, useMediaClickZone, post)}
+        </div>
+      `;
+    }
+
+    if (block.kind === 'html') {
+      return html`
+        <div class="card-body content-block" data-content-block="html" data-block-index=${String(index)}>
+          ${unsafeHTML(sanitizeHtmlFragment(block.html))}
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="card-body content-block" data-content-block="text" data-block-index=${String(index)}>
+        ${block.text}
+      </div>
+    `;
+  }
+
   render() {
     const post = this.post;
     const presentation = toPresentationModel(post, {
@@ -289,8 +376,6 @@ export class PostFeedItem extends LitElement {
       page: this.page === 'activity' ? 'activity' : this.page === 'follower-feed' ? 'feed' : this.page,
       interactionKind: post._activityKindOverride,
     });
-    const media = post._media;
-
     const tags = extractRenderableTags(post);
     const blogLabel = presentation.identity.viaBlogLabel;
     const originBlogLabel = presentation.identity.originBlogLabel;
@@ -299,33 +384,10 @@ export class PostFeedItem extends LitElement {
     const reblogCount = presentation.actions.reblog.count;
     const commentCount = presentation.actions.comment.count;
     const mediaRenderType = presentation.media.preset as MediaRenderType;
-    const bodyHtml = post.content?.html || post.body || post.content?.text || post.content?.title || '';
+    const orderedBlocks = getOrderedContentBlocks(post);
     const isPostShell = this.page === 'post';
-    const rawUrl = media.type === 'video'
-      ? (media.videoUrl || media.url)
-      : (media.url || media.videoUrl || media.audioUrl);
-    const posterSrc = media.type === 'video' && media.url && media.url !== rawUrl ? media.url : undefined;
     const selfActivityBadge = this.renderSelfActivityBadge(post);
     const useMediaClickZone = presentation.layout.clickZone === 'media' && !this.disableClick && !isPostShell;
-    let mediaHtml;
-    if (media.type === 'image' || media.type === 'video') {
-      if (rawUrl) {
-        mediaHtml = html`
-          <div class="media-container">
-            ${useMediaClickZone ? renderCardOverlayLink(presentation.identity.permalink, `Open post ${post.id}`, (event: MouseEvent) => this.handleOverlayClick(event), this.mediaFailed) : nothing}
-            <media-renderer
-              .src=${rawUrl}
-              .posterSrc=${posterSrc}
-              .type=${mediaRenderType}
-              .autoplayVideo=${this.videoAutoplay}
-              .controlsVideo=${this.videoControls}
-              .loopVideo=${this.videoLoop}
-              @media-state-change=${this.handleMediaStateChange}
-            ></media-renderer>
-          </div>
-        `;
-      }
-    }
 
     return html`
       <article class="card ${this.disableClick ? 'non-interactive' : ''} ${isPostShell ? 'post-shell' : ''}">
@@ -344,9 +406,11 @@ export class PostFeedItem extends LitElement {
           <time class="post-date" title=${getTooltipDate(post.createdAtUnix)}>${formatDateShort(post.createdAtUnix)}</time>
         </header>
 
-        ${mediaHtml}
-
-        ${!isPostShell && bodyHtml ? html`<div class="card-body">${unsafeHTML(sanitizeHtmlFragment(bodyHtml))}</div>` : ''}
+        ${orderedBlocks.length > 0 ? html`
+          <div class="content-flow">
+            ${orderedBlocks.map((block, index) => this.renderContentBlock(block, index, mediaRenderType, useMediaClickZone, post))}
+          </div>
+        ` : nothing}
 
         ${!isPostShell && tags.length > 0 ? html`
           <div class="card-tags">

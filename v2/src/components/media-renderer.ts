@@ -5,10 +5,31 @@ import { resolveMediaUrl, isAnimation, isNativeVideo, probeNextBucket, type Medi
 import { isAdminMode } from '../services/blog-resolver.js';
 import { getMediaBehavior } from '../services/media-behavior.js';
 
-/**
- * Universal Media Renderer
- * Centralizes all <img> vs <video> logic, error handling, and bucket probing.
- */
+type ProbeStatus = 'unknown' | 'available' | 'unavailable';
+type ProbeFailureReason = 'missing-or-404' | 'timeout' | 'token-or-auth' | 'codec-or-playback' | 'other-load-error';
+
+const animatedAlternateAvailabilityCache = new Map<string, { available: boolean; reason?: ProbeFailureReason }>();
+
+function canonicalAnimatedAlternateIdentity(url: string | undefined, role = 'alternate-0'): string {
+  if (!url) return '';
+  const unsigned = url.split('?')[0];
+  const match = unsigned.match(/\/uploads\/[^?#]+/i);
+  return `${match?.[0] || unsigned}::${role}`;
+}
+
+function classifyProbeFailure(url: string | undefined, mediaError: MediaError | null | undefined): ProbeFailureReason {
+  if (mediaError?.code === MediaError.MEDIA_ERR_DECODE || mediaError?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+    return 'codec-or-playback';
+  }
+  if (url && /[?&](e|t)=/i.test(url)) {
+    return 'token-or-auth';
+  }
+  if (mediaError?.code === MediaError.MEDIA_ERR_NETWORK) {
+    return 'missing-or-404';
+  }
+  return 'other-load-error';
+}
+
 @customElement('media-renderer')
 export class MediaRenderer extends LitElement {
   static styles = css`
@@ -105,8 +126,11 @@ export class MediaRenderer extends LitElement {
 
   @property({ type: String }) src: string | undefined = '';
   @property({ type: String }) posterSrc: string | undefined = '';
+  @property({ type: String }) alternateVideoSrc: string | undefined = '';
+  @property({ type: String }) fallbackSrc: string | undefined = '';
   @property({ type: String }) type: MediaRenderType = 'feed';
   @property({ type: String }) alt = '';
+  @property({ type: Boolean }) forceImage = false;
   @property({ type: Boolean }) loading = true;
   @property({ type: Boolean }) autoplayVideo?: boolean;
   @property({ type: Boolean }) controlsVideo?: boolean;
@@ -115,12 +139,20 @@ export class MediaRenderer extends LitElement {
   @state() private showPlaceholder = false;
   @state() private showPosterFrame = true;
   @state() private retryGeneration = 0;
+  @state() private alternateProbeStatus: ProbeStatus = 'unknown';
+
+  private alternateProbeToken = 0;
 
   protected updated(changed: Map<string, unknown>): void {
-    if (changed.has('src') || changed.has('posterSrc')) {
+    if (changed.has('src') || changed.has('posterSrc') || changed.has('alternateVideoSrc') || changed.has('fallbackSrc')) {
       this.showPlaceholder = false;
       this.showPosterFrame = true;
       this.dispatchMediaStateChange(false);
+      this.alternateProbeStatus = 'unknown';
+    }
+
+    if (changed.has('alternateVideoSrc') || changed.has('type') || changed.has('src')) {
+      this.ensureAnimatedAlternateProbe();
     }
   }
 
@@ -137,14 +169,28 @@ export class MediaRenderer extends LitElement {
   };
 
   private handlePosterFrameError = (): void => {
-    // Poster is best-effort only. Do not fail the whole media renderer.
     this.showPosterFrame = false;
   };
 
+  private setAlternateUnavailable(reason: ProbeFailureReason): void {
+    const cacheKey = canonicalAnimatedAlternateIdentity(this.alternateVideoSrc);
+    if (cacheKey) {
+      animatedAlternateAvailabilityCache.set(cacheKey, { available: false, reason });
+    }
+    this.alternateProbeStatus = 'unavailable';
+    this.showPosterFrame = true;
+  }
+
   private handleError(e: Event) {
     const el = e.target as HTMLElement;
-    
-    // Only retry within the media gateway path. Do not fall back to direct CDN URLs.
+    const isAnimatedVideoFallback = Boolean(this.alternateVideoSrc) && (el.tagName === 'VIDEO' || this.alternateProbeStatus === 'available');
+
+    if (isAnimatedVideoFallback) {
+      const mediaError = (el as HTMLMediaElement).error;
+      this.setAlternateUnavailable(classifyProbeFailure(this.alternateVideoSrc, mediaError));
+      return;
+    }
+
     if (probeNextBucket(el)) return;
     this.showPlaceholder = true;
     this.dispatchMediaStateChange(true);
@@ -155,6 +201,7 @@ export class MediaRenderer extends LitElement {
     this.showPosterFrame = true;
     this.retryGeneration += 1;
     this.dispatchMediaStateChange(false);
+    this.ensureAnimatedAlternateProbe(true);
   };
 
   private handleRetryInteraction = (event: Event): void => {
@@ -165,9 +212,8 @@ export class MediaRenderer extends LitElement {
 
   private renderDebug(resolvedUrl: string) {
     if (!isAdminMode()) return nothing;
-    // Only show simple debug if NOT in lightbox (lightbox has its own panel)
     if (this.type === 'lightbox') return nothing;
-    
+
     return html`
       <div class="admin-debug">
         ${resolvedUrl.substring(0, 60)}...
@@ -175,8 +221,55 @@ export class MediaRenderer extends LitElement {
     `;
   }
 
+  private ensureAnimatedAlternateProbe(force = false): void {
+    if (!this.alternateVideoSrc || this.type === 'poster') {
+      this.alternateProbeStatus = 'unavailable';
+      return;
+    }
+
+    const cacheKey = canonicalAnimatedAlternateIdentity(this.alternateVideoSrc);
+    if (!force && cacheKey) {
+      const cached = animatedAlternateAvailabilityCache.get(cacheKey);
+      if (cached) {
+        this.alternateProbeStatus = cached.available ? 'available' : 'unavailable';
+        return;
+      }
+    }
+
+    if (typeof document === 'undefined') {
+      this.alternateProbeStatus = 'unavailable';
+      return;
+    }
+
+    const probeToken = ++this.alternateProbeToken;
+    const probeUrl = resolveMediaUrl(this.alternateVideoSrc, this.type);
+    const probeVideo = document.createElement('video');
+    probeVideo.muted = true;
+    probeVideo.preload = 'metadata';
+    probeVideo.playsInline = true;
+    let timeoutHandle = 0;
+
+    const finalize = (available: boolean, reason?: ProbeFailureReason) => {
+      if (probeToken !== this.alternateProbeToken) return;
+      window.clearTimeout(timeoutHandle);
+      probeVideo.removeAttribute('src');
+      probeVideo.load();
+      if (cacheKey) {
+        animatedAlternateAvailabilityCache.set(cacheKey, { available, reason });
+      }
+      this.alternateProbeStatus = available ? 'available' : 'unavailable';
+      };
+
+    probeVideo.addEventListener('loadedmetadata', () => finalize(true), { once: true });
+    probeVideo.addEventListener('error', () => finalize(false, classifyProbeFailure(this.alternateVideoSrc, probeVideo.error)), { once: true });
+    timeoutHandle = window.setTimeout(() => finalize(false, 'timeout'), 1500);
+    probeVideo.src = probeUrl;
+    probeVideo.load();
+  }
+
   render() {
-    if (!this.src) {
+    const baseImageSrc = this.fallbackSrc || this.src;
+    if (!baseImageSrc) {
       return html`
         <div class="error-placeholder" style="background: #1a1a1a; border: 1px dashed #333;">
           <span style="font-size: 20px; opacity: 0.5;">❓</span>
@@ -207,17 +300,20 @@ export class MediaRenderer extends LitElement {
       `;
     }
 
-    const isAnim = isAnimation(this.src);
-    const resolvedUrl = resolveMediaUrl(this.src, this.type);
+    const resolvedImageUrl = resolveMediaUrl(baseImageSrc, this.type);
+    const resolvedAlternateVideoUrl = this.alternateVideoSrc ? resolveMediaUrl(this.alternateVideoSrc, this.type) : '';
     const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';
-    const usesRawAlias = resolvedUrl.includes('/raw/s3://');
-    // Detail view and raw-alias surfaces keep gif/webp as still media; only transformed
-    // non-detail surfaces should coerce animations through the mp4/video path.
-    const treatAnimationAsVideo = isAnim && !isDetailSurface && !usesRawAlias;
-    const isVideoSource = treatAnimationAsVideo || isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');
-    const posterSource = this.posterSrc || this.src;
+    const usesRawAlias = resolvedImageUrl.includes('/raw/s3://');
+    const shouldUseAlternateVideo = Boolean(this.alternateVideoSrc) && this.alternateProbeStatus === 'available';
+    const isAnim = isAnimation(baseImageSrc);
+    const treatAnimationAsVideo = this.alternateVideoSrc
+      ? shouldUseAlternateVideo
+      : !this.forceImage && isAnim && !isDetailSurface && !usesRawAlias;
+    const resolvedPrimaryUrl = shouldUseAlternateVideo ? resolvedAlternateVideoUrl : resolvedImageUrl;
+    const isVideoSource = shouldUseAlternateVideo || (!this.forceImage && !this.alternateVideoSrc && (treatAnimationAsVideo || isNativeVideo(resolvedPrimaryUrl) || resolvedPrimaryUrl.includes('format:mp4')));
+    const posterSource = this.posterSrc || baseImageSrc;
     const posterUrl = resolveMediaUrl(posterSource, 'poster');
-    const effectivePoster = posterUrl || resolvedUrl;
+    const effectivePoster = posterUrl || resolvedImageUrl;
     const fillMode =
       this.type === 'card' ||
       this.type === 'gallery-grid' ||
@@ -238,7 +334,7 @@ export class MediaRenderer extends LitElement {
       ? 'object-fit: inherit; width: 100%; height: 100%;'
       : 'object-fit: contain; width: 100%; height: auto;';
 
-    if (!resolvedUrl) {
+    if (!resolvedPrimaryUrl) {
       return html`
         <div class="error-placeholder" style="background: #221111; border: 1px solid #ff4444;">
           <span style="font-size: 20px;">🚫</span>
@@ -272,14 +368,14 @@ export class MediaRenderer extends LitElement {
               alt=""
               @error=${this.handlePosterFrameError}
             />
-            <video 
-              src=${resolvedUrl}
+            <video
+              src=${resolvedPrimaryUrl}
               ?autoplay=${effectiveAutoplay}
               ?controls=${effectiveControls}
               ?loop=${effectiveLoop}
-              muted 
-              playsinline 
-              webkit-playsinline 
+              muted
+              playsinline
+              webkit-playsinline
               preload=${effectivePreload}
               poster=${effectivePoster}
               style=${videoStyle}
@@ -288,19 +384,19 @@ export class MediaRenderer extends LitElement {
               @play=${this.handleVideoReady}
             ></video>
           </div>
-          ${this.renderDebug(resolvedUrl)}
+          ${this.renderDebug(resolvedPrimaryUrl)}
         `);
       }
 
       return keyed(this.retryGeneration, html`
-        <video 
-          src=${resolvedUrl}
+        <video
+          src=${resolvedPrimaryUrl}
           ?autoplay=${effectiveAutoplay}
           ?controls=${effectiveControls}
           ?loop=${effectiveLoop}
-          muted 
-          playsinline 
-          webkit-playsinline 
+          muted
+          playsinline
+          webkit-playsinline
           preload=${effectivePreload}
           poster=${effectivePoster}
           style=${videoStyle}
@@ -308,19 +404,19 @@ export class MediaRenderer extends LitElement {
           @loadeddata=${this.handleVideoReady}
           @play=${this.handleVideoReady}
         ></video>
-        ${this.renderDebug(resolvedUrl)}
+        ${this.renderDebug(resolvedPrimaryUrl)}
       `);
     }
 
     return keyed(this.retryGeneration, html`
-      <img 
-        src=${resolvedUrl} 
-        alt=${this.alt} 
-        loading="lazy" 
+      <img
+        src=${resolvedImageUrl}
+        alt=${this.alt}
+        loading="lazy"
         style=${mediaStyle}
-        @error=${this.handleError} 
+        @error=${this.handleError}
       />
-      ${this.renderDebug(resolvedUrl)}
+      ${this.renderDebug(resolvedImageUrl)}
     `);
   }
 }

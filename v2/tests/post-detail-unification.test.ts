@@ -18,7 +18,7 @@ describe('post detail unification', () => {
     expect(detailSrc).toContain("@property({ type: String }) surface: 'detail' | 'lightbox' = 'detail';");
     expect(detailSrc).toContain("const presentation = toPresentationModel(p, {");
     expect(detailSrc).toContain("const recommendationsMode = this.surface === 'lightbox' ? 'list' : 'grid';");
-    expect(detailSrc).toContain("const engagementStandalone = false;");
+    expect(detailSrc).toContain('const engagementStandalone = false;');
     expect(postViewSrc).toContain('<post-detail-content');
     expect(postViewSrc).not.toContain('<post-feed-item');
     expect(postViewSrc).not.toContain('recommendationsMode=');
@@ -26,17 +26,16 @@ describe('post detail unification', () => {
     expect(engagementSrc).not.toContain('<div class="lightbox-links">');
   });
 
-  it('falls back to title-bearing text payloads when html/body are empty', () => {
+  it('uses ordered content blocks while keeping title-bearing text fallbacks', () => {
     const detailSrc = readFileSync(join(ROOT, 'components/post-detail-content.ts'), 'utf8');
 
-    expect(detailSrc).toContain('const bodyHtml =');
     expect(detailSrc).toContain('const titleText =');
+    expect(detailSrc).toContain('const orderedBlocks = getOrderedContentBlocks(p);');
     expect(detailSrc).toContain('p.title || p.content?.title');
     expect(detailSrc).toContain('class="post-title"');
-    expect(detailSrc).toContain('p.content?.html');
-    expect(detailSrc).toContain('p.body');
-    expect(detailSrc).toContain('p.content?.text');
-    expect(detailSrc).toContain('p.content?.title');
+    expect(detailSrc).toContain('data-content-block="html"');
+    expect(detailSrc).toContain('data-content-block="text"');
+    expect(detailSrc).not.toContain('const bodyHtml =');
   });
 
   it('renders separate reblog and origin tag sections on RP detail pages', () => {
@@ -59,17 +58,16 @@ describe('post detail unification', () => {
   });
 });
 
+it('uses the shared micro identity renderer for removed-origin strikethrough instead of a detail-only code path', () => {
+  const cardSrc = readFileSync(join(ROOT, 'components/post-card.ts'), 'utf8');
+  const detailSrc = readFileSync(join(ROOT, 'components/post-detail-content.ts'), 'utf8');
+  const identityRenderSrc = readFileSync(join(ROOT, 'services/blog-identity-render.ts'), 'utf8');
+  const identitySrc = readFileSync(join(ROOT, 'components/blog-identity.ts'), 'utf8');
 
-  it('uses the shared micro identity renderer for removed-origin strikethrough instead of a detail-only code path', () => {
-    const cardSrc = readFileSync(join(ROOT, 'components/post-card.ts'), 'utf8');
-    const detailSrc = readFileSync(join(ROOT, 'components/post-detail-content.ts'), 'utf8');
-    const identityRenderSrc = readFileSync(join(ROOT, 'services/blog-identity-render.ts'), 'utf8');
-    const identitySrc = readFileSync(join(ROOT, 'components/blog-identity.ts'), 'utf8');
-
-    expect(cardSrc).toContain('presentation.identity.originBlogGone');
-    expect(detailSrc).toContain('presentation.identity.originBlogGone');
-    expect(detailSrc).toContain('renderStructuredMicroBlogIdentity({');
-    expect(identityRenderSrc).toContain('strikethrough');
-    expect(identitySrc).toContain('@property({ type: Boolean }) strikethrough = false;');
-    expect(identitySrc).toContain('text-decoration: line-through;');
-  });
+  expect(cardSrc).toContain('presentation.identity.originBlogGone');
+  expect(detailSrc).toContain('presentation.identity.originBlogGone');
+  expect(detailSrc).toContain('renderStructuredMicroBlogIdentity({');
+  expect(identityRenderSrc).toContain('strikethrough');
+  expect(identitySrc).toContain('@property({ type: Boolean }) strikethrough = false;');
+  expect(identitySrc).toContain('text-decoration: line-through;');
+});

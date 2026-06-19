@@ -2,12 +2,21 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { baseStyles } from '../styles/theme.js';
-import { extractRenderableTags, type ProcessedPost } from '../types/post.js';
+import {
+  extractRenderableTags,
+  getOrderedContentBlocks,
+  resolveMediaItemAudioSource,
+  resolveMediaItemImageSource,
+  resolveMediaItemPosterSource,
+  resolveMediaItemVideoSource,
+  type MediaItem,
+  type NormalizedContentBlock,
+  type ProcessedPost,
+} from '../types/post.js';
 import { formatDateShort, getTooltipDate } from '../services/date-formatter.js';
 import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';
-import { resolvePostDetailMediaUrl } from '../services/media-resolver.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import {
   buildContextualTagSearchHref,
@@ -89,6 +98,13 @@ export class PostDetailContent extends LitElement {
         border-color: color-mix(in srgb, var(--error) 45%, var(--border));
         color: var(--error);
       }
+      .content-flow {
+        display: grid;
+        gap: 14px;
+      }
+      .content-block {
+        display: block;
+      }
       .media-stage {
         width: 100%;
         display: flex;
@@ -113,6 +129,12 @@ export class PostDetailContent extends LitElement {
       }
       .media-gallery .media-stage {
         max-height: none;
+      }
+      .audio-shell {
+        padding: 14px 0 4px;
+      }
+      .audio-player {
+        width: 100%;
       }
       .post-title {
         margin: 0;
@@ -173,6 +195,82 @@ export class PostDetailContent extends LitElement {
   @property({ type: String }) surface: 'detail' | 'lightbox' = 'detail';
   @property({ type: String }) from = 'direct';
 
+  private renderMediaItem(item: MediaItem, representationKind: ProcessedPost['_media']['representationKind']) {
+    const alternateVideoSrc = item.kind === 'IMAGE' && representationKind === 'ANIMATED_VIDEO'
+      ? resolveMediaItemVideoSource(item, representationKind)
+      : '';
+
+    if (item.kind === 'AUDIO') {
+      const audioSrc = resolveMediaItemAudioSource(item);
+      if (!audioSrc) return nothing;
+      return html`
+        <div class="audio-shell">
+          <audio class="audio-player" controls src=${audioSrc}></audio>
+        </div>
+      `;
+    }
+
+    const src = item.kind === 'VIDEO'
+      ? resolveMediaItemVideoSource(item, representationKind)
+      : alternateVideoSrc
+      ? (item.original?.url || '')
+      : resolveMediaItemImageSource(item, 'detail');
+    if (!src) return nothing;
+    const posterSrc = item.kind === 'VIDEO' || alternateVideoSrc ? (resolveMediaItemPosterSource(item) || undefined) : undefined;
+
+    return html`
+      <div class="media-stage">
+        <media-renderer
+          .src=${src}
+          .posterSrc=${posterSrc}
+          .alternateVideoSrc=${alternateVideoSrc || undefined}
+          .fallbackSrc=${alternateVideoSrc ? (item.original?.url || undefined) : undefined}
+          .type=${'detail'}
+          .forceImage=${item.kind === 'IMAGE'}
+          .autoplayVideo=${false}
+          .controlsVideo=${true}
+          .loopVideo=${true}
+        ></media-renderer>
+      </div>
+    `;
+  }
+
+  private renderMediaBlock(block: Extract<NormalizedContentBlock, { kind: 'media' }>, representationKind: ProcessedPost['_media']['representationKind']) {
+    if (block.items.length === 0) return nothing;
+    if (block.items.length === 1) {
+      return this.renderMediaItem(block.items[0], representationKind);
+    }
+    return html`
+      <div class="media-gallery">
+        ${block.items.map((item) => this.renderMediaItem(item, representationKind))}
+      </div>
+    `;
+  }
+
+  private renderContentBlock(block: NormalizedContentBlock, index: number, representationKind: ProcessedPost['_media']['representationKind']) {
+    if (block.kind === 'media') {
+      return html`
+        <div class="content-block" data-content-block="media" data-block-index=${String(index)}>
+          ${this.renderMediaBlock(block, representationKind)}
+        </div>
+      `;
+    }
+
+    if (block.kind === 'html') {
+      return html`
+        <div class="body-text content-block" data-content-block="html" data-block-index=${String(index)}>
+          ${unsafeHTML(sanitizeHtmlFragment(block.html))}
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="body-text content-block" data-content-block="text" data-block-index=${String(index)}>
+        ${block.text}
+      </div>
+    `;
+  }
+
   render() {
     if (!this.post) return nothing;
     const p = this.post;
@@ -185,13 +283,9 @@ export class PostDetailContent extends LitElement {
     const reblogTags = extractRenderableTags(p);
     const originTags = this.originPost ? extractRenderableTags(this.originPost) : [];
     const tags = presentation.identity.isReblog ? [] : reblogTags;
-    const bodyHtml = p.content?.html || p.body || p.content?.text || p.content?.title || '';
     const titleText = (p.title || p.content?.title || '').trim();
-    const media = p._media;
-    const mediaFiles = p.content?.files || [];
-    const multiImageUrls = p.type === 2 && mediaFiles.length > 1 ? mediaFiles : [];
-    const rawUrl = resolvePostDetailMediaUrl(media?.type === 'video' ? (media.videoUrl || media.url) : (media?.url || media?.videoUrl || media?.audioUrl));
-    const posterSrc = media?.type === 'video' && media.url && media.url !== rawUrl ? resolvePostDetailMediaUrl(media.url) : undefined;
+    const orderedBlocks = getOrderedContentBlocks(p);
+    const representationKind = p._media?.representationKind;
     const permalink = presentation.identity.permalink;
     const typeIcon = presentation.identity.postTypeIcon || '📄';
     const isAdmin = isAdminMode();
@@ -259,33 +353,11 @@ export class PostDetailContent extends LitElement {
 
         ${titleText ? html`<h1 class="post-title">${titleText}</h1>` : nothing}
 
-        ${multiImageUrls.length > 0 ? html`
-          <div class="media-gallery">
-            ${multiImageUrls.map((fileUrl) => html`
-              <div class="media-stage">
-                <media-renderer
-                  .src=${resolvePostDetailMediaUrl(fileUrl)}
-                  .type=${'detail'}
-                ></media-renderer>
-              </div>
-            `)}
-          </div>
-        ` : rawUrl ? html`
-          <div class="media-stage">
-            <media-renderer
-              .src=${rawUrl}
-              .posterSrc=${posterSrc}
-              .type=${'detail'}
-              .autoplayVideo=${false}
-              .controlsVideo=${true}
-              .loopVideo=${true}
-            ></media-renderer>
+        ${orderedBlocks.length > 0 ? html`
+          <div class="content-flow">
+            ${orderedBlocks.map((block, index) => this.renderContentBlock(block, index, representationKind))}
           </div>
         ` : nothing}
-
-        <div class="body-text">
-          ${unsafeHTML(sanitizeHtmlFragment(bodyHtml))}
-        </div>
 
         ${presentation.layout.showTags && presentation.identity.isReblog
           ? html`

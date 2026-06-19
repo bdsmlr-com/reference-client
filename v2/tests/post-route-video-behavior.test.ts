@@ -10,7 +10,7 @@ describe('post route media behavior', () => {
     expect(src).not.toContain('@post-click=${this.handlePostClick}');
   });
 
-  it('post-feed-item forwards post-detail video flags to media-renderer', () => {
+  it('post-feed-item forwards contract-driven media roles to media-renderer', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/post-feed-item.ts'), 'utf8');
     expect(src).toContain('@property({ type: Boolean }) disableClick = false;');
     expect(src).toContain('@property({ type: Boolean }) videoAutoplay?: boolean;');
@@ -22,38 +22,44 @@ describe('post route media behavior', () => {
     expect(src).toContain('.controlsVideo=${this.videoControls}');
     expect(src).toContain('.loopVideo=${this.videoLoop}');
     expect(src).toContain('.type=${mediaRenderType}');
-    expect(src).toContain("const rawUrl = media.type === 'video'");
-    expect(src).toContain('? (media.videoUrl || media.url)');
+    expect(src).toContain("const animatedAlternateSrc = item.kind === 'IMAGE' && representationKind === 'ANIMATED_VIDEO'");
+    expect(src).toContain('.alternateVideoSrc=${animatedAlternateSrc || undefined}');
     expect(src).toContain('.posterSrc=${posterSrc}');
+    expect(src).toContain('.fallbackSrc=${fallbackSrc}');
+    expect(src).toContain(".forceImage=${item.kind === 'IMAGE'}");
+    expect(src).not.toContain("const rawUrl = media.type === 'video'");
   });
 
-  it('media-renderer supports post-detail video mode defaults', () => {
+  it('media-renderer supports alternate probing and post-detail video mode defaults', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/media-renderer.ts'), 'utf8');
     expect(src).toContain('controls=${effectiveControls}');
     expect(src).toContain('autoplay=${effectiveAutoplay}');
     expect(src).toContain('loop=${effectiveLoop}');
     expect(src).toContain('@property({ type: String }) posterSrc');
+    expect(src).toContain('@property({ type: String }) alternateVideoSrc');
+    expect(src).toContain('@property({ type: Boolean }) forceImage = false;');
     expect(src).toContain("const effectivePreload = effectiveAutoplay && defaultPreload === 'none'");
-    expect(src).toContain('src=${resolvedUrl}');
+    expect(src).toContain('const resolvedPrimaryUrl = shouldUseAlternateVideo ? resolvedAlternateVideoUrl : resolvedImageUrl;');
+    expect(src).toContain('src=${resolvedPrimaryUrl}');
     expect(src).not.toContain('<source src=${resolvedUrl} type="video/mp4"');
     expect(src).toContain('class="poster-frame');
     expect(src).toContain('@error=${this.handlePosterFrameError}');
-    expect(src).not.toContain('class="poster-frame ${this.showPosterFrame ? \'\' : \'hidden\'}"\n              src=${posterUrl}\n              alt=""\n              @error=${this.handleError}');
     expect(src).toContain('@loadeddata=${this.handleVideoReady}');
     expect(src).toContain('@play=${this.handleVideoReady}');
     expect(src).toContain("position: static;");
     expect(src).toContain("const detailFitStyle = 'object-fit: contain; max-width: min(100%, calc(100vw - 40px)); max-height: calc(min(78vh, 920px) - 20px); width: auto; height: auto; margin: 0 auto;';");
     expect(src).toContain("const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';");
-    expect(src).toContain('const isAnim = isAnimation(this.src);');
-    expect(src).toContain("const usesRawAlias = resolvedUrl.includes('/raw/s3://');");
-    expect(src).toContain("const treatAnimationAsVideo = isAnim && !isDetailSurface && !usesRawAlias;");
-    expect(src).toContain("const isVideoSource = treatAnimationAsVideo || isNativeVideo(resolvedUrl) || resolvedUrl.includes('format:mp4');");
+    expect(src).toContain('const isAnim = isAnimation(baseImageSrc);');
+    expect(src).toContain("const shouldUseAlternateVideo = Boolean(this.alternateVideoSrc) && this.alternateProbeStatus === 'available';");
+    expect(src).toContain("const treatAnimationAsVideo = this.alternateVideoSrc");
+    expect(src).toContain("!this.forceImage && !this.alternateVideoSrc");
+    expect(src).toContain('animatedAlternateAvailabilityCache');
+    expect(src).toContain("window.setTimeout(() => finalize(false, 'timeout'), 1500);");
     expect(src).toContain('const behavior = getMediaBehavior(this.type);');
     expect(src).toContain('const effectiveAutoplay = this.autoplayVideo ?? behavior.autoplay;');
     expect(src).toContain("const defaultPreload = behavior.preload ?? 'none';");
     expect(src).toContain("this.type === 'card' ||");
     expect(src).toContain("const squareCropMode =");
-    expect(src).toContain("this.type === 'card' ||");
     expect(src).toContain("this.type === 'gallery-grid' ||");
     expect(src).toContain("this.type === 'gutter';");
     expect(src).toContain("this.toggleAttribute('square-crop-mode', squareCropMode);");
@@ -61,7 +67,6 @@ describe('post route media behavior', () => {
     expect(src).toContain("align-items: center;");
     expect(src).toContain("justify-content: center;");
     expect(src).toContain("object-position: center center;");
-    expect(src).toContain("this.type === 'gallery-grid' ||");
     expect(src).toContain("@click=${this.handleRetryInteraction}");
     expect(src).toContain('Load Failed. Retry ⟳');
     expect(src).toContain('color: #b86a6a;');
@@ -70,19 +75,19 @@ describe('post route media behavior', () => {
     expect(src).toContain('event.preventDefault();');
   });
 
-  it('post-detail-content emits the canonical detail media family', () => {
+  it('post-detail-content emits the canonical detail media family from ordered blocks', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/post-detail-content.ts'), 'utf8');
     expect(src).toContain(".type=${'detail'}");
     expect(src).not.toContain(".type=${'post-detail'}");
     expect(src).toContain('.media-stage media-renderer {');
     expect(src).toContain('.media-gallery {');
-    expect(src).toContain('const mediaFiles = p.content?.files || [];');
-    expect(src).toContain('const multiImageUrls = p.type === 2 && mediaFiles.length > 1 ? mediaFiles : [];');
-    expect(src).toContain("import { resolvePostDetailMediaUrl } from '../services/media-resolver.js';");
-    expect(src).toContain("const rawUrl = resolvePostDetailMediaUrl(media?.type === 'video' ? (media.videoUrl || media.url) : (media?.url || media?.videoUrl || media?.audioUrl));");
-    expect(src).toContain(".src=${resolvePostDetailMediaUrl(fileUrl)}");
-    expect(src).toContain('${multiImageUrls.map((fileUrl) => html`');
-    expect(src).not.toContain('.src=${fileUrl}');
+    expect(src).toContain('const orderedBlocks = getOrderedContentBlocks(p);');
+    expect(src).toContain("const alternateVideoSrc = item.kind === 'IMAGE' && representationKind === 'ANIMATED_VIDEO'");
+    expect(src).toContain('.alternateVideoSrc=${alternateVideoSrc || undefined}');
+    expect(src).toContain(".forceImage=${item.kind === 'IMAGE'}");
+    expect(src).not.toContain('const mediaFiles = p.content?.files || [];');
+    expect(src).not.toContain('const multiImageUrls = p.type === 2 && mediaFiles.length > 1 ? mediaFiles : [];');
+    expect(src).not.toContain("import { resolvePostDetailMediaUrl } from '../services/media-resolver.js';");
     expect(src).toContain('width: auto;');
     expect(src).toContain('height: auto;');
     expect(src).toContain('max-width: min(100%, calc(100vw - 40px));');

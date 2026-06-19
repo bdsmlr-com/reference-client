@@ -1,6 +1,79 @@
 import type { IdentityDecoration, Post, PostContent, PostType } from './api.js';
 import type { ResolvedLink } from '../services/link-resolver.js';
 
+export type MediaRepresentationKind = 'UNSPECIFIED' | 'NONE' | 'ORIGINAL' | 'ANIMATED_VIDEO';
+export type MediaItemKind = 'UNSPECIFIED' | 'IMAGE' | 'VIDEO' | 'AUDIO';
+
+export interface MediaAsset {
+  url: string;
+  mimeType?: string;
+  width?: number;
+  height?: number;
+  durationMs?: number;
+}
+
+export interface MediaItem {
+  kind: MediaItemKind;
+  original?: MediaAsset;
+  alternates?: MediaAsset[];
+  preview?: MediaAsset;
+  poster?: MediaAsset;
+}
+
+export interface MediaRepresentation {
+  kind: MediaRepresentationKind;
+  items: MediaItem[];
+}
+
+export interface TextContentBlock {
+  kind: 'text';
+  text: string;
+}
+
+export interface HtmlContentBlock {
+  kind: 'html';
+  html: string;
+}
+
+export interface MediaContentBlock {
+  kind: 'media';
+  items: MediaItem[];
+}
+
+export type NormalizedContentBlock = TextContentBlock | HtmlContentBlock | MediaContentBlock;
+
+interface ApiTextBlock {
+  text?: string;
+}
+
+interface ApiHtmlBlock {
+  html?: string;
+}
+
+interface ApiMediaBlock {
+  [key: string]: never;
+}
+
+interface ApiContentBlock {
+  textBlock?: ApiTextBlock;
+  htmlBlock?: ApiHtmlBlock;
+  mediaBlock?: ApiMediaBlock;
+}
+
+interface PostWithContract extends Post {
+  contentBlocks?: ApiContentBlock[];
+  mediaRepresentation?: {
+    kind?: string;
+    items?: Array<{
+      kind?: string;
+      original?: Partial<MediaAsset>;
+      alternates?: Array<Partial<MediaAsset>>;
+      preview?: Partial<MediaAsset>;
+      poster?: Partial<MediaAsset>;
+    }>;
+  };
+}
+
 export interface MediaInfo {
   type: 'image' | 'video' | 'audio' | 'link' | 'text' | 'chat' | 'quote' | 'none';
   url?: string;
@@ -12,14 +85,158 @@ export interface MediaInfo {
   html?: string;
   quoteText?: string;
   quoteSource?: string;
+  representationKind?: MediaRepresentationKind;
+  items?: MediaItem[];
+  contentBlocks?: NormalizedContentBlock[];
+  originalUrl?: string;
+  previewUrl?: string;
+  posterUrl?: string;
+}
+
+const MEDIA_REPRESENTATION_KINDS = new Set<MediaRepresentationKind>(['UNSPECIFIED', 'NONE', 'ORIGINAL', 'ANIMATED_VIDEO']);
+const MEDIA_ITEM_KINDS = new Set<MediaItemKind>(['UNSPECIFIED', 'IMAGE', 'VIDEO', 'AUDIO']);
+
+function normalizeMediaRepresentationKind(kind: unknown): MediaRepresentationKind {
+  if (typeof kind === 'string' && MEDIA_REPRESENTATION_KINDS.has(kind as MediaRepresentationKind)) {
+    return kind as MediaRepresentationKind;
+  }
+  return 'UNSPECIFIED';
+}
+
+function normalizeMediaItemKind(kind: unknown): MediaItemKind {
+  if (typeof kind === 'string' && MEDIA_ITEM_KINDS.has(kind as MediaItemKind)) {
+    return kind as MediaItemKind;
+  }
+  return 'UNSPECIFIED';
+}
+
+function normalizeMediaAsset(asset: Partial<MediaAsset> | undefined): MediaAsset | undefined {
+  if (!asset?.url) return undefined;
+  return {
+    url: asset.url,
+    mimeType: asset.mimeType,
+    width: asset.width,
+    height: asset.height,
+    durationMs: asset.durationMs,
+  };
+}
+
+function normalizeMediaItems(post: PostWithContract): MediaItem[] {
+  const contractItems = Array.isArray(post.mediaRepresentation?.items)
+    ? post.mediaRepresentation?.items || []
+    : [];
+
+  if (contractItems.length > 0) {
+    return contractItems
+      .map((item) => {
+        const original = normalizeMediaAsset(item.original);
+        if (!original) return null;
+        return {
+          kind: normalizeMediaItemKind(item.kind),
+          original,
+          alternates: (item.alternates || []).map((candidate) => normalizeMediaAsset(candidate)).filter(Boolean) as MediaAsset[],
+          preview: normalizeMediaAsset(item.preview),
+          poster: normalizeMediaAsset(item.poster),
+        } satisfies MediaItem;
+      })
+      .filter(Boolean) as MediaItem[];
+  }
+
+  return buildLegacyMediaItems(post);
+}
+
+function buildLegacyMediaItems(post: Post): MediaItem[] {
+  const content: PostContent = post.content || {};
+  const files = (content.files || []).filter(Boolean);
+  const thumbnail = content.thumbnail || '';
+  if (files.length === 0) return [];
+
+  const first = files[0];
+  switch (post.type) {
+    case 3:
+      return [{ kind: 'VIDEO', original: { url: first }, poster: thumbnail ? { url: thumbnail } : undefined }];
+    case 4:
+      return [{ kind: 'AUDIO', original: { url: first } }];
+    default:
+      return files.map((url) => ({ kind: 'IMAGE', original: { url } }));
+  }
+}
+
+function buildLegacyContentBlocks(post: PostWithContract, items: MediaItem[]): NormalizedContentBlock[] {
+  const blocks: NormalizedContentBlock[] = [];
+  const html = post.content?.html?.trim() || '';
+  const text = (post.body || post.content?.text || post.content?.title || '').trim();
+
+  if (html) {
+    blocks.push({ kind: 'html', html });
+  } else if (text) {
+    blocks.push({ kind: 'text', text });
+  }
+
+  if (items.length > 0) {
+    blocks.push({ kind: 'media', items });
+  }
+
+  return blocks;
+}
+
+export function getOrderedContentBlocks(post: Post): NormalizedContentBlock[] {
+  const contractPost = post as PostWithContract;
+  const items = normalizeMediaItems(contractPost);
+  const rawBlocks = Array.isArray(contractPost.contentBlocks) ? contractPost.contentBlocks : [];
+
+  if (rawBlocks.length === 0) {
+    return buildLegacyContentBlocks(contractPost, items);
+  }
+
+  const normalized: NormalizedContentBlock[] = [];
+  for (const block of rawBlocks) {
+    if (block.htmlBlock?.html) {
+      normalized.push({ kind: 'html', html: block.htmlBlock.html });
+      continue;
+    }
+    if (block.textBlock?.text) {
+      normalized.push({ kind: 'text', text: block.textBlock.text });
+      continue;
+    }
+    if (block.mediaBlock !== undefined) {
+      normalized.push({ kind: 'media', items });
+    }
+  }
+
+  return normalized;
+}
+
+export function resolveMediaItemImageSource(item: MediaItem, surface: 'preview' | 'detail'): string {
+  if (surface === 'preview') {
+    return item.preview?.url || item.original?.url || '';
+  }
+  return item.original?.url || item.preview?.url || '';
+}
+
+export function resolveMediaItemVideoSource(item: MediaItem, representationKind?: MediaRepresentationKind): string {
+  if (representationKind === 'ANIMATED_VIDEO') {
+    return item.alternates?.[0]?.url || '';
+  }
+  return item.original?.url || item.alternates?.[0]?.url || '';
+}
+
+export function resolveMediaItemAudioSource(item: MediaItem): string {
+  return item.original?.url || '';
+}
+
+export function resolveMediaItemPosterSource(item: MediaItem): string {
+  return item.poster?.url || item.preview?.url || item.original?.url || '';
 }
 
 export function extractMedia(post: Post): MediaInfo {
+  const contractPost = post as PostWithContract;
   const content: PostContent = post.content || {};
   const postType: PostType = post.type;
-  
-  const files = content.files || [];
-  const file = files[0];
+  const items = normalizeMediaItems(contractPost);
+  const representationKind = normalizeMediaRepresentationKind(contractPost.mediaRepresentation?.kind);
+  const contentBlocks = getOrderedContentBlocks(post);
+  const file = (content.files || []).find(Boolean);
   const thumb = content.thumbnail;
   const html = content.html || '';
   const text = content.text || '';
@@ -27,32 +244,83 @@ export function extractMedia(post: Post): MediaInfo {
   const url = content.url || '';
   const quoteText = content.quoteText || '';
   const quoteSource = content.quoteSource || '';
-
-  // Use the post.body (cleaned by backend) as a fallback for all types
   const preview = post.body || '';
+  const firstItem = items[0];
+
+  if (firstItem?.original?.url) {
+    const baseInfo: Omit<MediaInfo, 'type'> = {
+      title,
+      text: preview || text,
+      html: preview || html,
+      representationKind,
+      items,
+      contentBlocks,
+      originalUrl: firstItem.original.url,
+      previewUrl: firstItem.preview?.url,
+      posterUrl: firstItem.poster?.url,
+    };
+
+    if (representationKind === 'ANIMATED_VIDEO' && firstItem.kind === 'IMAGE') {
+      const alternate = firstItem.alternates?.[0];
+      if (alternate?.url) {
+        return {
+          ...baseInfo,
+          type: 'video',
+          url: firstItem.original.url,
+          videoUrl: alternate.url,
+        };
+      }
+      return {
+        ...baseInfo,
+        type: 'image',
+        url: firstItem.original.url,
+      };
+    }
+
+    if (firstItem.kind === 'VIDEO') {
+      return {
+        ...baseInfo,
+        type: 'video',
+        url: resolveMediaItemPosterSource(firstItem) || firstItem.original.url,
+        videoUrl: firstItem.original.url,
+      };
+    }
+
+    if (firstItem.kind === 'AUDIO') {
+      return {
+        ...baseInfo,
+        type: 'audio',
+        audioUrl: firstItem.original.url,
+      };
+    }
+
+    return {
+      ...baseInfo,
+      type: 'image',
+      url: firstItem.original.url,
+    };
+  }
 
   switch (postType) {
-    case 1: // Text
+    case 1:
       if (file) {
-        return { type: 'image', url: file, title, text: preview || text, html: preview || html };
+        return { type: 'image', url: file, title, text: preview || text, html: preview || html, contentBlocks };
       }
-      return { type: 'text', title, text: preview || text || html };
-    case 2: // Image
-      return { type: 'image', url: file, html: preview || html };
-    case 3: // Video
-      // Fallback: If no dedicated thumbnail, use the video file itself as the source
-      // imgproxy can often extract a frame from the video.
-      return { type: 'video', url: thumb || file, videoUrl: file, html: preview || html };
-    case 4: // Audio
-      return { type: 'audio', audioUrl: file, html: preview || html, text: preview || text };
-    case 5: // Link
-      return { type: 'link', url: thumb, linkUrl: url, title, html: preview || html, text: preview || text };
-    case 6: // Chat
-      return { type: 'chat', title, text: preview || text || html };
-    case 7: // Quote
-      return { type: 'quote', quoteText: quoteText || preview, quoteSource, html: preview || html };
+      return { type: 'text', title, text: preview || text || html, contentBlocks };
+    case 2:
+      return { type: 'image', url: file, html: preview || html, contentBlocks };
+    case 3:
+      return { type: 'video', url: thumb || file, videoUrl: file, html: preview || html, contentBlocks };
+    case 4:
+      return { type: 'audio', audioUrl: file, html: preview || html, text: preview || text, contentBlocks };
+    case 5:
+      return { type: 'link', url: thumb, linkUrl: url, title, html: preview || html, text: preview || text, contentBlocks };
+    case 6:
+      return { type: 'chat', title, text: preview || text || html, contentBlocks };
+    case 7:
+      return { type: 'quote', quoteText: quoteText || preview, quoteSource, html: preview || html, contentBlocks };
     default:
-      return { type: 'none' };
+      return { type: 'none', contentBlocks };
   }
 }
 
@@ -88,7 +356,6 @@ export function extractRenderableTags(post: Post): string[] {
     return [];
   }
 
-  // Strip HTML tags for simple hashtag extraction fallback.
   const text = raw.replace(/<[^>]*>/g, ' ');
   const matches = text.match(/#([A-Za-z0-9][A-Za-z0-9_-]{0,63})/g) || [];
   const tags = matches.map((m) => m.slice(1).toLowerCase());
@@ -201,14 +468,14 @@ export const POST_TYPE_LABELS: Record<PostType, string> = {
 };
 
 export const POST_TYPE_ICONS: Record<PostType, string> = {
-  0: '❓', // Unspecified
-  1: '📝', // Text
-  2: '🖼️', // Image
-  3: '🎬', // Video
-  4: '🔊', // Audio
-  5: '🔗', // Link
-  6: '💬', // Chat
-  7: '📜', // Quote
+  0: '❓',
+  1: '📝',
+  2: '🖼️',
+  3: '🎬',
+  4: '🔊',
+  5: '🔗',
+  6: '💬',
+  7: '📜',
 };
 
 export interface SortOption {
@@ -228,10 +495,6 @@ export const SORT_OPTIONS: SortOption[] = [
   { value: 'unpopular', label: 'Least popular', field: 6, order: 1 },
 ];
 
-/**
- * Strictly sanitizes a sort value from the URL.
- * Only allows known semantic names, defaults to 'newest' for anything else.
- */
 export function normalizeSortValue(val: string | null | undefined): string {
   if (!val) return 'newest';
   return SORT_OPTIONS.some((o) => o.value === val) ? val : 'newest';
