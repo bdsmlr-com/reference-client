@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { extractMedia } from '../src/types/post.js';
 
 describe('text post media recovery', () => {
-  it('treats text posts with recovered files as image-bearing media for detail rendering', () => {
+  it('keeps text posts as text when only legacy file recovery is present', () => {
     const media = extractMedia({
       id: 869622722,
       type: 1,
@@ -13,8 +13,8 @@ describe('text post media recovery', () => {
       },
     } as any);
 
-    expect(media.type).toBe('image');
-    expect(media.url).toBe('https://imgproxy.example.com/dog.jpg');
+    expect(media.type).toBe('text');
+    expect(media.url).toBeUndefined();
     expect(media.text).toBe('Doggo Cat');
     expect(media.html).toBe('Doggo Cat');
   });

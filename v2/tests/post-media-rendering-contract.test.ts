@@ -271,7 +271,51 @@ describe('post media rendering contract', () => {
 
     expect(renderer.shadowRoot?.querySelector('img')).toBeTruthy();
     expect(renderer.shadowRoot?.querySelector('video')).toBeNull();
+    expect(renderer.alternateFallbackReason).toBe('timeout');
+    expect(renderer.getAttribute('alternate-fallback-reason')).toBe('timeout');
     expect(loadSpy).toHaveBeenCalled();
+  });
+
+  it('reuses cached animated alternate failure reasons across signed querystrings for the same canonical asset', async () => {
+    const loadSpy = vi
+      .spyOn(HTMLMediaElement.prototype, 'load')
+      .mockImplementation(function mockLoad(this: HTMLMediaElement) {
+        queueMicrotask(() => this.dispatchEvent(new Event('error')));
+      });
+
+    const first = document.createElement('media-renderer') as any;
+    first.src = 'https://ocdn012.bdsmlr.com/uploads/photos/expired.gif?e=1&t=1';
+    first.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/expired.mp4?e=1&t=1';
+    first.fallbackSrc = first.src;
+    first.forceImage = true;
+    first.type = 'feed';
+    document.body.appendChild(first);
+
+    await flush();
+    await first.updateComplete;
+    await flush();
+    await first.updateComplete;
+
+    const loadsAfterFirst = loadSpy.mock.calls.length;
+    expect(first.alternateFallbackReason).toBe('token-or-auth');
+    expect(first.getAttribute('alternate-fallback-reason')).toBe('token-or-auth');
+
+    const second = document.createElement('media-renderer') as any;
+    second.src = 'https://ocdn012.bdsmlr.com/uploads/photos/expired.gif?e=2&t=2';
+    second.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/expired.mp4?e=2&t=2';
+    second.fallbackSrc = second.src;
+    second.forceImage = true;
+    second.type = 'feed';
+    document.body.appendChild(second);
+
+    await flush();
+    await second.updateComplete;
+    await flush();
+    await second.updateComplete;
+
+    expect(second.alternateFallbackReason).toBe('token-or-auth');
+    expect(second.getAttribute('alternate-fallback-reason')).toBe('token-or-auth');
+    expect(loadSpy.mock.calls.length).toBe(loadsAfterFirst);
   });
 
   it('falls back to the original animated image when the preferred alternate is absent', async () => {

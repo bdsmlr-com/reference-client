@@ -9,6 +9,9 @@ type ProbeStatus = 'unknown' | 'available' | 'unavailable';
 type ProbeFailureReason = 'missing-or-404' | 'timeout' | 'token-or-auth' | 'codec-or-playback' | 'other-load-error';
 
 const animatedAlternateAvailabilityCache = new Map<string, { available: boolean; reason?: ProbeFailureReason }>();
+const MEDIA_ERR_NETWORK = 2;
+const MEDIA_ERR_DECODE = 3;
+const MEDIA_ERR_SRC_NOT_SUPPORTED = 4;
 
 function canonicalAnimatedAlternateIdentity(url: string | undefined, role = 'alternate-0'): string {
   if (!url) return '';
@@ -17,14 +20,18 @@ function canonicalAnimatedAlternateIdentity(url: string | undefined, role = 'alt
   return `${match?.[0] || unsigned}::${role}`;
 }
 
-function classifyProbeFailure(url: string | undefined, mediaError: MediaError | null | undefined): ProbeFailureReason {
-  if (mediaError?.code === MediaError.MEDIA_ERR_DECODE || mediaError?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+function classifyProbeFailure(
+  url: string | undefined,
+  mediaError: { code?: number | null } | null | undefined,
+): ProbeFailureReason {
+  const code = mediaError?.code ?? undefined;
+  if (code === MEDIA_ERR_DECODE || code === MEDIA_ERR_SRC_NOT_SUPPORTED) {
     return 'codec-or-playback';
   }
   if (url && /[?&](e|t)=/i.test(url)) {
     return 'token-or-auth';
   }
-  if (mediaError?.code === MediaError.MEDIA_ERR_NETWORK) {
+  if (code === MEDIA_ERR_NETWORK) {
     return 'missing-or-404';
   }
   return 'other-load-error';
@@ -135,6 +142,7 @@ export class MediaRenderer extends LitElement {
   @property({ type: Boolean }) autoplayVideo?: boolean;
   @property({ type: Boolean }) controlsVideo?: boolean;
   @property({ type: Boolean }) loopVideo?: boolean;
+  @property({ type: String, attribute: 'alternate-fallback-reason', reflect: true }) alternateFallbackReason: ProbeFailureReason | '' = '';
 
   @state() private showPlaceholder = false;
   @state() private showPosterFrame = true;
@@ -149,6 +157,7 @@ export class MediaRenderer extends LitElement {
       this.showPosterFrame = true;
       this.dispatchMediaStateChange(false);
       this.alternateProbeStatus = 'unknown';
+      this.alternateFallbackReason = '';
     }
 
     if (changed.has('alternateVideoSrc') || changed.has('type') || changed.has('src')) {
@@ -178,6 +187,7 @@ export class MediaRenderer extends LitElement {
       animatedAlternateAvailabilityCache.set(cacheKey, { available: false, reason });
     }
     this.alternateProbeStatus = 'unavailable';
+    this.alternateFallbackReason = reason;
     this.showPosterFrame = true;
   }
 
@@ -224,6 +234,7 @@ export class MediaRenderer extends LitElement {
   private ensureAnimatedAlternateProbe(force = false): void {
     if (!this.alternateVideoSrc || this.type === 'poster') {
       this.alternateProbeStatus = 'unavailable';
+      this.alternateFallbackReason = '';
       return;
     }
 
@@ -232,12 +243,14 @@ export class MediaRenderer extends LitElement {
       const cached = animatedAlternateAvailabilityCache.get(cacheKey);
       if (cached) {
         this.alternateProbeStatus = cached.available ? 'available' : 'unavailable';
+        this.alternateFallbackReason = cached.available ? '' : cached.reason || '';
         return;
       }
     }
 
     if (typeof document === 'undefined') {
       this.alternateProbeStatus = 'unavailable';
+      this.alternateFallbackReason = '';
       return;
     }
 
@@ -258,7 +271,8 @@ export class MediaRenderer extends LitElement {
         animatedAlternateAvailabilityCache.set(cacheKey, { available, reason });
       }
       this.alternateProbeStatus = available ? 'available' : 'unavailable';
-      };
+      this.alternateFallbackReason = available ? '' : reason || '';
+    };
 
     probeVideo.addEventListener('loadedmetadata', () => finalize(true), { once: true });
     probeVideo.addEventListener('error', () => finalize(false, classifyProbeFailure(this.alternateVideoSrc, probeVideo.error)), { once: true });

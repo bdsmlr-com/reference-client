@@ -1,4 +1,4 @@
-import type { IdentityDecoration, Post, PostContent, PostType } from './api.js';
+import type { IdentityDecoration, Post, PostType } from './api.js';
 import type { ResolvedLink } from '../services/link-resolver.js';
 
 export type MediaRepresentationKind = 'UNSPECIFIED' | 'NONE' | 'ORIGINAL' | 'ANIMATED_VIDEO';
@@ -126,59 +126,21 @@ function normalizeMediaItems(post: PostWithContract): MediaItem[] {
     ? post.mediaRepresentation?.items || []
     : [];
 
-  if (contractItems.length > 0) {
-    return contractItems
-      .map((item) => {
-        const original = normalizeMediaAsset(item.original);
-        if (!original) return null;
-        return {
-          kind: normalizeMediaItemKind(item.kind),
-          original,
-          alternates: (item.alternates || []).map((candidate) => normalizeMediaAsset(candidate)).filter(Boolean) as MediaAsset[],
-          preview: normalizeMediaAsset(item.preview),
-          poster: normalizeMediaAsset(item.poster),
-        } satisfies MediaItem;
-      })
-      .filter(Boolean) as MediaItem[];
-  }
-
-  return buildLegacyMediaItems(post);
+  return contractItems
+    .map((item) => {
+      const original = normalizeMediaAsset(item.original);
+      if (!original) return null;
+      return {
+        kind: normalizeMediaItemKind(item.kind),
+        original,
+        alternates: (item.alternates || []).map((candidate) => normalizeMediaAsset(candidate)).filter(Boolean) as MediaAsset[],
+        preview: normalizeMediaAsset(item.preview),
+        poster: normalizeMediaAsset(item.poster),
+      } satisfies MediaItem;
+    })
+    .filter(Boolean) as MediaItem[];
 }
 
-function buildLegacyMediaItems(post: Post): MediaItem[] {
-  const content: PostContent = post.content || {};
-  const files = (content.files || []).filter(Boolean);
-  const thumbnail = content.thumbnail || '';
-  if (files.length === 0) return [];
-
-  const first = files[0];
-  switch (post.type) {
-    case 3:
-      return [{ kind: 'VIDEO', original: { url: first }, poster: thumbnail ? { url: thumbnail } : undefined }];
-    case 4:
-      return [{ kind: 'AUDIO', original: { url: first } }];
-    default:
-      return files.map((url) => ({ kind: 'IMAGE', original: { url } }));
-  }
-}
-
-function buildLegacyContentBlocks(post: PostWithContract, items: MediaItem[]): NormalizedContentBlock[] {
-  const blocks: NormalizedContentBlock[] = [];
-  const html = post.content?.html?.trim() || '';
-  const text = (post.body || post.content?.text || post.content?.title || '').trim();
-
-  if (html) {
-    blocks.push({ kind: 'html', html });
-  } else if (text) {
-    blocks.push({ kind: 'text', text });
-  }
-
-  if (items.length > 0) {
-    blocks.push({ kind: 'media', items });
-  }
-
-  return blocks;
-}
 
 export function getOrderedContentBlocks(post: Post): NormalizedContentBlock[] {
   const contractPost = post as PostWithContract;
@@ -186,7 +148,7 @@ export function getOrderedContentBlocks(post: Post): NormalizedContentBlock[] {
   const rawBlocks = Array.isArray(contractPost.contentBlocks) ? contractPost.contentBlocks : [];
 
   if (rawBlocks.length === 0) {
-    return buildLegacyContentBlocks(contractPost, items);
+    return [];
   }
 
   const normalized: NormalizedContentBlock[] = [];
@@ -312,13 +274,11 @@ export function describePrimaryMediaForSurface(
 
 export function extractMedia(post: Post): MediaInfo {
   const contractPost = post as PostWithContract;
-  const content: PostContent = post.content || {};
+  const content = post.content || {};
   const postType: PostType = post.type;
   const items = normalizeMediaItems(contractPost);
   const representationKind = normalizeMediaRepresentationKind(contractPost.mediaRepresentation?.kind);
   const contentBlocks = getOrderedContentBlocks(post);
-  const file = (content.files || []).find(Boolean);
-  const thumb = content.thumbnail;
   const html = content.html || '';
   const text = content.text || '';
   const title = content.title || '';
@@ -384,24 +344,15 @@ export function extractMedia(post: Post): MediaInfo {
 
   switch (postType) {
     case 1:
-      if (file) {
-        return { type: 'image', url: file, title, text: preview || text, html: preview || html, contentBlocks };
-      }
-      return { type: 'text', title, text: preview || text || html, contentBlocks };
-    case 2:
-      return { type: 'image', url: file, html: preview || html, contentBlocks };
-    case 3:
-      return { type: 'video', url: thumb || file, videoUrl: file, html: preview || html, contentBlocks };
-    case 4:
-      return { type: 'audio', audioUrl: file, html: preview || html, text: preview || text, contentBlocks };
+      return { type: 'text', title, text: preview || text || html, html: preview || html, contentBlocks };
     case 5:
-      return { type: 'link', url: thumb, linkUrl: url, title, html: preview || html, text: preview || text, contentBlocks };
+      return { type: 'link', linkUrl: url, title, html: preview || html, text: preview || text, contentBlocks };
     case 6:
       return { type: 'chat', title, text: preview || text || html, contentBlocks };
     case 7:
       return { type: 'quote', quoteText: quoteText || preview, quoteSource, html: preview || html, contentBlocks };
     default:
-      return { type: 'none', contentBlocks };
+      return { type: 'none', title, text: preview || text, html: preview || html, contentBlocks };
   }
 }
 

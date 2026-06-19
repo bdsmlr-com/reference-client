@@ -142,4 +142,35 @@ describe('post media extraction', () => {
     expect(blocks[1]).toMatchObject({ kind: 'media' });
     expect(blocks[2]).toMatchObject({ kind: 'html', html: '<p>Outro</p>' });
   });
+
+  it('does not synthesize media items from legacy files when mediaRepresentation is absent', () => {
+    const media = extractMedia({
+      id: 6,
+      type: 2,
+      content: {
+        files: ['https://legacy.example.com/only.jpg'],
+        thumbnail: 'https://legacy.example.com/only-thumb.jpg',
+        html: '<p>legacy media payload</p>',
+      },
+    } as any);
+
+    expect(media.type).toBe('none');
+    expect(media.url).toBeUndefined();
+    expect(mediaUrls(media)).toEqual([]);
+  });
+
+  it('does not synthesize ordered blocks from legacy body fields when contentBlocks are absent', () => {
+    const blocks = getOrderedContentBlocks({
+      id: 7,
+      type: 1,
+      body: 'Legacy body text',
+      content: {
+        html: '<p>Legacy body text</p>',
+        text: 'Legacy body text',
+      },
+    } as any);
+
+    expect(blocks).toEqual([]);
+  });
+
 });
