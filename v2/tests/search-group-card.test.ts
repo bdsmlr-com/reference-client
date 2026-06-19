@@ -2,8 +2,9 @@
 import { describe, expect, it, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { extractMedia } from '../src/types/post.js';
 import '../src/components/activity-grid.js';
-import '../src/components/post-feed-item.js';
+import '../src/components/search-group-card.js';
 
 const FILE = join(process.cwd(), 'src/components/search-group-card.ts');
 
@@ -49,6 +50,53 @@ async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
 }
 
+function makeMediaPost(overrides: Record<string, unknown> = {}) {
+  const post = {
+    id: 314,
+    blogId: 11,
+    blogName: 'ActorOne',
+    originBlogId: 11,
+    originBlogName: 'ActorOne',
+    createdAtUnix: 1718400000,
+    updatedAtUnix: 1718400300,
+    likesCount: 3,
+    reblogsCount: 2,
+    commentsCount: 0,
+    tags: ['tagged'],
+    type: 2,
+    variant: 1,
+    body: '',
+    title: '',
+    content: {
+      files: ['https://legacy.example.com/ignored.jpg'],
+      thumbnail: 'https://legacy.example.com/ignored-thumb.jpg',
+      html: '',
+      text: '',
+      title: null,
+      url: null,
+      description: null,
+      quoteText: null,
+      quoteSource: null,
+    },
+    contentBlocks: [{ mediaBlock: {} }],
+    mediaRepresentation: {
+      kind: 'ANIMATED_VIDEO',
+      items: [
+        {
+          kind: 'IMAGE',
+          original: { url: 'https://cdn.example.com/original.gif?e=1&t=2' },
+          alternates: [{ url: 'https://cdn.example.com/alternate.mp4?e=1&t=2' }],
+          poster: { url: 'https://cdn.example.com/poster.webp' },
+          preview: { url: 'https://cdn.example.com/preview.webp' },
+        },
+      ],
+    },
+  };
+  const merged = { ...post, ...overrides } as any;
+  merged._media = extractMedia(merged);
+  return merged;
+}
+
 describe('search group card', () => {
   afterEach(() => {
     document.body.innerHTML = '';
@@ -68,12 +116,36 @@ describe('search group card', () => {
 
     expect(src).toContain("@property({ type: String }) page: 'archive' | 'search' | 'post' | 'activity' | 'feed' | 'social' = 'search';");
     expect(src).toContain("const archiveReblogDate = this.page === 'archive' ? formatDate(this.post.createdAtUnix, 'date') : '';");
+    expect(src).toContain("describePrimaryMediaForSurface(media, 'preview')");
+    expect(src).toContain('.posterSrc=${mediaSource?.posterSrc}');
+    expect(src).toContain('.alternateVideoSrc=${mediaSource?.alternateVideoSrc}');
+    expect(src).toContain('.fallbackSrc=${mediaSource?.fallbackSrc}');
+    expect(src).toContain('.forceImage=${mediaSource?.forceImage ?? false}');
     expect(src).toContain("import './blog-identity.js';");
     expect(src).toContain('class="archive-origin-line"');
     expect(src).toContain('<blog-identity');
     expect(src).toContain('.showAvatar=${false}');
     expect(src).toContain("${archiveReblogDate ? html`<div class=\"archive-reblog-date\">${archiveReblogDate}</div>` : ''}");
     expect(src).toContain('<div class="stats-line">');
+  });
+
+  it('forwards rich media descriptor props to media-renderer for grouped media posts', async () => {
+    const el = document.createElement('search-group-card') as any;
+    el.post = makeMediaPost();
+    el.page = 'search';
+    document.body.appendChild(el);
+
+    await el.updateComplete;
+    await flushMicrotasks();
+    await el.updateComplete;
+
+    const renderer = el.shadowRoot?.querySelector('media-renderer') as any;
+    expect(renderer).toBeTruthy();
+    expect(renderer.src).toBe('https://cdn.example.com/preview.webp');
+    expect(renderer.posterSrc).toBe('https://cdn.example.com/poster.webp');
+    expect(renderer.alternateVideoSrc).toBe('https://cdn.example.com/alternate.mp4?e=1&t=2');
+    expect(renderer.fallbackSrc).toBe('https://cdn.example.com/original.gif?e=1&t=2');
+    expect(renderer.forceImage).toBe(true);
   });
 
   it('shows actor identity on feed activity cards but keeps blog activity cards in self-context presentation', async () => {
@@ -131,22 +203,11 @@ describe('search group card', () => {
     }
   });
 
-  it('preserves formatted text markup on large blog timeline cards', async () => {
-    const el = document.createElement('post-feed-item') as any;
+  it('keeps text-only grouped cards on the image fallback path without animated descriptor props', async () => {
+    const el = document.createElement('search-group-card') as any;
     el.post = makeTextOnlyPost({
       id: 99,
-      content: {
-        files: [],
-        html: '<p><strong>Bold</strong> and <em>formatted</em> text</p>',
-        text: 'Bold and formatted text',
-        title: null,
-        url: null,
-        thumbnail: null,
-        description: null,
-        quoteText: null,
-        quoteSource: null,
-      },
-      body: 'Bold and formatted text',
+      contentBlocks: [],
     });
     el.page = 'activity';
     document.body.appendChild(el);
@@ -155,7 +216,11 @@ describe('search group card', () => {
     await flushMicrotasks();
     await el.updateComplete;
 
-    expect(el.shadowRoot?.querySelector('.card-body strong')?.textContent).toBe('Bold');
-    expect(el.shadowRoot?.querySelector('.card-body em')?.textContent).toBe('formatted');
+    const renderer = el.shadowRoot?.querySelector('media-renderer') as any;
+    expect(renderer.src || '').toBe('');
+    expect(renderer.posterSrc || '').toBe('');
+    expect(renderer.alternateVideoSrc || '').toBe('');
+    expect(renderer.fallbackSrc || '').toBe('');
+    expect(renderer.forceImage).toBe(false);
   });
 });

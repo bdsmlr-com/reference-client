@@ -3,7 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { nothing } from 'lit';
 import { baseStyles } from '../styles/theme.js';
 import type { ProcessedPost } from '../types/post.js';
-import { extractMedia, resolvePrimaryMediaUrl } from '../types/post.js';
+import { describePrimaryMediaForSurface, extractMedia } from '../types/post.js';
 import { formatDate } from '../services/date-formatter.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import './media-renderer.js';
@@ -197,7 +197,8 @@ export class SearchGroupCard extends LitElement {
 
   render() {
     const media = this.post?._media || extractMedia(this.post);
-    const rawUrl = resolvePrimaryMediaUrl(media);
+    const mediaSource = describePrimaryMediaForSurface(media, 'preview');
+    const rawUrl = mediaSource?.src || '';
     const presentation = toPresentationModel(this.post, { surface: 'card', page: this.page, interactionKind: 'reblog', role: 'cluster' });
     const reblogCount = this.post.reblogsCount ?? this.count;
     const archiveReblogDate = this.page === 'archive' ? formatDate(this.post.createdAtUnix, 'date') : '';
@@ -214,6 +215,10 @@ export class SearchGroupCard extends LitElement {
           <div class="media">
             <media-renderer
               .src=${rawUrl}
+              .posterSrc=${mediaSource?.posterSrc}
+              .alternateVideoSrc=${mediaSource?.alternateVideoSrc}
+              .fallbackSrc=${mediaSource?.fallbackSrc}
+              .forceImage=${mediaSource?.forceImage ?? false}
               .type=${this.mode === 'masonry' ? 'masonry' : 'card'}
               style="object-fit: ${this.mode === 'masonry' ? 'contain' : 'cover'};"
               @media-state-change=${this.handleMediaStateChange}

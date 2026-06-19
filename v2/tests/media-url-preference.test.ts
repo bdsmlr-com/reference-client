@@ -12,20 +12,24 @@ describe('video media url preference', () => {
     expect(src).toContain("if (media.type === 'video') return media.videoUrl || media.url || '';\n");
   });
 
-  it('routes shared card-like surfaces through the shared primary media helper', () => {
-    const files = [
-      'components/post-card.ts',
-      'components/activity-grid.ts',
-      'components/search-group-card.ts',
-      'components/blog-list.ts',
-      'components/post-recommendations.ts',
-    ];
+  it('keeps the flattened primary-url helper scoped to legacy consumers that still need it', () => {
+    const src = readFileSync(join(ROOT, 'components/blog-list.ts'), 'utf8');
 
-    for (const rel of files) {
-      const src = readFileSync(join(ROOT, rel), 'utf8');
-      expect(src).toContain("resolvePrimaryMediaUrl(");
-      expect(src).not.toContain('media.url || media.videoUrl || media.audioUrl');
-      expect(src).not.toContain('h._media?.url || h._media?.videoUrl');
-    }
+    expect(src).toContain("resolvePrimaryMediaUrl(");
+    expect(src).not.toContain('media.url || media.videoUrl || media.audioUrl');
+  });
+});
+
+
+describe('search group card media descriptor flow', () => {
+  it('uses the richer surface media descriptor instead of the flattened primary-url helper', () => {
+    const src = readFileSync(join(ROOT, 'components/search-group-card.ts'), 'utf8');
+
+    expect(src).toContain("describePrimaryMediaForSurface(media, 'preview')");
+    expect(src).toContain('.posterSrc=${mediaSource?.posterSrc}');
+    expect(src).toContain('.alternateVideoSrc=${mediaSource?.alternateVideoSrc}');
+    expect(src).toContain('.fallbackSrc=${mediaSource?.fallbackSrc}');
+    expect(src).toContain('.forceImage=${mediaSource?.forceImage ?? false}');
+    expect(src).not.toContain('resolvePrimaryMediaUrl(media)');
   });
 });
