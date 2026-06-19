@@ -23,9 +23,10 @@ function makeHydratedPost(overrides: Partial<ProcessedPost> = {}): ProcessedPost
     blogName: 'beta',
     originBlogName: 'beta',
     type: 2,
-    content: {
-      files: ['/uploads/beta.jpg'],
-      thumbnail: '/uploads/beta.jpg',
+    contentBlocks: [{ mediaBlock: {} }],
+    mediaRepresentation: {
+      kind: 'ORIGINAL',
+      items: [{ kind: 'IMAGE', original: { url: '/uploads/beta.jpg' } }],
     },
     _media: { type: 'image', url: '/uploads/beta.jpg' },
     _retrievalPolicy: {

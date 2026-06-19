@@ -10,9 +10,10 @@ describe('discover policy', () => {
           id: 501,
           blogName: 'alpha',
           type: 2,
-          content: {
-            files: ['/uploads/alpha.jpg'],
-            thumbnail: '/uploads/alpha.jpg',
+          contentBlocks: [{ mediaBlock: {} }],
+          mediaRepresentation: {
+            kind: 'ORIGINAL',
+            items: [{ kind: 'IMAGE', original: { url: '/uploads/alpha.jpg' } }],
           },
         },
       ],
