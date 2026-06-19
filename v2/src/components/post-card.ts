@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { resolvePrimaryMediaUrl, type ProcessedPost } from '../types/post.js';
+import { describePrimaryMediaForSurface, getMediaItemCount, type ProcessedPost } from '../types/post.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
@@ -267,9 +267,8 @@ export class PostCard extends LitElement {
     const media = p._media;
     const rbCount = p._reblog_variants?.length || 0;
     const mediaRenderType = presentation.media.preset as MediaRenderType;
-    
-    // Media URLs
-    const rawUrl = resolvePrimaryMediaUrl(media);
+    const mediaSource = describePrimaryMediaForSurface(media, 'preview');
+    const rawUrl = mediaSource?.src || '';
     const isAdmin = isAdminMode();
     const isTombstone = !rawUrl && !p.body;
     const isDeleted = Boolean(p.deletedAtUnix);
@@ -320,12 +319,16 @@ export class PostCard extends LitElement {
         <div class="media-container">
           <media-renderer 
             .src=${rawUrl} 
+            .posterSrc=${mediaSource?.posterSrc}
+            .alternateVideoSrc=${mediaSource?.alternateVideoSrc}
+            .fallbackSrc=${mediaSource?.fallbackSrc}
+            .forceImage=${mediaSource?.forceImage ?? false}
             .type=${mediaRenderType}
             style="object-fit: cover;"
             @media-state-change=${this.handleMediaStateChange}
           ></media-renderer>
           
-          ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge">1 / ${p.content.files.length}</div>` : ''}
+          ${getMediaItemCount(media) > 1 ? html`<div class="multi-image-badge">1 / ${getMediaItemCount(media)}</div>` : ''}
           ${presentation.media.type === 'video' ? html`<div class="video-overlay-icon">▶</div>` : ''}
           ${isAdmin && (isDeleted || isOriginDeleted) ? html`
             <div class="status-badges">

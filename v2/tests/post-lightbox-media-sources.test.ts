@@ -9,7 +9,7 @@ function makePost(overrides: Partial<ProcessedPost> = {}): ProcessedPost {
     id: 1,
     type: 3,
     content: {},
-    _media: { type: 'video' },
+    _media: { type: 'video', items: [] },
     ...overrides,
   } as ProcessedPost;
 }
@@ -23,7 +23,6 @@ describe('buildLightboxMediaSources', () => {
   });
 
   it('falls back to preview URL for deleted posts with dead file URLs', () => {
-    // Pathological case: @ropebunnyinlace / 644805038 via @Tyrant-Den / 644970242
     const post = makePost({
       deletedAtUnix: 1710000000,
       content: { files: ['https://ocdn012.bdsmlr.com/uploads/videos/dead.mp4'] },
@@ -31,26 +30,67 @@ describe('buildLightboxMediaSources', () => {
         type: 'video',
         url: 'https://ocdn012.bdsmlr.com/uploads/photos/still-preview.webp',
         videoUrl: 'https://ocdn012.bdsmlr.com/uploads/videos/dead.mp4',
+        items: [
+          {
+            kind: 'VIDEO',
+            original: { url: 'https://ocdn012.bdsmlr.com/uploads/videos/dead.mp4' },
+            poster: { url: 'https://ocdn012.bdsmlr.com/uploads/photos/still-preview.webp' },
+          },
+        ],
       },
     });
 
     expect(buildLightboxMediaSources(post)).toEqual([
-      'https://ocdn012.bdsmlr.com/uploads/photos/still-preview.webp',
+      {
+        kind: 'image',
+        src: 'https://ocdn012.bdsmlr.com/uploads/photos/still-preview.webp',
+        forceImage: true,
+      },
     ]);
   });
 
-  it('keeps file list for non-deleted posts', () => {
+  it('uses mediaRepresentation ordering instead of legacy file order', () => {
+    const post = makePost({
+      type: 2,
+      content: { files: ['https://legacy.example.com/ignored.jpg'] },
+      _media: {
+        type: 'image',
+        items: [
+          { kind: 'IMAGE', original: { url: 'https://ocdn012.bdsmlr.com/uploads/photos/a.jpg' } },
+          { kind: 'IMAGE', original: { url: 'https://ocdn012.bdsmlr.com/uploads/photos/b.jpg' } },
+        ],
+      },
+    });
+
+    expect(buildLightboxMediaSources(post)).toEqual([
+      { kind: 'image', src: 'https://ocdn012.bdsmlr.com/uploads/photos/a.jpg', forceImage: true },
+      { kind: 'image', src: 'https://ocdn012.bdsmlr.com/uploads/photos/b.jpg', forceImage: true },
+    ]);
+  });
+
+  it('preserves video poster role for non-deleted posts', () => {
     const post = makePost({
       content: { files: ['https://ocdn012.bdsmlr.com/uploads/videos/live.mp4'] },
       _media: {
         type: 'video',
         url: 'https://ocdn012.bdsmlr.com/uploads/photos/live-preview.webp',
         videoUrl: 'https://ocdn012.bdsmlr.com/uploads/videos/live.mp4',
+        items: [
+          {
+            kind: 'VIDEO',
+            original: { url: 'https://ocdn012.bdsmlr.com/uploads/videos/live.mp4' },
+            poster: { url: 'https://ocdn012.bdsmlr.com/uploads/photos/live-preview.webp' },
+          },
+        ],
       },
     });
 
     expect(buildLightboxMediaSources(post)).toEqual([
-      'https://ocdn012.bdsmlr.com/uploads/videos/live.mp4',
+      {
+        kind: 'video',
+        src: 'https://ocdn012.bdsmlr.com/uploads/videos/live.mp4',
+        posterSrc: 'https://ocdn012.bdsmlr.com/uploads/photos/live-preview.webp',
+      },
     ]);
   });
 });

@@ -3,7 +3,7 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { type RecResult, type SimilarPostsResponse } from '../services/recommendation-api.js';
-import { extractMedia, resolvePrimaryMediaUrl, type ProcessedPost } from '../types/post.js';
+import { describePrimaryMediaForSurface, extractMedia, type ProcessedPost } from '../types/post.js';
 import type { Post } from '../types/api.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { scrollObserver } from '../services/scroll-observer.js';
@@ -470,12 +470,13 @@ export class PostRecommendations extends LitElement {
                 const h = (r as any)._hydratedPost;
                 if (!h) return html`<div class="gutter-skeleton"></div>`;
                 const postLink = resolveLink('recommendation_post', { postId: h.id });
-                const raw = resolvePrimaryMediaUrl(h._media) || h.content?.thumbnail;
+                const mediaSource = describePrimaryMediaForSurface(h._media, 'preview');
+                const raw = mediaSource?.src || '';
                 const blogLabel = `${h.blogName || h.originBlogName || ''}`.trim();
                 return html`
                   <div class="gutter-item" @click=${(event: Event) => this.navigateToRelated(r, event)}>
                     <div class="rec-media">
-                      <media-renderer .src=${raw} .type=${'gutter'}></media-renderer>
+                      <media-renderer .src=${raw} .posterSrc=${mediaSource?.posterSrc} .alternateVideoSrc=${mediaSource?.alternateVideoSrc} .fallbackSrc=${mediaSource?.fallbackSrc} .forceImage=${mediaSource?.forceImage ?? false} .type=${'gutter'}></media-renderer>
                     </div>
                     <div class="rec-meta">
                       ${blogLabel ? html`<span class="rec-blog">@${blogLabel.replace(/^@+/, '')}</span>` : html`<span></span>`}

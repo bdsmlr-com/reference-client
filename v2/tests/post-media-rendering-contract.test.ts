@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { extractMedia } from '../src/types/post.js';
+import '../src/components/media-renderer.js';
 import '../src/components/post-feed-item.js';
 import '../src/components/post-detail-content.js';
 
@@ -52,6 +53,7 @@ function makePost(overrides: Record<string, unknown> = {}): any {
 describe('post media rendering contract', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
     document.body.innerHTML = '';
   });
 
@@ -68,6 +70,55 @@ describe('post media rendering contract', () => {
     expect(renderer).toBeTruthy();
     expect(renderer.src).toBe('https://cdn.example.com/post.jpg');
     expect(renderer.alternateVideoSrc || '').toBe('');
+  });
+
+  it('renders original video items through the video renderer', async () => {
+    const el = document.createElement('post-feed-item') as any;
+    el.post = makePost({
+      type: 3,
+      mediaRepresentation: {
+        kind: 'ORIGINAL',
+        items: [
+          {
+            kind: 'VIDEO',
+            original: { url: 'https://cdn.example.com/movie.mp4' },
+            poster: { url: 'https://cdn.example.com/movie-poster.webp' },
+          },
+        ],
+      },
+    });
+    el.page = 'feed';
+    document.body.appendChild(el);
+
+    await flush();
+    await el.updateComplete;
+
+    const renderer = el.shadowRoot?.querySelector('media-renderer') as any;
+    expect(renderer.src).toBe('https://cdn.example.com/movie.mp4');
+    expect(renderer.posterSrc).toBe('https://cdn.example.com/movie-poster.webp');
+    expect(renderer.shadowRoot?.querySelector('video')).toBeTruthy();
+  });
+
+  it('renders original audio items through audio controls', async () => {
+    const el = document.createElement('post-detail-content') as any;
+    el.post = makePost({
+      type: 4,
+      mediaRepresentation: {
+        kind: 'ORIGINAL',
+        items: [
+          {
+            kind: 'AUDIO',
+            original: { url: 'https://cdn.example.com/audio.mp3' },
+          },
+        ],
+      },
+    });
+    document.body.appendChild(el);
+
+    await flush();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('audio')?.getAttribute('src')).toBe('https://cdn.example.com/audio.mp3');
   });
 
   it('renders ordered html/media/html blocks in feed cards', async () => {
@@ -157,6 +208,69 @@ describe('post media rendering contract', () => {
     expect(renderer.alternateVideoSrc).toBe('https://ocdn012.bdsmlr.com/uploads/photos/live.mp4?e=1&t=2');
     expect(renderer.posterSrc).toBe('https://media.bdsmlr.com/poster/live.webp');
     expect(renderer.shadowRoot?.querySelector('video')).toBeTruthy();
+    expect(loadSpy).toHaveBeenCalled();
+  });
+
+  it('reuses animated alternate probe cache across signed querystrings for the same canonical asset', async () => {
+    const loadSpy = vi
+      .spyOn(HTMLMediaElement.prototype, 'load')
+      .mockImplementation(function mockLoad(this: HTMLMediaElement) {
+        queueMicrotask(() => this.dispatchEvent(new Event('loadedmetadata')));
+      });
+
+    const first = document.createElement('media-renderer') as any;
+    first.src = 'https://ocdn012.bdsmlr.com/uploads/photos/cache.gif?e=1&t=1';
+    first.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/cache.mp4?e=1&t=1';
+    first.fallbackSrc = first.src;
+    first.forceImage = true;
+    first.type = 'feed';
+    document.body.appendChild(first);
+
+    await flush();
+    await first.updateComplete;
+    await flush();
+    await first.updateComplete;
+
+    const probeLoadsAfterFirst = loadSpy.mock.calls.length;
+    expect(first.shadowRoot?.querySelector('video')).toBeTruthy();
+
+    const second = document.createElement('media-renderer') as any;
+    second.src = 'https://ocdn012.bdsmlr.com/uploads/photos/cache.gif?e=2&t=2';
+    second.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/cache.mp4?e=2&t=2';
+    second.fallbackSrc = second.src;
+    second.forceImage = true;
+    second.type = 'feed';
+    document.body.appendChild(second);
+
+    await flush();
+    await second.updateComplete;
+    await flush();
+    await second.updateComplete;
+
+    expect(second.shadowRoot?.querySelector('video')).toBeTruthy();
+    expect(loadSpy.mock.calls.length).toBe(probeLoadsAfterFirst);
+  });
+
+  it('falls back after a 1500ms probe timeout to the original image', async () => {
+    vi.useFakeTimers();
+    const loadSpy = vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
+
+    const renderer = document.createElement('media-renderer') as any;
+    renderer.src = 'https://ocdn012.bdsmlr.com/uploads/photos/timeout.gif?e=1&t=1';
+    renderer.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/timeout.mp4?e=1&t=1';
+    renderer.fallbackSrc = renderer.src;
+    renderer.forceImage = true;
+    renderer.type = 'feed';
+    document.body.appendChild(renderer);
+
+    await flush();
+    await renderer.updateComplete;
+    vi.advanceTimersByTime(1500);
+    await flush();
+    await renderer.updateComplete;
+
+    expect(renderer.shadowRoot?.querySelector('img')).toBeTruthy();
+    expect(renderer.shadowRoot?.querySelector('video')).toBeNull();
     expect(loadSpy).toHaveBeenCalled();
   });
 

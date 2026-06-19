@@ -100,11 +100,15 @@ describe('post route media behavior', () => {
     expect(src).not.toContain('video-wrap');
   });
 
-  it('lightbox forwards video poster source to media-renderer', () => {
+  it('lightbox forwards contract-derived media descriptors to media-renderer', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/post-lightbox.ts'), 'utf8');
     expect(src).toContain("const presentation = toPresentationModel(this.post, { surface: 'lightbox', page: 'post' });");
     expect(src).toContain("const mediaRenderType = presentation.media.preset as MediaRenderType;");
-    expect(src).toContain(".posterSrc=${media.type === 'video' ? media.url : undefined}");
+    expect(src).toContain("const mediaSources = buildLightboxMediaSources(this.post);");
+    expect(src).toContain(".posterSrc=${source.posterSrc}");
+    expect(src).toContain(".alternateVideoSrc=${source.alternateVideoSrc}");
+    expect(src).toContain(".fallbackSrc=${source.fallbackSrc}");
+    expect(src).toContain(".forceImage=${source.forceImage ?? false}");
     expect(src).toContain('.type=${mediaRenderType}');
   });
 

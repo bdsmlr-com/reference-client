@@ -229,6 +229,87 @@ export function resolveMediaItemPosterSource(item: MediaItem): string {
   return item.poster?.url || item.preview?.url || item.original?.url || '';
 }
 
+export interface RendererMediaSource {
+  kind: 'image' | 'video' | 'audio';
+  src: string;
+  posterSrc?: string;
+  alternateVideoSrc?: string;
+  fallbackSrc?: string;
+  forceImage?: boolean;
+}
+
+export function getMediaItems(media: MediaInfo | undefined): MediaItem[] {
+  return media?.items || [];
+}
+
+export function getMediaItemCount(target: MediaInfo | Post | undefined): number {
+  if (!target) return 0;
+  if ('items' in target && Array.isArray((target as MediaInfo).items)) {
+    return ((target as MediaInfo).items || []).length;
+  }
+  return getMediaItems(extractMedia(target as Post)).length;
+}
+
+export function describeMediaItemForSurface(
+  item: MediaItem,
+  representationKind: MediaRepresentationKind | undefined,
+  surface: 'preview' | 'detail' | 'lightbox',
+): RendererMediaSource | undefined {
+  if (item.kind === 'AUDIO') {
+    const src = resolveMediaItemAudioSource(item);
+    return src ? { kind: 'audio', src } : undefined;
+  }
+
+  const alternateVideoSrc = item.kind === 'IMAGE' && representationKind === 'ANIMATED_VIDEO'
+    ? resolveMediaItemVideoSource(item, representationKind)
+    : '';
+
+  if (item.kind === 'VIDEO') {
+    const src = resolveMediaItemVideoSource(item, representationKind);
+    if (!src) return undefined;
+    return {
+      kind: 'video',
+      src,
+      posterSrc: resolveMediaItemPosterSource(item) || undefined,
+    };
+  }
+
+  const src = resolveMediaItemImageSource(item, surface === 'preview' ? 'preview' : 'detail');
+  if (!src) return undefined;
+  return {
+    kind: 'image',
+    src,
+    posterSrc: alternateVideoSrc ? (resolveMediaItemPosterSource(item) || undefined) : undefined,
+    alternateVideoSrc: alternateVideoSrc || undefined,
+    fallbackSrc: alternateVideoSrc ? (item.original?.url || undefined) : undefined,
+    forceImage: true,
+  };
+}
+
+export function describePrimaryMediaForSurface(
+  media: MediaInfo | undefined,
+  surface: 'preview' | 'detail' | 'lightbox',
+): RendererMediaSource | undefined {
+  const item = getMediaItems(media)[0];
+  if (item) {
+    return describeMediaItemForSurface(item, media?.representationKind, surface);
+  }
+
+  if (!media) return undefined;
+  if (media.type === 'audio' && media.audioUrl) {
+    return { kind: 'audio', src: media.audioUrl };
+  }
+  if (media.type === 'video') {
+    const src = media.videoUrl || media.url;
+    if (!src) return undefined;
+    return { kind: 'video', src, posterSrc: media.posterUrl || media.url };
+  }
+  if (media.url) {
+    return { kind: 'image', src: media.url, forceImage: true };
+  }
+  return undefined;
+}
+
 export function extractMedia(post: Post): MediaInfo {
   const contractPost = post as PostWithContract;
   const content: PostContent = post.content || {};

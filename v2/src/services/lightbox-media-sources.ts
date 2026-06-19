@@ -1,14 +1,32 @@
-import { extractMedia, type ProcessedPost } from '../types/post.js';
+import {
+  describeMediaItemForSurface,
+  getMediaItems,
+  extractMedia,
+  type ProcessedPost,
+  type RendererMediaSource,
+} from '../types/post.js';
 
-export function buildLightboxMediaSources(post: ProcessedPost): string[] {
+export type LightboxMediaSource = RendererMediaSource;
+
+export function buildLightboxMediaSources(post: ProcessedPost): LightboxMediaSource[] {
   const media = post._media || extractMedia(post);
-  const files = (post.content?.files || []).filter(Boolean);
-  const fallback = [media.videoUrl, media.url].filter(Boolean) as string[];
+  const items = getMediaItems(media);
 
-  // Deleted posts can have dead original files but still-valid preview assets.
   if (post.deletedAtUnix && media.url) {
-    return [media.url];
+    return [{ kind: 'image', src: media.url, forceImage: true }];
   }
 
-  return files.length > 0 ? files : fallback;
+  if (items.length > 0) {
+    return items
+      .map((item) => describeMediaItemForSurface(item, media.representationKind, 'lightbox'))
+      .filter((item): item is LightboxMediaSource => !!item && !!item.src);
+  }
+
+  const fallback = [media.videoUrl, media.audioUrl, media.url].filter(Boolean) as string[];
+  return fallback.map((src) => ({
+    kind: media.type === 'audio' ? 'audio' : media.type === 'video' ? 'video' : 'image',
+    src,
+    posterSrc: media.posterUrl || media.url,
+    forceImage: media.type === 'image',
+  }));
 }

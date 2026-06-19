@@ -7,7 +7,7 @@ import { extractMedia, type ProcessedPost } from '../types/post.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { resolveMediaUrl } from '../services/media-resolver.js';
 import type { MediaRenderType } from '../services/media-resolver.js';
-import { buildLightboxMediaSources } from '../services/lightbox-media-sources.js';
+import { buildLightboxMediaSources, type LightboxMediaSource } from '../services/lightbox-media-sources.js';
 import { buildInteractionHandler } from '../services/render-interactions.js';
 import { loadRenderContract } from '../services/render-contract.js';
 import { toPresentationModel } from '../services/post-presentation.js';
@@ -221,9 +221,7 @@ export class PostLightbox extends LitElement {
     const presentation = toPresentationModel(this.post, { surface: 'lightbox', page: 'post' });
     const mediaRenderType = presentation.media.preset as MediaRenderType;
 
-    const media = this.post._media || extractMedia(this.post);
-    const files = this.post.content?.files || [];
-    const sources = files.length > 0 ? files : (media?.videoUrl || media?.url ? [media.videoUrl || media.url] : []);
+    const sources = buildLightboxMediaSources(this.post);
 
     return html`
       <div class="admin-debug-panel">
@@ -232,10 +230,10 @@ export class PostLightbox extends LitElement {
           Toggles: ?media_mode=[ergonomic|unsafe|origin]
         </div>
         <div class="entry"><span class="label">POST_ID:</span> ${this.post.id}</div>
-        ${sources.map((src, i) => html`
+        ${sources.map((source, i) => html`
           <div style="margin-top: 12px; border-top: 1px solid #333; padding-top: 8px;">
-            <div class="entry"><span class="label">MEDIA[${i}] RAW:</span> ${src}</div>
-            <div class="entry"><span class="label">MEDIA[${i}] RES:</span> ${resolveMediaUrl(src, mediaRenderType)}</div>
+            <div class="entry"><span class="label">MEDIA[${i}] RAW:</span> ${source.src}</div>
+            <div class="entry"><span class="label">MEDIA[${i}] RES:</span> ${resolveMediaUrl(source.src, mediaRenderType)}</div>
           </div>
         `)}
       </div>
@@ -263,13 +261,18 @@ export class PostLightbox extends LitElement {
 
     return html`
       <div class="media-stack">
-        ${mediaSources.map(src => html`
+        ${mediaSources.map((source: LightboxMediaSource) => html`
           <div class="media-container">
-            <media-renderer
-              .src=${src}
-              .posterSrc=${media.type === 'video' ? media.url : undefined}
-              .type=${mediaRenderType}
-            ></media-renderer>
+            ${source.kind === 'audio'
+              ? html`<audio controls style="width:100%;" src=${source.src}></audio>`
+              : html`<media-renderer
+                  .src=${source.src}
+                  .posterSrc=${source.posterSrc}
+                  .alternateVideoSrc=${source.alternateVideoSrc}
+                  .fallbackSrc=${source.fallbackSrc}
+                  .forceImage=${source.forceImage ?? false}
+                  .type=${mediaRenderType}
+                ></media-renderer>`}
           </div>
         `)}
       </div>

@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
-import { extractRenderableTags, resolvePrimaryMediaUrl, type ProcessedPost } from '../types/post.js';
+import { describePrimaryMediaForSurface, extractRenderableTags, getMediaItemCount, type ProcessedPost } from '../types/post.js';
 import { formatDate } from '../services/date-formatter.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
@@ -225,7 +225,8 @@ export class ActivityItem extends LitElement {
   render() {
     const p = this.post;
     const media = p._media;
-    const rawUrl = resolvePrimaryMediaUrl(media);
+    const mediaSource = describePrimaryMediaForSurface(media, 'preview');
+    const rawUrl = mediaSource?.src || '';
 
     const presentation = toPresentationModel(p, { surface: 'card', page: this.page, interactionKind: this.interactionType, role: 'cluster' });
     let typeIcon = presentation.identity.postTypeIcon || '📄';
@@ -282,12 +283,16 @@ export class ActivityItem extends LitElement {
           <div class="media-container">
             <media-renderer
               .src=${rawUrl}
+              .posterSrc=${mediaSource?.posterSrc}
+              .alternateVideoSrc=${mediaSource?.alternateVideoSrc}
+              .fallbackSrc=${mediaSource?.fallbackSrc}
+              .forceImage=${mediaSource?.forceImage ?? false}
               .type=${renderType}
               style="object-fit: ${this.mode === 'masonry' ? 'contain' : 'cover'};"
               @media-state-change=${this.handleMediaStateChange}
             ></media-renderer>
 
-            ${p.content?.files && p.content.files.length > 1 ? html`<div class="multi-image-badge" title="Post contains ${p.content.files.length} items">1 / ${p.content.files.length}</div>` : ''}
+            ${getMediaItemCount(media) > 1 ? html`<div class="multi-image-badge" title="Post contains ${getMediaItemCount(media)} items">1 / ${getMediaItemCount(media)}</div>` : ''}
             ${isAdmin && isDeleted ? html`<div class="admin-label">Deleted</div>` : nothing}
             ${isAdmin && isOriginDeleted ? html`<div class="admin-label origin-deleted">Origin Deleted</div>` : nothing}
             ${isAdmin && isTombstone ? html`<div class="admin-label tombstone">Tombstone</div>` : nothing}
