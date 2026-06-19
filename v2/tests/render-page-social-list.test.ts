@@ -19,6 +19,12 @@ describe('social/blog-list render contract usage', () => {
     expect(listSrc).toContain("buildBlogPageUrl(item.blogName, 'activity')");
     expect(listSrc).toContain("grid-template-rows: minmax(96px, auto) 100px;");
     expect(listSrc).toContain('class="recent-grid"');
+    expect(listSrc).toContain("describePrimaryMediaForSurface(media, 'preview')");
+    expect(listSrc).toContain('.posterSrc=${mediaSource?.posterSrc}');
+    expect(listSrc).toContain('.alternateVideoSrc=${mediaSource?.alternateVideoSrc}');
+    expect(listSrc).toContain('.fallbackSrc=${mediaSource?.fallbackSrc}');
+    expect(listSrc).toContain('.forceImage=${mediaSource?.forceImage ?? false}');
+    expect(listSrc).not.toContain('resolvePrimaryMediaUrl(media)');
     expect(listSrc).toContain('<blog-identity');
     expect(socialSrc).toContain("type Tab = 'recommended' | 'followers' | 'following' | 'siblings';");
     expect(socialSrc).toContain("apiClient.blogs.listFamily({ blog_id: this.blogId })");

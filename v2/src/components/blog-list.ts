@@ -7,7 +7,7 @@ import { buildBlogPageUrl } from '../services/blog-resolver.js';
 import { BREAKPOINTS, SPACING, CONTAINER_SPACING } from '../types/ui-constants.js';
 import { loadRenderContract } from '../services/render-contract.js';
 import { handleAvatarImageError, normalizeAvatarUrl } from '../services/avatar-url.js';
-import { extractMedia, POST_TYPE_ICONS, resolvePrimaryMediaUrl, type ProcessedPost } from '../types/post.js';
+import { describePrimaryMediaForSurface, extractMedia, POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
 import './media-renderer.js';
 import './blog-identity.js';
 
@@ -286,12 +286,13 @@ export class BlogList extends LitElement {
                 ${recentPosts.length > 0
                   ? recentPosts.map((post) => {
                       const media = post._media;
-                      const rawUrl = resolvePrimaryMediaUrl(media);
+                      const mediaSource = describePrimaryMediaForSurface(media, 'preview');
+                      const rawUrl = mediaSource?.src || '';
                       const previewText = this.sanitizeSingleLine(post.body || post.content?.text || post.content?.title || '');
                       return html`
                         <div class="recent-item">
                           ${rawUrl
-                            ? html`<media-renderer .src=${rawUrl} .type=${'card'} style="object-fit: cover;"></media-renderer>`
+                            ? html`<media-renderer .src=${rawUrl} .posterSrc=${mediaSource?.posterSrc} .alternateVideoSrc=${mediaSource?.alternateVideoSrc} .fallbackSrc=${mediaSource?.fallbackSrc} .forceImage=${mediaSource?.forceImage ?? false} .type=${'card'} style="object-fit: cover;"></media-renderer>`
                             : html`
                                 <div class="recent-fallback">
                                   <div class="recent-fallback-icon">${POST_TYPE_ICONS[post.type] || '📄'}</div>
