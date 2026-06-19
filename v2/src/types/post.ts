@@ -156,9 +156,26 @@ export function getOrderedContentBlocks(post: Post): NormalizedContentBlock[] {
   const contractPost = post as PostWithContract;
   const items = normalizeMediaItems(contractPost);
   const rawBlocks = Array.isArray(contractPost.contentBlocks) ? contractPost.contentBlocks : [];
+  const content = post.content || {};
 
   if (rawBlocks.length === 0) {
-    return [];
+    const normalizedFallback: NormalizedContentBlock[] = [];
+    const html = typeof content.html === 'string' ? content.html.trim() : '';
+    const text = typeof content.text === 'string' ? content.text.trim() : '';
+    const body = typeof post.body === 'string' ? post.body.trim() : '';
+    const title = typeof content.title === 'string' ? content.title.trim() : '';
+
+    if (html) {
+      normalizedFallback.push({ kind: 'html', html });
+    } else if (text || body || title) {
+      normalizedFallback.push({ kind: 'text', text: text || body || title });
+    }
+
+    if (items.length > 0) {
+      normalizedFallback.push({ kind: 'media', items });
+    }
+
+    return normalizedFallback;
   }
 
   const normalized: NormalizedContentBlock[] = [];

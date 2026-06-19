@@ -155,7 +155,7 @@ describe('post media extraction', () => {
     expect(mediaUrls(media)).toEqual([]);
   });
 
-  it('does not synthesize ordered blocks from legacy body fields when contentBlocks are absent', () => {
+  it('synthesizes ordered blocks from fallback text fields when contentBlocks are absent', () => {
     const blocks = getOrderedContentBlocks({
       id: 7,
       type: 1,
@@ -166,7 +166,26 @@ describe('post media extraction', () => {
       },
     } as any);
 
-    expect(blocks).toEqual([]);
+    expect(blocks).toEqual([{ kind: 'html', html: '<p>Legacy body text</p>' }]);
+  });
+
+  it('synthesizes a title text block when degraded payloads omit content blocks', () => {
+    const blocks = getOrderedContentBlocks({
+      id: 8,
+      type: 3,
+      body: '',
+      content: {
+        title: 'Messaging Infrastructure and Subscription Launch',
+        html: null,
+        text: null,
+      },
+      mediaRepresentation: {
+        kind: 'NONE',
+        items: [],
+      },
+    } as any);
+
+    expect(blocks).toEqual([{ kind: 'text', text: 'Messaging Infrastructure and Subscription Launch' }]);
   });
 
 
