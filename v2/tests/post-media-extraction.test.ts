@@ -15,15 +15,13 @@ function blockKinds(blocks: NormalizedContentBlock[]): string[] {
 }
 
 describe('post media extraction', () => {
-  it('uses mediaRepresentation for still image posts instead of legacy files', () => {
+  it('uses mediaRepresentation for still image posts', () => {
     const media = extractMedia({
       id: 1,
       type: 2,
       body: 'Caption',
       content: {
         html: '<p>Caption</p>',
-        files: ['https://legacy.example.com/ignored.jpg'],
-        thumbnail: 'https://legacy.example.com/ignored-thumb.jpg',
       },
       contentBlocks: [
         { htmlBlock: { html: '<p>Caption</p>' } },
@@ -143,14 +141,12 @@ describe('post media extraction', () => {
     expect(blocks[2]).toMatchObject({ kind: 'html', html: '<p>Outro</p>' });
   });
 
-  it('does not synthesize media items from legacy files when mediaRepresentation is absent', () => {
+  it('does not synthesize media items when mediaRepresentation is absent', () => {
     const media = extractMedia({
       id: 6,
       type: 2,
       content: {
-        files: ['https://legacy.example.com/only.jpg'],
-        thumbnail: 'https://legacy.example.com/only-thumb.jpg',
-        html: '<p>legacy media payload</p>',
+        html: '<p>body without representation</p>',
       },
     } as any);
 

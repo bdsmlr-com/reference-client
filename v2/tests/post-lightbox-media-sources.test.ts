@@ -25,7 +25,7 @@ describe('buildLightboxMediaSources', () => {
   it('falls back to preview URL for deleted posts with dead file URLs', () => {
     const post = makePost({
       deletedAtUnix: 1710000000,
-      content: { files: ['https://ocdn012.bdsmlr.com/uploads/videos/dead.mp4'] },
+      content: {},
       _media: {
         type: 'video',
         url: 'https://ocdn012.bdsmlr.com/uploads/photos/still-preview.webp',
@@ -52,7 +52,7 @@ describe('buildLightboxMediaSources', () => {
   it('uses mediaRepresentation ordering instead of legacy file order', () => {
     const post = makePost({
       type: 2,
-      content: { files: ['https://legacy.example.com/ignored.jpg'] },
+      content: {},
       _media: {
         type: 'image',
         items: [
@@ -70,7 +70,7 @@ describe('buildLightboxMediaSources', () => {
 
   it('preserves video poster role for non-deleted posts', () => {
     const post = makePost({
-      content: { files: ['https://ocdn012.bdsmlr.com/uploads/videos/live.mp4'] },
+      content: {},
       _media: {
         type: 'video',
         url: 'https://ocdn012.bdsmlr.com/uploads/photos/live-preview.webp',

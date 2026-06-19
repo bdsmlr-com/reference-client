@@ -31,8 +31,6 @@ function makePost(overrides: Record<string, unknown> = {}): any {
     content: {
       html: '',
       text: '',
-      files: ['https://legacy.example.com/ignored.jpg'],
-      thumbnail: 'https://legacy.example.com/ignored-thumb.jpg',
     },
     contentBlocks: [{ mediaBlock: {} }],
     mediaRepresentation: {

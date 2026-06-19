@@ -23,10 +23,7 @@ function makePost(overrides: Partial<ProcessedPost> = {}): ProcessedPost {
     blogName: 'alpha',
     originBlogName: 'alpha',
     type: 2,
-    content: {
-      files: ['/uploads/alpha.jpg'],
-      thumbnail: '/uploads/alpha.jpg',
-    },
+    content: {},
     _media: { type: 'image', url: '/uploads/alpha.jpg' },
     _retrievalPolicy: {
       linkAllowed: false,

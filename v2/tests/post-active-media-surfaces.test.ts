@@ -29,8 +29,6 @@ function makePost(overrides: Record<string, unknown> = {}): any {
     body: '',
     title: '',
     content: {
-      files: [],
-      thumbnail: 'https://legacy.example.com/thumb.jpg',
       html: '',
       text: '',
     },
@@ -55,7 +53,7 @@ describe('active media surfaces', () => {
 
   it('post-card uses mediaRepresentation item count for gallery badges', async () => {
     const el = document.createElement('post-card') as any;
-    el.post = makePost({ content: { files: ['https://legacy.example.com/only-one.jpg'] } });
+    el.post = makePost();
     document.body.appendChild(el);
 
     await flush();
@@ -66,7 +64,7 @@ describe('active media surfaces', () => {
 
   it('activity-item uses mediaRepresentation item count for gallery badges', async () => {
     const el = document.createElement('activity-item') as any;
-    el.post = makePost({ content: { files: ['https://legacy.example.com/only-one.jpg'] } });
+    el.post = makePost();
     el.interactionType = 'post';
     document.body.appendChild(el);
 
@@ -78,7 +76,6 @@ describe('active media surfaces', () => {
 
   it('post-lightbox renders representation-derived media order instead of legacy file order', async () => {
     const post = makePost({
-      content: { files: ['https://legacy.example.com/wrong.jpg'] },
       mediaRepresentation: {
         kind: 'ORIGINAL',
         items: [

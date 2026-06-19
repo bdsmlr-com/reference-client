@@ -52,14 +52,49 @@ export type BlogSortField = 0 | 1 | 2 | 3 | 4 | 5;
 
 // Content types
 export interface PostContent {
-  files?: string[];
-  thumbnail?: string;
   html?: string;
   text?: string;
   title?: string;
   url?: string;
   quoteText?: string;
   quoteSource?: string;
+}
+
+export interface MediaAsset {
+  url?: string;
+  mimeType?: string;
+  width?: number;
+  height?: number;
+  durationMs?: number;
+}
+
+export interface MediaItem {
+  kind?: string;
+  original?: MediaAsset;
+  alternates?: MediaAsset[];
+  preview?: MediaAsset;
+  poster?: MediaAsset;
+}
+
+export interface MediaRepresentation {
+  kind?: string;
+  items?: MediaItem[];
+}
+
+export interface TextBlock {
+  text?: string;
+}
+
+export interface HtmlBlock {
+  html?: string;
+}
+
+export interface MediaBlock {}
+
+export interface ContentBlock {
+  textBlock?: TextBlock;
+  htmlBlock?: HtmlBlock;
+  mediaBlock?: MediaBlock;
 }
 
 export interface ReblogVariant {
@@ -86,6 +121,8 @@ export interface Post {
   title?: string;
   body?: string;
   content?: PostContent;
+  contentBlocks?: ContentBlock[];
+  mediaRepresentation?: MediaRepresentation;
   tags?: string[];
   likesCount?: number;
   commentsCount?: number;

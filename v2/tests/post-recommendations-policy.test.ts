@@ -29,10 +29,11 @@ describe('post recommendations policy', () => {
             id: 101,
             blogName: 'alpha',
             type: 2,
-            content: {
-              files: ['/uploads/alpha.jpg'],
-              thumbnail: '/uploads/alpha.jpg',
+            mediaRepresentation: {
+              kind: 'ORIGINAL',
+              items: [{ kind: 'IMAGE', original: { url: '/uploads/alpha.jpg' } }],
             },
+            contentBlocks: [{ mediaBlock: {} }],
           },
         ],
         postPolicies: {
@@ -66,10 +67,11 @@ describe('post recommendations policy', () => {
           id: 202,
           blogName: 'beta',
           type: 2,
-          content: {
-            files: ['/uploads/beta.jpg'],
-            thumbnail: '/uploads/beta.jpg',
+          mediaRepresentation: {
+            kind: 'ORIGINAL',
+            items: [{ kind: 'IMAGE', original: { url: '/uploads/beta.jpg' } }],
           },
+          contentBlocks: [{ mediaBlock: {} }],
         },
       ],
     });
@@ -104,10 +106,11 @@ describe('post recommendations policy', () => {
           id: 303,
           blogName: 'gamma',
           type: 2,
-          content: {
-            files: ['/uploads/gamma.jpg'],
-            thumbnail: '/uploads/gamma.jpg',
+          mediaRepresentation: {
+            kind: 'ORIGINAL',
+            items: [{ kind: 'IMAGE', original: { url: '/uploads/gamma.jpg' } }],
           },
+          contentBlocks: [{ mediaBlock: {} }],
         },
       ],
     });
@@ -119,10 +122,11 @@ describe('post recommendations policy', () => {
           {
             id: 303,
             type: 2,
-            content: {
-              files: ['/uploads/gamma.jpg'],
-              thumbnail: '/uploads/gamma.jpg',
+            mediaRepresentation: {
+              kind: 'ORIGINAL',
+              items: [{ kind: 'IMAGE', original: { url: '/uploads/gamma.jpg' } }],
             },
+            contentBlocks: [{ mediaBlock: {} }],
           },
         ],
       } as any,
@@ -144,10 +148,11 @@ describe('post recommendations policy', () => {
         {
           id: 404,
           type: 2,
-          content: {
-            files: ['/uploads/delta.jpg'],
-            thumbnail: '/uploads/delta.jpg',
+          mediaRepresentation: {
+            kind: 'ORIGINAL',
+            items: [{ kind: 'IMAGE', original: { url: '/uploads/delta.jpg' } }],
           },
+          contentBlocks: [{ mediaBlock: {} }],
         },
       ],
     });
@@ -156,10 +161,11 @@ describe('post recommendations policy', () => {
         id: 404,
         blogName: 'delta',
         type: 2,
-        content: {
-          files: ['/uploads/delta.jpg'],
-          thumbnail: '/uploads/delta.jpg',
+        mediaRepresentation: {
+          kind: 'ORIGINAL',
+          items: [{ kind: 'IMAGE', original: { url: '/uploads/delta.jpg' } }],
         },
+        contentBlocks: [{ mediaBlock: {} }],
       },
     });
 
@@ -169,10 +175,11 @@ describe('post recommendations policy', () => {
           {
             id: 404,
             type: 2,
-            content: {
-              files: ['/uploads/delta.jpg'],
-              thumbnail: '/uploads/delta.jpg',
+            mediaRepresentation: {
+              kind: 'ORIGINAL',
+              items: [{ kind: 'IMAGE', original: { url: '/uploads/delta.jpg' } }],
             },
+            contentBlocks: [{ mediaBlock: {} }],
           },
         ],
       } as any,
