@@ -1,5 +1,3 @@
-const INTERSTITIAL_TEST_KEY = 'interstitial-test';
-
 export function maybeDeployInterstitial(authenticated: boolean): void {
   if (authenticated) {
     return;
