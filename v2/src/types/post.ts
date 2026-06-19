@@ -65,7 +65,7 @@ interface PostWithContract extends Post {
   mediaRepresentation?: {
     kind?: string;
     items?: Array<{
-      kind?: string;
+      kind?: string | number;
       original?: Partial<MediaAsset>;
       alternates?: Array<Partial<MediaAsset>>;
       preview?: Partial<MediaAsset>;
@@ -100,14 +100,24 @@ function normalizeMediaRepresentationKind(kind: unknown): MediaRepresentationKin
   if (typeof kind === 'string' && MEDIA_REPRESENTATION_KINDS.has(kind as MediaRepresentationKind)) {
     return kind as MediaRepresentationKind;
   }
-  return 'UNSPECIFIED';
+  switch (kind) {
+    case 1: return 'NONE';
+    case 2: return 'ORIGINAL';
+    case 3: return 'ANIMATED_VIDEO';
+    default: return 'UNSPECIFIED';
+  }
 }
 
 function normalizeMediaItemKind(kind: unknown): MediaItemKind {
   if (typeof kind === 'string' && MEDIA_ITEM_KINDS.has(kind as MediaItemKind)) {
     return kind as MediaItemKind;
   }
-  return 'UNSPECIFIED';
+  switch (kind) {
+    case 1: return 'IMAGE';
+    case 2: return 'VIDEO';
+    case 3: return 'AUDIO';
+    default: return 'UNSPECIFIED';
+  }
 }
 
 function normalizeMediaAsset(asset: Partial<MediaAsset> | undefined): MediaAsset | undefined {
@@ -319,10 +329,11 @@ export function extractMedia(post: Post): MediaInfo {
     }
 
     if (firstItem.kind === 'VIDEO') {
+      const companionImage = items.find((item, index) => index > 0 && item.kind === 'IMAGE' && item.original?.url);
       return {
         ...baseInfo,
         type: 'video',
-        url: resolveMediaItemPosterSource(firstItem) || firstItem.original.url,
+        url: firstItem.poster?.url || firstItem.preview?.url || companionImage?.original?.url || firstItem.original.url,
         videoUrl: firstItem.original.url,
       };
     }

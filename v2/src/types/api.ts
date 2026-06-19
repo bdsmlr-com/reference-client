@@ -69,7 +69,7 @@ export interface MediaAsset {
 }
 
 export interface MediaItem {
-  kind?: string;
+  kind?: string | number;
   original?: MediaAsset;
   alternates?: MediaAsset[];
   preview?: MediaAsset;
@@ -77,7 +77,7 @@ export interface MediaItem {
 }
 
 export interface MediaRepresentation {
-  kind?: string;
+  kind?: string | number;
   items?: MediaItem[];
 }
 

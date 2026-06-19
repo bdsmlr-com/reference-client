@@ -169,4 +169,61 @@ describe('post media extraction', () => {
     expect(blocks).toEqual([]);
   });
 
+
+  it('recognizes numeric media representation enums for native video posts', () => {
+    const media = extractMedia({
+      id: 870855951,
+      type: 3,
+      mediaRepresentation: {
+        kind: 2,
+        items: [
+          {
+            kind: 2,
+            alternates: [],
+            original: { url: 'https://ocdn012.bdsmlr.com/uploads/videos/demo.mp4', mimeType: 'video/mp4' },
+            poster: null,
+            preview: null,
+          },
+          {
+            kind: 1,
+            alternates: [],
+            original: { url: 'https://ocdn012.bdsmlr.com/uploads/videos/demo.jpg', mimeType: 'image/jpeg' },
+            poster: null,
+            preview: null,
+          },
+        ],
+      },
+    } as any);
+
+    expect(media.type).toBe('video');
+    expect(media.videoUrl).toBe('https://ocdn012.bdsmlr.com/uploads/videos/demo.mp4');
+    expect(media.url).toBe('https://ocdn012.bdsmlr.com/uploads/videos/demo.jpg');
+    expect(media.representationKind).toBe('ORIGINAL');
+  });
+
+  it('recognizes numeric animated-video enums and uses the first mp4 alternate', () => {
+    const media = extractMedia({
+      id: 283656892,
+      type: 2,
+      contentBlocks: [{ mediaBlock: {} }],
+      mediaRepresentation: {
+        kind: 3,
+        items: [
+          {
+            kind: 1,
+            original: { url: 'https://ocdn012.bdsmlr.com/uploads/photos/demo.gif' },
+            alternates: [
+              { url: 'https://ocdn012.bdsmlr.com/uploads/photos/demo.mp4', mimeType: 'video/mp4' },
+            ],
+          },
+        ],
+      },
+    } as any);
+
+    expect(media.type).toBe('video');
+    expect(media.videoUrl).toBe('https://ocdn012.bdsmlr.com/uploads/photos/demo.mp4');
+    expect(media.url).toBe('https://ocdn012.bdsmlr.com/uploads/photos/demo.gif');
+    expect(media.representationKind).toBe('ANIMATED_VIDEO');
+  });
+
 });
