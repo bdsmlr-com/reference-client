@@ -12,9 +12,11 @@ export function maybeDeployInterstitial(authenticated: boolean): void {
   if (String(window.location.href).includes('?revealcontent')) {
     return;
   }
+  /*
+  // Uncomment this block to unlaunch/re-gate interstitials.
   if (Number(localStorage.getItem(INTERSTITIAL_TEST_KEY)) != 1) {
     return;
-  }
+  }*/
 
   // Overengineered typescript amounting to: deployInterstitial()
   const deploy = (globalThis as { deployInterstitial?: () => void }).deployInterstitial;
