@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { toS3Scheme, resolveMediaUrl, isAnimation, isNativeVideo, toOriginFallbackUrl, probeNextBucket, resolvePostDetailMediaUrl } from '../src/services/media-resolver.js';
-import { CONFIG, FEATURE_FLAGS } from '../src/config.js';
+import { CONFIG } from '../src/config.js';
 import { BUCKET_LIST } from '../src/services/media-resolver.js';
 
 describe('Media Resolver', () => {
@@ -30,17 +30,8 @@ describe('Media Resolver', () => {
     vi.stubGlobal('HTMLImageElement', MockImageElement as any);
     vi.stubGlobal('HTMLVideoElement', MockVideoElement as any);
     vi.stubGlobal('HTMLSourceElement', MockSourceElement as any);
-    // Default to staging-like config
     CONFIG.imgproxyMode = 'unsafe';
     CONFIG.mediaProxyBase = 'https://imgproxy.i.bdsmlr.com';
-    FEATURE_FLAGS.media_format_by_surface = { 'post-detail': 'raw' };
-  });
-
-  it('supports staging fixed host media.i for alias URLs', () => {
-    CONFIG.imgproxyMode = 'fixed';
-    CONFIG.mediaProxyBase = 'https://media.i.bdsmlr.com';
-    const url = resolveMediaUrl('/uploads/foo.jpg', 'feed');
-    expect(url).toContain('media.i.bdsmlr.com/masonry/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
   });
 
   describe('toS3Scheme', () => {
@@ -74,57 +65,39 @@ describe('Media Resolver', () => {
   });
 
   describe('resolvePostDetailMediaUrl', () => {
-    it('uses the raw alias for signed s3-backed detail media', () => {
+    it('preserves already-final absolute detail media URLs', () => {
       CONFIG.imgproxyMode = 'fixed';
       CONFIG.mediaProxyBase = 'https://media.i.bdsmlr.com';
       const src = 'https://ocdn012.bdsmlr.com/uploads/photos/2022/04/10603709/bdsmlr-10603709-T81lsQVXjf.jpg?e=1781533847&t=2EHzapbTks7Eo12VKQQU-mFAzx3J0WLTv-DEtah6DZQ';
       const url = resolvePostDetailMediaUrl(src);
-      expect(url).toBe('https://media.i.bdsmlr.com/raw/s3://ocdn012.bdsmlr.com/uploads/photos/2022/04/10603709/bdsmlr-10603709-T81lsQVXjf.jpg?e=1781533847&t=2EHzapbTks7Eo12VKQQU-mFAzx3J0WLTv-DEtah6DZQ');
+      expect(url).toBe(src);
     });
 
-    it('keeps non-detail resizing behavior separate from the raw detail helper', () => {
+    it('keeps legacy relative detail media compatibility behavior', () => {
       CONFIG.imgproxyMode = 'fixed';
       CONFIG.mediaProxyBase = 'https://media.i.bdsmlr.com';
-      const src = 'https://ocdn012.bdsmlr.com/uploads/photos/2022/04/10603709/bdsmlr-10603709-T81lsQVXjf.jpg?e=1781533847&t=2EHzapbTks7Eo12VKQQU-mFAzx3J0WLTv-DEtah6DZQ';
-      expect(resolveMediaUrl(src, 'feed')).toContain('/masonry/s3://');
-      expect(resolvePostDetailMediaUrl(src)).toContain('/raw/s3://');
+      const src = '/uploads/foo.jpg?e=123&t=abc';
+      expect(resolvePostDetailMediaUrl(src)).toBe('https://media.i.bdsmlr.com/detail/s3://ocdn012.bdsmlr.com/uploads/foo.jpg?e=123&t=abc');
     });
   });
 
   describe('resolveMediaUrl', () => {
-    it('can force raw alias resolution for card surfaces via feature flag', () => {
+    it('preserves already-final absolute URLs from the backend in fixed mode', () => {
       CONFIG.imgproxyMode = 'fixed';
       CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
-      FEATURE_FLAGS.media_format_by_surface = { card: 'raw' };
-
-      const url = resolveMediaUrl('/uploads/foo.jpg', 'card');
-
-      expect(url).toBe('https://media.bdsmlr.com/raw/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
+      const src = 'https://ocdn012.bdsmlr.com/uploads/foo.jpg?e=123&t=abc';
+      expect(resolveMediaUrl(src, 'feed')).toBe(src);
+      expect(resolveMediaUrl(src, 'post-detail')).toBe(src);
     });
 
-    it('can force raw alias resolution for lightbox surfaces via feature flag', () => {
+    it('preserves already-final proxy URLs from the backend in fixed mode', () => {
       CONFIG.imgproxyMode = 'fixed';
       CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
-      FEATURE_FLAGS.media_format_by_surface = { lightbox: 'raw' };
-
-      const url = resolveMediaUrl('/uploads/foo.jpg', 'lightbox');
-
-      expect(url).toBe('https://media.bdsmlr.com/raw/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
+      const src = 'https://media.i.bdsmlr.com/raw/s3://ocdn012.bdsmlr.com/uploads/foo.gif?e=123&t=abc';
+      expect(resolveMediaUrl(src, 'feed')).toBe(src);
     });
 
-    it('keeps animated feed media as raw gif/webp when raw feed mode is enabled', () => {
-      CONFIG.imgproxyMode = 'fixed';
-      CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
-      FEATURE_FLAGS.media_format_by_surface = { feed: 'raw' };
-      const src = 'https://ocdn012.bdsmlr.com/uploads/foo.gif?e=123&t=abc';
-
-      const url = resolveMediaUrl(src, 'feed');
-
-      expect(url).toBe('https://media.bdsmlr.com/raw/s3://ocdn012.bdsmlr.com/uploads/foo.gif?e=123&t=abc');
-      expect(url).not.toContain('format:mp4');
-      expect(url).not.toContain('/masonry/s3://');
-    });
-    it('should generate an unsafe URL in staging mode', () => {
+    it('should generate an unsafe URL in staging mode for legacy relative inputs', () => {
       CONFIG.imgproxyMode = 'unsafe';
       const url = resolveMediaUrl('/uploads/foo.jpg', 'gallery-grid');
       expect(url).toContain('imgproxy.i.bdsmlr.com/unsafe/g:sm/rs:fill:400:400/plain/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
@@ -134,11 +107,7 @@ describe('Media Resolver', () => {
       CONFIG.imgproxyMode = 'unsafe';
       const src = 'https://ocdn012.bdsmlr.com/uploads/foo.jpg?e=123&t=abc&cb=999&x=1';
       const url = resolveMediaUrl(src, 'gallery-grid');
-      expect(url).toContain('imgproxy.i.bdsmlr.com/unsafe/');
-      expect(url).toContain('x=1');
-      expect(url).not.toContain('e=123');
-      expect(url).not.toContain('t=abc');
-      expect(url).not.toContain('cb=999');
+      expect(url).toBe(src);
     });
 
     it('should bypass imgproxy for native mp4 URLs in unsafe mode', () => {
@@ -149,49 +118,21 @@ describe('Media Resolver', () => {
       expect(url).not.toContain('imgproxy.i.bdsmlr.com/unsafe/');
     });
 
-    it('should generate a fixed (ergonomic) URL in production mode', () => {
+    it('should generate a fixed alias URL in production mode for legacy relative inputs', () => {
       CONFIG.imgproxyMode = 'fixed';
       CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
       const url = resolveMediaUrl('/uploads/foo.jpg', 'lightbox');
-      // Should map lightbox-like detail surfaces to the canonical detail alias
       expect(url).toContain('media.bdsmlr.com/detail/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
     });
 
-    it('keeps post-detail on the raw alias by default in fixed mode', () => {
+    it('keeps post-detail on the detail alias for legacy relative inputs in fixed mode', () => {
       CONFIG.imgproxyMode = 'fixed';
       CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
       const url = resolveMediaUrl('/uploads/foo.jpg', 'post-detail');
-      expect(url).toContain('media.bdsmlr.com/raw/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
+      expect(url).toContain('media.bdsmlr.com/detail/s3://ocdn012.bdsmlr.com/uploads/foo.jpg');
     });
 
-    it('should re-alias ergonomic s3 media URLs for lightbox', () => {
-      CONFIG.imgproxyMode = 'fixed';
-      CONFIG.mediaProxyBase = 'https://media.bdsmlr.com';
-      const src = 'https://media.i.bdsmlr.com/gutter/s3://ocdn012.bdsmlr.com/uploads/foo.gif?e=123&t=abc';
-      const url = resolveMediaUrl(src, 'lightbox');
-      expect(url).toContain('media.bdsmlr.com/detail/s3://ocdn012.bdsmlr.com/uploads/foo.gif?e=123&t=abc');
-    });
-
-    it('should respect admin media_mode override', () => {
-      // Mock URL search params
-      const spy = vi.spyOn(URLSearchParams.prototype, 'get');
-      spy.mockImplementation((key: string) => {
-        if (key === 'media_mode') return 'origin';
-        return null;
-      });
-      vi.stubGlobal('localStorage', {
-        getItem: vi.fn(() => 'true'),
-        setItem: vi.fn(),
-        removeItem: vi.fn(),
-      });
-
-      const url = resolveMediaUrl('https://cdn101.bdsmlr.com/uploads/foo.jpg', 'feed');
-      expect(url).toBe('https://cdn101.bdsmlr.com/uploads/foo.jpg');
-      
-      spy.mockRestore();
-    });
-
-    it('preserves already-transformed pixelated proxy URLs instead of re-deriving a clear variant', () => {
+    it('should preserve already-transformed pixelated proxy URLs instead of re-deriving a clear variant', () => {
       CONFIG.imgproxyMode = 'unsafe';
       const src = 'https://imgproxy.i.bdsmlr.com/unsafe/g:sm/rs:fit:600:0/pix:24/plain/s3://ocdn012.bdsmlr.com/uploads/foo.jpg';
       const url = resolveMediaUrl(src, 'gallery-grid');
@@ -249,14 +190,14 @@ describe('Media Resolver', () => {
       );
     });
 
-    it('should normalize unknown legacy buckets back to the canonical host', () => {
+    it('should not mutate unknown legacy buckets now that probing is disabled', () => {
       const img = new MockImageElement();
       img.src = 'https://media.i.bdsmlr.com/gutter/s3://cdn013.bdsmlr.com/uploads/photos/2023/08/11289205/bdsmlr-11289205-s3pdSudIvT.gif?e=1&t=2';
 
       const didProbe = probeNextBucket(img as any);
 
-      expect(didProbe).toBe(true);
-      expect(img.src).toContain('ocdn012.bdsmlr.com');
+      expect(didProbe).toBe(false);
+      expect(img.src).toContain('cdn013.bdsmlr.com');
     });
   });
 });

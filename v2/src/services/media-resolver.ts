@@ -3,8 +3,7 @@
  * Supports environment-specific routing (unsafe vs fixed paths).
  */
 
-import { CONFIG, FEATURE_FLAGS, MEDIA_PRESETS } from '../config.js';
-import { isAdminMode } from './blog-resolver.js';
+import { CONFIG, MEDIA_PRESETS } from '../config.js';
 
 export type MediaRenderType = 'card' | 'masonry' | 'detail' | 'poster' | 'gallery-grid' | 'gallery-masonry' | 'feed' | 'lightbox' | 'post-detail' | 'gutter';
 
@@ -39,25 +38,6 @@ function mediaPathForDetection(url: string | undefined): string {
     checkUrl = url.split('/plain/s3://')[1];
   }
   return checkUrl.split('?')[0].toLowerCase();
-}
-
-function mediaAliasBase(): string {
-  return CONFIG.mediaProxyBase.replace('imgproxy.i.', 'media.i.');
-}
-
-function mediaFormatForSurface(type: MediaRenderType): string | undefined {
-  return FEATURE_FLAGS.media_format_by_surface?.[type];
-}
-
-function toAliasFormatUrl(url: string | undefined, format: string): string {
-  if (!url) return '';
-  if (format === 'raw' && url.includes('/raw/s3://')) return url;
-  const [s3Url, queryParams] = toS3Scheme(url);
-  if (!s3Url || !s3Url.startsWith('s3://')) {
-    return url;
-  }
-  const queryString = queryParams ? `?${queryParams}` : '';
-  return `${mediaAliasBase()}/${format}/${s3Url}${queryString}`;
 }
 
 /**
@@ -124,21 +104,12 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
     return url;
   }
 
-  const params = new URLSearchParams(window.location.search);
-  const modeOverride = (isAdminMode() && params.get('media_mode')) || null;
-
-  if (modeOverride === 'origin') {
-    const [s3Url, queryParams] = toS3Scheme(url);
-    const queryString = queryParams ? `?${queryParams}` : '';
-    return s3Url.replace('s3://', 'https://') + queryString;
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
   }
 
   const [s3Url, queryParams] = toS3Scheme(url);
 
-  const formatOverride = mediaFormatForSurface(type);
-  if (formatOverride) {
-    return toAliasFormatUrl(url, formatOverride);
-  }
 
   const canonicalType = canonicalMediaType(type);
   const preset = MEDIA_PRESETS[canonicalType] || MEDIA_PRESETS[type];
@@ -149,7 +120,7 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
   }
 
   const queryString = queryParams ? `?${queryParams}` : '';
-  const currentMode = modeOverride || CONFIG.imgproxyMode;
+  const currentMode = CONFIG.imgproxyMode;
 
   const isAnim = isAnimation(url);
   const isVideo = isNativeVideo(url);
@@ -158,10 +129,10 @@ export function resolveMediaUrl(url: string | undefined, type: MediaRenderType):
     return url;
   }
   
-  if (currentMode === 'fixed' || currentMode === 'ergonomic') {
+  if (currentMode === 'fixed') {
     // FIXED PATH MODE: Uses pre-configured gateway aliases
     // Pattern: /media.i.bdsmlr.com/<type>/s3://bucket/path?sig
-    const base = mediaAliasBase();
+    const base = CONFIG.mediaProxyBase.replace('imgproxy.i.', 'media.i.');
     // Note: We use the 'type' (e.g. 'lightbox', 'feed') directly as the Nginx alias
     return `${base}/${aliasType}/${s3Url}${queryString}`;
   }
@@ -232,19 +203,13 @@ export function toOriginFallbackUrl(url: string | undefined): string {
 export function resolvePostDetailMediaUrl(url: string | undefined): string {
   if (!url) return '';
 
-  const params = new URLSearchParams(window.location.search);
-  const modeOverride = (isAdminMode() && params.get('media_mode')) || null;
-  if (modeOverride === 'origin') {
-    return toOriginFallbackUrl(url);
-  }
 
   if (url.includes('/raw/s3://')) {
     return url;
   }
 
-  const formatOverride = mediaFormatForSurface('post-detail');
-  if (formatOverride) {
-    return toAliasFormatUrl(url, formatOverride);
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
   }
 
   const [s3Url, queryParams] = toS3Scheme(url);
@@ -252,7 +217,7 @@ export function resolvePostDetailMediaUrl(url: string | undefined): string {
     return url;
   }
 
-  const base = mediaAliasBase();
+  const base = CONFIG.mediaProxyBase.replace('imgproxy.i.', 'media.i.');
   const queryString = queryParams ? `?${queryParams}` : '';
   return `${base}/detail/${s3Url}${queryString}`;
 }
@@ -260,97 +225,7 @@ export function resolvePostDetailMediaUrl(url: string | undefined): string {
 /**
  * Probes the next available bucket if a media element fails to load.
  */
-export function probeNextBucket(el: HTMLElement): boolean {
-  let currentSrc = '';
-  if (el instanceof HTMLImageElement) currentSrc = el.src;
-  else if (el instanceof HTMLVideoElement) currentSrc = el.src;
-  else if (el instanceof HTMLSourceElement) currentSrc = el.src;
-
-  if (!currentSrc || (!currentSrc.includes('/plain/s3://') && !currentSrc.includes('.bdsmlr.com/'))) return false;
-
-  let proxyPart = '';
-  let s3Path = '';
-  let queryParams = '';
-  let ergonomicS3Alias = '';
-  let usesErgonomicS3 = false;
-
-  if (currentSrc.includes('/plain/s3://')) {
-    const parts = currentSrc.split('/plain/s3://');
-    // Important: keep the filters part of the proxyPart
-    proxyPart = parts[0] + '/plain/s3:'; 
-    const rest = parts[1].split('?');
-    s3Path = rest[0];
-    queryParams = rest[1] ? `?${rest[1]}` : '';
-  } else if (currentSrc.includes('/s3://')) {
-    // Ergonomic form: https://media.i.../<alias>/s3://<bucket>/<path>?...
-    try {
-      const urlObj = new URL(currentSrc);
-      const afterHost = `${urlObj.pathname}${urlObj.search}`.replace(/^\/+/, '');
-      const alias = afterHost.split('/')[0];
-      const s3Part = afterHost.slice(alias.length + 1).split('?')[0];
-      const m = s3Part.match(/^s3:\/\/([^/]+)(\/.*)$/);
-      if (!m) return false;
-      ergonomicS3Alias = alias;
-      usesErgonomicS3 = true;
-      s3Path = `${m[1]}${m[2]}`;
-      queryParams = urlObj.search;
-      proxyPart = `${urlObj.origin}/${alias}/s3:`;
-    } catch (e) {
-      return false;
-    }
-  } else {
-    try {
-      const urlObj = new URL(currentSrc);
-      const pathParts = urlObj.pathname.split('/');
-      // pathParts[0]='', [1]=alias, [2]=bucket, [3...]=path
-      proxyPart = `${urlObj.origin}/${pathParts[1]}`;
-      s3Path = pathParts.slice(2).join('/');
-      queryParams = urlObj.search;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  const pathSegments = s3Path.replace(/^\/\//, '').split('/');
-  const currentBucket = pathSegments[0];
-  const filePath = '/' + pathSegments.slice(1).join('/');
-
-  let nextIndex = 0;
-  const currentIndex = BUCKET_LIST.indexOf(currentBucket);
-  if (currentIndex !== -1) {
-    nextIndex = currentIndex + 1;
-  }
-
-  if (nextIndex < BUCKET_LIST.length) {
-    const nextBucket = BUCKET_LIST[nextIndex];
-    let nextSrc = '';
-    
-    if (currentSrc.includes('/plain/s3://')) {
-      nextSrc = `${proxyPart}//${nextBucket}${filePath}${queryParams}`;
-    } else if (usesErgonomicS3) {
-      nextSrc = `${new URL(currentSrc).origin}/${ergonomicS3Alias}/s3://${nextBucket}${filePath}${queryParams}`;
-    } else {
-      nextSrc = `${proxyPart}/${nextBucket}${filePath}${queryParams}`;
-    }
-    
-    if (el instanceof HTMLImageElement) el.src = nextSrc;
-    else if (el instanceof HTMLVideoElement) {
-      el.src = nextSrc;
-      el.load();
-      el.play().catch(() => {});
-    }
-    else if (el instanceof HTMLSourceElement) {
-      const video = el.parentElement as HTMLVideoElement;
-      el.src = nextSrc;
-      if (video && video.load) {
-        video.load();
-        video.play().catch(() => {});
-      }
-    }
-    
-    console.log(`[MediaProbe] Failover: ${currentBucket} -> ${nextBucket}`);
-    return true;
-  }
-
+export function probeNextBucket(_el: HTMLElement): boolean {
   return false;
 }
+
