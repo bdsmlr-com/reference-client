@@ -282,6 +282,8 @@ export class PostDetailContent extends LitElement {
     const engagementStandalone = false;
     const reblogTags = extractRenderableTags(p);
     const originTags = this.originPost ? extractRenderableTags(this.originPost) : [];
+    const originTagSet = new Set(originTags.map((tag) => tag.toLowerCase()));
+    const reblogOnlyTags = reblogTags.filter((tag) => !originTagSet.has(tag.toLowerCase()));
     const tags = presentation.identity.isReblog ? [] : reblogTags;
     const titleText = (p.title || p.content?.title || '').trim();
     const orderedBlocks = getOrderedContentBlocks(p);
@@ -362,12 +364,12 @@ export class PostDetailContent extends LitElement {
         ${presentation.layout.showTags && presentation.identity.isReblog
           ? html`
               <div class="tag-sections">
-                ${reblogTags.length > 0
+                ${reblogOnlyTags.length > 0
                   ? html`
                       <div class="tag-section">
                         <div class="tag-section-label">${viaBlogName || 'Reblogger'} tagged:</div>
                         <div class="post-tags">
-                          ${reblogTags.map((tag) => {
+                          ${reblogOnlyTags.map((tag) => {
                             const href = buildScopedReblogDetailTagHref(tag, viaBlogName, this.from as PostRouteSource);
                             return html`<a class="tag-chip" href=${href}>#${tag}</a>`;
                           })}

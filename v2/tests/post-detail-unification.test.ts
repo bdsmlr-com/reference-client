@@ -51,9 +51,12 @@ describe('post detail unification', () => {
     expect(detailSrc).toContain("@property({ type: Object }) originPost: ProcessedPost | null = null;");
     expect(detailSrc).toContain('const reblogTags = extractRenderableTags(p);');
     expect(detailSrc).toContain('const originTags = this.originPost ? extractRenderableTags(this.originPost) : [];');
+    expect(detailSrc).toContain('const originTagSet = new Set(originTags.map((tag) => tag.toLowerCase()));');
+    expect(detailSrc).toContain('const reblogOnlyTags = reblogTags.filter((tag) => !originTagSet.has(tag.toLowerCase()));');
     expect(detailSrc).toContain("const viaBlogName = `${p.blogName || presentation.identity.viaBlogLabel || ''}`.trim().replace(/^@+/, '');");
     expect(detailSrc).toContain("const originBlogName = `${p.originBlogName || presentation.identity.originBlogLabel || ''}`.trim().replace(/^@+/, '');");
     expect(detailSrc).toContain("class=\"tag-section-label\">${viaBlogName || 'Reblogger'} tagged:</div>");
+    expect(detailSrc).toContain('reblogOnlyTags.length > 0');
     expect(detailSrc).toContain("class=\"tag-section-label\">${originBlogName || 'Origin'} tagged:</div>");
   });
 });
