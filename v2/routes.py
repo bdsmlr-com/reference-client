@@ -16,7 +16,7 @@ _dist_dir = None
 
 # Paths that should NOT be handled by client routes (API endpoints)
 API_PREFIXES = ('v1', 'v2', 'api', 'auth', 'admin', 'health', 'metrics', 'static')
-RESERVED_ROOT_PATHS = {'robots.txt'}
+RESERVED_ROOT_PATHS = {'robots.txt', 'sitemap.xml', 'auth.md', '.well-known/api-catalog'}
 
 
 def _canonical_redirect(path: str) -> str | None:
