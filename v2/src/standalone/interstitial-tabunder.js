@@ -325,6 +325,14 @@ function populateInterstitialWithRevive () {
 }
 function revealInterstitial () {
 	document.body.setAttribute('with-interstitial',1)
+	try {
+		if (document.activeElement) {
+			document.activeElement.blur();
+		}
+	}
+	catch (ee) {
+		console.warn("Trouble blurring focused background element:",ee);
+	}
 }
 
 const legacy_bdsmlr_redirect_map = {
