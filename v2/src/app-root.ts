@@ -231,13 +231,18 @@ export class AppRoot extends LitElement {
       if (window.location.pathname === '/' && activeBlogName) {
         window.location.replace(buildPageUrl('activity', activeBlogName));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       this.authError = 'Login required';
       clearAuthUser();
       this.authenticated = false;
+
+      const msg = err instanceof Error ? err.message : '';
+      const status = Number(msg.match(/auth request failed: (\d+)/)?.[1]);
+      if (status === 401 || status === 403) {
+        maybeDeployInterstitial(false);
+      }
     } finally {
       this.checkingAuth = false;
-      maybeDeployInterstitial(this.authenticated);
     }
   }
 
