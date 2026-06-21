@@ -1,4 +1,4 @@
-const INTERSTITIAL_TEST_KEY = 'interstitial-test';
+import { ACTIVE_ENV } from '../config.js';
 
 export function maybeDeployInterstitial(authenticated: boolean): void {
   if (authenticated) {
@@ -12,11 +12,19 @@ export function maybeDeployInterstitial(authenticated: boolean): void {
   if (String(window.location.href).includes('?revealcontent')) {
     return;
   }
-  // Keep interstitial deployment behind the local test gate unless
-  // explicitly enabled.
-  if (Number(localStorage.getItem(INTERSTITIAL_TEST_KEY)) != 1) {
+
+  if (ACTIVE_ENV !== 'dev') {
     return;
   }
+
+  /*
+  // Keep interstitial deployment behind the local test gate unless
+  // explicitly enabled.
+  // const INTERSTITIAL_TEST_KEY = 'interstitial-test';
+  // if (Number(localStorage.getItem(INTERSTITIAL_TEST_KEY)) != 1) {
+  //   return;
+  // }
+  */
 
   // Overengineered typescript amounting to: deployInterstitial()
   const deploy = (globalThis as { deployInterstitial?: () => void }).deployInterstitial;
