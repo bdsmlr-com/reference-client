@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from flask import Flask
 
@@ -73,6 +74,21 @@ class ClientRoutesRedirectTests(unittest.TestCase):
 
         response = client.get("/v2/api/ping", follow_redirects=False)
         self.assertEqual(response.status_code, 404)
+
+    def test_robots_txt_does_not_fall_through_to_spa_html_when_dist_exists(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            dist_dir = Path(tmp_dir)
+            (dist_dir / "index.html").write_text("<html>spa</html>", encoding="utf-8")
+
+            app = Flask(__name__)
+            init_client_routes(str(dist_dir))
+            app.register_blueprint(client_blueprint)
+            client = app.test_client()
+
+            response = client.get("/robots.txt", follow_redirects=False)
+
+            self.assertEqual(response.status_code, 404)
+            self.assertNotIn("<html>spa</html>", response.get_data(as_text=True))
 
 
 if __name__ == "__main__":

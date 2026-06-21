@@ -16,6 +16,7 @@ _dist_dir = None
 
 # Paths that should NOT be handled by client routes (API endpoints)
 API_PREFIXES = ('v1', 'v2', 'api', 'auth', 'admin', 'health', 'metrics', 'static')
+RESERVED_ROOT_PATHS = {'robots.txt'}
 
 
 def _canonical_redirect(path: str) -> str | None:
@@ -65,7 +66,10 @@ def _is_api_path(path):
     """Check if path should be handled by API, not client."""
     if not path:
         return False
-    first_segment = path.lstrip('/').split('/')[0].lower()
+    normalized = path.lstrip('/').lower()
+    if normalized in RESERVED_ROOT_PATHS:
+        return True
+    first_segment = normalized.split('/')[0]
     return first_segment in API_PREFIXES
 
 # =============================================================
