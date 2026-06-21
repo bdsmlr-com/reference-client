@@ -57,16 +57,33 @@ attemptFrameDive();
 
 
 
-// A mix of old and new:
+// main items:
+const interstitial_form_id = 'interstitial-form-1';
 let
 	 interstitial_style_el
-	,new_url = location.href.split('?')[0]
 ;
-console.info('NEW URL',new_url)
+function populateInterstitialURL() {
+	const
+		 new_url = location.href.split('?')[0]
+		,params = new URLSearchParams(location.search)
+		,form = document.getElementById(interstitial_form_id)
+	;
+	form.action = new_url;
+	for (const [name,value] of params) {
+		form.append(
+			Object.assign(document.createElement('input'),{
+				 type: 'hidden'
+				,name
+				,value
+			})
+		);
+	}
+}
 const interstitial_html = `
 	<overbearing-overlay>
-		<form action="${ attrOK(new_url) }" target="_blank" rel="opener">
+		<form id="${ attrOK(interstitial_form_id) }" action="${ '' /* set later by populateInterstitialURL() */ }" target="_blank" rel="opener">
 			<input type="hidden" name="revealcontent" value="1">
+			${ '' /* other query string components to be replicated here as hidden-inputs by populateInterstitialURL() after html is set */ }
 			<int-red-x onclick="
 				if (document.body.hasAttribute('with-delayed-escape')) return;
 				/*document.body.removeAttribute('with-interstitial');*/
@@ -239,8 +256,9 @@ function setupInterstitial () {
 	}
 	else {
 		// scirpt is still in <head>; just document.write
-		docuemnt.write(interstitial_html);
+		document.write(interstitial_html);
 	}
+	populateInterstitialURL();
 }
 
 function populateInterstitialWithRevive () {
