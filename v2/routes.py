@@ -83,7 +83,6 @@ def assets(filename):
     return send_from_directory(os.path.join(_dist_dir, 'assets'), filename)
 
 @client_blueprint.route('/favicon.ico')
-@client_blueprint.route('/robots.txt')
 def root_assets():
     if not _dist_dir:
         abort(500, "Client routes not initialized")
