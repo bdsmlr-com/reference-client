@@ -62,7 +62,7 @@ const interstitial_form_id = 'interstitial-form-1';
 let
 	 interstitial_style_el
 ;
-function populateInterstitialURL() {
+function populateInterstitialURL () {
 	const
 		 new_url = location.href.split('?')[0]
 		,params = new URLSearchParams(location.search)
@@ -323,16 +323,42 @@ function populateInterstitialWithRevive () {
 		document.head.appendChild(screl)
 	}
 }
-function revealInterstitial () {
-	document.body.setAttribute('with-interstitial',1)
+function bruteForceInterstitialCheck () {
+	// User agents may hide the interstitial
+	const overlay = document.querySelector('overbearing-overlay');
+	if (!overlay) {
+		return false;
+	}
+	if (!document.body.hasAttribute('with-interstitial')) {
+		return false;
+	}
+
+	// .checkVisibility() is too new to use
+	const style = getComputedStyle(overlay);
+	if (style.display === 'none' || style.visibility === 'hidden') {
+		return false;
+	}
+	const rc = overlay.getBoundingClientRect();
+	return rc.width > 0 && rc.height > 0;
+}
+function repeatedlyDefocusBackgroundElements () {
+	if (!bruteForceInterstitialCheck()) {
+		console.log("Interstitial is gone.")
+		return;
+	}
 	try {
 		if (document.activeElement) {
 			document.activeElement.blur();
 		}
 	}
 	catch (ee) {
-		console.warn("Trouble blurring focused background element:",ee);
+		//debug-only//console.warn("Trouble blurring focused background element:",ee);
 	}
+	setTimeout(repeatedlyDefocusBackgroundElements,100);
+}
+function revealInterstitial () {
+	document.body.setAttribute('with-interstitial',1)
+	repeatedlyDefocusBackgroundElements()
 }
 
 const legacy_bdsmlr_redirect_map = {
