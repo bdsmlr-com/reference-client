@@ -1,7 +1,7 @@
 import { getAuthUser } from '../state/auth-state.js';
 import { isApexRuntime, resolveTransportBase } from './transport-base.js';
 
-const DEFAULT_TIMEOUT_MS = 4000;
+const DEFAULT_TIMEOUT_MS = 16000;
 
 const resolveBase = () => {
   const env = (import.meta as any).env || {};
