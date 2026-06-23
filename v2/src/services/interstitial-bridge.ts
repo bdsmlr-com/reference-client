@@ -1,4 +1,11 @@
 import { ACTIVE_ENV } from '../config.js';
+import { callGtag } from './google-analytics.js';
+import { isAnonymousReadableRoute } from './route-access-policy.js';
+
+function isFeedForYouLanding(pathname: string): boolean {
+  const normalized = String(pathname || '').replace(/\/+$/, '') || '/';
+  return normalized === '/feed/for/you';
+}
 
 export function maybeDeployInterstitial(authenticated: boolean): void {
   if (authenticated) {
@@ -13,7 +20,24 @@ export function maybeDeployInterstitial(authenticated: boolean): void {
     return;
   }
 
-  if (ACTIVE_ENV !== 'dev') {
+  if (ACTIVE_ENV !== 'dev' && location.hostname !== 'localhost') {
+    return;
+  }
+
+  const pathname = window.location.pathname;
+
+  if (!isAnonymousReadableRoute(pathname)) {
+    const eventName = isFeedForYouLanding(pathname)
+      ? 'interstitial_suppressed_login_feed_landing'
+      : 'interstitial_suppressed_login';
+    // TODO (optional, GA admin): register page_path / page_location as event-scoped
+    // custom dimensions in GA4 if ad-ops want to filter or break down by route in
+    // Explorations; event names alone appear in standard Events reports without this.
+    console.log('GGA',eventName);
+    callGtag('event', eventName, {
+      page_path: pathname,
+      page_location: window.location.href,
+    });
     return;
   }
 
