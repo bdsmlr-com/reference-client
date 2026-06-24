@@ -5,6 +5,8 @@ globalThis.interstitial_overlay_ran_already = true;
 
 ;(function () {
 
+const sitename = 'BDSMLR.com';
+
 function attrOK (ss) {
 	return ss
 		.replace(/&/g,'&amp;')
@@ -93,7 +95,9 @@ const interstitial_html = `
 					this.closest('overbearing-overlay').remove()
 				},4000); /* fallback */
 				this.closest('form').submit();
-			"></int-red-x>
+			">
+				<span class="continue">Continue to ${ sitename || 'Site' } &rarr;</span>
+			</int-red-x>
 			<input type="submit" style="display:none">
 		</form>
 		<inner-panel class="full with-headroom">
@@ -185,6 +189,13 @@ const interstitial_css = `
 	}
 	int-red-x::after {
 		transform:translate(-50%,-50%) rotate(45deg);
+	}
+	int-red-x>span.continue {
+		color:#FFF;
+		opacity:.7;
+		font-size:
+		medium;
+		text-shadow:none;
 	}
 	@keyframes overbear {
 		0% {
