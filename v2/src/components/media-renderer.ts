@@ -4,6 +4,9 @@ import { keyed } from 'lit/directives/keyed.js';
 import { resolveMediaUrl, isAnimation, isNativeVideo, probeNextBucket, type MediaRenderType } from '../services/media-resolver.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { getMediaBehavior } from '../services/media-behavior.js';
+import { MEDIA_PLACEHOLDER_ASPECT_RATIO } from '../types/ui-constants.js';
+import { mediaChromeStyles } from '../styles/media-chrome.js';
+import { compensateScrollForAboveViewportResize } from '../services/media-scroll-anchor.js';
 
 type ProbeStatus = 'unknown' | 'available' | 'unavailable';
 type ProbeFailureReason = 'missing-or-404' | 'timeout' | 'token-or-auth' | 'codec-or-playback' | 'other-load-error';
@@ -39,14 +42,31 @@ function classifyProbeFailure(
 
 @customElement('media-renderer')
 export class MediaRenderer extends LitElement {
-  static styles = css`
+  static styles = [
+    mediaChromeStyles,
+    css`
     :host {
       display: block;
       width: 100%;
       height: auto;
       position: relative;
-      background: #000;
+      background: transparent;
       overflow: hidden;
+    }
+
+    :host([fill-mode]),
+    :host([reserve-space]) {
+      background: var(--media-chrome-bg);
+    }
+
+    :host([fill-mode]) {
+      height: 100%;
+    }
+
+    :host([reserve-space]) {
+      aspect-ratio: var(--media-aspect-ratio, ${MEDIA_PLACEHOLDER_ASPECT_RATIO});
+      height: auto;
+      overflow-anchor: none;
     }
 
     :host([detail-mode]) {
@@ -57,15 +77,24 @@ export class MediaRenderer extends LitElement {
       overflow: visible;
     }
 
-    :host([fill-mode]) {
-      height: 100%;
-    }
-
     :host([square-crop-mode]) {
       height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    :host([reserve-space]) .video-shell {
+      width: 100%;
+      height: 100%;
+      background-color: transparent;
+    }
+
+    :host([reserve-space]) img,
+    :host([reserve-space]) video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
 
     img, video {
@@ -77,9 +106,10 @@ export class MediaRenderer extends LitElement {
     }
     .video-shell {
       width: 100%;
-      background-color: #000;
+      background-color: var(--media-chrome-bg);
       position: relative;
     }
+
     .poster-frame {
       display: block;
       width: 100%;
@@ -129,7 +159,8 @@ export class MediaRenderer extends LitElement {
       word-break: break-all;
       border-top: 1px solid #00ff00;
     }
-  `;
+  `,
+  ];
 
   @property({ type: String }) src: string | undefined = '';
   @property({ type: String }) posterSrc: string | undefined = '';
@@ -148,8 +179,36 @@ export class MediaRenderer extends LitElement {
   @state() private showPosterFrame = true;
   @state() private retryGeneration = 0;
   @state() private alternateProbeStatus: ProbeStatus = 'unknown';
+  @state() private knownAspectRatio: number | null = null;
 
   private alternateProbeToken = 0;
+
+  private getSurfaceModes(): { fillMode: boolean; isDetailSurface: boolean; reserveSpace: boolean } {
+    const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';
+    const fillMode =
+      this.type === 'card' ||
+      this.type === 'gallery-grid' ||
+      this.type === 'gallery-masonry' ||
+      this.type === 'gutter' ||
+      this.type === 'lightbox';
+    return {
+      fillMode,
+      isDetailSurface,
+      reserveSpace: !fillMode && !isDetailSurface,
+    };
+  }
+
+  protected willUpdate(changed: Map<string, unknown>): void {
+    if (
+      changed.has('type')
+      || changed.has('knownAspectRatio')
+      || changed.has('src')
+      || changed.has('retryGeneration')
+    ) {
+      const { fillMode, isDetailSurface } = this.getSurfaceModes();
+      this.syncReserveSpaceAttributes(fillMode, isDetailSurface);
+    }
+  }
 
   protected updated(changed: Map<string, unknown>): void {
     if (changed.has('src') || changed.has('posterSrc') || changed.has('alternateVideoSrc') || changed.has('fallbackSrc')) {
@@ -158,11 +217,88 @@ export class MediaRenderer extends LitElement {
       this.dispatchMediaStateChange(false);
       this.alternateProbeStatus = 'unknown';
       this.alternateFallbackReason = '';
+      this.knownAspectRatio = null;
     }
 
     if (changed.has('alternateVideoSrc') || changed.has('type') || changed.has('src')) {
       this.ensureAnimatedAlternateProbe();
     }
+
+    if (changed.has('retryGeneration') || changed.has('knownAspectRatio') || changed.has('src')) {
+      this.queueIntrinsicAspectSync();
+    }
+  }
+
+  private queueIntrinsicAspectSync(): void {
+    if (this.knownAspectRatio !== null) return;
+    requestAnimationFrame(() => {
+      if (this.knownAspectRatio !== null) return;
+      const poster = this.shadowRoot?.querySelector('img.poster-frame:not(.hidden)');
+      const image = this.shadowRoot?.querySelector('img:not(.poster-frame)');
+      const video = this.shadowRoot?.querySelector('video');
+      if (poster instanceof HTMLImageElement) {
+        this.applyIntrinsicAspectFromImage(poster);
+      } else if (image instanceof HTMLImageElement) {
+        this.applyIntrinsicAspectFromImage(image);
+      } else if (video instanceof HTMLVideoElement) {
+        this.applyIntrinsicAspectFromVideo(video);
+      }
+    });
+  }
+
+  private applyIntrinsicAspectFromImage(image: HTMLImageElement): void {
+    if (!image.complete || image.naturalWidth <= 0 || image.naturalHeight <= 0) return;
+    this.commitIntrinsicAspectRatio(image.naturalWidth / image.naturalHeight);
+  }
+
+  private applyIntrinsicAspectFromVideo(video: HTMLVideoElement): void {
+    if (video.videoWidth <= 0 || video.videoHeight <= 0) return;
+    this.commitIntrinsicAspectRatio(video.videoWidth / video.videoHeight);
+  }
+
+  private commitIntrinsicAspectRatio(nextRatio: number): void {
+    if (this.knownAspectRatio === nextRatio) return;
+
+    const { reserveSpace } = this.getSurfaceModes();
+    const anchorTop = reserveSpace ? this.getBoundingClientRect().top : 0;
+    const oldHeight = reserveSpace ? this.offsetHeight : 0;
+
+    this.knownAspectRatio = nextRatio;
+
+    if (!reserveSpace || oldHeight <= 0) return;
+
+    void this.updateComplete.then(() => {
+      requestAnimationFrame(() => {
+        compensateScrollForAboveViewportResize({
+          anchorTop,
+          heightDelta: this.offsetHeight - oldHeight,
+        });
+      });
+    });
+  }
+
+  private handleImageLoad = (event: Event): void => {
+    const image = event.target;
+    if (!(image instanceof HTMLImageElement)) return;
+    this.applyIntrinsicAspectFromImage(image);
+  };
+
+  private handleVideoMetadata = (event: Event): void => {
+    const video = event.target;
+    if (!(video instanceof HTMLVideoElement)) return;
+    this.applyIntrinsicAspectFromVideo(video);
+  };
+
+  private syncReserveSpaceAttributes(fillMode: boolean, isDetailSurface: boolean): void {
+    const reserveSpace = !fillMode && !isDetailSurface;
+    this.toggleAttribute('reserve-space', reserveSpace);
+    this.toggleAttribute('intrinsic-known', reserveSpace && this.knownAspectRatio !== null);
+    if (!reserveSpace) {
+      this.style.removeProperty('--media-aspect-ratio');
+      return;
+    }
+    const aspectRatio = this.knownAspectRatio ?? MEDIA_PLACEHOLDER_ASPECT_RATIO;
+    this.style.setProperty('--media-aspect-ratio', String(aspectRatio));
   }
 
   private dispatchMediaStateChange(failed: boolean): void {
@@ -316,7 +452,7 @@ export class MediaRenderer extends LitElement {
 
     const resolvedImageUrl = resolveMediaUrl(baseImageSrc, this.type);
     const resolvedAlternateVideoUrl = this.alternateVideoSrc ? resolveMediaUrl(this.alternateVideoSrc, this.type) : '';
-    const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';
+    const { fillMode, isDetailSurface, reserveSpace } = this.getSurfaceModes();
     const usesRawAlias = resolvedImageUrl.includes('/raw/s3://');
     const shouldUseAlternateVideo = Boolean(this.alternateVideoSrc) && this.alternateProbeStatus === 'available';
     const isAnim = isAnimation(baseImageSrc);
@@ -328,12 +464,6 @@ export class MediaRenderer extends LitElement {
     const posterSource = this.posterSrc || baseImageSrc;
     const posterUrl = resolveMediaUrl(posterSource, 'poster');
     const effectivePoster = posterUrl || resolvedImageUrl;
-    const fillMode =
-      this.type === 'card' ||
-      this.type === 'gallery-grid' ||
-      this.type === 'gallery-masonry' ||
-      this.type === 'gutter' ||
-      this.type === 'lightbox';
     const squareCropMode =
       this.type === 'card' ||
       this.type === 'gallery-grid' ||
@@ -346,6 +476,8 @@ export class MediaRenderer extends LitElement {
       ? detailFitStyle
       : fillMode
       ? 'object-fit: inherit; width: 100%; height: 100%;'
+      : reserveSpace
+      ? 'object-fit: contain; width: 100%; height: 100%;'
       : 'object-fit: contain; width: 100%; height: auto;';
 
     if (!resolvedPrimaryUrl) {
@@ -369,8 +501,8 @@ export class MediaRenderer extends LitElement {
       const nonFillVideoStyle = isDetailSurface
         ? detailFitStyle
         : this.showPosterFrame
-        ? 'object-fit: contain; width: 100%; height: 100%; background: #000; position: absolute; inset: 0;'
-        : 'object-fit: contain; width: 100%; height: auto; background: #000; position: static;';
+        ? 'object-fit: contain; width: 100%; height: 100%; background: transparent; position: absolute; inset: 0;'
+        : 'object-fit: contain; width: 100%; height: auto; background: transparent; position: static;';
       const videoStyle = fillMode ? mediaStyle : nonFillVideoStyle;
 
       if (!fillMode) {
@@ -380,6 +512,7 @@ export class MediaRenderer extends LitElement {
               class="poster-frame ${this.showPosterFrame ? '' : 'hidden'}"
               src=${effectivePoster}
               alt=""
+              @load=${this.handleImageLoad}
               @error=${this.handlePosterFrameError}
             />
             <video
@@ -394,6 +527,7 @@ export class MediaRenderer extends LitElement {
               poster=${effectivePoster}
               style=${videoStyle}
               @error=${this.handleError}
+              @loadedmetadata=${this.handleVideoMetadata}
               @loadeddata=${this.handleVideoReady}
               @play=${this.handleVideoReady}
             ></video>
@@ -415,6 +549,7 @@ export class MediaRenderer extends LitElement {
           poster=${effectivePoster}
           style=${videoStyle}
           @error=${this.handleError}
+          @loadedmetadata=${this.handleVideoMetadata}
           @loadeddata=${this.handleVideoReady}
           @play=${this.handleVideoReady}
         ></video>
@@ -427,7 +562,9 @@ export class MediaRenderer extends LitElement {
         src=${resolvedImageUrl}
         alt=${this.alt}
         loading="lazy"
+        decoding="async"
         style=${mediaStyle}
+        @load=${this.handleImageLoad}
         @error=${this.handleError}
       />
       ${this.renderDebug(resolvedImageUrl)}

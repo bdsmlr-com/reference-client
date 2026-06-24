@@ -185,13 +185,16 @@ function buildLayout(ctx: NormalizedPresentationContext): PostPresentationModel[
 function buildMediaDescriptor(post: ProcessedPost, ctx: NormalizedPresentationContext): MediaPresentationDescriptor {
   const media = post._media || { type: 'none' };
 
+  const preset =
+    ctx.surface === 'lightbox' || ctx.surface === 'detail'
+      ? 'detail'
+      : ctx.surface === 'timeline'
+        ? 'masonry'
+        : 'card';
+
   return {
     ...media,
-    preset: ctx.surface === 'lightbox' || ctx.surface === 'detail'
-      ? 'detail'
-      : ctx.page === 'feed'
-        ? 'masonry'
-        : 'card',
+    preset,
   };
 }
 

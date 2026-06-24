@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
+import { mediaSlotStyles } from '../styles/media-chrome.js';
 import { describePrimaryMediaForSurface, extractRenderableTags, getMediaItemCount, type ProcessedPost } from '../types/post.js';
 import { formatDate } from '../services/date-formatter.js';
 import { isAdminMode } from '../services/blog-resolver.js';
@@ -38,6 +39,7 @@ function getTextOnlySnippet(post: ProcessedPost, limit = 120): string {
 export class ActivityItem extends LitElement {
   static styles = [
     baseStyles,
+    mediaSlotStyles,
     css`
       :host {
         display: block;
@@ -72,11 +74,7 @@ export class ActivityItem extends LitElement {
       }
 
       .media-container {
-        width: 100%;
         aspect-ratio: 1 / 1;
-        background: #000;
-        position: relative;
-        overflow: hidden;
       }
 
       .text-preview {

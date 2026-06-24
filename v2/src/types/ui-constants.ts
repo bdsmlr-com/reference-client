@@ -10,6 +10,13 @@
 export const MAX_VISIBLE_TAGS = 5;
 
 /**
+ * Placeholder width/height ratio for tall (non-fill) media surfaces before
+ * intrinsic dimensions are known. Square is a neutral compromise for mixed
+ * portrait/landscape feeds; replaced once the image fires `load`.
+ */
+export const MEDIA_PLACEHOLDER_ASPECT_RATIO = 1;
+
+/**
  * Responsive breakpoint pixel values for media queries.
  * Based on PRD specifications:
  * - Mobile: <480px (1 column)

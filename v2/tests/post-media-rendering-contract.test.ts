@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { extractMedia } from '../src/types/post.js';
+import { MEDIA_PLACEHOLDER_ASPECT_RATIO } from '../src/types/ui-constants.js';
 import '../src/components/media-renderer.js';
 import '../src/components/post-feed-item.js';
 import '../src/components/post-detail-content.js';
@@ -68,6 +69,43 @@ describe('post media rendering contract', () => {
     expect(renderer).toBeTruthy();
     expect(renderer.src).toBe('https://cdn.example.com/post.jpg');
     expect(renderer.alternateVideoSrc || '').toBe('');
+  });
+
+  it('reserves feed space with a placeholder aspect ratio until image dimensions are known', async () => {
+    const renderer = document.createElement('media-renderer') as any;
+    renderer.src = 'https://cdn.example.com/tall.jpg';
+    renderer.type = 'masonry';
+    document.body.appendChild(renderer);
+
+    await flush();
+    await renderer.updateComplete;
+
+    expect(renderer.hasAttribute('reserve-space')).toBe(true);
+    expect(renderer.hasAttribute('intrinsic-known')).toBe(false);
+    expect(renderer.style.getPropertyValue('--media-aspect-ratio')).toBe(String(MEDIA_PLACEHOLDER_ASPECT_RATIO));
+
+    const img = renderer.shadowRoot?.querySelector('img') as HTMLImageElement;
+    Object.defineProperty(img, 'naturalWidth', { configurable: true, value: 1200 });
+    Object.defineProperty(img, 'naturalHeight', { configurable: true, value: 400 });
+    Object.defineProperty(img, 'complete', { configurable: true, value: true });
+    img.dispatchEvent(new Event('load'));
+    await renderer.updateComplete;
+
+    expect(renderer.hasAttribute('intrinsic-known')).toBe(true);
+    expect(renderer.style.getPropertyValue('--media-aspect-ratio')).toBe('3');
+  });
+
+  it('does not reserve space for square grid card surfaces', async () => {
+    const renderer = document.createElement('media-renderer') as any;
+    renderer.src = 'https://cdn.example.com/tile.jpg';
+    renderer.type = 'card';
+    document.body.appendChild(renderer);
+
+    await flush();
+    await renderer.updateComplete;
+
+    expect(renderer.hasAttribute('reserve-space')).toBe(false);
+    expect(renderer.style.getPropertyValue('--media-aspect-ratio')).toBe('');
   });
 
   it('renders original video items through the video renderer', async () => {

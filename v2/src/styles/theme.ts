@@ -107,6 +107,7 @@ export const globalThemeCSS = `
     --success: #4ade80;
     --error: #f87171;
     --warning: #fbbf24;
+    --media-chrome-bg: var(--bg-panel-alt);
   }
 
   [data-theme="light"] {
@@ -122,6 +123,7 @@ export const globalThemeCSS = `
     --success: #22c55e;
     --error: #ef4444;
     --warning: #f59e0b;
+    --media-chrome-bg: var(--bg-panel-alt);
   }
 
   * {

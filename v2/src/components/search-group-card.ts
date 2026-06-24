@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { nothing } from 'lit';
 import { baseStyles } from '../styles/theme.js';
+import { mediaSlotStyles } from '../styles/media-chrome.js';
 import type { ProcessedPost } from '../types/post.js';
 import { describePrimaryMediaForSurface, extractMedia } from '../types/post.js';
 import { formatDate } from '../services/date-formatter.js';
@@ -14,6 +15,7 @@ import { renderCardOverlayLink, shouldLetBrowserHandleCardLink } from '../servic
 export class SearchGroupCard extends LitElement {
   static styles = [
     baseStyles,
+    mediaSlotStyles,
     css`
       :host {
         display: block;
@@ -78,7 +80,6 @@ export class SearchGroupCard extends LitElement {
 
       .media {
         aspect-ratio: 1 / 1;
-        background: #000;
       }
 
       :host([mode='masonry']) .media {

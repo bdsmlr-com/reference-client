@@ -77,6 +77,17 @@ describe('toPresentationModel', () => {
     expect(videoDetail.media.preset).toBe('detail');
   });
 
+  it('uses masonry presets for timeline surfaces including activity', () => {
+    const post = makePost();
+    const feedTimeline = toPresentationModel(post, { surface: 'timeline', page: 'feed' });
+    const activityTimeline = toPresentationModel(post, { surface: 'timeline', page: 'activity' });
+    const archiveCard = toPresentationModel(post, { surface: 'card', page: 'archive' });
+
+    expect(feedTimeline.media.preset).toBe('masonry');
+    expect(activityTimeline.media.preset).toBe('masonry');
+    expect(archiveCard.media.preset).toBe('card');
+  });
+
   it('marks reblog state in the shared identity descriptor', () => {
     const model = toPresentationModel(
       makePost({ originBlogName: 'OriginBlog', originPostId: 123 }),

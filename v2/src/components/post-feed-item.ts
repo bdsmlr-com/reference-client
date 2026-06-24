@@ -2,6 +2,7 @@ import { LitElement, html, css, nothing } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
+import { mediaSlotStyles } from '../styles/media-chrome.js';
 import {
   extractRenderableTags,
   getOrderedContentBlocks,
@@ -45,6 +46,7 @@ function postHasChanged(newVal: ProcessedPost | undefined, oldVal: ProcessedPost
 export class PostFeedItem extends LitElement {
   static styles = [
     baseStyles,
+    mediaSlotStyles,
     css`
       :host {
         display: block;
@@ -129,13 +131,6 @@ export class PostFeedItem extends LitElement {
       }
 
       .content-block {
-        position: relative;
-      }
-
-      .media-container {
-        width: 100%;
-        background: #000;
-        line-height: 0;
         position: relative;
       }
 

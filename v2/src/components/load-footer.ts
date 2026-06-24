@@ -17,8 +17,8 @@ export class LoadFooter extends LitElement {
         display: block;
         max-width: 1200px;
         margin: 20px auto;
-        /* UIC-021: Use standardized container spacing */
-        padding: 0 ${CONTAINER_SPACING.HORIZONTAL}px;
+        /* UIC-021: horizontal container spacing */
+        padding: 1em ${CONTAINER_SPACING.HORIZONTAL}px 10em; /* scroll buffer while the next page loads */
         text-align: center;
       }
 

@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
+import { mediaSlotStyles } from '../styles/media-chrome.js';
 import { describePrimaryMediaForSurface, getMediaItemCount, type ProcessedPost } from '../types/post.js';
 import { EventNames, type PostSelectDetail } from '../types/events.js';
 import { isAdminMode } from '../services/blog-resolver.js';
@@ -19,6 +20,7 @@ import './blog-identity.js';
 export class PostCard extends LitElement {
   static styles = [
     baseStyles,
+    mediaSlotStyles,
     css`
       :host {
         display: block;
@@ -94,11 +96,7 @@ export class PostCard extends LitElement {
 
       /* Media Section - Fixed height like the skeleton */
       .media-container {
-        width: 100%;
         height: 200px;
-        background: #000;
-        position: relative;
-        overflow: hidden;
       }
 
       .multi-image-badge {
