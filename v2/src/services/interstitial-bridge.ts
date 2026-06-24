@@ -1,4 +1,3 @@
-import { ACTIVE_ENV } from '../config.js';
 import { callGtag } from './google-analytics.js';
 import { isAnonymousReadableRoute } from './route-access-policy.js';
 
@@ -16,11 +15,7 @@ export function maybeDeployInterstitial(authenticated: boolean): void {
   // processParentTabunder() (handled by interstitial-tabunder.js), not show
   // the interstitial overlay again. Prefer a raw string check to avoid
   // edge-case parsing differences.
-  if (String(window.location.href).includes('?revealcontent')) {
-    return;
-  }
-
-  if (ACTIVE_ENV !== 'dev' && location.hostname !== 'localhost') {
+  if (String(window.location.href).includes('revealcontent') /* deliberately unstrict string check */) {
     return;
   }
 
