@@ -3,6 +3,7 @@ import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
+import { isAdminMode } from '../services/blog-resolver.js';
 import { getContextualErrorMessage, isApiError } from '../services/api-error.js';
 import '../components/skeleton-loader.js';
 import '../components/post-detail-content.js';
@@ -66,6 +67,15 @@ export class ViewPost extends LitElement {
       const resp = await apiClient.posts.get(id);
 
       if (resp.post) {
+        // DEVB-2573: Temporary client workaround — treat originBlogGone (reblog origin
+        // strikethrough) as unavailable on direct post hits. Proper fix likely needs API/index
+        // work so banned/deleted state is enforced consistently (e.g. get-post-detail 410, not
+        // just originBlogGone on an otherwise viewable reblog).
+        if (!isAdminMode() && resp.post.originBlogGone) {
+          this.error = 'This post is no longer available.';
+          return;
+        }
+
         this.post = {
           ...resp.post,
           _media: extractMedia(resp.post)
