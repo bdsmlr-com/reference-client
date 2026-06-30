@@ -4,6 +4,7 @@ import { keyed } from 'lit/directives/keyed.js';
 import { resolveMediaUrl, isAnimation, isNativeVideo, probeNextBucket, type MediaRenderType } from '../services/media-resolver.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { getMediaBehavior } from '../services/media-behavior.js';
+import { useGifPosters } from '../config.js';
 import { MEDIA_PLACEHOLDER_ASPECT_RATIO } from '../types/ui-constants.js';
 import { mediaChromeStyles } from '../styles/media-chrome.js';
 import { compensateScrollForAboveViewportResize } from '../services/media-scroll-anchor.js';
@@ -110,6 +111,10 @@ export class MediaRenderer extends LitElement {
       position: relative;
     }
 
+    .video-shell.probe-pending {
+      min-height: 1px;
+    }
+
     .poster-frame {
       display: block;
       width: 100%;
@@ -179,6 +184,7 @@ export class MediaRenderer extends LitElement {
   @state() private showPosterFrame = true;
   @state() private retryGeneration = 0;
   @state() private alternateProbeStatus: ProbeStatus = 'unknown';
+  @state() private alternatePlaybackFailed = false;
   @state() private knownAspectRatio: number | null = null;
 
   private alternateProbeToken = 0;
@@ -214,6 +220,7 @@ export class MediaRenderer extends LitElement {
     if (changed.has('src') || changed.has('posterSrc') || changed.has('alternateVideoSrc') || changed.has('fallbackSrc')) {
       this.showPlaceholder = false;
       this.showPosterFrame = true;
+      this.alternatePlaybackFailed = false;
       this.dispatchMediaStateChange(false);
       this.alternateProbeStatus = 'unknown';
       this.alternateFallbackReason = '';
@@ -332,6 +339,12 @@ export class MediaRenderer extends LitElement {
     const isAnimatedVideoFallback = Boolean(this.alternateVideoSrc) && (el.tagName === 'VIDEO' || this.alternateProbeStatus === 'available');
 
     if (isAnimatedVideoFallback) {
+      if (el.tagName === 'VIDEO' && this.alternateProbeStatus === 'available') {
+        this.alternatePlaybackFailed = true;
+        this.showPosterFrame = true;
+        return;
+      }
+
       const mediaError = (el as HTMLMediaElement).error;
       this.setAlternateUnavailable(classifyProbeFailure(this.alternateVideoSrc, mediaError));
       return;
@@ -345,6 +358,7 @@ export class MediaRenderer extends LitElement {
   private handleRetry = (): void => {
     this.showPlaceholder = false;
     this.showPosterFrame = true;
+    this.alternatePlaybackFailed = false;
     this.retryGeneration += 1;
     this.dispatchMediaStateChange(false);
     this.ensureAnimatedAlternateProbe(true);
@@ -365,6 +379,24 @@ export class MediaRenderer extends LitElement {
         ${resolvedUrl.substring(0, 60)}...
       </div>
     `;
+  }
+
+  private resolveVideoPosterUrl(
+    posterSrc: string | undefined,
+    baseImageSrc: string,
+    resolvedImageUrl: string,
+  ): string {
+    if (posterSrc && !isAnimation(posterSrc)) {
+      return resolveMediaUrl(posterSrc, 'poster');
+    }
+
+    if (!useGifPosters()) {
+      return '';
+    }
+
+    const posterSource = posterSrc || baseImageSrc;
+    const posterUrl = resolveMediaUrl(posterSource, 'poster');
+    return posterUrl || resolvedImageUrl;
   }
 
   private ensureAnimatedAlternateProbe(force = false): void {
@@ -454,16 +486,19 @@ export class MediaRenderer extends LitElement {
     const resolvedAlternateVideoUrl = this.alternateVideoSrc ? resolveMediaUrl(this.alternateVideoSrc, this.type) : '';
     const { fillMode, isDetailSurface, reserveSpace } = this.getSurfaceModes();
     const usesRawAlias = resolvedImageUrl.includes('/raw/s3://');
-    const shouldUseAlternateVideo = Boolean(this.alternateVideoSrc) && this.alternateProbeStatus === 'available';
+    const shouldUseAlternateVideo = Boolean(this.alternateVideoSrc)
+      && this.alternateProbeStatus === 'available'
+      && !this.alternatePlaybackFailed;
     const isAnim = isAnimation(baseImageSrc);
     const treatAnimationAsVideo = this.alternateVideoSrc
       ? shouldUseAlternateVideo
       : !this.forceImage && isAnim && !isDetailSurface && !usesRawAlias;
     const resolvedPrimaryUrl = shouldUseAlternateVideo ? resolvedAlternateVideoUrl : resolvedImageUrl;
     const isVideoSource = shouldUseAlternateVideo || (!this.forceImage && !this.alternateVideoSrc && (treatAnimationAsVideo || isNativeVideo(resolvedPrimaryUrl) || resolvedPrimaryUrl.includes('format:mp4')));
-    const posterSource = this.posterSrc || baseImageSrc;
-    const posterUrl = resolveMediaUrl(posterSource, 'poster');
-    const effectivePoster = posterUrl || resolvedImageUrl;
+    const effectivePoster = this.resolveVideoPosterUrl(this.posterSrc, baseImageSrc, resolvedImageUrl);
+    const awaitingAlternateProbe = Boolean(this.alternateVideoSrc)
+      && this.alternateProbeStatus === 'unknown'
+      && this.type !== 'poster';
     const squareCropMode =
       this.type === 'card' ||
       this.type === 'gallery-grid' ||
@@ -489,6 +524,12 @@ export class MediaRenderer extends LitElement {
       `;
     }
 
+    if (awaitingAlternateProbe) {
+      return keyed(this.retryGeneration, html`
+        <div class="video-shell probe-pending" aria-busy="true"></div>
+      `);
+    }
+
     if (isVideoSource && this.type !== 'poster') {
       const behavior = getMediaBehavior(this.type);
       const effectiveAutoplay = this.autoplayVideo ?? behavior.autoplay;
@@ -498,9 +539,10 @@ export class MediaRenderer extends LitElement {
       const effectivePreload = effectiveAutoplay && defaultPreload === 'none'
         ? 'metadata'
         : defaultPreload;
+      const posterOverlayVisible = Boolean(effectivePoster) && this.showPosterFrame;
       const nonFillVideoStyle = isDetailSurface
         ? detailFitStyle
-        : this.showPosterFrame
+        : posterOverlayVisible
         ? 'object-fit: contain; width: 100%; height: 100%; background: transparent; position: absolute; inset: 0;'
         : 'object-fit: contain; width: 100%; height: auto; background: transparent; position: static;';
       const videoStyle = fillMode ? mediaStyle : nonFillVideoStyle;
@@ -508,13 +550,15 @@ export class MediaRenderer extends LitElement {
       if (!fillMode) {
         return keyed(this.retryGeneration, html`
           <div class="video-shell">
-            <img
-              class="poster-frame ${this.showPosterFrame ? '' : 'hidden'}"
-              src=${effectivePoster}
-              alt=""
-              @load=${this.handleImageLoad}
-              @error=${this.handlePosterFrameError}
-            />
+            ${effectivePoster ? html`
+              <img
+                class="poster-frame ${posterOverlayVisible ? '' : 'hidden'}"
+                src=${effectivePoster}
+                alt=""
+                @load=${this.handleImageLoad}
+                @error=${this.handlePosterFrameError}
+              />
+            ` : nothing}
             <video
               src=${resolvedPrimaryUrl}
               ?autoplay=${effectiveAutoplay}
@@ -524,7 +568,7 @@ export class MediaRenderer extends LitElement {
               playsinline
               webkit-playsinline
               preload=${effectivePreload}
-              poster=${effectivePoster}
+              ${effectivePoster ? html`poster=${effectivePoster}` : nothing}
               style=${videoStyle}
               @error=${this.handleError}
               @loadedmetadata=${this.handleVideoMetadata}
@@ -546,7 +590,7 @@ export class MediaRenderer extends LitElement {
           playsinline
           webkit-playsinline
           preload=${effectivePreload}
-          poster=${effectivePoster}
+          ${effectivePoster ? html`poster=${effectivePoster}` : nothing}
           style=${videoStyle}
           @error=${this.handleError}
           @loadedmetadata=${this.handleVideoMetadata}

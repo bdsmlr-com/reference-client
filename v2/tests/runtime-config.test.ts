@@ -9,8 +9,10 @@ describe('runtime config', () => {
 
   it('overlays runtime media formats and feature flags onto defaults', () => {
     expect(FEATURE_FLAGS.media_format_by_surface?.card).toBe('card');
+    expect(FEATURE_FLAGS.use_gif_posters).toBe(false);
     applyRuntimeConfig({
       features: {
+        use_gif_posters: true,
         media_format_by_surface: {
           card: 'raw',
           masonry: 'raw',
@@ -18,6 +20,7 @@ describe('runtime config', () => {
       },
     });
 
+    expect(FEATURE_FLAGS.use_gif_posters).toBe(true);
     expect(FEATURE_FLAGS.media_format_by_surface?.card).toBe('raw');
     expect(FEATURE_FLAGS.media_format_by_surface?.masonry).toBe('raw');
     expect(FEATURE_FLAGS.media_format_by_surface?.['post-detail']).toBe('raw');

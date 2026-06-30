@@ -40,6 +40,9 @@ describe('post route media behavior', () => {
     expect(src).toContain('@property({ type: Boolean }) forceImage = false;');
     expect(src).toContain("const effectivePreload = effectiveAutoplay && defaultPreload === 'none'");
     expect(src).toContain('const resolvedPrimaryUrl = shouldUseAlternateVideo ? resolvedAlternateVideoUrl : resolvedImageUrl;');
+    expect(src).toContain('awaitingAlternateProbe');
+    expect(src).toContain('probe-pending');
+    expect(src).toContain('useGifPosters');
     expect(src).toContain('src=${resolvedPrimaryUrl}');
     expect(src).not.toContain('<source src=${resolvedUrl} type="video/mp4"');
     expect(src).toContain('class="poster-frame');
@@ -50,7 +53,8 @@ describe('post route media behavior', () => {
     expect(src).toContain("const detailFitStyle = 'object-fit: contain; max-width: min(100%, calc(100vw - 40px)); max-height: calc(min(78vh, 920px) - 20px); width: auto; height: auto; margin: 0 auto;';");
     expect(src).toContain("const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';");
     expect(src).toContain('const isAnim = isAnimation(baseImageSrc);');
-    expect(src).toContain("const shouldUseAlternateVideo = Boolean(this.alternateVideoSrc) && this.alternateProbeStatus === 'available';");
+    expect(src).toContain('&& this.alternateProbeStatus === \'available\'');
+    expect(src).toContain('&& !this.alternatePlaybackFailed');
     expect(src).toContain("const treatAnimationAsVideo = this.alternateVideoSrc");
     expect(src).toContain("!this.forceImage && !this.alternateVideoSrc");
     expect(src).toContain('animatedAlternateAvailabilityCache');

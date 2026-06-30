@@ -118,6 +118,8 @@ export interface RenderInteractionConfig {
 export interface FeatureFlagsConfig {
   more_like_this_on_post?: boolean;
   media_format_by_surface?: Partial<Record<MediaSurface, MediaSurfaceFormat>>;
+  /** When true, GIF/WebP may be used as video poster frames (loads animated bytes alongside MP4). */
+  use_gif_posters?: boolean;
 }
 
 export interface RuntimeConfigPayload {
@@ -157,6 +159,11 @@ const DEFAULT_FEATURE_FLAGS: FeatureFlagsConfig = cloneFeatureFlagsConfig(((medi
 
 export const FEATURE_FLAGS: FeatureFlagsConfig = cloneFeatureFlagsConfig(DEFAULT_FEATURE_FLAGS);
 
+/** Bandwidth: animated posters fetch GIF/WebP in addition to MP4 on video surfaces. Off by default. */
+export function useGifPosters(): boolean {
+  return FEATURE_FLAGS.use_gif_posters === true;
+}
+
 let runtimeConfigLoaded = false;
 let runtimeConfigPromise: Promise<void> | null = null;
 
@@ -165,6 +172,9 @@ function applyRuntimeFeatureFlags(override: FeatureFlagsConfig | undefined): voi
 
   if (typeof override.more_like_this_on_post === 'boolean') {
     FEATURE_FLAGS.more_like_this_on_post = override.more_like_this_on_post;
+  }
+  if (typeof override.use_gif_posters === 'boolean') {
+    FEATURE_FLAGS.use_gif_posters = override.use_gif_posters;
   }
   if (override.media_format_by_surface && typeof override.media_format_by_surface === 'object') {
     const merged = { ...(FEATURE_FLAGS.media_format_by_surface || {}) } as Partial<Record<MediaSurface, MediaSurfaceFormat>>;
@@ -207,6 +217,7 @@ export async function ensureRuntimeConfigLoaded(fetchImpl: typeof fetch = fetch)
 
 export function resetRuntimeConfigForTests(): void {
   FEATURE_FLAGS.more_like_this_on_post = DEFAULT_FEATURE_FLAGS.more_like_this_on_post;
+  FEATURE_FLAGS.use_gif_posters = DEFAULT_FEATURE_FLAGS.use_gif_posters;
   FEATURE_FLAGS.media_format_by_surface = { ...(DEFAULT_FEATURE_FLAGS.media_format_by_surface || {}) };
   runtimeConfigLoaded = false;
   runtimeConfigPromise = null;
