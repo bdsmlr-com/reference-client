@@ -9,10 +9,9 @@ import { MEDIA_PLACEHOLDER_ASPECT_RATIO } from '../types/ui-constants.js';
 import { mediaChromeStyles } from '../styles/media-chrome.js';
 import { compensateScrollForAboveViewportResize } from '../services/media-scroll-anchor.js';
 
-type ProbeStatus = 'unknown' | 'available' | 'unavailable';
 type ProbeFailureReason = 'missing-or-404' | 'timeout' | 'token-or-auth' | 'codec-or-playback' | 'other-load-error';
 
-const animatedAlternateAvailabilityCache = new Map<string, { available: boolean; reason?: ProbeFailureReason }>();
+const animatedAlternateAvailabilityCache = new Map<string, { available: false; reason?: ProbeFailureReason }>();
 const MEDIA_ERR_NETWORK = 2;
 const MEDIA_ERR_DECODE = 3;
 const MEDIA_ERR_SRC_NOT_SUPPORTED = 4;
@@ -111,10 +110,6 @@ export class MediaRenderer extends LitElement {
       position: relative;
     }
 
-    .video-shell.probe-pending {
-      min-height: 1px;
-    }
-
     .poster-frame {
       display: block;
       width: 100%;
@@ -183,11 +178,20 @@ export class MediaRenderer extends LitElement {
   @state() private showPlaceholder = false;
   @state() private showPosterFrame = true;
   @state() private retryGeneration = 0;
-  @state() private alternateProbeStatus: ProbeStatus = 'unknown';
   @state() private alternatePlaybackFailed = false;
   @state() private knownAspectRatio: number | null = null;
 
-  private alternateProbeToken = 0;
+  private getCachedAlternateFailure(): ProbeFailureReason | '' {
+    if (!this.alternateVideoSrc) return '';
+    const cacheKey = canonicalAnimatedAlternateIdentity(this.alternateVideoSrc);
+    if (!cacheKey) return '';
+    const cached = animatedAlternateAvailabilityCache.get(cacheKey);
+    return cached?.available === false ? cached.reason || 'other-load-error' : '';
+  }
+
+  private syncAlternateFallbackReasonFromCache(): void {
+    this.alternateFallbackReason = this.getCachedAlternateFailure();
+  }
 
   private getSurfaceModes(): { fillMode: boolean; isDetailSurface: boolean; reserveSpace: boolean } {
     const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';
@@ -222,13 +226,8 @@ export class MediaRenderer extends LitElement {
       this.showPosterFrame = true;
       this.alternatePlaybackFailed = false;
       this.dispatchMediaStateChange(false);
-      this.alternateProbeStatus = 'unknown';
-      this.alternateFallbackReason = '';
+      this.syncAlternateFallbackReasonFromCache();
       this.knownAspectRatio = null;
-    }
-
-    if (changed.has('alternateVideoSrc') || changed.has('type') || changed.has('src')) {
-      this.ensureAnimatedAlternateProbe();
     }
 
     if (changed.has('retryGeneration') || changed.has('knownAspectRatio') || changed.has('src')) {
@@ -324,29 +323,21 @@ export class MediaRenderer extends LitElement {
     this.showPosterFrame = false;
   };
 
-  private setAlternateUnavailable(reason: ProbeFailureReason): void {
+  private markAlternateUnavailable(reason: ProbeFailureReason): void {
     const cacheKey = canonicalAnimatedAlternateIdentity(this.alternateVideoSrc);
     if (cacheKey) {
       animatedAlternateAvailabilityCache.set(cacheKey, { available: false, reason });
     }
-    this.alternateProbeStatus = 'unavailable';
     this.alternateFallbackReason = reason;
+    this.alternatePlaybackFailed = true;
     this.showPosterFrame = true;
   }
 
   private handleError(e: Event) {
     const el = e.target as HTMLElement;
-    const isAnimatedVideoFallback = Boolean(this.alternateVideoSrc) && (el.tagName === 'VIDEO' || this.alternateProbeStatus === 'available');
-
-    if (isAnimatedVideoFallback) {
-      if (el.tagName === 'VIDEO' && this.alternateProbeStatus === 'available') {
-        this.alternatePlaybackFailed = true;
-        this.showPosterFrame = true;
-        return;
-      }
-
+    if (Boolean(this.alternateVideoSrc) && el.tagName === 'VIDEO') {
       const mediaError = (el as HTMLMediaElement).error;
-      this.setAlternateUnavailable(classifyProbeFailure(this.alternateVideoSrc, mediaError));
+      this.markAlternateUnavailable(classifyProbeFailure(this.alternateVideoSrc, mediaError));
       return;
     }
 
@@ -359,9 +350,13 @@ export class MediaRenderer extends LitElement {
     this.showPlaceholder = false;
     this.showPosterFrame = true;
     this.alternatePlaybackFailed = false;
+    const cacheKey = canonicalAnimatedAlternateIdentity(this.alternateVideoSrc);
+    if (cacheKey) {
+      animatedAlternateAvailabilityCache.delete(cacheKey);
+    }
+    this.alternateFallbackReason = '';
     this.retryGeneration += 1;
     this.dispatchMediaStateChange(false);
-    this.ensureAnimatedAlternateProbe(true);
   };
 
   private handleRetryInteraction = (event: Event): void => {
@@ -397,56 +392,6 @@ export class MediaRenderer extends LitElement {
     const posterSource = posterSrc || baseImageSrc;
     const posterUrl = resolveMediaUrl(posterSource, 'poster');
     return posterUrl || resolvedImageUrl;
-  }
-
-  private ensureAnimatedAlternateProbe(force = false): void {
-    if (!this.alternateVideoSrc || this.type === 'poster') {
-      this.alternateProbeStatus = 'unavailable';
-      this.alternateFallbackReason = '';
-      return;
-    }
-
-    const cacheKey = canonicalAnimatedAlternateIdentity(this.alternateVideoSrc);
-    if (!force && cacheKey) {
-      const cached = animatedAlternateAvailabilityCache.get(cacheKey);
-      if (cached) {
-        this.alternateProbeStatus = cached.available ? 'available' : 'unavailable';
-        this.alternateFallbackReason = cached.available ? '' : cached.reason || '';
-        return;
-      }
-    }
-
-    if (typeof document === 'undefined') {
-      this.alternateProbeStatus = 'unavailable';
-      this.alternateFallbackReason = '';
-      return;
-    }
-
-    const probeToken = ++this.alternateProbeToken;
-    const probeUrl = resolveMediaUrl(this.alternateVideoSrc, this.type);
-    const probeVideo = document.createElement('video');
-    probeVideo.muted = true;
-    probeVideo.preload = 'metadata';
-    probeVideo.playsInline = true;
-    let timeoutHandle = 0;
-
-    const finalize = (available: boolean, reason?: ProbeFailureReason) => {
-      if (probeToken !== this.alternateProbeToken) return;
-      window.clearTimeout(timeoutHandle);
-      probeVideo.removeAttribute('src');
-      probeVideo.load();
-      if (cacheKey) {
-        animatedAlternateAvailabilityCache.set(cacheKey, { available, reason });
-      }
-      this.alternateProbeStatus = available ? 'available' : 'unavailable';
-      this.alternateFallbackReason = available ? '' : reason || '';
-    };
-
-    probeVideo.addEventListener('loadedmetadata', () => finalize(true), { once: true });
-    probeVideo.addEventListener('error', () => finalize(false, classifyProbeFailure(this.alternateVideoSrc, probeVideo.error)), { once: true });
-    timeoutHandle = window.setTimeout(() => finalize(false, 'timeout'), 1500);
-    probeVideo.src = probeUrl;
-    probeVideo.load();
   }
 
   render() {
@@ -486,8 +431,9 @@ export class MediaRenderer extends LitElement {
     const resolvedAlternateVideoUrl = this.alternateVideoSrc ? resolveMediaUrl(this.alternateVideoSrc, this.type) : '';
     const { fillMode, isDetailSurface, reserveSpace } = this.getSurfaceModes();
     const usesRawAlias = resolvedImageUrl.includes('/raw/s3://');
+    const alternateKnownBad = Boolean(this.getCachedAlternateFailure());
     const shouldUseAlternateVideo = Boolean(this.alternateVideoSrc)
-      && this.alternateProbeStatus === 'available'
+      && !alternateKnownBad
       && !this.alternatePlaybackFailed;
     const isAnim = isAnimation(baseImageSrc);
     const treatAnimationAsVideo = this.alternateVideoSrc
@@ -496,9 +442,6 @@ export class MediaRenderer extends LitElement {
     const resolvedPrimaryUrl = shouldUseAlternateVideo ? resolvedAlternateVideoUrl : resolvedImageUrl;
     const isVideoSource = shouldUseAlternateVideo || (!this.forceImage && !this.alternateVideoSrc && (treatAnimationAsVideo || isNativeVideo(resolvedPrimaryUrl) || resolvedPrimaryUrl.includes('format:mp4')));
     const effectivePoster = this.resolveVideoPosterUrl(this.posterSrc, baseImageSrc, resolvedImageUrl);
-    const awaitingAlternateProbe = Boolean(this.alternateVideoSrc)
-      && this.alternateProbeStatus === 'unknown'
-      && this.type !== 'poster';
     const squareCropMode =
       this.type === 'card' ||
       this.type === 'gallery-grid' ||
@@ -522,12 +465,6 @@ export class MediaRenderer extends LitElement {
           <span style="font-size: 10px; color: #ff4444;">No Host</span>
         </div>
       `;
-    }
-
-    if (awaitingAlternateProbe) {
-      return keyed(this.retryGeneration, html`
-        <div class="video-shell probe-pending" aria-busy="true"></div>
-      `);
     }
 
     if (isVideoSource && this.type !== 'poster') {

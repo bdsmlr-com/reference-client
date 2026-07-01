@@ -30,7 +30,7 @@ describe('post route media behavior', () => {
     expect(src).not.toContain("const rawUrl = media.type === 'video'");
   });
 
-  it('media-renderer supports alternate probing and post-detail video mode defaults', () => {
+  it('media-renderer supports alternate video fallback and post-detail video mode defaults', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/media-renderer.ts'), 'utf8');
     expect(src).toContain('controls=${effectiveControls}');
     expect(src).toContain('autoplay=${effectiveAutoplay}');
@@ -40,8 +40,8 @@ describe('post route media behavior', () => {
     expect(src).toContain('@property({ type: Boolean }) forceImage = false;');
     expect(src).toContain("const effectivePreload = defaultPreload;");
     expect(src).toContain('const resolvedPrimaryUrl = shouldUseAlternateVideo ? resolvedAlternateVideoUrl : resolvedImageUrl;');
-    expect(src).toContain('awaitingAlternateProbe');
-    expect(src).toContain('probe-pending');
+    expect(src).not.toContain('ensureAnimatedAlternateProbe');
+    expect(src).not.toContain('probe-pending');
     expect(src).toContain('useGifPosters');
     expect(src).toContain('src=${resolvedPrimaryUrl}');
     expect(src).not.toContain('<source src=${resolvedUrl} type="video/mp4"');
@@ -53,12 +53,13 @@ describe('post route media behavior', () => {
     expect(src).toContain("const detailFitStyle = 'object-fit: contain; max-width: min(100%, calc(100vw - 40px)); max-height: calc(min(78vh, 920px) - 20px); width: auto; height: auto; margin: 0 auto;';");
     expect(src).toContain("const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';");
     expect(src).toContain('const isAnim = isAnimation(baseImageSrc);');
-    expect(src).toContain('&& this.alternateProbeStatus === \'available\'');
+    expect(src).toContain('&& !alternateKnownBad');
     expect(src).toContain('&& !this.alternatePlaybackFailed');
     expect(src).toContain("const treatAnimationAsVideo = this.alternateVideoSrc");
     expect(src).toContain("!this.forceImage && !this.alternateVideoSrc");
     expect(src).toContain('animatedAlternateAvailabilityCache');
-    expect(src).toContain("window.setTimeout(() => finalize(false, 'timeout'), 1500);");
+    expect(src).toContain('markAlternateUnavailable');
+    expect(src).not.toContain('alternateProbeStatus');
     expect(src).toContain('const behavior = getMediaBehavior(this.type);');
     expect(src).toContain('const effectiveAutoplay = this.autoplayVideo ?? behavior.autoplay;');
     expect(src).toContain("const defaultPreload = behavior.preload ?? 'none';");

@@ -210,13 +210,7 @@ describe('post media rendering contract', () => {
     ]);
   });
 
-  it('uses the preferred animated-video alternate when the probe succeeds', async () => {
-    const loadSpy = vi
-      .spyOn(HTMLMediaElement.prototype, 'load')
-      .mockImplementation(function mockLoad(this: HTMLMediaElement) {
-        queueMicrotask(() => this.dispatchEvent(new Event('loadedmetadata')));
-      });
-
+  it('uses the preferred animated-video alternate when alternateVideoSrc is set', async () => {
     const el = document.createElement('post-feed-item') as any;
     el.post = makePost({
       mediaRepresentation: {
@@ -243,17 +237,51 @@ describe('post media rendering contract', () => {
     expect(renderer).toBeTruthy();
     expect(renderer.alternateVideoSrc).toBe('https://ocdn012.bdsmlr.com/uploads/photos/live.mp4?e=1&t=2');
     expect(renderer.posterSrc).toBe('https://media.bdsmlr.com/poster/live.webp');
-    expect(renderer.shadowRoot?.querySelector('video')).toBeTruthy();
-    expect(loadSpy).toHaveBeenCalled();
+    const video = renderer.shadowRoot?.querySelector('video');
+    expect(video).toBeTruthy();
+    expect(video?.getAttribute('src') || '').toContain('live.mp4');
   });
 
-  it('reuses animated alternate probe cache across signed querystrings for the same canonical asset', async () => {
-    const loadSpy = vi
-      .spyOn(HTMLMediaElement.prototype, 'load')
-      .mockImplementation(function mockLoad(this: HTMLMediaElement) {
-        queueMicrotask(() => this.dispatchEvent(new Event('loadedmetadata')));
-      });
+  it('mounts alternate video immediately for direct media-renderer instances', async () => {
+    const renderer = document.createElement('media-renderer') as any;
+    renderer.src = 'https://ocdn012.bdsmlr.com/uploads/photos/cache.gif?e=1&t=1';
+    renderer.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/cache.mp4?e=1&t=1';
+    renderer.fallbackSrc = renderer.src;
+    renderer.forceImage = true;
+    renderer.type = 'feed';
+    document.body.appendChild(renderer);
 
+    await flush();
+    await renderer.updateComplete;
+
+    expect(renderer.shadowRoot?.querySelector('video')).toBeTruthy();
+    expect(renderer.shadowRoot?.querySelector('img:not(.poster-frame)')).toBeNull();
+  });
+
+  it('falls back to the original image when alternate video fails to load', async () => {
+    const renderer = document.createElement('media-renderer') as any;
+    renderer.src = 'https://ocdn012.bdsmlr.com/uploads/photos/timeout.gif?e=1&t=1';
+    renderer.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/timeout.mp4?e=1&t=1';
+    renderer.fallbackSrc = renderer.src;
+    renderer.forceImage = true;
+    renderer.type = 'feed';
+    document.body.appendChild(renderer);
+
+    await flush();
+    await renderer.updateComplete;
+
+    const video = renderer.shadowRoot?.querySelector('video');
+    expect(video).toBeTruthy();
+    video?.dispatchEvent(new Event('error'));
+    await renderer.updateComplete;
+
+    expect(renderer.shadowRoot?.querySelector('video')).toBeNull();
+    expect(renderer.shadowRoot?.querySelector('img')).toBeTruthy();
+    expect(renderer.alternateFallbackReason).toBe('token-or-auth');
+    expect(renderer.getAttribute('alternate-fallback-reason')).toBe('token-or-auth');
+  });
+
+  it('reuses cached animated alternate failure reasons across signed querystrings for the same canonical asset', async () => {
     const first = document.createElement('media-renderer') as any;
     first.src = 'https://ocdn012.bdsmlr.com/uploads/photos/cache.gif?e=1&t=1';
     first.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/cache.mp4?e=1&t=1';
@@ -264,11 +292,12 @@ describe('post media rendering contract', () => {
 
     await flush();
     await first.updateComplete;
-    await flush();
-    await first.updateComplete;
 
-    const probeLoadsAfterFirst = loadSpy.mock.calls.length;
-    expect(first.shadowRoot?.querySelector('video')).toBeTruthy();
+    const firstVideo = first.shadowRoot?.querySelector('video');
+    expect(firstVideo).toBeTruthy();
+    firstVideo?.dispatchEvent(new Event('error'));
+    await first.updateComplete;
+    expect(first.alternateFallbackReason).toBe('token-or-auth');
 
     const second = document.createElement('media-renderer') as any;
     second.src = 'https://ocdn012.bdsmlr.com/uploads/photos/cache.gif?e=2&t=2';
@@ -280,78 +309,11 @@ describe('post media rendering contract', () => {
 
     await flush();
     await second.updateComplete;
-    await flush();
-    await second.updateComplete;
-
-    expect(second.shadowRoot?.querySelector('video')).toBeTruthy();
-    expect(loadSpy.mock.calls.length).toBe(probeLoadsAfterFirst);
-  });
-
-  it('falls back after a 1500ms probe timeout to the original image', async () => {
-    vi.useFakeTimers();
-    const loadSpy = vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
-
-    const renderer = document.createElement('media-renderer') as any;
-    renderer.src = 'https://ocdn012.bdsmlr.com/uploads/photos/timeout.gif?e=1&t=1';
-    renderer.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/timeout.mp4?e=1&t=1';
-    renderer.fallbackSrc = renderer.src;
-    renderer.forceImage = true;
-    renderer.type = 'feed';
-    document.body.appendChild(renderer);
-
-    await flush();
-    await renderer.updateComplete;
-    vi.advanceTimersByTime(1500);
-    await flush();
-    await renderer.updateComplete;
-
-    expect(renderer.shadowRoot?.querySelector('img')).toBeTruthy();
-    expect(renderer.shadowRoot?.querySelector('video')).toBeNull();
-    expect(renderer.alternateFallbackReason).toBe('timeout');
-    expect(renderer.getAttribute('alternate-fallback-reason')).toBe('timeout');
-    expect(loadSpy).toHaveBeenCalled();
-  });
-
-  it('reuses cached animated alternate failure reasons across signed querystrings for the same canonical asset', async () => {
-    const loadSpy = vi
-      .spyOn(HTMLMediaElement.prototype, 'load')
-      .mockImplementation(function mockLoad(this: HTMLMediaElement) {
-        queueMicrotask(() => this.dispatchEvent(new Event('error')));
-      });
-
-    const first = document.createElement('media-renderer') as any;
-    first.src = 'https://ocdn012.bdsmlr.com/uploads/photos/expired.gif?e=1&t=1';
-    first.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/expired.mp4?e=1&t=1';
-    first.fallbackSrc = first.src;
-    first.forceImage = true;
-    first.type = 'feed';
-    document.body.appendChild(first);
-
-    await flush();
-    await first.updateComplete;
-    await flush();
-    await first.updateComplete;
-
-    const loadsAfterFirst = loadSpy.mock.calls.length;
-    expect(first.alternateFallbackReason).toBe('token-or-auth');
-    expect(first.getAttribute('alternate-fallback-reason')).toBe('token-or-auth');
-
-    const second = document.createElement('media-renderer') as any;
-    second.src = 'https://ocdn012.bdsmlr.com/uploads/photos/expired.gif?e=2&t=2';
-    second.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/expired.mp4?e=2&t=2';
-    second.fallbackSrc = second.src;
-    second.forceImage = true;
-    second.type = 'feed';
-    document.body.appendChild(second);
-
-    await flush();
-    await second.updateComplete;
-    await flush();
-    await second.updateComplete;
 
     expect(second.alternateFallbackReason).toBe('token-or-auth');
     expect(second.getAttribute('alternate-fallback-reason')).toBe('token-or-auth');
-    expect(loadSpy.mock.calls.length).toBe(loadsAfterFirst);
+    expect(second.shadowRoot?.querySelector('video')).toBeNull();
+    expect(second.shadowRoot?.querySelector('img')).toBeTruthy();
   });
 
   it('falls back to the original animated image when the preferred alternate is absent', async () => {

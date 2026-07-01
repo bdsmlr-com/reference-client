@@ -208,13 +208,10 @@
     const reason = host.getAttribute('alternate-fallback-reason') || '';
     if (reason) return { status: 'unavailable', reason };
     const root = host.shadowRoot;
-    if (!root) return { status: 'unknown', reason: '' };
-    const videos = [...root.querySelectorAll('video')];
-    const primaryLoaded = videos.some((v) => isVideoLoaded(v) && pathOf(mediaUrl(v)) === pathOf(alternate));
-    if (primaryLoaded) return { status: 'available', reason: '' };
-    const anyVideoLoaded = videos.some(isVideoLoaded);
-    if (anyVideoLoaded) return { status: 'available', reason: '' };
-    return { status: 'unknown', reason: '' };
+    if (!root) return { status: 'pending', reason: '' };
+    if (root.querySelector('video')) return { status: 'playing', reason: '' };
+    if (root.querySelector('img:not(.poster-frame)')) return { status: 'image-fallback', reason: '' };
+    return { status: 'pending', reason: '' };
   }
 
   function analyze(host) {
