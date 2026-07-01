@@ -16,18 +16,15 @@
 
 (function initMediaBandwidthDebug() {
   const LOG = '[media-bw-debug]';
-  console.log(LOG, 'script parsed, readyState=', document.readyState);
 
   if (globalThis.__mediaBandwidthDebugActive) {
     console.warn(LOG, 'already active — skipping duplicate init');
     return;
   }
   globalThis.__mediaBandwidthDebugActive = true;
-  console.log(LOG, 'init starting');
 
   try {
     performance.setResourceTimingBufferSize(5000);
-    console.log(LOG, 'resource timing buffer size set to 5000');
   } catch (err) {
     console.warn(LOG, 'could not set resource timing buffer size', err);
   }
@@ -65,7 +62,6 @@
     if (watchedContainers.has(container)) return;
     watchedContainers.add(container);
     domObserver.observe(container, { childList: true, subtree: true });
-    console.log(LOG, 'watching container', container instanceof Document ? 'document' : container.host?.localName || 'shadow');
 
     const hosts = container instanceof Document
       ? container.querySelectorAll('*')
@@ -102,7 +98,6 @@
   function handleAddedNode(node) {
     if (!(node instanceof Element)) return;
     if (node.localName === 'media-renderer') {
-      console.log(LOG, 'domObserver: media-renderer added', node);
       attach(node);
       return;
     }
@@ -283,14 +278,10 @@
 
   function ensureOverlay(host) {
     const root = host.shadowRoot;
-    if (!root) {
-      console.log(LOG, 'ensureOverlay: no shadowRoot yet', host);
-      return null;
-    }
+    if (!root) return null;
 
     let state = tracked.get(host);
     if (!state) {
-      console.log(LOG, 'ensureOverlay: creating overlay', host, 'shadow child count=', root.childElementCount);
       const overlay = document.createElement('div');
       overlay.className = 'media-bw-debug-overlay';
       overlay.style.cssText = [
@@ -333,17 +324,7 @@
 
     wireMediaEvents(host);
     const info = analyze(host);
-    if (!info) {
-      console.log(LOG, 'paint: analyze returned null', host);
-      return;
-    }
-
-    console.log(LOG, 'paint:', info.tier, info.surface, {
-      imgs: info.loadedImgs,
-      videos: info.loadedVideos,
-      probe: info.probe,
-      bytes: info.bytes,
-    });
+    if (!info) return;
 
     const palette = COLORS[info.tier] || COLORS.pending;
     overlay.style.borderTopColor = palette.border;
@@ -381,26 +362,17 @@
       return;
     }
 
-    console.log(LOG, 'attach:', host, 'shadowRoot=', Boolean(host.shadowRoot));
-
     const tryPaint = () => {
       if (!host.shadowRoot) return false;
       paint(host);
       return true;
     };
 
-    if (tryPaint()) {
-      console.log(LOG, 'attach: painted immediately', host);
-      return;
-    }
+    if (tryPaint()) return;
 
-    console.log(LOG, 'attach: polling for media-renderer shadowRoot', host);
     let attempts = 0;
     const poll = () => {
-      if (tryPaint()) {
-        console.log(LOG, 'attach: shadowRoot ready after', attempts, 'frames', host);
-        return;
-      }
+      if (tryPaint()) return;
       if (++attempts > 300) {
         console.warn(LOG, 'attach: gave up waiting for shadowRoot', host);
         return;
@@ -411,9 +383,7 @@
   }
 
   function scan() {
-    const found = queryAllMediaRenderers();
-    console.log(LOG, 'scan: found', found.length, 'media-renderer(s) (shadow-piercing)');
-    for (const el of found) attach(el);
+    for (const el of queryAllMediaRenderers()) attach(el);
   }
 
   const domObserver = new MutationObserver((mutations) => {
@@ -425,7 +395,6 @@
   });
 
   watchContainer(document);
-  console.log(LOG, 'domObserver registered on document + shadow roots');
 
   if (typeof PerformanceObserver !== 'undefined') {
     try {
@@ -435,12 +404,9 @@
         }
       });
       perfObserver.observe({ type: 'resource', buffered: true });
-      console.log(LOG, 'PerformanceObserver active (resource)');
     } catch (err) {
       console.warn(LOG, 'PerformanceObserver failed', err);
     }
-  } else {
-    console.log(LOG, 'PerformanceObserver not available');
   }
 
   const attrObserver = new MutationObserver((mutations) => {
@@ -457,12 +423,9 @@
   });
 
   function boot() {
-    console.log(LOG, 'boot()');
     scan();
-    const interval = setInterval(() => {
+    setInterval(() => {
       const all = queryAllMediaRenderers();
-      const trackedCount = all.filter((h) => tracked.has(h)).length;
-      console.log(LOG, 'interval tick: renderers=', all.length, 'tracked=', trackedCount);
       for (const host of all) {
         if (tracked.has(host)) paint(host);
         else attach(host);
@@ -470,19 +433,11 @@
       // New Lit routes may mount fresh shadow roots — ensure we are watching them.
       watchContainer(document);
     }, 1500);
-    console.log(LOG, 'interval started (1500ms), id=', interval);
   }
 
   if (document.readyState === 'loading') {
-    console.log(LOG, 'waiting for DOMContentLoaded');
-    document.addEventListener('DOMContentLoaded', () => {
-      console.log(LOG, 'DOMContentLoaded fired');
-      boot();
-    });
+    document.addEventListener('DOMContentLoaded', boot);
   } else {
-    console.log(LOG, 'document already ready, booting now');
     boot();
   }
-
-  console.log(LOG, 'init complete (sync portion)');
 })();
