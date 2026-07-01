@@ -38,7 +38,7 @@ describe('post route media behavior', () => {
     expect(src).toContain('@property({ type: String }) posterSrc');
     expect(src).toContain('@property({ type: String }) alternateVideoSrc');
     expect(src).toContain('@property({ type: Boolean }) forceImage = false;');
-    expect(src).toContain("const effectivePreload = effectiveAutoplay && defaultPreload === 'none'");
+    expect(src).toContain("const effectivePreload = defaultPreload;");
     expect(src).toContain('const resolvedPrimaryUrl = shouldUseAlternateVideo ? resolvedAlternateVideoUrl : resolvedImageUrl;');
     expect(src).toContain('awaitingAlternateProbe');
     expect(src).toContain('probe-pending');

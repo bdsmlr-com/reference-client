@@ -7,7 +7,9 @@ describe('media behavior config', () => {
     expect(behavior).toBeDefined();
     expect(behavior.default).toBeDefined();
     expect(behavior.card.autoplay).toBe(true);
+    expect(behavior.card.preload).toBe('none');
     expect(behavior.masonry.autoplay).toBe(true);
+    expect(behavior.masonry.preload).toBe('none');
     expect(behavior.detail.autoplay).toBe(true);
     expect(behavior.detail.controls).toBe(true);
     expect(behavior.poster.autoplay).toBe(false);

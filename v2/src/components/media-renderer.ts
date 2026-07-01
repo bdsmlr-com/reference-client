@@ -536,9 +536,7 @@ export class MediaRenderer extends LitElement {
       const effectiveControls = this.controlsVideo ?? behavior.controls;
       const effectiveLoop = this.loopVideo ?? behavior.loop;
       const defaultPreload = behavior.preload ?? 'none';
-      const effectivePreload = effectiveAutoplay && defaultPreload === 'none'
-        ? 'metadata'
-        : defaultPreload;
+      const effectivePreload = defaultPreload;
       const posterOverlayVisible = Boolean(effectivePoster) && this.showPosterFrame;
       const nonFillVideoStyle = isDetailSurface
         ? detailFitStyle
