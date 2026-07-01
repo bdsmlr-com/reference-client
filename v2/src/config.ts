@@ -1,4 +1,5 @@
 import mediaConfig from '../media-config.json';
+import { trackOutageEvent } from './services/google-analytics.js';
 
 /**
  * Global application configuration.
@@ -204,9 +205,18 @@ export async function ensureRuntimeConfigLoaded(fetchImpl: typeof fetch = fetch)
       if (response.ok) {
         const payload = (await response.json()) as RuntimeConfigPayload;
         applyRuntimeConfig(payload);
+      } else {
+        trackOutageEvent('outage_runtime_config_load_failed', {
+          component: 'runtime-config',
+          context: `http_${response.status}`,
+        });
       }
     } catch (error) {
       console.warn('Failed to load runtime config, using defaults', error);
+      trackOutageEvent('outage_runtime_config_load_failed', {
+        component: 'runtime-config',
+        context: 'network_or_parse',
+      });
     } finally {
       runtimeConfigLoaded = true;
       runtimeConfigPromise = null;

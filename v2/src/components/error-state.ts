@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
+import { trackOutageEvent } from '../services/google-analytics.js';
 import { EventNames } from '../types/events.js';
 import { SPACING, CONTAINER_SPACING, AUTO_RETRY } from '../types/ui-constants.js';
 
@@ -136,6 +137,7 @@ export class ErrorState extends LitElement {
 
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private reportedAutoRetryExhaustion = false;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -156,10 +158,28 @@ export class ErrorState extends LitElement {
       changedProperties.has('autoRetry') ||
       changedProperties.has('autoRetryAttempt')
     ) {
+      if (this.autoRetryAttempt < AUTO_RETRY.MAX_ATTEMPTS) {
+        this.reportedAutoRetryExhaustion = false;
+      }
+
       if (this.autoRetry && this.autoRetryAttempt < AUTO_RETRY.MAX_ATTEMPTS && !this.autoRetryPending && !this.autoRetryCancelled) {
         this.startAutoRetry();
       }
+
+      this.maybeReportAutoRetryExhaustion(changedProperties);
     }
+  }
+
+  private maybeReportAutoRetryExhaustion(changedProperties: Map<string, unknown>): void {
+    if (this.reportedAutoRetryExhaustion) return;
+    if (!this.autoRetry || this.autoRetryAttempt < AUTO_RETRY.MAX_ATTEMPTS) return;
+    if (!changedProperties.has('autoRetry') && !changedProperties.has('autoRetryAttempt')) return;
+
+    this.reportedAutoRetryExhaustion = true;
+    trackOutageEvent('outage_auto_retry_exhausted', {
+      component: 'error-state',
+      context: this.title,
+    });
   }
 
   private clearTimers(): void {

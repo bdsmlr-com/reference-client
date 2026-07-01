@@ -25,6 +25,30 @@ export function trackPageView(pagePath?: string): void {
   });
 }
 
+export type OutageEventParams = {
+  /** UI surface that surfaced the issue (e.g. loading-spinner, skeleton-loader). */
+  component?: string;
+  /** Free-form context such as skeleton variant or loading message. */
+  context?: string;
+  error_code?: string;
+  endpoint?: string;
+};
+
+/**
+ * Track an unexpected outage/degradation signal in GA4.
+ * Fires once per call; callers should dedupe at the source when needed.
+ */
+export function trackOutageEvent(
+  eventName: string,
+  params?: OutageEventParams
+): boolean {
+  return callGtag('event', eventName, {
+    page_path: window.location.pathname,
+    page_location: window.location.href,
+    ...params,
+  });
+}
+
 let navigationTrackingInitialized = false;
 
 export function initNavigationTracking(): void {

@@ -12,6 +12,7 @@
  */
 
 import { ApiErrorCode, isApiError } from './api-error.js';
+import { trackOutageEvent } from './google-analytics.js';
 
 // Storage key
 const TELEMETRY_KEY = 'bdsmlr_error_telemetry';
@@ -80,6 +81,36 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
+const OUTAGE_API_ERROR_CODES = new Set<ApiErrorCode | string>([
+  ApiErrorCode.TIMEOUT,
+  ApiErrorCode.NETWORK,
+  ApiErrorCode.OFFLINE,
+  ApiErrorCode.SERVER_ERROR,
+  ApiErrorCode.RATE_LIMITED,
+  ApiErrorCode.PARSE_ERROR,
+  ApiErrorCode.UNKNOWN,
+]);
+
+function isApiRetryExhaustion(context?: Record<string, unknown>): boolean {
+  return (
+    typeof context?.retryAttempt === 'number' &&
+    typeof context?.maxRetries === 'number'
+  );
+}
+
+function maybeReportApiRetryExhaustion(
+  entry: TelemetryEntry,
+  context?: Record<string, unknown>
+): void {
+  if (!isApiRetryExhaustion(context)) return;
+  if (!OUTAGE_API_ERROR_CODES.has(entry.code)) return;
+
+  trackOutageEvent('outage_api_retry_exhausted', {
+    error_code: String(entry.code),
+    endpoint: entry.endpoint,
+  });
+}
+
 /**
  * Log an error to telemetry.
  *
@@ -91,6 +122,7 @@ export function logError(
   context?: Record<string, unknown>
 ): void {
   const entry = createTelemetryEntry(error, context);
+  maybeReportApiRetryExhaustion(entry, context);
 
   // Console log for immediate visibility during development
   console.error(

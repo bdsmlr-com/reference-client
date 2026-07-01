@@ -1,6 +1,7 @@
 import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
+import { trackOutageEvent } from '../services/google-analytics.js';
 import { BREAKPOINTS, REQUEST_TIMING } from '../types/ui-constants.js';
 
 /**
@@ -370,6 +371,10 @@ export class SkeletonLoader extends LitElement {
       // Mark as slow request after threshold
       if (elapsed >= REQUEST_TIMING.SLOW_THRESHOLD_MS && !this.isSlowRequest) {
         this.isSlowRequest = true;
+        trackOutageEvent('outage_slow_request', {
+          component: 'skeleton-loader',
+          context: this.variant,
+        });
       }
     }, REQUEST_TIMING.ELAPSED_UPDATE_INTERVAL_MS);
   }

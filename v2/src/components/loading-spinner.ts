@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
+import { trackOutageEvent } from '../services/google-analytics.js';
 import { REQUEST_TIMING, SPACING, CONTAINER_SPACING } from '../types/ui-constants.js';
 
 @customElement('loading-spinner')
@@ -144,6 +145,10 @@ export class LoadingSpinner extends LitElement {
       // Mark as slow request after threshold
       if (elapsed >= REQUEST_TIMING.SLOW_THRESHOLD_MS && !this.isSlowRequest) {
         this.isSlowRequest = true;
+        trackOutageEvent('outage_slow_request', {
+          component: 'loading-spinner',
+          context: this.message || undefined,
+        });
       }
     }, REQUEST_TIMING.ELAPSED_UPDATE_INTERVAL_MS);
   }
