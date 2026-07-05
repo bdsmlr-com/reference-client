@@ -51,5 +51,9 @@ export function maybeDeployInterstitial(authenticated: boolean): void {
     console.warn('[interstitial] globalThis.deployInterstitial is not defined');
     return;
   }
+  callGtag('event', 'interstitial_displayed', {
+    page_path: pathname,
+    page_location: window.location.href,
+  });
   deploy();
 }
