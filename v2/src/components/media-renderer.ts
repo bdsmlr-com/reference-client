@@ -8,6 +8,10 @@ import { useGifPosters } from '../config.js';
 import { MEDIA_PLACEHOLDER_ASPECT_RATIO } from '../types/ui-constants.js';
 import { mediaChromeStyles } from '../styles/media-chrome.js';
 import { compensateScrollForAboveViewportResize } from '../services/media-scroll-anchor.js';
+import {
+  MEDIA_VIEWPORT_PRIME_DEBUG,
+  mediaViewportPrime,
+} from '../services/media-viewport-prime.js';
 
 type ProbeFailureReason = 'missing-or-404' | 'timeout' | 'token-or-auth' | 'codec-or-playback' | 'other-load-error';
 
@@ -52,6 +56,12 @@ export class MediaRenderer extends LitElement {
       position: relative;
       background: transparent;
       overflow: hidden;
+    }
+
+    /* Temporary: eyeball viewport priming — remove or gate later */
+    :host([prime-debug][primed]) {
+      border: 2px solid red;
+      box-shadow: inset 0 0 0 2px red;
     }
 
     :host([fill-mode]),
@@ -174,12 +184,27 @@ export class MediaRenderer extends LitElement {
   @property({ type: Boolean }) controlsVideo?: boolean;
   @property({ type: Boolean }) loopVideo?: boolean;
   @property({ type: String, attribute: 'alternate-fallback-reason', reflect: true }) alternateFallbackReason: ProbeFailureReason | '' = '';
+  @property({ type: Boolean, reflect: true }) primed = false;
 
   @state() private showPlaceholder = false;
   @state() private showPosterFrame = true;
   @state() private retryGeneration = 0;
   @state() private alternatePlaybackFailed = false;
   @state() private knownAspectRatio: number | null = null;
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this.toggleAttribute('prime-debug', MEDIA_VIEWPORT_PRIME_DEBUG);
+    if (this.primed) return;
+    mediaViewportPrime.observe(this, () => {
+      this.primed = true;
+    });
+  }
+
+  disconnectedCallback(): void {
+    mediaViewportPrime.unobserve(this);
+    super.disconnectedCallback();
+  }
 
   private getCachedAlternateFailure(): ProbeFailureReason | '' {
     if (!this.alternateVideoSrc) return '';
@@ -403,6 +428,15 @@ export class MediaRenderer extends LitElement {
           <span style="font-size: 10px; opacity: 0.3;">No Source</span>
         </div>
       `;
+    }
+
+    // Defer img/video until the host is in (or near) the viewport — no src, no bytes.
+    if (!this.primed) {
+      const { fillMode, isDetailSurface } = this.getSurfaceModes();
+      this.syncReserveSpaceAttributes(fillMode, isDetailSurface);
+      this.toggleAttribute('fill-mode', fillMode);
+      this.toggleAttribute('detail-mode', isDetailSurface);
+      return nothing;
     }
 
     if (this.showPlaceholder) {
