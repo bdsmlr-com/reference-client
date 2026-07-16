@@ -1,4 +1,5 @@
 import type { ProcessedPost } from '../types/post.js';
+import type { SearchResultUnit } from './search-result-units.js';
 
 export type RetrievalPostPolicy = {
   imageVariant?: string;
@@ -37,6 +38,30 @@ export function applyRetrievalPostPolicies(
       ...post,
       _retrievalPolicy: policy,
     } as ProcessedPost;
+  });
+}
+
+export function applyPoliciesToResultUnits(
+  units: SearchResultUnit[],
+  policies: RetrievalPostPolicyMap | undefined,
+): SearchResultUnit[] {
+  if (!policies || units.length === 0) {
+    return units;
+  }
+
+  return units.map((unit) => {
+    if (unit.kind === 'post') {
+      const [post] = applyRetrievalPostPolicies([unit.post as ProcessedPost], policies);
+      return { kind: 'post', post };
+    }
+
+    return {
+      kind: 'result_group',
+      group: {
+        ...unit.group,
+        posts: applyRetrievalPostPolicies(unit.group.posts as ProcessedPost[], policies),
+      },
+    };
   });
 }
 

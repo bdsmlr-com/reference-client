@@ -20,6 +20,7 @@ import { MAX_VISIBLE_TAGS } from '../types/ui-constants.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';
 import { toPresentationModel } from '../services/post-presentation.js';
+import { shouldObscureMedia } from '../services/media-redaction.js';
 import { renderCardOverlayLink, shouldLetBrowserHandleCardLink } from '../services/card-overlay.js';
 import { getViewedBlogName } from '../services/blog-resolver.js';
 import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
@@ -319,6 +320,7 @@ export class PostFeedItem extends LitElement {
           .fallbackSrc=${fallbackSrc}
           .type=${mediaRenderType}
           .forceImage=${item.kind === 'IMAGE'}
+          .redacted=${shouldObscureMedia(post)}
           .autoplayVideo=${this.videoAutoplay}
           .controlsVideo=${this.videoControls}
           .loopVideo=${this.videoLoop}

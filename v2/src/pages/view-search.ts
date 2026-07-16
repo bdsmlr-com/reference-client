@@ -14,6 +14,7 @@ import { normalizeSortValue, type ProcessedPost, type ViewStats, SORT_OPTIONS } 
 import type { PostType, PostSortField, Order, PostVariant, BlogTagAffinity } from '../types/api.js';
 import { parsePostTypesParam, parseVariantsParam } from '../services/post-filter-url.js';
 import { materializeSearchResultUnits, type SearchResultUnit } from '../services/search-result-units.js';
+import { applyPoliciesToResultUnits } from '../services/retrieval-presentation.js';
 import { contentGridItems, flattenContentResultPosts, prepareContentResultUnits } from '../services/content-results.js';
 import {
   forcePaginatedContentRouteNavigation,
@@ -882,7 +883,7 @@ export class ViewSearch extends LitElement {
         this.exhausted = nextState.exhausted;
 
         newUnits = prepareContentResultUnits({
-          units: materializeSearchResultUnits(resp),
+          units: applyPoliciesToResultUnits(materializeSearchResultUnits(resp), resp.postPolicies),
           seenIds: this.seenIds,
           stats: this.stats,
         });

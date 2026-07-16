@@ -212,4 +212,15 @@ describe('toPresentationModel', () => {
     expect(model.identity.viaBlogLabel).toBe('');
     expect(model.identity.chipBlogLabel).toBe('');
   });
+
+  it('marks obscured posts for client-side redaction in the media descriptor', () => {
+    const model = toPresentationModel(
+      makePost({
+        authorization: { media: 'obscured', navigation: 'denied', reason: 'entitlement_search_depth' },
+      }),
+      { surface: 'card', page: 'search' },
+    );
+
+    expect(model.media.redacted).toBe(true);
+  });
 });

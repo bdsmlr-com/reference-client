@@ -4,6 +4,7 @@ import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import { type RecResult, type SimilarPostsResponse } from '../services/recommendation-api.js';
 import { describePrimaryMediaForSurface, extractMedia, type ProcessedPost } from '../types/post.js';
+import { shouldObscureMedia } from '../services/media-redaction.js';
 import type { Post } from '../types/api.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { scrollObserver } from '../services/scroll-observer.js';
@@ -476,7 +477,7 @@ export class PostRecommendations extends LitElement {
                 return html`
                   <div class="gutter-item" @click=${(event: Event) => this.navigateToRelated(r, event)}>
                     <div class="rec-media">
-                      <media-renderer .src=${raw} .posterSrc=${mediaSource?.posterSrc} .alternateVideoSrc=${mediaSource?.alternateVideoSrc} .fallbackSrc=${mediaSource?.fallbackSrc} .forceImage=${mediaSource?.forceImage ?? false} .type=${'gutter'}></media-renderer>
+                      <media-renderer .src=${raw} .posterSrc=${mediaSource?.posterSrc} .alternateVideoSrc=${mediaSource?.alternateVideoSrc} .fallbackSrc=${mediaSource?.fallbackSrc} .forceImage=${mediaSource?.forceImage ?? false} .redacted=${shouldObscureMedia(h)} .type=${'gutter'}></media-renderer>
                     </div>
                     <div class="rec-meta">
                       ${blogLabel ? html`<span class="rec-blog">@${blogLabel.replace(/^@+/, '')}</span>` : html`<span></span>`}

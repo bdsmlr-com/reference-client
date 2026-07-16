@@ -285,6 +285,7 @@ export class ActivityItem extends LitElement {
               .alternateVideoSrc=${mediaSource?.alternateVideoSrc}
               .fallbackSrc=${mediaSource?.fallbackSrc}
               .forceImage=${mediaSource?.forceImage ?? false}
+              .redacted=${presentation.media.redacted ?? false}
               .type=${renderType}
               style="object-fit: ${this.mode === 'masonry' ? 'contain' : 'cover'};"
               @media-state-change=${this.handleMediaStateChange}

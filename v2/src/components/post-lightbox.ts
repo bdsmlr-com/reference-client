@@ -271,6 +271,7 @@ export class PostLightbox extends LitElement {
                   .alternateVideoSrc=${source.alternateVideoSrc}
                   .fallbackSrc=${source.fallbackSrc}
                   .forceImage=${source.forceImage ?? false}
+                  .redacted=${presentation.media.redacted ?? false}
                   .type=${mediaRenderType}
                 ></media-renderer>`}
           </div>

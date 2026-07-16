@@ -1,5 +1,6 @@
 import { resolveLink } from './link-resolver';
 import { FEATURE_FLAGS } from '../config';
+import { shouldObscureMedia } from './media-redaction.js';
 import {
   POST_TYPE_ICONS,
   POST_TYPE_LABELS,
@@ -195,6 +196,7 @@ function buildMediaDescriptor(post: ProcessedPost, ctx: NormalizedPresentationCo
   return {
     ...media,
     preset,
+    redacted: shouldObscureMedia(post),
   };
 }
 

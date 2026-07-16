@@ -315,12 +315,13 @@ export class PostCard extends LitElement {
         </div>
 
         <div class="media-container">
-          <media-renderer 
-            .src=${rawUrl} 
+          <media-renderer
+            .src=${rawUrl}
             .posterSrc=${mediaSource?.posterSrc}
             .alternateVideoSrc=${mediaSource?.alternateVideoSrc}
             .fallbackSrc=${mediaSource?.fallbackSrc}
             .forceImage=${mediaSource?.forceImage ?? false}
+            .redacted=${presentation.media.redacted ?? false}
             .type=${mediaRenderType}
             style="object-fit: cover;"
             @media-state-change=${this.handleMediaStateChange}
