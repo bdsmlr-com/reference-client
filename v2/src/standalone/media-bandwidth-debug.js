@@ -107,8 +107,8 @@
 
   const COLORS = {
     both: { border: '#ff4444', bg: 'rgba(80,0,0,0.88)', label: 'GIF+VIDEO' },
-    gif: { border: '#ffdd33', bg: 'rgba(50,45,0,0.88)', label: 'GIF only' },
-    video: { border: '#44dd66', bg: 'rgba(0,40,10,0.88)', label: 'VIDEO only' },
+    gif: { border: '#ffdd33', bg: 'rgba(50,45,0,0.88)', label: 'GIF' },
+    video: { border: '#44dd66', bg: 'rgba(0,40,10,0.88)', label: 'VIDEO' },
     image: { border: '#66bbff', bg: 'rgba(0,25,50,0.88)', label: 'IMAGE' },
     pending: { border: '#888888', bg: 'rgba(20,20,20,0.85)', label: 'pending' },
   };
@@ -197,6 +197,12 @@
     return '';
   }
 
+  function yearFromUrl(url) {
+    if (!url) return null;
+    const m = url.match(/\/(\d{4})\//);
+    return m ? m[1] : null;
+  }
+
   function inferProbeState(host) {
     const alternate = host.alternateVideoSrc || '';
     if (!alternate) return null;
@@ -256,6 +262,11 @@
 
     const probe = inferProbeState(host);
 
+    const primaryUrl = scaleEl
+      ? mediaUrl(scaleEl)
+      : (loadedImgs[0] ? mediaUrl(loadedImgs[0]) : (loadedVideos[0] ? mediaUrl(loadedVideos[0]) : ''));
+    const year = yearFromUrl(primaryUrl);
+
     return {
       tier,
       loadedImgs: loadedImgs.length,
@@ -268,6 +279,7 @@
       probe,
       surface: host.type || host.getAttribute('type') || '?',
       hasAlternate: Boolean(host.alternateVideoSrc),
+      year,
     };
   }
 
@@ -330,6 +342,11 @@
     overlay.style.borderTopColor = palette.border;
     overlay.style.background = palette.bg;
 
+    // alternateVideoSrc means this MP4 is a GIF/webp upgrade — not a native video upload.
+    const label = info.tier === 'video' && info.hasAlternate
+      ? 'VIDEO (GIF ignored)'
+      : palette.label;
+
     const probeLine = info.probe
       ? `probe:${info.probe.status}${info.probe.reason ? ` (${info.probe.reason})` : ''}`
       : (info.hasAlternate ? 'probe:—' : '');
@@ -342,7 +359,8 @@
 
     overlay.textContent = '';
     const lines = [
-      `${palette.label} · ${info.surface}`,
+      `${label} · ${info.surface}`,
+      info.year ? `year:${info.year}` : '',
       loadLine,
       probeLine,
       info.bytes,
