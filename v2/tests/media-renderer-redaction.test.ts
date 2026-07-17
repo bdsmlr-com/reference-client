@@ -6,7 +6,7 @@ afterEach(() => {
 });
 
 describe('media-renderer client redaction', () => {
-  it('renders obscured media through the pixelation shell and skips video alternates', async () => {
+  it('marks redacted media and still allows video alternates under CSS blur', async () => {
     const { MediaRenderer } = await import('../src/components/media-renderer.js');
     const renderer = new MediaRenderer();
     renderer.src = '/uploads/clear.jpg';
@@ -16,9 +16,9 @@ describe('media-renderer client redaction', () => {
     document.body.appendChild(renderer);
     await renderer.updateComplete;
 
-    expect(renderer.shadowRoot?.querySelector('.pixelate-shell')).not.toBeNull();
-    expect(renderer.shadowRoot?.querySelector('video')).toBeNull();
-    expect(renderer.shadowRoot?.querySelector('img.pixelate-media')?.getAttribute('src') || '').not.toContain('/pix:');
+    expect(renderer.hasAttribute('redacted')).toBe(true);
+    expect(renderer.shadowRoot?.querySelector('video')).not.toBeNull();
+    expect(renderer.shadowRoot?.querySelector('.pixelate-shell')).toBeNull();
 
     renderer.remove();
   });

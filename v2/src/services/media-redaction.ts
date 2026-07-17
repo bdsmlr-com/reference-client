@@ -1,21 +1,19 @@
 import type { ProcessedPost } from '../types/post.js';
-
-/** Target visible mosaic cell size in CSS pixels once the image is laid out. */
-export const OBSCURE_PIXEL_BLOCK_PX = 12;
-
-const MIN_PIXEL_BLOCKS = 8;
-const MAX_PIXEL_BLOCKS = 64;
-
-export function computePixelBlockCount(containerWidthPx: number, blockPx = OBSCURE_PIXEL_BLOCK_PX): number {
-  if (!Number.isFinite(containerWidthPx) || containerWidthPx <= 0) {
-    return 24;
-  }
-  const blocks = Math.round(containerWidthPx / blockPx);
-  return Math.max(MIN_PIXEL_BLOCKS, Math.min(MAX_PIXEL_BLOCKS, blocks));
-}
+import { ACTIVE_ENV } from '../config.js';
 
 export function shouldObscureMedia(post: ProcessedPost | null | undefined): boolean {
   if (!post) return false;
+
+  // TEMP DEV HACK — discard before merge. Force redaction on ~half of posts
+  // (stable by id so re-renders don't flicker). Dev builds / vite serve only.
+  if (
+    (ACTIVE_ENV === 'dev' || Boolean(import.meta.env.DEV))
+    && typeof post.id === 'number'
+    && post.id % 2 === 0
+  ) {
+    return true;
+  }
+
   if (post.authorization?.media === 'obscured') {
     return true;
   }

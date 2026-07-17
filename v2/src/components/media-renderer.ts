@@ -2,7 +2,6 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import { resolveMediaUrl, isAnimation, isNativeVideo, type MediaRenderType } from '../services/media-resolver.js';
-import { computePixelBlockCount } from '../services/media-redaction.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { getMediaBehavior } from '../services/media-behavior.js';
 import { useGifPosters } from '../config.js';
@@ -161,36 +160,11 @@ export class MediaRenderer extends LitElement {
       border-top: 1px solid #00ff00;
     }
 
-    .pixelate-shell {
-      overflow: hidden;
-      width: 100%;
-      height: 100%;
-      position: relative;
-    }
-
-    :host(:not([fill-mode]):not([reserve-space])) .pixelate-shell {
-      height: auto;
-    }
-
-    .pixelate-shell .pixelate-media {
-      display: block;
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
-      transform: scale(calc(1 / var(--pixel-blocks, 24)));
-      transform-origin: top left;
-      width: calc(100% * var(--pixel-blocks, 24));
-      height: calc(100% * var(--pixel-blocks, 24));
-      max-width: none;
-      object-position: center center;
-    }
-
-    :host([fill-mode]) .pixelate-shell .pixelate-media,
-    :host([reserve-space]) .pixelate-shell .pixelate-media {
-      object-fit: cover;
-    }
-
-    :host([detail-mode]) .pixelate-shell .pixelate-media {
-      object-fit: contain;
+    /* Soften edges so blur doesn't reveal a sharp strip around the frame. */
+    :host([redacted]) img,
+    :host([redacted]) video {
+      filter: blur(18px);
+      transform: scale(1.08);
     }
   `,
   ];
@@ -214,28 +188,6 @@ export class MediaRenderer extends LitElement {
   @state() private retryGeneration = 0;
   @state() private alternatePlaybackFailed = false;
   @state() private knownAspectRatio: number | null = null;
-  @state() private pixelBlockCount = 24;
-
-  private resizeObserver: ResizeObserver | null = null;
-
-  connectedCallback(): void {
-    super.connectedCallback();
-    this.resizeObserver = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width ?? 0;
-      if (width <= 0) return;
-      const next = computePixelBlockCount(width);
-      if (next !== this.pixelBlockCount) {
-        this.pixelBlockCount = next;
-      }
-    });
-    this.resizeObserver.observe(this);
-  }
-
-  disconnectedCallback(): void {
-    this.resizeObserver?.disconnect();
-    this.resizeObserver = null;
-    super.disconnectedCallback();
-  }
 
   private getCachedAlternateFailure(): ProbeFailureReason | '' {
     if (!this.alternateVideoSrc) return '';
@@ -449,29 +401,6 @@ export class MediaRenderer extends LitElement {
     return posterUrl || resolvedImageUrl;
   }
 
-  private renderPixelatedImage(
-    imageUrl: string,
-    mediaStyle: string,
-    debugUrl: string,
-  ) {
-    const shellStyle = `--pixel-blocks: ${this.pixelBlockCount}`;
-    return keyed(this.retryGeneration, html`
-      <div class="pixelate-shell" style=${shellStyle}>
-        <img
-          class="pixelate-media"
-          src=${imageUrl}
-          alt=${this.alt}
-          loading="lazy"
-          decoding="async"
-          style=${mediaStyle}
-          @load=${this.handleImageLoad}
-          @error=${this.handleError}
-        />
-      </div>
-      ${this.renderDebug(debugUrl)}
-    `);
-  }
-
   render() {
     const baseImageSrc = this.fallbackSrc || this.src;
     if (!baseImageSrc) {
@@ -506,22 +435,19 @@ export class MediaRenderer extends LitElement {
     }
 
     const resolvedImageUrl = resolveMediaUrl(baseImageSrc, this.type);
-    const resolvedAlternateVideoUrl = this.redacted ? '' : (this.alternateVideoSrc ? resolveMediaUrl(this.alternateVideoSrc, this.type) : '');
+    const resolvedAlternateVideoUrl = this.alternateVideoSrc ? resolveMediaUrl(this.alternateVideoSrc, this.type) : '';
     const { fillMode, isDetailSurface, reserveSpace } = this.getSurfaceModes();
     const usesRawAlias = resolvedImageUrl.includes('/raw/s3://');
     const alternateKnownBad = Boolean(this.getCachedAlternateFailure());
-    const shouldUseAlternateVideo = !this.redacted
-      && Boolean(this.alternateVideoSrc)
+    const shouldUseAlternateVideo = Boolean(this.alternateVideoSrc)
       && !alternateKnownBad
       && !this.alternatePlaybackFailed;
     const isAnim = isAnimation(baseImageSrc);
-    const treatAnimationAsVideo = this.redacted
-      ? false
-      : this.alternateVideoSrc
+    const treatAnimationAsVideo = this.alternateVideoSrc
       ? shouldUseAlternateVideo
       : !this.forceImage && isAnim && !isDetailSurface && !usesRawAlias;
     const resolvedPrimaryUrl = shouldUseAlternateVideo ? resolvedAlternateVideoUrl : resolvedImageUrl;
-    const isVideoSource = !this.redacted && (shouldUseAlternateVideo || (!this.forceImage && !this.alternateVideoSrc && (treatAnimationAsVideo || isNativeVideo(resolvedPrimaryUrl) || resolvedPrimaryUrl.includes('format:mp4'))));
+    const isVideoSource = shouldUseAlternateVideo || (!this.forceImage && !this.alternateVideoSrc && (treatAnimationAsVideo || isNativeVideo(resolvedPrimaryUrl) || resolvedPrimaryUrl.includes('format:mp4')));
     const effectivePoster = this.resolveVideoPosterUrl(this.posterSrc, baseImageSrc, resolvedImageUrl);
     const squareCropMode =
       this.type === 'card' ||
@@ -539,26 +465,13 @@ export class MediaRenderer extends LitElement {
       ? 'object-fit: contain; width: 100%; height: 100%;'
       : 'object-fit: contain; width: 100%; height: auto;';
 
-    if (!resolvedPrimaryUrl && !this.redacted) {
+    if (!resolvedPrimaryUrl) {
       return html`
         <div class="error-placeholder" style="background: #221111; border: 1px solid #ff4444;">
           <span style="font-size: 20px;">🚫</span>
           <span style="font-size: 10px; color: #ff4444;">No Host</span>
         </div>
       `;
-    }
-
-    if (this.redacted) {
-      const obscuredImageSrc = resolveMediaUrl(this.posterSrc || baseImageSrc, this.type);
-      if (!obscuredImageSrc) {
-        return html`
-          <div class="error-placeholder" style="background: #221111; border: 1px solid #ff4444;">
-            <span style="font-size: 20px;">🚫</span>
-            <span style="font-size: 10px; color: #ff4444;">No Host</span>
-          </div>
-        `;
-      }
-      return this.renderPixelatedImage(obscuredImageSrc, mediaStyle, obscuredImageSrc);
     }
 
     if (isVideoSource && this.type !== 'poster') {
