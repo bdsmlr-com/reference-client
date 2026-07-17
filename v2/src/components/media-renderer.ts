@@ -180,6 +180,25 @@ export class MediaRenderer extends LitElement {
     }
 
     /*
+     * EXPERIMENT — fake pixel grid over blur. Tune via :root:
+     *   --redaction-mosaic-opacity (default 0.28)
+     *   --redaction-mosaic-size    (default 5px)
+     *   --redaction-mosaic-blend   (default soft-light; try overlay / hard-light / difference)
+     * Discard if it looks rubbish.
+     */
+    .redaction-mosaic {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      opacity: var(--redaction-mosaic-opacity, 0.28);
+      mix-blend-mode: var(--redaction-mosaic-blend, soft-light);
+      image-rendering: pixelated;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2'%3E%3Crect width='1' height='1' fill='%23fff'/%3E%3Crect x='1' y='1' width='1' height='1' fill='%23fff'/%3E%3Crect x='1' width='1' height='1' fill='%23000'/%3E%3Crect y='1' width='1' height='1' fill='%23000'/%3E%3C/svg%3E");
+      background-size: var(--redaction-mosaic-size, 5px) var(--redaction-mosaic-size, 5px);
+    }
+
+    /*
      * Base 8px fallback first (older engines that ignore calc/vars).
      * Then surface-specific factors via CSS variables (console-tunable on :root).
      *   --redaction-blur-factor-thumb (default 0.7) → cards / gutters
@@ -444,7 +463,13 @@ export class MediaRenderer extends LitElement {
 
   private wrapIfRedacted(content: unknown) {
     if (!this.redacted) return content;
-    return html`<div class="redaction-shell">${content}</div>`;
+    // EXPERIMENT mosaic overlay — drop .redaction-mosaic + CSS block to discard.
+    return html`
+      <div class="redaction-shell">
+        ${content}
+        <div class="redaction-mosaic" aria-hidden="true"></div>
+      </div>
+    `;
   }
 
   render() {
