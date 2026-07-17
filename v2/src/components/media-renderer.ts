@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
-import { resolveMediaUrl, isAnimation, isNativeVideo, probeNextBucket, type MediaRenderType } from '../services/media-resolver.js';
+import { resolveMediaUrl, isAnimation, isNativeVideo, type MediaRenderType } from '../services/media-resolver.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { getMediaBehavior } from '../services/media-behavior.js';
 import { useGifPosters } from '../config.js';
@@ -341,7 +341,6 @@ export class MediaRenderer extends LitElement {
       return;
     }
 
-    if (probeNextBucket(el)) return;
     this.showPlaceholder = true;
     this.dispatchMediaStateChange(true);
   }
