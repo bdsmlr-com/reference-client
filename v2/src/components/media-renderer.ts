@@ -201,13 +201,13 @@ export class MediaRenderer extends LitElement {
     /*
      * Base 8px fallback first (older engines that ignore calc/vars).
      * Then surface-specific factors via CSS variables (console-tunable on :root).
-     *   --redaction-blur-factor-thumb (default 0.7) → cards / gutters
-     *   --redaction-blur-factor-full  (default 2)   → feed / detail / lightbox
+     *   --redaction-blur-factor-thumb (default 0.75) → cards / gutters
+     *   --redaction-blur-factor-full  (default 2)    → feed / detail / lightbox
      */
     :host([redacted]) img,
     :host([redacted]) video {
       filter: blur(8px);
-      filter: blur(calc(8px * var(--redaction-blur-factor-thumb, 0.7)));
+      filter: blur(calc(8px * var(--redaction-blur-factor-thumb, 0.75)));
       transform: scale(1.08);
     }
 
