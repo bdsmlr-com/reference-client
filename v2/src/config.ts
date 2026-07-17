@@ -141,6 +141,7 @@ export const RENDER_CONTRACT_CONFIG: RenderContractConfig = (mediaConfig as any)
 function cloneFeatureFlagsConfig(source: FeatureFlagsConfig): FeatureFlagsConfig {
   return {
     more_like_this_on_post: source.more_like_this_on_post,
+    use_gif_posters: source.use_gif_posters,
   };
 }
 
