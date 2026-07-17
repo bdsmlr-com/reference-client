@@ -2,6 +2,7 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import { resolveMediaUrl, isAnimation, isNativeVideo, type MediaRenderType } from '../services/media-resolver.js';
+import '../services/media-redaction.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { getMediaBehavior } from '../services/media-behavior.js';
 import { useGifPosters } from '../config.js';
@@ -160,10 +161,11 @@ export class MediaRenderer extends LitElement {
       border-top: 1px solid #00ff00;
     }
 
-    /* Soften edges so blur doesn't reveal a sharp strip around the frame. */
+    /* Soften edges so blur doesn't reveal a sharp strip around the frame.
+     * Tune live from console: redactionBlur.set(0.5) — multiplies the base radius. */
     :host([redacted]) img,
     :host([redacted]) video {
-      filter: blur(18px);
+      filter: blur(calc(8px * var(--redaction-blur-factor, 1)));
       transform: scale(1.08);
     }
   `,
