@@ -19,7 +19,7 @@ import {
 import { getAuthUser, updateActiveBlog } from '../state/auth-state.js';
 import { setStoredActiveBlog, clearStoredActiveBlog } from '../utils/storage.js';
 import { BREAKPOINTS } from '../types/ui-constants.js';
-import { logout as legacyLogout, login as legacyLogin } from '../services/auth-service.js';
+import { formatLoginError, logout as legacyLogout, login as legacyLogin } from '../services/auth-service.js';
 import { normalizeAvatarUrl } from '../services/avatar-url.js';
 import './blog-identity.js';
 import { fetchHydratedBlogMetaByName } from '../services/blog-meta.js';
@@ -488,8 +488,8 @@ export class SharedNav extends LitElement {
       } else {
         this.loginError = 'Login failed';
       }
-    } catch (err: any) {
-      this.loginError = 'Login failed';
+    } catch (err: unknown) {
+      this.loginError = formatLoginError(err);
     }
   }
 
