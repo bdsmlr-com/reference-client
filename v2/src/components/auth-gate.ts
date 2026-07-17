@@ -1,6 +1,6 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { login } from '../services/auth-service.js';
+import { formatLoginError, login } from '../services/auth-service.js';
 
 @customElement('auth-gate')
 export class AuthGate extends LitElement {
@@ -77,8 +77,8 @@ export class AuthGate extends LitElement {
     try {
       await login(u, p, true);
       this.dispatchEvent(new CustomEvent('auth-retry', { bubbles: true, composed: true }));
-    } catch (err: any) {
-      this.message = 'Login failed';
+    } catch (err: unknown) {
+      this.message = formatLoginError(err);
     } finally {
       this.busy = false;
     }
