@@ -2,7 +2,6 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import { resolveMediaUrl, isAnimation, isNativeVideo, type MediaRenderType } from '../services/media-resolver.js';
-import '../services/media-redaction.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { getMediaBehavior } from '../services/media-behavior.js';
 import { useGifPosters } from '../config.js';
@@ -76,6 +75,11 @@ export class MediaRenderer extends LitElement {
       max-width: 100%;
       background: transparent;
       overflow: visible;
+    }
+
+    /* Redaction must clip scaled blur even when detail-mode sets overflow:visible. */
+    :host([redacted]) {
+      overflow: hidden;
     }
 
     :host([square-crop-mode]) {
@@ -161,12 +165,37 @@ export class MediaRenderer extends LitElement {
       border-top: 1px solid #00ff00;
     }
 
-    /* Soften edges so blur doesn't reveal a sharp strip around the frame.
-     * Tune live from console: redactionBlur.set(0.5) — multiplies the base radius. */
+    .redaction-shell {
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      pointer-events: none;
+      /* Bridge host object-fit (set by parents) to img/video inherit. */
+      object-fit: inherit;
+    }
+
+    :host([detail-mode]) .redaction-shell {
+      height: auto;
+    }
+
+    /*
+     * Base 8px fallback first (older engines that ignore calc/vars).
+     * Then surface-specific factors via CSS variables (console-tunable on :root).
+     *   --redaction-blur-factor-thumb (default 0.7) → cards / gutters
+     *   --redaction-blur-factor-full  (default 2)   → feed / detail / lightbox
+     */
     :host([redacted]) img,
     :host([redacted]) video {
-      filter: blur(calc(8px * var(--redaction-blur-factor, 1)));
+      filter: blur(8px);
+      filter: blur(calc(8px * var(--redaction-blur-factor-thumb, 0.7)));
       transform: scale(1.08);
+    }
+
+    :host([redacted][redaction-full]) img,
+    :host([redacted][redaction-full]) video {
+      filter: blur(8px);
+      filter: blur(calc(8px * var(--redaction-blur-factor-full, 2)));
     }
   `,
   ];
@@ -403,6 +432,21 @@ export class MediaRenderer extends LitElement {
     return posterUrl || resolvedImageUrl;
   }
 
+  private isFullSurfaceRedaction(): boolean {
+    return (
+      this.type === 'feed'
+      || this.type === 'masonry'
+      || this.type === 'detail'
+      || this.type === 'post-detail'
+      || this.type === 'lightbox'
+    );
+  }
+
+  private wrapIfRedacted(content: unknown) {
+    if (!this.redacted) return content;
+    return html`<div class="redaction-shell">${content}</div>`;
+  }
+
   render() {
     const baseImageSrc = this.fallbackSrc || this.src;
     if (!baseImageSrc) {
@@ -459,6 +503,7 @@ export class MediaRenderer extends LitElement {
     this.toggleAttribute('square-crop-mode', squareCropMode);
     const detailFitStyle = 'object-fit: contain; max-width: min(100%, calc(100vw - 40px)); max-height: calc(min(78vh, 920px) - 20px); width: auto; height: auto; margin: 0 auto;';
     this.toggleAttribute('detail-mode', isDetailSurface);
+    this.toggleAttribute('redaction-full', this.redacted && this.isFullSurfaceRedaction());
     const mediaStyle = isDetailSurface
       ? detailFitStyle
       : fillMode
@@ -492,7 +537,7 @@ export class MediaRenderer extends LitElement {
       const videoStyle = fillMode ? mediaStyle : nonFillVideoStyle;
 
       if (!fillMode) {
-        return keyed(this.retryGeneration, html`
+        return this.wrapIfRedacted(keyed(this.retryGeneration, html`
           <div class="video-shell">
             ${effectivePoster ? html`
               <img
@@ -521,10 +566,10 @@ export class MediaRenderer extends LitElement {
             ></video>
           </div>
           ${this.renderDebug(resolvedPrimaryUrl)}
-        `);
+        `));
       }
 
-      return keyed(this.retryGeneration, html`
+      return this.wrapIfRedacted(keyed(this.retryGeneration, html`
         <video
           src=${resolvedPrimaryUrl}
           ?autoplay=${effectiveAutoplay}
@@ -542,10 +587,10 @@ export class MediaRenderer extends LitElement {
           @play=${this.handleVideoReady}
         ></video>
         ${this.renderDebug(resolvedPrimaryUrl)}
-      `);
+      `));
     }
 
-    return keyed(this.retryGeneration, html`
+    return this.wrapIfRedacted(keyed(this.retryGeneration, html`
       <img
         src=${resolvedImageUrl}
         alt=${this.alt}
@@ -556,7 +601,7 @@ export class MediaRenderer extends LitElement {
         @error=${this.handleError}
       />
       ${this.renderDebug(resolvedImageUrl)}
-    `);
+    `));
   }
 }
 
