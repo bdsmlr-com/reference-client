@@ -7,9 +7,10 @@
  * production build: /v2/assets/media-bandwidth-debug.js).
  *
  * Color key (based on loaded media only — not mere src attributes):
- *   red    — animated image (gif/webp) AND video both loaded
- *   yellow — animated image loaded, no loaded video
- *   green  — video loaded, no loaded animated image
+ *   red    — animated image (gif/webp) AND video both loaded,
+ *            or video with a GIF/webp poster (double-load)
+ *   yellow — animated image loaded (no video), or video with a static poster
+ *   green  — video loaded, no poster / animated image alongside
  *   blue   — static image only
  *   gray   — nothing loaded yet
  */
@@ -107,6 +108,8 @@
 
   const COLORS = {
     both: { border: '#ff4444', bg: 'rgba(80,0,0,0.88)', label: 'GIF+VIDEO' },
+    videoGifPoster: { border: '#ff4444', bg: 'rgba(80,0,0,0.88)', label: 'VIDEO with GIF poster' },
+    videoStaticPoster: { border: '#ffdd33', bg: 'rgba(50,45,0,0.88)', label: 'VIDEO with static poster' },
     gif: { border: '#ffdd33', bg: 'rgba(50,45,0,0.88)', label: 'GIF' },
     video: { border: '#44dd66', bg: 'rgba(0,40,10,0.88)', label: 'VIDEO' },
     image: { border: '#66bbff', bg: 'rgba(0,25,50,0.88)', label: 'IMAGE' },
@@ -215,6 +218,11 @@
     return { status: 'pending', reason: '' };
   }
 
+  function videoPosterAttr(video) {
+    if (!(video instanceof HTMLVideoElement)) return '';
+    return video.getAttribute('poster') || video.poster || '';
+  }
+
   function analyze(host) {
     const root = host.shadowRoot;
     if (!root) return null;
@@ -233,27 +241,53 @@
     const hasLoadedVideo = loadedVideos.length > 0;
     const hasLoadedStatic = loadedStaticImgs.length > 0 && !hasLoadedAnimated && !hasLoadedVideo;
 
+    const posterImg = imgs.find((img) => img.classList.contains('poster-frame'));
+    const primaryImg = imgs.find((img) => !img.classList.contains('poster-frame'));
+    const posterImgLoaded = posterImg ? isImageLoaded(posterImg) : false;
+    const posterFrameUrl = posterImgLoaded ? mediaUrl(posterImg) : '';
+
+    // Native <video poster="…"> also fetches an image (even without poster-frame img).
+    let attrPosterUrl = '';
+    for (const video of videos) {
+      const url = videoPosterAttr(video);
+      if (url) {
+        attrPosterUrl = url;
+        break;
+      }
+    }
+    const posterUrl = posterFrameUrl || attrPosterUrl;
+    const posterIsAnimated = Boolean(posterUrl) && isAnimatedUrl(posterUrl);
+    const hasVideoPoster = hasLoadedVideo && Boolean(posterUrl);
+    const primaryAnimatedNotPoster = loadedAnimatedImgs.some(
+      (img) => !img.classList.contains('poster-frame'),
+    );
+
     let tier = 'pending';
-    if (hasLoadedAnimated && hasLoadedVideo) tier = 'both';
+    if (hasLoadedVideo && primaryAnimatedNotPoster) tier = 'both';
+    else if (hasVideoPoster && posterIsAnimated) tier = 'videoGifPoster';
+    else if (hasVideoPoster) tier = 'videoStaticPoster';
     else if (hasLoadedAnimated) tier = 'gif';
     else if (hasLoadedVideo) tier = 'video';
     else if (hasLoadedStatic || (loadedImgs.length > 0 && !hasLoadedAnimated && !hasLoadedVideo)) tier = 'image';
-
-    const posterImg = imgs.find((img) => img.classList.contains('poster-frame'));
-    const primaryImg = imgs.find((img) => !img.classList.contains('poster-frame'));
-    const primaryVideo = videos[0] || null;
 
     const scaleEl = hasLoadedVideo
       ? loadedVideos[0]
       : (loadedAnimatedImgs[0] || loadedStaticImgs[0] || loadedImgs[0] || null);
 
     const byteLines = [];
+    const countedUrls = new Set();
     for (const img of loadedImgs) {
       const url = mediaUrl(img);
       const label = img.classList.contains('poster-frame') ? 'poster' : 'img';
       const kind = isAnimatedUrl(url) ? 'gif' : 'img';
       const b = resourceBytes(url);
       byteLines.push(`${label}/${kind} ${fmtBytes(b.transfer ?? b.encoded)}`);
+      if (url) countedUrls.add(pathOf(url));
+    }
+    if (attrPosterUrl && !countedUrls.has(pathOf(attrPosterUrl))) {
+      const b = resourceBytes(attrPosterUrl);
+      const kind = isAnimatedUrl(attrPosterUrl) ? 'gif' : 'img';
+      byteLines.push(`poster/${kind} ${fmtBytes(b.transfer ?? b.encoded)}`);
     }
     for (const video of loadedVideos) {
       const b = resourceBytes(mediaUrl(video));
@@ -271,7 +305,7 @@
       tier,
       loadedImgs: loadedImgs.length,
       loadedVideos: loadedVideos.length,
-      posterLoaded: posterImg ? isImageLoaded(posterImg) : false,
+      posterLoaded: posterImgLoaded || (hasVideoPoster && Boolean(attrPosterUrl)),
       primaryImgLoaded: primaryImg ? isImageLoaded(primaryImg) : false,
       videoLoaded: hasLoadedVideo,
       scale: fmtScale(scaleEl),
@@ -351,8 +385,12 @@
       ? `probe:${info.probe.status}${info.probe.reason ? ` (${info.probe.reason})` : ''}`
       : (info.hasAlternate ? 'probe:—' : '');
 
+    const hasPosterAttr = [...(host.shadowRoot?.querySelectorAll('video') || [])]
+      .some((v) => Boolean(videoPosterAttr(v)));
     const loadLine = [
-      info.posterLoaded ? 'poster✓' : (host.shadowRoot?.querySelector('img.poster-frame') ? 'poster…' : ''),
+      info.posterLoaded ? 'poster✓' : (
+        host.shadowRoot?.querySelector('img.poster-frame') || hasPosterAttr ? 'poster…' : ''
+      ),
       info.primaryImgLoaded ? 'img✓' : (host.shadowRoot?.querySelector('img:not(.poster-frame)') ? 'img…' : ''),
       info.videoLoaded ? 'video✓' : (host.shadowRoot?.querySelector('video') ? 'video…' : ''),
     ].filter(Boolean).join(' ');
