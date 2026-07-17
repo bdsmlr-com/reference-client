@@ -7,9 +7,6 @@ import { trackOutageEvent } from './services/google-analytics.js';
 
 export type ImgproxyMode = 'unsafe' | 'fixed';
 export type LinkMode = 'internal' | 'legacy' | 'external';
-export type MediaSurface = 'card' | 'masonry' | 'detail' | 'poster' | 'gallery-grid' | 'gallery-masonry' | 'feed' | 'lightbox' | 'post-detail' | 'gutter';
-export type MediaSurfaceFormat = 'raw' | MediaSurface;
-
 export interface MediaPreset {
   width: number;
   height: number;
@@ -118,7 +115,6 @@ export interface RenderInteractionConfig {
 
 export interface FeatureFlagsConfig {
   more_like_this_on_post?: boolean;
-  media_format_by_surface?: Partial<Record<MediaSurface, MediaSurfaceFormat>>;
   /** When true, GIF/WebP may be used as video poster frames (loads animated bytes alongside MP4). */
   use_gif_posters?: boolean;
 }
@@ -144,16 +140,8 @@ export const RENDER_CONTRACT_CONFIG: RenderContractConfig = (mediaConfig as any)
 
 function cloneFeatureFlagsConfig(source: FeatureFlagsConfig): FeatureFlagsConfig {
   return {
-    ...source,
-    media_format_by_surface: { ...(source.media_format_by_surface || {}) },
+    more_like_this_on_post: source.more_like_this_on_post,
   };
-}
-
-function sanitizeSurfaceFormat(value: unknown): MediaSurfaceFormat | undefined {
-  if (typeof value !== 'string') return undefined;
-  const normalized = value.trim().toLowerCase();
-  const allowed = new Set<MediaSurfaceFormat>(['raw', 'card', 'masonry', 'detail', 'poster', 'gallery-grid', 'gallery-masonry', 'feed', 'lightbox', 'post-detail', 'gutter']);
-  return allowed.has(normalized as MediaSurfaceFormat) ? (normalized as MediaSurfaceFormat) : undefined;
 }
 
 const DEFAULT_FEATURE_FLAGS: FeatureFlagsConfig = cloneFeatureFlagsConfig(((mediaConfig as any).features || {}) as FeatureFlagsConfig);
@@ -176,15 +164,6 @@ function applyRuntimeFeatureFlags(override: FeatureFlagsConfig | undefined): voi
   }
   if (typeof override.use_gif_posters === 'boolean') {
     FEATURE_FLAGS.use_gif_posters = override.use_gif_posters;
-  }
-  if (override.media_format_by_surface && typeof override.media_format_by_surface === 'object') {
-    const merged = { ...(FEATURE_FLAGS.media_format_by_surface || {}) } as Partial<Record<MediaSurface, MediaSurfaceFormat>>;
-    for (const [surface, value] of Object.entries(override.media_format_by_surface)) {
-      const normalized = sanitizeSurfaceFormat(value);
-      if (!normalized) continue;
-      merged[surface as MediaSurface] = normalized;
-    }
-    FEATURE_FLAGS.media_format_by_surface = merged;
   }
 }
 
@@ -228,7 +207,6 @@ export async function ensureRuntimeConfigLoaded(fetchImpl: typeof fetch = fetch)
 export function resetRuntimeConfigForTests(): void {
   FEATURE_FLAGS.more_like_this_on_post = DEFAULT_FEATURE_FLAGS.more_like_this_on_post;
   FEATURE_FLAGS.use_gif_posters = DEFAULT_FEATURE_FLAGS.use_gif_posters;
-  FEATURE_FLAGS.media_format_by_surface = { ...(DEFAULT_FEATURE_FLAGS.media_format_by_surface || {}) };
   runtimeConfigLoaded = false;
   runtimeConfigPromise = null;
 }

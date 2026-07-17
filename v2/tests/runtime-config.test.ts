@@ -7,23 +7,18 @@ describe('runtime config', () => {
     vi.restoreAllMocks();
   });
 
-  it('overlays runtime media formats and feature flags onto defaults', () => {
-    expect(FEATURE_FLAGS.media_format_by_surface?.card).toBe('card');
+  it('keeps baseline feature flags intact when runtime config omits dead media overrides', () => {
+    expect(FEATURE_FLAGS.more_like_this_on_post).toBe(false);
     expect(FEATURE_FLAGS.use_gif_posters).toBe(false);
     applyRuntimeConfig({
       features: {
+        more_like_this_on_post: true,
         use_gif_posters: true,
-        media_format_by_surface: {
-          card: 'raw',
-          masonry: 'raw',
-        },
       },
     });
 
+    expect(FEATURE_FLAGS.more_like_this_on_post).toBe(true);
     expect(FEATURE_FLAGS.use_gif_posters).toBe(true);
-    expect(FEATURE_FLAGS.media_format_by_surface?.card).toBe('raw');
-    expect(FEATURE_FLAGS.media_format_by_surface?.masonry).toBe('raw');
-    expect(FEATURE_FLAGS.media_format_by_surface?.['post-detail']).toBe('raw');
   });
 
   it('loads runtime config from the app endpoint once', async () => {
@@ -31,9 +26,7 @@ describe('runtime config', () => {
       ok: true,
       json: async () => ({
         features: {
-          media_format_by_surface: {
-            card: 'raw',
-          },
+          more_like_this_on_post: true,
         },
       }),
     });
@@ -46,6 +39,6 @@ describe('runtime config', () => {
       credentials: 'same-origin',
       cache: 'no-store',
     });
-    expect(FEATURE_FLAGS.media_format_by_surface?.card).toBe('raw');
+    expect(FEATURE_FLAGS.more_like_this_on_post).toBe(true);
   });
 });

@@ -448,19 +448,7 @@
   },
   "features": {
     "more_like_this_on_post": false,
-    "use_gif_posters": false,
-    "media_format_by_surface": {
-      "card": "card",
-      "masonry": "masonry",
-      "detail": "detail",
-      "poster": "poster",
-      "gallery-grid": "card",
-      "gallery-masonry": "masonry",
-      "feed": "masonry",
-      "lightbox": "detail",
-      "post-detail": "raw",
-      "gutter": "card"
-    }
+    "use_gif_posters": false
   },
   "render": {
     "pages": {
