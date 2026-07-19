@@ -3,6 +3,27 @@ import { isApexRuntime, resolveTransportBase } from './transport-base.js';
 
 const DEFAULT_TIMEOUT_MS = 16000;
 
+export class AuthRequestError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super(`auth request failed: ${status}`);
+    this.name = 'AuthRequestError';
+    this.status = status;
+  }
+}
+
+/**
+ * Login form copy. Do not surface API bodies — Cloudflare/proxies often return
+ * HTML challenge pages that are useless as UI text.
+ */
+export const formatLoginError = (err: unknown): string => {
+  if (err instanceof AuthRequestError && err.status === 429) {
+    return 'Login failed - Too Many Requests';
+  }
+  return 'Login failed';
+};
+
 const resolveBase = () => {
   const env = (import.meta as any).env || {};
   const hostname = typeof window === 'undefined' ? 'localhost' : window.location.hostname;
@@ -42,7 +63,7 @@ const fetchJson = async <T>(
   }
 
   if (!resp.ok || resp.status !== 200) {
-    throw new Error(`auth request failed: ${resp.status}`);
+    throw new AuthRequestError(resp.status);
   }
   const ct = resp.headers.get('content-type') || '';
   if (!ct.includes('application/json')) {

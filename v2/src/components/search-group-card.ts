@@ -220,6 +220,7 @@ export class SearchGroupCard extends LitElement {
               .alternateVideoSrc=${mediaSource?.alternateVideoSrc}
               .fallbackSrc=${mediaSource?.fallbackSrc}
               .forceImage=${mediaSource?.forceImage ?? false}
+              .redacted=${presentation.media.redacted ?? false}
               .type=${this.mode === 'masonry' ? 'masonry' : 'card'}
               style="object-fit: ${this.mode === 'masonry' ? 'contain' : 'cover'};"
               @media-state-change=${this.handleMediaStateChange}

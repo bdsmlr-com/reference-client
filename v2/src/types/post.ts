@@ -492,6 +492,7 @@ export interface PresentationLayout {
 
 export interface MediaPresentationDescriptor extends MediaInfo {
   preset: string;
+  redacted?: boolean;
 }
 
 export interface PostPresentationModel {

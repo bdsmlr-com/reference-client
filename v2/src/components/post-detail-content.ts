@@ -16,6 +16,7 @@ import {
 import { formatDateShort, getTooltipDate } from '../services/date-formatter.js';
 import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
 import { toPresentationModel } from '../services/post-presentation.js';
+import { shouldObscureMedia } from '../services/media-redaction.js';
 import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import {
@@ -227,6 +228,7 @@ export class PostDetailContent extends LitElement {
           .fallbackSrc=${alternateVideoSrc ? (item.original?.url || undefined) : undefined}
           .type=${'detail'}
           .forceImage=${item.kind === 'IMAGE'}
+          .redacted=${shouldObscureMedia(this.post)}
           .autoplayVideo=${false}
           .controlsVideo=${true}
           .loopVideo=${true}

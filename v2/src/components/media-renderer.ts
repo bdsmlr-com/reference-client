@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
-import { resolveMediaUrl, isAnimation, isNativeVideo, probeNextBucket, type MediaRenderType } from '../services/media-resolver.js';
+import { resolveMediaUrl, isAnimation, isNativeVideo, type MediaRenderType } from '../services/media-resolver.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { getMediaBehavior } from '../services/media-behavior.js';
 import { useGifPosters } from '../config.js';
@@ -87,6 +87,11 @@ export class MediaRenderer extends LitElement {
       overflow: visible;
     }
 
+    /* Redaction must clip scaled blur even when detail-mode sets overflow:visible. */
+    :host([redacted]) {
+      overflow: hidden;
+    }
+
     :host([square-crop-mode]) {
       height: 100%;
       display: flex;
@@ -169,6 +174,58 @@ export class MediaRenderer extends LitElement {
       word-break: break-all;
       border-top: 1px solid #00ff00;
     }
+
+    .redaction-shell {
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      pointer-events: none;
+      /* Bridge host object-fit (set by parents) to img/video inherit. */
+      object-fit: inherit;
+    }
+
+    :host([detail-mode]) .redaction-shell {
+      height: auto;
+    }
+
+    /*
+     * EXPERIMENT — fake pixel grid over blur. Tune via :root:
+     *   --redaction-mosaic-opacity (default 0.28)
+     *   --redaction-mosaic-size    (default 5px)
+     *   --redaction-mosaic-blend   (default soft-light; try overlay / hard-light / difference)
+     * Discard if it looks rubbish.
+     */
+    .redaction-mosaic {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      opacity: var(--redaction-mosaic-opacity, 0.28);
+      mix-blend-mode: var(--redaction-mosaic-blend, soft-light);
+      image-rendering: pixelated;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2'%3E%3Crect width='1' height='1' fill='%23fff'/%3E%3Crect x='1' y='1' width='1' height='1' fill='%23fff'/%3E%3Crect x='1' width='1' height='1' fill='%23000'/%3E%3Crect y='1' width='1' height='1' fill='%23000'/%3E%3C/svg%3E");
+      background-size: var(--redaction-mosaic-size, 5px) var(--redaction-mosaic-size, 5px);
+    }
+
+    /*
+     * Base 8px fallback first (older engines that ignore calc/vars).
+     * Then surface-specific factors via CSS variables (console-tunable on :root).
+     *   --redaction-blur-factor-thumb (default 0.75) → cards / gutters
+     *   --redaction-blur-factor-full  (default 2)    → feed / detail / lightbox
+     */
+    :host([redacted]) img,
+    :host([redacted]) video {
+      filter: blur(8px);
+      filter: blur(calc(8px * var(--redaction-blur-factor-thumb, 0.75)));
+      transform: scale(1.08);
+    }
+
+    :host([redacted][redaction-full]) img,
+    :host([redacted][redaction-full]) video {
+      filter: blur(8px);
+      filter: blur(calc(8px * var(--redaction-blur-factor-full, 2)));
+    }
   `,
   ];
 
@@ -179,6 +236,7 @@ export class MediaRenderer extends LitElement {
   @property({ type: String }) type: MediaRenderType = 'feed';
   @property({ type: String }) alt = '';
   @property({ type: Boolean }) forceImage = false;
+  @property({ type: Boolean, reflect: true }) redacted = false;
   @property({ type: Boolean }) loading = true;
   @property({ type: Boolean }) autoplayVideo?: boolean;
   @property({ type: Boolean }) controlsVideo?: boolean;
@@ -366,7 +424,6 @@ export class MediaRenderer extends LitElement {
       return;
     }
 
-    if (probeNextBucket(el)) return;
     this.showPlaceholder = true;
     this.dispatchMediaStateChange(true);
   }
@@ -417,6 +474,27 @@ export class MediaRenderer extends LitElement {
     const posterSource = posterSrc || baseImageSrc;
     const posterUrl = resolveMediaUrl(posterSource, 'poster');
     return posterUrl || resolvedImageUrl;
+  }
+
+  private isFullSurfaceRedaction(): boolean {
+    return (
+      this.type === 'feed'
+      || this.type === 'masonry'
+      || this.type === 'detail'
+      || this.type === 'post-detail'
+      || this.type === 'lightbox'
+    );
+  }
+
+  private wrapIfRedacted(content: unknown) {
+    if (!this.redacted) return content;
+    // EXPERIMENT mosaic overlay — drop .redaction-mosaic + CSS block to discard.
+    return html`
+      <div class="redaction-shell">
+        ${content}
+        <div class="redaction-mosaic" aria-hidden="true"></div>
+      </div>
+    `;
   }
 
   render() {
@@ -484,6 +562,7 @@ export class MediaRenderer extends LitElement {
     this.toggleAttribute('square-crop-mode', squareCropMode);
     const detailFitStyle = 'object-fit: contain; max-width: min(100%, calc(100vw - 40px)); max-height: calc(min(78vh, 920px) - 20px); width: auto; height: auto; margin: 0 auto;';
     this.toggleAttribute('detail-mode', isDetailSurface);
+    this.toggleAttribute('redaction-full', this.redacted && this.isFullSurfaceRedaction());
     const mediaStyle = isDetailSurface
       ? detailFitStyle
       : fillMode
@@ -517,7 +596,7 @@ export class MediaRenderer extends LitElement {
       const videoStyle = fillMode ? mediaStyle : nonFillVideoStyle;
 
       if (!fillMode) {
-        return keyed(this.retryGeneration, html`
+        return this.wrapIfRedacted(keyed(this.retryGeneration, html`
           <div class="video-shell">
             ${effectivePoster ? html`
               <img
@@ -546,10 +625,10 @@ export class MediaRenderer extends LitElement {
             ></video>
           </div>
           ${this.renderDebug(resolvedPrimaryUrl)}
-        `);
+        `));
       }
 
-      return keyed(this.retryGeneration, html`
+      return this.wrapIfRedacted(keyed(this.retryGeneration, html`
         <video
           src=${resolvedPrimaryUrl}
           ?autoplay=${effectiveAutoplay}
@@ -567,10 +646,10 @@ export class MediaRenderer extends LitElement {
           @play=${this.handleVideoReady}
         ></video>
         ${this.renderDebug(resolvedPrimaryUrl)}
-      `);
+      `));
     }
 
-    return keyed(this.retryGeneration, html`
+    return this.wrapIfRedacted(keyed(this.retryGeneration, html`
       <img
         src=${resolvedImageUrl}
         alt=${this.alt}
@@ -581,7 +660,7 @@ export class MediaRenderer extends LitElement {
         @error=${this.handleError}
       />
       ${this.renderDebug(resolvedImageUrl)}
-    `);
+    `));
   }
 }
 

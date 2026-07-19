@@ -8,6 +8,7 @@ import { BREAKPOINTS, SPACING, CONTAINER_SPACING } from '../types/ui-constants.j
 import { loadRenderContract } from '../services/render-contract.js';
 import { handleAvatarImageError, normalizeAvatarUrl } from '../services/avatar-url.js';
 import { describePrimaryMediaForSurface, extractMedia, POST_TYPE_ICONS, type ProcessedPost } from '../types/post.js';
+import { shouldObscureMedia } from '../services/media-redaction.js';
 import './media-renderer.js';
 import './blog-identity.js';
 
@@ -292,7 +293,7 @@ export class BlogList extends LitElement {
                       return html`
                         <div class="recent-item">
                           ${rawUrl
-                            ? html`<media-renderer .src=${rawUrl} .posterSrc=${mediaSource?.posterSrc} .alternateVideoSrc=${mediaSource?.alternateVideoSrc} .fallbackSrc=${mediaSource?.fallbackSrc} .forceImage=${mediaSource?.forceImage ?? false} .type=${'card'} style="object-fit: cover;"></media-renderer>`
+                            ? html`<media-renderer .src=${rawUrl} .posterSrc=${mediaSource?.posterSrc} .alternateVideoSrc=${mediaSource?.alternateVideoSrc} .fallbackSrc=${mediaSource?.fallbackSrc} .forceImage=${mediaSource?.forceImage ?? false} .redacted=${shouldObscureMedia(post)} .type=${'card'} style="object-fit: cover;"></media-renderer>`
                             : html`
                                 <div class="recent-fallback">
                                   <div class="recent-fallback-icon">${POST_TYPE_ICONS[post.type] || '📄'}</div>
