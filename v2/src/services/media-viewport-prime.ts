@@ -9,12 +9,13 @@
 type PrimeCallback = () => void;
 
 /** Default margin in px applied to top/bottom of the viewport root. */
-export let MEDIA_VIEWPORT_ROOT_MARGIN_PX = -30;
+export let MEDIA_VIEWPORT_ROOT_MARGIN_PX = 30;
 
 /**
- * When true, media-renderer reflects a visible primed outline (remove/toggle later).
+ * When true, media-renderer outlines hosts that are still deferred (not yet primed).
+ * Code-only: flip and rebuild — no runtime/localStorage switch.
  */
-export let MEDIA_VIEWPORT_PRIME_DEBUG = true;
+export let MEDIA_VIEWPORT_PRIME_DEBUG = false;
 
 class MediaViewportPrimeObserver {
   private observer: IntersectionObserver | null = null;

@@ -58,8 +58,8 @@ export class MediaRenderer extends LitElement {
       overflow: hidden;
     }
 
-    /* Temporary: eyeball viewport priming — remove or gate later */
-    :host([prime-debug][primed]) {
+    /* Deferred outline: on when MEDIA_VIEWPORT_PRIME_DEBUG is true (rebuild to toggle). */
+    :host([prime-debug]:not([primed])) {
       border: 2px solid red;
       box-shadow: inset 0 0 0 2px red;
     }

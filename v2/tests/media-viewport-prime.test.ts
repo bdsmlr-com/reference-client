@@ -38,7 +38,7 @@ describe('media-viewport-prime', () => {
     vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
 
     const { mediaViewportPrime, MEDIA_VIEWPORT_ROOT_MARGIN_PX } = await import('../src/services/media-viewport-prime.js');
-    expect(MEDIA_VIEWPORT_ROOT_MARGIN_PX).toBe(-30);
+    expect(MEDIA_VIEWPORT_ROOT_MARGIN_PX).toBe(30);
 
     const el = document.createElement('div');
     const cb = vi.fn();
@@ -92,7 +92,7 @@ describe('media-renderer viewport priming', () => {
     document.body.replaceChildren();
   });
 
-  it('defers media DOM until primed, then renders with debug outline attrs', async () => {
+  it('defers media DOM until primed; debug outline marks deferred hosts', async () => {
     const { MediaRenderer } = await import('../src/components/media-renderer.js');
     const renderer = new MediaRenderer();
     renderer.src = '/uploads/clear.jpg';
@@ -101,7 +101,8 @@ describe('media-renderer viewport priming', () => {
     await renderer.updateComplete;
 
     expect(renderer.primed).toBe(false);
-    expect(renderer.hasAttribute('prime-debug')).toBe(true);
+    expect(renderer.hasAttribute('prime-debug')).toBe(false);
+    expect(renderer.hasAttribute('primed')).toBe(false);
     expect(renderer.shadowRoot?.querySelector('img')).toBeNull();
     expect(renderer.shadowRoot?.querySelector('video')).toBeNull();
 
