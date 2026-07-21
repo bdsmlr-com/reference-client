@@ -20,16 +20,29 @@ describe('media resolver', () => {
     }
   });
 
-  it('normalizes legacy proxy-host URLs to direct origin fallback URLs in compat helpers', () => {
+  it('normalizes legacy proxy, s3, and bucket-host URLs to direct origin fallback URLs in compat helpers', () => {
     const legacyProxyUrl =
       'https://imgproxy.i.bdsmlr.com/unsafe/g:sm/rs:fill:300:300/plain/s3://ocdn012.bdsmlr.com/uploads/demo.jpg?e=1&t=abc';
+    const mediaAliasUrl =
+      'https://media.i.bdsmlr.com/feed/s3://ocdn012.bdsmlr.com/uploads/demo-2.jpg?e=2&t=def';
+    const bucketHostUrl = 'https://ocdn012.bdsmlr.com/uploads/demo-3.jpg?e=3&t=ghi';
 
     expect((mediaResolver as any).toOriginFallbackUrl(legacyProxyUrl)).toBe(
       'https://ocdn012.bdsmlr.com/uploads/demo.jpg?e=1&t=abc',
     );
+    expect((mediaResolver as any).toOriginFallbackUrl(mediaAliasUrl)).toBe(
+      'https://ocdn012.bdsmlr.com/uploads/demo-2.jpg?e=2&t=def',
+    );
     expect((mediaResolver as any).toOriginFallbackUrl('/uploads/demo.jpg')).toBe(
       'https://ocdn012.bdsmlr.com/uploads/demo.jpg',
     );
+    expect((mediaResolver as any).toOriginFallbackUrl('s3://ocdn012.bdsmlr.com/uploads/demo-4.jpg')).toBe(
+      'https://ocdn012.bdsmlr.com/uploads/demo-4.jpg',
+    );
+    expect((mediaResolver as any).toOriginFallbackUrl('/s3://ocdn012.bdsmlr.com/uploads/demo-5.jpg')).toBe(
+      'https://ocdn012.bdsmlr.com/uploads/demo-5.jpg',
+    );
+    expect((mediaResolver as any).toOriginFallbackUrl(bucketHostUrl)).toBe(bucketHostUrl);
   });
 
   it('does not synthesize proxy hosts for relative inputs', () => {
