@@ -51,6 +51,7 @@ import {
 } from './api-error.js';
 import { isOffline } from './connection.js';
 import { logError } from './error-telemetry.js';
+import { trackOutageEvent } from './google-analytics.js';
 import { getAuthUser } from '../state/auth-state.js';
 import type {
   SearchPostsByTagRequest,
@@ -595,16 +596,28 @@ async function apiRequestCore<T>(
       }
 
       // Handle rate limit errors (429) with longer backoff (RES-003)
-      if (resp.status === 429 && retryAttempt < RATE_LIMIT_MAX_RETRIES) {
-        const retryAfterHeader = resp.headers.get('Retry-After');
-        const retryAfterMs = parseRetryAfterHeader(retryAfterHeader);
-        const delay = calculateRateLimitDelay(retryAttempt, retryAfterMs);
-        console.log(
-          `Rate limited (HTTP 429), retrying in ${delay}ms (attempt ${retryAttempt + 1}/${RATE_LIMIT_MAX_RETRIES})` +
-            (retryAfterHeader ? ` [Retry-After: ${retryAfterHeader}]` : '')
-        );
-        await sleep(delay);
-        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1);
+      if (resp.status === 429) {
+        // Fire once per request (not on each backoff retry) so GA isn't spammed.
+        if (retryAttempt === 0) {
+          trackOutageEvent('outage_429_rate_limited', {
+            component: 'api',
+            endpoint,
+            error_code: ApiErrorCode.RATE_LIMITED,
+          });
+        }
+        //
+        // TODO: It seems like a terrible idea to retry when rate limited
+        if (retryAttempt < RATE_LIMIT_MAX_RETRIES) {
+          const retryAfterHeader = resp.headers.get('Retry-After');
+          const retryAfterMs = parseRetryAfterHeader(retryAfterHeader);
+          const delay = calculateRateLimitDelay(retryAttempt, retryAfterMs);
+          console.log(
+            `Rate limited (HTTP 429), retrying in ${delay}ms (attempt ${retryAttempt + 1}/${RATE_LIMIT_MAX_RETRIES})` +
+              (retryAfterHeader ? ` [Retry-After: ${retryAfterHeader}]` : '')
+          );
+          await sleep(delay);
+          return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1);
+        }
       }
 
       // Create typed ApiError for non-OK responses

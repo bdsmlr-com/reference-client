@@ -1,4 +1,5 @@
 import { getAuthUser } from '../state/auth-state.js';
+import { trackOutageEvent } from './google-analytics.js';
 import { isApexRuntime, resolveTransportBase } from './transport-base.js';
 
 const DEFAULT_TIMEOUT_MS = 16000;
@@ -63,6 +64,14 @@ const fetchJson = async <T>(
   }
 
   if (!resp.ok || resp.status !== 200) {
+    if (resp.status === 429) {
+      // Typically Cloudflare (or an edge proxy) rather than app-level rate limiting.
+      trackOutageEvent('outage_429_rate_limited', {
+        component: 'auth-service',
+        endpoint: path,
+        error_code: '429',
+      });
+    }
     throw new AuthRequestError(resp.status);
   }
   const ct = resp.headers.get('content-type') || '';
