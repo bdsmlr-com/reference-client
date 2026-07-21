@@ -74,6 +74,34 @@ describe('post media extraction', () => {
     expect(media.representationKind).toBe('ANIMATED_VIDEO');
   });
 
+
+  it('preserves API alternate ordering for animated-video candidates', () => {
+    const media = extractMedia({
+      id: 21,
+      type: 2,
+      contentBlocks: [{ mediaBlock: {} }],
+      mediaRepresentation: {
+        kind: 'ANIMATED_VIDEO',
+        items: [
+          {
+            kind: 'IMAGE',
+            original: { url: 'https://cdn.example.com/bar.gif?e=1&t=2' },
+            alternates: [
+              { url: 'https://cdn.example.com/bar-low.mp4?e=1&t=2', mimeType: 'video/mp4' },
+              { url: 'https://cdn.example.com/bar-high.mp4?e=1&t=2', mimeType: 'video/mp4' },
+            ],
+          },
+        ],
+      },
+    } as any);
+
+    expect(media.videoUrl).toBe('https://cdn.example.com/bar-low.mp4?e=1&t=2');
+    expect(media.items?.[0].alternates?.map((candidate) => candidate.url)).toEqual([
+      'https://cdn.example.com/bar-low.mp4?e=1&t=2',
+      'https://cdn.example.com/bar-high.mp4?e=1&t=2',
+    ]);
+  });
+
   it('falls back to the original image when animated-video alternates are absent', () => {
     const media = extractMedia({
       id: 3,

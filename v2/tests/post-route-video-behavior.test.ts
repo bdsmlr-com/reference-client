@@ -53,11 +53,13 @@ describe('post route media behavior', () => {
     expect(src).toContain("const detailFitStyle = 'object-fit: contain; max-width: min(100%, calc(100vw - 40px)); max-height: calc(min(78vh, 920px) - 20px); width: auto; height: auto; margin: 0 auto;';");
     expect(src).toContain("const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';");
     expect(src).toContain('const isAnim = isAnimation(baseImageSrc);');
-    expect(src).toContain('&& !alternateKnownBad');
+    expect(src).toContain("const alternateMissMemoized = this.getCachedAlternateFailure() === 'missing-or-404';");
+    expect(src).toContain('&& !alternateMissMemoized');
     expect(src).toContain('&& !this.alternatePlaybackFailed');
     expect(src).toContain("const treatAnimationAsVideo = this.alternateVideoSrc");
     expect(src).toContain("!this.forceImage && !this.alternateVideoSrc");
-    expect(src).toContain('animatedAlternateAvailabilityCache');
+    expect(src).toContain('animatedAlternateMissCache');
+    expect(src).toContain("if (reason === 'missing-or-404') {");
     expect(src).toContain('markAlternateUnavailable');
     expect(src).not.toContain('alternateProbeStatus');
     expect(src).toContain('const behavior = getMediaBehavior(this.type);');

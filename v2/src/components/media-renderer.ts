@@ -15,7 +15,7 @@ import {
 
 type ProbeFailureReason = 'missing-or-404' | 'timeout' | 'token-or-auth' | 'codec-or-playback' | 'other-load-error';
 
-const animatedAlternateAvailabilityCache = new Map<string, { available: false; reason?: ProbeFailureReason }>();
+const animatedAlternateMissCache = new Set<string>();
 const MEDIA_ERR_NETWORK = 2;
 const MEDIA_ERR_DECODE = 3;
 const MEDIA_ERR_SRC_NOT_SUPPORTED = 4;
@@ -268,8 +268,7 @@ export class MediaRenderer extends LitElement {
     if (!this.alternateVideoSrc) return '';
     const cacheKey = canonicalAnimatedAlternateIdentity(this.alternateVideoSrc);
     if (!cacheKey) return '';
-    const cached = animatedAlternateAvailabilityCache.get(cacheKey);
-    return cached?.available === false ? cached.reason || 'other-load-error' : '';
+    return animatedAlternateMissCache.has(cacheKey) ? 'missing-or-404' : '';
   }
 
   private syncAlternateFallbackReasonFromCache(): void {
@@ -407,9 +406,12 @@ export class MediaRenderer extends LitElement {
   };
 
   private markAlternateUnavailable(reason: ProbeFailureReason): void {
+    if (reason !== 'missing-or-404') {
+      return;
+    }
     const cacheKey = canonicalAnimatedAlternateIdentity(this.alternateVideoSrc);
     if (cacheKey) {
-      animatedAlternateAvailabilityCache.set(cacheKey, { available: false, reason });
+      animatedAlternateMissCache.add(cacheKey);
     }
     this.alternateFallbackReason = reason;
     this.alternatePlaybackFailed = true;
@@ -420,7 +422,10 @@ export class MediaRenderer extends LitElement {
     const el = e.target as HTMLElement;
     if (Boolean(this.alternateVideoSrc) && el.tagName === 'VIDEO') {
       const mediaError = (el as HTMLMediaElement).error;
-      this.markAlternateUnavailable(classifyProbeFailure(this.alternateVideoSrc, mediaError));
+      const reason = classifyProbeFailure(this.alternateVideoSrc, mediaError);
+      if (reason === 'missing-or-404') {
+        this.markAlternateUnavailable(reason);
+      }
       return;
     }
 
@@ -434,7 +439,7 @@ export class MediaRenderer extends LitElement {
     this.alternatePlaybackFailed = false;
     const cacheKey = canonicalAnimatedAlternateIdentity(this.alternateVideoSrc);
     if (cacheKey) {
-      animatedAlternateAvailabilityCache.delete(cacheKey);
+      animatedAlternateMissCache.delete(cacheKey);
     }
     this.alternateFallbackReason = '';
     this.retryGeneration += 1;
@@ -543,9 +548,9 @@ export class MediaRenderer extends LitElement {
     const resolvedAlternateVideoUrl = this.alternateVideoSrc ? resolveMediaUrl(this.alternateVideoSrc, this.type) : '';
     const { fillMode, isDetailSurface, reserveSpace } = this.getSurfaceModes();
     const usesRawAlias = resolvedImageUrl.includes('/raw/s3://');
-    const alternateKnownBad = Boolean(this.getCachedAlternateFailure());
+    const alternateMissMemoized = this.getCachedAlternateFailure() === 'missing-or-404';
     const shouldUseAlternateVideo = Boolean(this.alternateVideoSrc)
-      && !alternateKnownBad
+      && !alternateMissMemoized
       && !this.alternatePlaybackFailed;
     const isAnim = isAnimation(baseImageSrc);
     const treatAnimationAsVideo = this.alternateVideoSrc
