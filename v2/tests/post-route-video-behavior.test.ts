@@ -1,6 +1,23 @@
-import { describe, it, expect } from 'vitest';
+// @vitest-environment happy-dom
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+afterEach(() => {
+  document.body.innerHTML = '';
+  vi.unstubAllGlobals();
+});
+
+async function newRenderer() {
+  await import('../src/components/media-renderer.js');
+  return document.createElement('media-renderer') as any;
+}
+
+async function flushAsyncWork() {
+  await Promise.resolve();
+  await Promise.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
 
 describe('post route media behavior', () => {
   it('view-post renders post-detail-content directly without the reused feed-card shell', () => {
@@ -59,8 +76,10 @@ describe('post route media behavior', () => {
     expect(src).toContain("const treatAnimationAsVideo = this.alternateVideoSrc");
     expect(src).toContain("!this.forceImage && !this.alternateVideoSrc");
     expect(src).toContain('animatedAlternateMissCache');
-    expect(src).toContain("if (reason === 'missing-or-404') {");
+    expect(src).toContain('animatedAlternateProbeCache');
+    expect(src).toContain('void this.confirmAlternateFailureReason(this.alternateVideoSrc, reason);');
     expect(src).toContain('markAlternateUnavailable');
+    expect(src).toContain('probeAnimatedAlternateFailure');
     expect(src).not.toContain('alternateProbeStatus');
     expect(src).toContain('const behavior = getMediaBehavior(this.type);');
     expect(src).toContain('const effectiveAutoplay = this.autoplayVideo ?? behavior.autoplay;');
@@ -80,6 +99,85 @@ describe('post route media behavior', () => {
     expect(src).toContain('cursor: pointer;');
     expect(src).toContain('event.stopPropagation();');
     expect(src).toContain('event.preventDefault();');
+  });
+
+  it('falls back only after a confirmed signed alternate 404 and memoizes that miss', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 404 }));
+
+    const renderer = await newRenderer();
+    renderer.src = 'https://ocdn012.bdsmlr.com/uploads/photos/miss.gif?e=1&t=1';
+    renderer.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/miss.mp4?e=1&t=1';
+    renderer.fallbackSrc = renderer.src;
+    renderer.forceImage = true;
+    renderer.type = 'feed';
+
+    renderer.handleError({
+      target: {
+        tagName: 'VIDEO',
+        error: { code: 2 },
+      },
+    } as unknown as Event);
+    await flushAsyncWork();
+
+    expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledWith(
+      'https://ocdn012.bdsmlr.com/uploads/photos/miss.mp4?e=1&t=1',
+      expect.objectContaining({ method: 'HEAD', mode: 'cors', cache: 'no-store' }),
+    );
+    expect(renderer.alternateFallbackReason).toBe('missing-or-404');
+    expect(renderer.alternatePlaybackFailed).toBe(true);
+
+    const memoized = await newRenderer();
+    memoized.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/miss.mp4?e=2&t=2';
+    memoized.syncAlternateFallbackReasonFromCache();
+    expect(memoized.alternateFallbackReason).toBe('missing-or-404');
+  });
+
+  it('does not treat unsigned network, auth, or decode failures as missing alternates', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ status: 403 });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const unsignedRenderer = await newRenderer();
+    unsignedRenderer.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/unsigned.mp4';
+    unsignedRenderer.handleError({
+      target: {
+        tagName: 'VIDEO',
+        error: { code: 2 },
+      },
+    } as unknown as Event);
+    await flushAsyncWork();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(unsignedRenderer.alternateFallbackReason).toBe('other-load-error');
+    expect(unsignedRenderer.alternatePlaybackFailed).toBe(false);
+
+    const signedRenderer = await newRenderer();
+    signedRenderer.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/auth.mp4?e=1&t=1';
+    signedRenderer.handleError({
+      target: {
+        tagName: 'VIDEO',
+        error: { code: 2 },
+      },
+    } as unknown as Event);
+    await flushAsyncWork();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://ocdn012.bdsmlr.com/uploads/photos/auth.mp4?e=1&t=1',
+      expect.objectContaining({ method: 'HEAD', mode: 'cors', cache: 'no-store' }),
+    );
+    expect(signedRenderer.alternateFallbackReason).toBe('token-or-auth');
+    expect(signedRenderer.alternatePlaybackFailed).toBe(false);
+
+    const decodeRenderer = await newRenderer();
+    decodeRenderer.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/decode.mp4?e=1&t=1';
+    decodeRenderer.handleError({
+      target: {
+        tagName: 'VIDEO',
+        error: { code: 3 },
+      },
+    } as unknown as Event);
+
+    expect(decodeRenderer.alternateFallbackReason).toBe('codec-or-playback');
+    expect(decodeRenderer.alternatePlaybackFailed).toBe(false);
   });
 
   it('post-detail-content emits the canonical detail media family from ordered blocks', () => {

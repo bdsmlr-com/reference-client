@@ -16,6 +16,7 @@ import {
 type ProbeFailureReason = 'missing-or-404' | 'timeout' | 'token-or-auth' | 'codec-or-playback' | 'other-load-error';
 
 const animatedAlternateMissCache = new Set<string>();
+const animatedAlternateProbeCache = new Map<string, Promise<ProbeFailureReason>>();
 const MEDIA_ERR_NETWORK = 2;
 const MEDIA_ERR_DECODE = 3;
 const MEDIA_ERR_SRC_NOT_SUPPORTED = 4;
@@ -32,16 +33,52 @@ function classifyProbeFailure(
   mediaError: { code?: number | null } | null | undefined,
 ): ProbeFailureReason {
   const code = mediaError?.code ?? undefined;
+  const usesSignedDeliveryToken = Boolean(url && /[?&](e|t)=/i.test(url));
   if (code === MEDIA_ERR_DECODE || code === MEDIA_ERR_SRC_NOT_SUPPORTED) {
     return 'codec-or-playback';
   }
-  if (url && /[?&](e|t)=/i.test(url)) {
+  if (code === MEDIA_ERR_NETWORK && !usesSignedDeliveryToken) {
+    return 'other-load-error';
+  }
+  if (usesSignedDeliveryToken) {
     return 'token-or-auth';
   }
-  if (code === MEDIA_ERR_NETWORK) {
-    return 'missing-or-404';
-  }
   return 'other-load-error';
+}
+
+async function probeAnimatedAlternateFailure(url: string | undefined): Promise<ProbeFailureReason> {
+  if (!url) return 'other-load-error';
+  const cacheKey = canonicalAnimatedAlternateIdentity(url);
+  if (cacheKey) {
+    const inFlight = animatedAlternateProbeCache.get(cacheKey);
+    if (inFlight) {
+      return inFlight;
+    }
+  }
+
+  const probe = (async (): Promise<ProbeFailureReason> => {
+    try {
+      const response = await fetch(url, { method: 'HEAD', mode: 'cors', cache: 'no-store' });
+      if (response.status === 404) {
+        return 'missing-or-404';
+      }
+      if (response.status === 401 || response.status === 403) {
+        return 'token-or-auth';
+      }
+      return 'other-load-error';
+    } catch {
+      return 'other-load-error';
+    } finally {
+      if (cacheKey) {
+        animatedAlternateProbeCache.delete(cacheKey);
+      }
+    }
+  })();
+
+  if (cacheKey) {
+    animatedAlternateProbeCache.set(cacheKey, probe);
+  }
+  return probe;
 }
 
 @customElement('media-renderer')
@@ -418,14 +455,34 @@ export class MediaRenderer extends LitElement {
     this.showPosterFrame = true;
   }
 
+
+  private async confirmAlternateFailureReason(
+    alternateUrl: string | undefined,
+    initialReason: ProbeFailureReason,
+  ): Promise<void> {
+    const finalReason = initialReason === 'token-or-auth'
+      ? await probeAnimatedAlternateFailure(alternateUrl)
+      : initialReason;
+    if (alternateUrl !== this.alternateVideoSrc) {
+      return;
+    }
+    if (finalReason === 'missing-or-404') {
+      this.markAlternateUnavailable(finalReason);
+      return;
+    }
+    this.alternateFallbackReason = finalReason;
+  }
+
   private handleError(e: Event) {
     const el = e.target as HTMLElement;
     if (Boolean(this.alternateVideoSrc) && el.tagName === 'VIDEO') {
       const mediaError = (el as HTMLMediaElement).error;
       const reason = classifyProbeFailure(this.alternateVideoSrc, mediaError);
-      if (reason === 'missing-or-404') {
-        this.markAlternateUnavailable(reason);
+      if (reason === 'codec-or-playback') {
+        this.alternateFallbackReason = reason;
+        return;
       }
+      void this.confirmAlternateFailureReason(this.alternateVideoSrc, reason);
       return;
     }
 
