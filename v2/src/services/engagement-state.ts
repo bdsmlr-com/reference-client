@@ -1,4 +1,5 @@
 import { getAuthUser } from '../state/auth-state.js';
+import { trackEvent } from './google-analytics.js';
 import type {
   BatchGetLikeStatesRequest,
   BatchGetLikeStatesResponse,
@@ -319,6 +320,7 @@ export class EngagementStateController {
         const liked = response.state?.liked ?? true;
         this.applySnapshot(postId, actorBlogId, liked, 'server');
       }
+      trackEvent('post_liked', { post_id: postId, acting_blog_id: actorBlogId });
       return response;
     } catch (error) {
       if (this.isCurrentRequest(requestSnapshot)) {
@@ -350,6 +352,7 @@ export class EngagementStateController {
         const liked = response.state?.liked ?? false;
         this.applySnapshot(postId, actorBlogId, liked, 'server');
       }
+      trackEvent('post_unliked', { post_id: postId, acting_blog_id: actorBlogId });
       return response;
     } catch (error) {
       if (this.isCurrentRequest(requestSnapshot)) {
@@ -386,7 +389,13 @@ export class EngagementStateController {
     };
 
     if (mode === 'queue') {
-      return this.engagementApi.reblogPost(requestPayload);
+      const response = await this.engagementApi.reblogPost(requestPayload);
+      trackEvent('post_reblogged', {
+        post_id: postId,
+        acting_blog_id: actorBlogId,
+        reblog_mode: mode,
+      });
+      return response;
     }
 
     const cacheKey = buildReblogStateCacheKey(postId, actorBlogId);
@@ -402,6 +411,11 @@ export class EngagementStateController {
       if (this.isCurrentRequest(requestSnapshot)) {
         this.applyReblogSnapshot(postId, actorBlogId, optimisticCount, 'server');
       }
+      trackEvent('post_reblogged', {
+        post_id: postId,
+        acting_blog_id: actorBlogId,
+        reblog_mode: mode,
+      });
       return response;
     } catch (error) {
       if (this.isCurrentRequest(requestSnapshot)) {
@@ -435,6 +449,7 @@ export class EngagementStateController {
       if (this.isCurrentRequest(requestSnapshot)) {
         this.applyCommentSnapshot(postId, optimisticCount, 'server');
       }
+      trackEvent('comment_posted', { post_id: postId, acting_blog_id: actorBlogId });
       return response;
     } catch (error) {
       if (this.isCurrentRequest(requestSnapshot)) {

@@ -7,6 +7,7 @@ import { toPresentationModel } from '../services/post-presentation.js';
 import { getAuthUser } from '../state/auth-state.js';
 import { deletePost as deletePostRequest, reportPost as reportPostRequest } from '../services/api.js';
 import { buildPageUrl } from '../services/blog-resolver.js';
+import { trackEvent } from '../services/google-analytics.js';
 import type { ProcessedPost } from '../types/post.js';
 
 const engagementState = createEngagementStateController(apiClient.engagement);
@@ -723,6 +724,11 @@ export class PostActions extends LitElement {
     this.reportError = null;
     try {
       await reportPostRequest({ actingBlogId, postId: post.id });
+      trackEvent('content_reported', {
+        content_type: 'post',
+        post_id: post.id,
+        acting_blog_id: actingBlogId,
+      });
       this.dispatchEvent(new CustomEvent('post-report-submit', {
         detail: { postId: post.id },
         bubbles: true,

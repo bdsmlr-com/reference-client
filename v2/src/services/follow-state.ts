@@ -1,5 +1,6 @@
 import { blogFollowState, followBlog, unfollowBlog } from './api.js';
 import { getAuthUser } from '../state/auth-state.js';
+import { trackEvent } from './google-analytics.js';
 import type { BlogFollowStateRequest, BlogFollowStateResponse, FollowBlogRequest, FollowBlogResponse, UnfollowBlogRequest, UnfollowBlogResponse } from '../types/api.js';
 
 type FollowApi = {
@@ -119,6 +120,7 @@ export class FollowStateController {
     try {
       const response = await this.followApi.followBlog({ actingBlogId: actorBlogId, targetBlogId });
       if (this.isCurrentRequest(snapshot)) this.applySnapshot(targetBlogId, actorBlogId, true, 'server');
+      trackEvent('blog_followed', { blog_id: targetBlogId, acting_blog_id: actorBlogId });
       return response;
     } catch (error) {
       if (this.isCurrentRequest(snapshot)) {
@@ -139,6 +141,7 @@ export class FollowStateController {
     try {
       const response = await this.followApi.unfollowBlog({ actingBlogId: actorBlogId, targetBlogId });
       if (this.isCurrentRequest(snapshot)) this.applySnapshot(targetBlogId, actorBlogId, false, 'server');
+      trackEvent('blog_unfollowed', { blog_id: targetBlogId, acting_blog_id: actorBlogId });
       return response;
     } catch (error) {
       if (this.isCurrentRequest(snapshot)) {

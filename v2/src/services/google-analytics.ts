@@ -5,24 +5,36 @@ function getGtag(): GtagFn | undefined {
   return typeof gtag === 'function' ? (gtag as GtagFn) : undefined;
 }
 
+/**
+ * Invoke gtag without ever throwing. Missing gtag or gtag errors are logged and ignored.
+ */
 export function callGtag(...args: unknown[]): boolean {
-  const gtag = getGtag();
-  if (!gtag) {
-    console.warn('[google-analytics] globalThis.gtag is not defined; skipped gtag call', args[0]);
+  try {
+    const gtag = getGtag();
+    if (!gtag) {
+      console.warn('[google-analytics] globalThis.gtag is not defined; skipped gtag call', args[0]);
+      return false;
+    }
+
+    gtag(...args);
+    return true;
+  } catch (error) {
+    console.warn('[google-analytics] gtag call failed', args[0], error);
     return false;
   }
-
-  gtag(...args);
-  return true;
 }
 
 export function trackPageView(pagePath?: string): void {
-  const path = pagePath ?? `${window.location.pathname}${window.location.search}`;
+  try {
+    const path = pagePath ?? `${window.location.pathname}${window.location.search}`;
 
-  callGtag('event', 'page_view', {
-    page_path: path,
-    page_location: window.location.href,
-  });
+    callGtag('event', 'page_view', {
+      page_path: path,
+      page_location: window.location.href,
+    });
+  } catch (error) {
+    console.warn('[google-analytics] trackPageView failed', error);
+  }
 }
 
 export type OutageEventParams = {
@@ -42,11 +54,30 @@ export function trackOutageEvent(
   eventName: string,
   params?: OutageEventParams
 ): boolean {
-  return callGtag('event', eventName, {
-    page_path: window.location.pathname,
-    page_location: window.location.href,
-    ...params,
-  });
+  return trackEvent(eventName, params);
+}
+
+/**
+ * Fire a GA4 event with standard page context.
+ * Fire-and-forget: never throws (bad params, missing gtag, or gtag errors).
+ */
+export function trackEvent(
+  eventName: string,
+  params?: Record<string, unknown>
+): boolean {
+  try {
+    const location = typeof window !== 'undefined' ? window.location : undefined;
+    const safeParams =
+      params && typeof params === 'object' && !Array.isArray(params) ? params : undefined;
+    return callGtag('event', String(eventName || 'unknown_event'), {
+      page_path: location?.pathname,
+      page_location: location?.href,
+      ...safeParams,
+    });
+  } catch (error) {
+    console.warn('[google-analytics] trackEvent failed', eventName, error);
+    return false;
+  }
 }
 
 let navigationTrackingInitialized = false;

@@ -10,6 +10,7 @@ import { getAuthUser } from '../state/auth-state.js';
 import { followStateController } from '../services/follow-state.js';
 import { blockedStateController } from '../services/blocked-state.js';
 import { reportBlog } from '../services/api.js';
+import { trackEvent } from '../services/google-analytics.js';
 import { sanitizeHtmlFragment } from '../services/html-sanitizer.js';
 import './route-shell-card.js';
 import './blog-identity.js';
@@ -660,6 +661,10 @@ export class BlogHeader extends LitElement {
     this.reportError = null;
     try {
       await reportBlog({ actingBlogId, targetBlogId: this.blogId, reason });
+      trackEvent('blog_reported', {
+        blog_id: this.blogId,
+        acting_blog_id: actingBlogId,
+      });
       this.reportSubmitted = true;
       this.reportModalOpen = false;
       this.reportBody = '';

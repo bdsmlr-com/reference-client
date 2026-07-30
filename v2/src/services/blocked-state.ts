@@ -1,5 +1,6 @@
 import { blockBlog, getBlocked, unblockBlog } from './api.js';
 import { getAuthUser } from '../state/auth-state.js';
+import { trackEvent } from './google-analytics.js';
 import type { BlockBlogRequest, BlockBlogResponse, GetBlockedRequest, GetBlockedResponse, UnblockBlogRequest, UnblockBlogResponse } from '../types/api.js';
 
 type BlockApi = {
@@ -100,6 +101,8 @@ export class BlockedStateController {
     this.notifyListeners();
     try {
       const response = await this.blockApi.blockBlog({ actingBlogId: actorBlogId, targetBlogId });
+      // Platform blocks blogs (owner graph); event name matches requested GA taxonomy.
+      trackEvent('user_blocked', { blog_id: targetBlogId, acting_blog_id: actorBlogId });
       return response;
     } catch (error) {
       this.blockedBlogIds = previous;
@@ -115,6 +118,7 @@ export class BlockedStateController {
     this.notifyListeners();
     try {
       const response = await this.blockApi.unblockBlog({ actingBlogId: actorBlogId, targetBlogId });
+      trackEvent('user_unblocked', { blog_id: targetBlogId, acting_blog_id: actorBlogId });
       return response;
     } catch (error) {
       this.blockedBlogIds = previous;
