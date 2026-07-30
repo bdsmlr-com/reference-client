@@ -103,7 +103,6 @@ import type {
   BlogFollowGraphResponse,
   ListBlogsRecentActivityRequest,
   ListBlogsRecentActivityResponse,
-  GetPostRequest,
   GetPostResponse,
   BatchGetPostsRequest,
   BatchGetPostsResponse,
@@ -170,8 +169,8 @@ const ENDPOINT_TIMEOUTS: Record<string, number> = {
   '/v2/list-post-reblogs': 15000,
   '/v2/batch-get-reblog-states': 15000,
 
-  // Detail endpoints (30s) - single post detail can still trigger heavy backend hydration
-  '/v2/get-post-detail': 30000,
+  // Detail endpoints (30s) - single post fetch (via batch) can still trigger heavy backend hydration
+  '/v2/batch-get-posts': 30000,
   '/v2/list-blog-top-tags': 30000,
   '/v2/list-recommended-blogs': 30000,
 
@@ -1394,11 +1393,10 @@ export async function deletePost(
 export async function getPostDetail(
   postId: number
 ): Promise<GetPostResponse> {
-  const req: GetPostRequest = { post_id: postId };
-  return apiRequest<GetPostResponse>(
-    '/v2/get-post-detail',
-    req
-  );
+  // Prefer batch-get-posts: get-post-detail omits mediaRepresentation.alternates
+  // (e.g. missing mp4 for gifs on /post/). Same Post shape; unwrap the single item.
+  const batch = await batchGetPosts({ post_ids: [postId] });
+  return { post: batch.posts?.[0], error: batch.error };
 }
 
 export async function batchGetPosts(
