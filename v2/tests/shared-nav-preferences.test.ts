@@ -23,8 +23,11 @@ describe('shared nav preferences', () => {
     expect(src).toContain("rel=${page.newTab ? 'noreferrer noopener' : nothing}");
     expect(src).toContain('Queue ↗');
     expect(src.match(/Queue ↗/g)?.length).toBe(2);
+    expect(src).toContain('Edit Blog ↗');
+    expect(src).toContain('href=${`https://bdsmlr.com/blog/${this.currentUsername || getPrimaryBlogName() || \'\'}`}');
     expect(src).not.toContain('href="/dashboard" target="_blank" rel="noreferrer noopener">Post ↗</a>');
     expect(src).toContain('href="/settings/you"');
-    expect(src.indexOf('Queue ↗')).toBeLessThan(src.indexOf('Settings'));
+    expect(src.indexOf('Queue ↗')).toBeLessThan(src.indexOf('Edit Blog ↗'));
+    expect(src.indexOf('Edit Blog ↗')).toBeLessThan(src.indexOf('Settings'));
   });
 });

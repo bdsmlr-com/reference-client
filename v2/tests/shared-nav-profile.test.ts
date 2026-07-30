@@ -25,6 +25,8 @@ describe('shared-nav profile/settings behavior', () => {
     expect(src).toContain('Clear cache');
     expect(src).toContain('Queue ↗');
     expect(src.match(/Queue ↗/g)?.length).toBe(2);
+    expect(src).toContain('Edit Blog ↗');
+    expect(src).toContain('href=${`https://bdsmlr.com/blog/${this.currentUsername || getPrimaryBlogName() || \'\'}`}');
     expect(src).not.toContain('href="/dashboard" target="_blank" rel="noreferrer noopener">Post ↗</a>');
     expect(src).not.toContain('Gallery view');
     expect(src).not.toContain('Archive default sort');

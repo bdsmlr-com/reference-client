@@ -161,6 +161,27 @@ export class ViewSettingsUser extends LitElement {
         font-size: 13px;
       }
 
+      .legacy-settings-button {
+        display: inline-block;
+        margin-top: 4px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--bg-panel-alt);
+        color: var(--text-primary);
+        text-decoration: none;
+        font-size: 13px;
+      }
+
+      .legacy-settings-button:hover {
+        border-color: var(--accent);
+      }
+
+      .legacy-settings-button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
       .modal-backdrop {
         position: fixed;
         inset: 0;
@@ -857,6 +878,15 @@ export class ViewSettingsUser extends LitElement {
             </div>
           </div>
         ` : ''}
+        <div class="section">
+          <h2>Additional Settings</h2>
+          <a
+            class="legacy-settings-button"
+            href="https://bdsmlr.com/settings"
+            target="_blank"
+            rel="noreferrer noopener"
+          >Go to Legacy Settings</a>
+        </div>
         ${this.renderSelectedBlogModal()}
         ${this.renderSettingsRoadblockModal()}
       </div>

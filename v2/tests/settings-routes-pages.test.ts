@@ -45,6 +45,9 @@ describe('settings route pages', () => {
     expect(userSrc).toContain("this.renderRoutePreferenceRow('activity'");
     expect(userSrc).toContain("this.renderRoutePreferenceRow('social'");
     expect(userSrc).toContain('Reset</button>');
+    expect(userSrc).toContain('Additional Settings');
+    expect(userSrc).toContain('Go to Legacy Settings');
+    expect(userSrc).toContain('href="https://bdsmlr.com/settings"');
     expect(blogSrc).toContain('getBlogSettings');
     expect(blogSrc).toContain("customElement('view-settings-blog')");
   });
