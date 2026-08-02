@@ -61,6 +61,10 @@ export function getCurrentUsername(): string | null {
   return trimmed || null;
 }
 
+export function getCachedUsername(): string | null {
+  return getCurrentUsername();
+}
+
 export function setCurrentUsername(name: string): void {
   const normalized = name.trim();
   if (!normalized) {
@@ -90,10 +94,6 @@ export function clearProfileState(): void {
   emit(PROFILE_EVENTS.usernameChanged, { username: null });
   emit(PROFILE_EVENTS.galleryModeChanged, { mode: 'grid' });
   emit(PROFILE_EVENTS.sortPreferencesChanged, { archiveSort: null, searchSort: null });
-}
-
-export function isLoggedIn(): boolean {
-  return Boolean(getCurrentUsername());
 }
 
 export function getGalleryMode(scope?: string): GalleryMode {

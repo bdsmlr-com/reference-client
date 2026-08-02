@@ -4,7 +4,6 @@ import {
   setCurrentUsername,
   clearCurrentUsername,
   clearProfileState,
-  isLoggedIn,
   getGalleryMode,
   setGalleryMode,
   getArchiveSortPreference,
@@ -25,16 +24,15 @@ describe('profile service', () => {
     vi.stubGlobal('localStorage', { setItem, getItem, removeItem });
   });
 
-  it('persists and clears username login state', () => {
+  it('persists and clears username state', () => {
     getItem.mockReturnValueOnce(null);
-    expect(isLoggedIn()).toBe(false);
+    expect(getCurrentUsername()).toBe(null);
 
     setCurrentUsername('nonnudecuties');
     expect(setItem).toHaveBeenCalledWith('bdsmlr_profile_username', 'nonnudecuties');
 
     getItem.mockReturnValue('nonnudecuties');
     expect(getCurrentUsername()).toBe('nonnudecuties');
-    expect(isLoggedIn()).toBe(true);
 
     clearCurrentUsername();
     expect(removeItem).toHaveBeenCalledWith('bdsmlr_profile_username');
