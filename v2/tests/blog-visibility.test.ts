@@ -22,7 +22,7 @@ describe('blog visibility helpers', () => {
   });
 
   it('shows follower-gated detail for logged-in viewers on restricted blogs', () => {
-    vi.spyOn(profile, 'isLoggedIn').mockReturnValue(true);
+    vi.spyOn(profile, 'getCachedUsername').mockReturnValue('demo-blog');
     const blog: Blog = {
       id: 10352167,
       name: 'AwesomeMrandMrsGrey',
