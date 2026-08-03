@@ -217,6 +217,7 @@ describe('post route media behavior', () => {
     expect(src).toContain("const alternateVideoSrc = item.kind === 'IMAGE' && representationKind === 'ANIMATED_VIDEO'");
     expect(src).toContain('.alternateVideoSrc=${alternateVideoSrc || undefined}');
     expect(src).toContain('.autoplayVideo=${Boolean(alternateVideoSrc)}');
+    expect(src).toContain('.controlsVideo=${!alternateVideoSrc}');
     expect(src).toContain(".forceImage=${item.kind === 'IMAGE'}");
     expect(src).not.toContain('const mediaFiles = p.content?.files || [];');
     expect(src).not.toContain('const multiImageUrls = p.type === 2 && mediaFiles.length > 1 ? mediaFiles : [];');

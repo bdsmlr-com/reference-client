@@ -230,7 +230,7 @@ export class PostDetailContent extends LitElement {
           .forceImage=${item.kind === 'IMAGE'}
           .redacted=${shouldObscureMedia(this.post)}
           .autoplayVideo=${Boolean(alternateVideoSrc)}
-          .controlsVideo=${true}
+          .controlsVideo=${!alternateVideoSrc}
           .loopVideo=${true}
         ></media-renderer>
       </div>
