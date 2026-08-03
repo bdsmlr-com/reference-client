@@ -9,6 +9,7 @@ import { deletePost as deletePostRequest, reportPost as reportPostRequest } from
 import { buildPageUrl } from '../services/blog-resolver.js';
 import { trackEvent } from '../services/google-analytics.js';
 import type { ProcessedPost } from '../types/post.js';
+import type { PostAuthMode } from '../services/post-auth-mode.js';
 
 const engagementState = createEngagementStateController(apiClient.engagement);
 
@@ -322,6 +323,7 @@ export class PostActions extends LitElement {
 
   @property({ type: Object }) post: ProcessedPost | null = null;
   @property({ type: String }) variant: 'card' | 'detail' = 'card';
+  @property({ type: String }) authMode: PostAuthMode = 'authenticated';
 
   @state() private likeState: boolean | undefined = undefined;
   @state() private reblogCount: number | undefined = undefined;
@@ -766,6 +768,15 @@ export class PostActions extends LitElement {
   private renderCounts() {
     const post = this.post;
     if (!post) return nothing;
+    if (this.variant === 'detail' && this.authMode === 'anonymous') {
+      return html`
+        <div class="actions-row">
+          <button class="comment-btn" type="button">Log in to reblog</button>
+          <button class="comment-btn" type="button">Log in to comment</button>
+          <button class="comment-btn" type="button">Log in to like</button>
+        </div>
+      `;
+    }
     const presentation = toPresentationModel(post, {
       surface: this.variant === 'detail' ? 'detail' : 'card',
       page: this.variant === 'detail' ? 'post' : 'feed',

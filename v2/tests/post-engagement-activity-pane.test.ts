@@ -9,6 +9,8 @@ describe('post engagement activity pane', () => {
     const src = readFileSync(FILE, 'utf8');
 
     expect(src).toContain("@engagement-open-tab=${this.handleOpenTab}");
+    expect(src).toContain('.authMode=${this.authMode}');
+    expect(src).toContain("if (this.authMode !== 'authenticated') return;");
     expect(src).not.toContain("❤️ ${p.likesCount ?? 0}");
     expect(src).not.toContain("♻️ ${p.reblogsCount ?? 0}");
     expect(src).not.toContain("💬 ${p.commentsCount ?? 0}");

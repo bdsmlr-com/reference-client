@@ -10,6 +10,7 @@ import { type ProcessedPost } from '../types/post.js';
 import type { IdentityDecoration, Like, Comment, Reblog } from '../types/api.js';
 import { resolveLink, type ResolvedLink } from '../services/link-resolver.js';
 import type { PostRouteSource } from '../services/post-route-context.js';
+import type { PostAuthMode } from '../services/post-auth-mode.js';
 import './loading-spinner.js';
 import './post-actions.js';
 import './blog-identity.js';
@@ -51,6 +52,7 @@ export class PostEngagement extends LitElement {
 
   @property({ type: Object }) post: ProcessedPost | null = null;
   @property({ type: Boolean }) standalone = false;
+  @property({ type: String }) authMode: PostAuthMode = 'authenticated';
   @property({ type: String }) from: PostRouteSource = 'direct';
 
   @state() private activeTab: 'likes' | 'reblogs' | 'comments' | null = null;
@@ -73,6 +75,7 @@ export class PostEngagement extends LitElement {
     if (this.activeTab === tab) { this.activeTab = null; return; }
     this.activeTab = tab;
     if (!this.post) return;
+    if (this.authMode !== 'authenticated') return;
 
     this.loadingDetails = true;
     try {
@@ -221,7 +224,7 @@ export class PostEngagement extends LitElement {
 
     return html`
       <div class="${this.standalone ? 'engagement-section' : ''}">
-        <post-actions variant="detail" .post=${this.post} @engagement-open-tab=${this.handleOpenTab}></post-actions>
+        <post-actions variant="detail" .post=${this.post} .authMode=${this.authMode} @engagement-open-tab=${this.handleOpenTab}></post-actions>
 
         ${this.renderEngagementDetail()}
       </div>

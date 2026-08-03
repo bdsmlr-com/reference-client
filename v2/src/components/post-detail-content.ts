@@ -193,6 +193,7 @@ export class PostDetailContent extends LitElement {
 
   @property({ type: Object }) post: ProcessedPost | null = null;
   @property({ type: Object }) originPost: ProcessedPost | null = null;
+  @property({ type: String }) authMode: 'unknown' | 'authenticated' | 'anonymous' = 'authenticated';
   @property({ type: String }) surface: 'detail' | 'lightbox' = 'detail';
   @property({ type: String }) from = 'direct';
 
@@ -405,7 +406,7 @@ export class PostDetailContent extends LitElement {
               `
             : nothing}
 
-        <post-engagement .post=${p} .from=${this.from as PostRouteSource} ?standalone=${engagementStandalone}></post-engagement>
+        <post-engagement .post=${p} .authMode=${this.authMode} .from=${this.from as PostRouteSource} ?standalone=${engagementStandalone}></post-engagement>
 
         ${presentation.layout.showRecommendations
           ? html`<post-recommendations .postId=${p.id} .mode=${recommendationsMode} .showBrowseLink=${true} .from=${this.from as PostRouteSource}></post-recommendations>`
