@@ -31,26 +31,28 @@ async function flush(): Promise<void> {
 }
 
 describe('anonymous thin post mode', () => {
-  it('renders CTA-only detail actions without aggregate counts', async () => {
-    const el = document.createElement('post-actions') as any;
-    el.variant = 'detail';
-    el.post = createPost();
-    el.authMode = 'anonymous';
+  it('renders CTA-only detail actions without aggregate counts for anonymous and unknown auth', async () => {
+    for (const authMode of ['anonymous', 'unknown'] as const) {
+      const el = document.createElement('post-actions') as any;
+      el.variant = 'detail';
+      el.post = createPost();
+      el.authMode = authMode;
 
-    document.body.appendChild(el);
+      document.body.appendChild(el);
 
-    try {
-      await el.updateComplete;
+      try {
+        await el.updateComplete;
 
-      const text = el.shadowRoot?.textContent?.replace(/\s+/g, ' ').trim() || '';
-      expect(text).toContain('Log in to like');
-      expect(text).toContain('Log in to reblog');
-      expect(text).toContain('Log in to comment');
-      expect(text).not.toContain('12');
-      expect(text).not.toContain('8');
-      expect(text).not.toContain('4');
-    } finally {
-      el.remove();
+        const text = el.shadowRoot?.textContent?.replace(/\s+/g, ' ').trim() || '';
+        expect(text).toContain('Log in to like');
+        expect(text).toContain('Log in to reblog');
+        expect(text).toContain('Log in to comment');
+        expect(text).not.toContain('12');
+        expect(text).not.toContain('8');
+        expect(text).not.toContain('4');
+      } finally {
+        el.remove();
+      }
     }
   });
 
@@ -86,6 +88,48 @@ describe('anonymous thin post mode', () => {
       reblogsSpy.mockRestore();
       commentsSpy.mockRestore();
     }
+  });
+
+  it('does not activate engagement tabs before auth resolves', async () => {
+    const likesSpy = vi.spyOn(apiClient.engagement, 'getLikes').mockResolvedValue({ likes: [] } as any);
+    const reblogsSpy = vi.spyOn(apiClient.engagement, 'getReblogs').mockResolvedValue({ reblogs: [] } as any);
+    const commentsSpy = vi.spyOn(apiClient.engagement, 'getComments').mockResolvedValue({ comments: [] } as any);
+
+    for (const authMode of ['anonymous', 'unknown'] as const) {
+      const el = document.createElement('post-engagement') as any;
+      el.post = createPost();
+      el.authMode = authMode;
+
+      document.body.appendChild(el);
+
+      try {
+        await el.updateComplete;
+
+        const actionStrip = el.shadowRoot?.querySelector('post-actions') as any;
+        expect(actionStrip).toBeTruthy();
+        await actionStrip.updateComplete;
+
+        expect(el.activeTab).toBeNull();
+        actionStrip.dispatchEvent(new CustomEvent('engagement-open-tab', {
+          detail: { tab: 'likes' },
+          bubbles: true,
+          composed: true,
+        }));
+        await flush();
+        await el.updateComplete;
+
+        expect(el.activeTab).toBeNull();
+        expect(likesSpy).not.toHaveBeenCalled();
+        expect(reblogsSpy).not.toHaveBeenCalled();
+        expect(commentsSpy).not.toHaveBeenCalled();
+      } finally {
+        el.remove();
+      }
+    }
+
+    likesSpy.mockRestore();
+    reblogsSpy.mockRestore();
+    commentsSpy.mockRestore();
   });
 
   it('threads anonymous auth mode from post detail into engagement while keeping recommendations mounted', () => {

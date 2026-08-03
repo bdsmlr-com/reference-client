@@ -768,7 +768,7 @@ export class PostActions extends LitElement {
   private renderCounts() {
     const post = this.post;
     if (!post) return nothing;
-    if (this.variant === 'detail' && this.authMode === 'anonymous') {
+    if (this.variant === 'detail' && this.authMode !== 'authenticated') {
       return html`
         <div class="actions-row">
           <button class="comment-btn" type="button">Log in to reblog</button>

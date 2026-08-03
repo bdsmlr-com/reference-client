@@ -72,10 +72,10 @@ export class PostEngagement extends LitElement {
   }
 
   private async toggleTab(tab: 'likes' | 'reblogs' | 'comments') {
+    if (this.authMode !== 'authenticated') return;
     if (this.activeTab === tab) { this.activeTab = null; return; }
     this.activeTab = tab;
     if (!this.post) return;
-    if (this.authMode !== 'authenticated') return;
 
     this.loadingDetails = true;
     try {

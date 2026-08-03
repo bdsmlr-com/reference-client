@@ -18,7 +18,7 @@ describe('post action surfaces', () => {
   it('keeps delete as a detail-only action in post-actions', () => {
     const src = readFileSync(join(ROOT, 'post-actions.ts'), 'utf8');
     expect(src).toContain("this.variant === 'detail'");
-    expect(src).toContain("this.authMode === 'anonymous'");
+    expect(src).toContain("this.authMode !== 'authenticated'");
     expect(src).toContain('Log in to reblog');
     expect(src).toContain('Log in to comment');
     expect(src).toContain('Log in to like');
