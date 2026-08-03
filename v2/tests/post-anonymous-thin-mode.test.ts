@@ -132,6 +132,55 @@ describe('anonymous thin post mode', () => {
     commentsSpy.mockRestore();
   });
 
+  it('keeps the comments pane open when the fetched comments exceed the embedded count', async () => {
+    const commentsSpy = vi.spyOn(apiClient.engagement, 'getComments').mockResolvedValue({
+      comments: [
+        {
+          blogName: 'demo-blog',
+          blogId: 10,
+          createdAtUnix: 1_700_000_100,
+          body: 'first comment',
+        },
+        {
+          blogName: 'other-blog',
+          blogId: 11,
+          createdAtUnix: 1_700_000_200,
+          body: 'second comment',
+        },
+      ],
+    } as any);
+
+    const el = document.createElement('post-engagement') as any;
+    el.post = createPost({ commentsCount: 1 });
+    el.authMode = 'authenticated';
+
+    document.body.appendChild(el);
+
+    try {
+      await el.updateComplete;
+
+      const actionStrip = el.shadowRoot?.querySelector('post-actions') as any;
+      expect(actionStrip).toBeTruthy();
+      actionStrip.dispatchEvent(new CustomEvent('engagement-open-tab', {
+        detail: { tab: 'comments' },
+        bubbles: true,
+        composed: true,
+      }));
+      await flush();
+      await el.updateComplete;
+      await flush();
+      await el.updateComplete;
+
+      expect(commentsSpy).toHaveBeenCalledWith(1);
+      expect(el.activeTab).toBe('comments');
+      expect(el.shadowRoot?.textContent).toContain('first comment');
+      expect(el.shadowRoot?.textContent).toContain('second comment');
+    } finally {
+      el.remove();
+      commentsSpy.mockRestore();
+    }
+  });
+
   it('threads anonymous auth mode from post detail into engagement while keeping recommendations mounted', () => {
     const detailSrc = readFileSync(join(COMPONENTS_ROOT, 'post-detail-content.ts'), 'utf8');
 

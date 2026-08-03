@@ -63,11 +63,14 @@ export class PostEngagement extends LitElement {
 
   updated(changedProperties: Map<string, any>) {
     if (changedProperties.has('post')) {
-      this.activeTab = null;
-      this.likes = null;
-      this.comments = null;
-      this.reblogs = null;
-      this.loadingDetails = false;
+      const previousPost = changedProperties.get('post') as ProcessedPost | null | undefined;
+      if (previousPost?.id !== this.post?.id) {
+        this.activeTab = null;
+        this.likes = null;
+        this.comments = null;
+        this.reblogs = null;
+        this.loadingDetails = false;
+      }
     }
   }
 
