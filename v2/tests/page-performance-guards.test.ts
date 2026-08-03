@@ -64,7 +64,8 @@ describe('page performance guards', () => {
     const src = readFileSync(join(ROOT, 'pages/view-post.ts'), 'utf8');
 
     expect(src).toContain('this.loading = false;');
-    expect(src).toContain('this.scheduleOriginPostLoad(resp.post.originPostId, id);');
+    expect(src).toContain('this.queueOriginPostLoad(resp.post.originPostId, id);');
+    expect(src).toContain('private queueOriginPostLoad(originPostId: number, expectedPostId: number): void');
     expect(src).toContain('private scheduleOriginPostLoad(originPostId: number, expectedPostId: number): void');
     expect(src).toContain('window.setTimeout(() => {');
     expect(src).toContain('void this.loadOriginPost(originPostId, expectedPostId);');

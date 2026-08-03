@@ -23,7 +23,7 @@ import { buildPageUrl, getPrimaryBlogName, getViewedBlogName, isAdminMode, syncA
 import { loadRenderContract } from './services/render-contract.js';
 import { validateRenderContract } from './services/render-contract-validator.js';
 import { getStatus } from './services/auth-service.js';
-import { setAuthUser, clearAuthUser } from './state/auth-state.js';
+import { setAuthChecking, setAuthUser, clearAuthUser } from './state/auth-state.js';
 import { setCurrentUsername } from './services/profile.js';
 import { setStoredBlogName } from './services/blog-resolver.js';
 import { getStoredActiveBlog, setStoredActiveBlog } from './utils/storage.js';
@@ -192,6 +192,7 @@ export class AppRoot extends LitElement {
 
   private async checkAuth() {
     this.checkingAuth = true;
+    setAuthChecking(true);
     this.authError = null;
     try {
       const status = await getStatus();

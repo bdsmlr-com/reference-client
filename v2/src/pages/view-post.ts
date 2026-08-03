@@ -5,6 +5,8 @@ import { apiClient } from '../services/client.js';
 import { extractMedia, type ProcessedPost } from '../types/post.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { getContextualErrorMessage, isApiError } from '../services/api-error.js';
+import { getAuthUser, isAuthCheckPending } from '../state/auth-state.js';
+import { resolvePostAuthMode, type PostAuthMode } from '../services/post-auth-mode.js';
 import '../components/skeleton-loader.js';
 import '../components/post-detail-content.js';
 import type { PostRouteSource } from '../services/post-route-context.js';
@@ -38,14 +40,31 @@ export class ViewPost extends LitElement {
   @state() private error = '';
   @state() private post: ProcessedPost | null = null;
   @state() private originPost: ProcessedPost | null = null;
+  @state() private postAuthMode: PostAuthMode = 'unknown';
 
   private originLoadHandle: number | null = null;
+  private pendingOriginLoad: { originPostId: number; expectedPostId: number } | null = null;
+
+  private readonly handleAuthUserChanged = () => {
+    this.syncPostAuthMode();
+  };
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
+    }
+    this.syncPostAuthMode();
+  }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     if (this.originLoadHandle !== null && typeof window !== 'undefined') {
       window.clearTimeout(this.originLoadHandle);
       this.originLoadHandle = null;
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
     }
   }
 
@@ -55,12 +74,43 @@ export class ViewPost extends LitElement {
     }
   }
 
+  private syncPostAuthMode(): void {
+    const nextMode = resolvePostAuthMode({
+      checkingAuth: isAuthCheckPending(),
+      authUser: getAuthUser(),
+    });
+    const wasUnknown = this.postAuthMode === 'unknown';
+    this.postAuthMode = nextMode;
+
+    if (wasUnknown && nextMode !== 'unknown') {
+      this.flushPendingOriginLoad();
+    }
+  }
+
+  private flushPendingOriginLoad(): void {
+    const pending = this.pendingOriginLoad;
+    if (!pending || this.postAuthMode === 'unknown') {
+      return;
+    }
+    this.pendingOriginLoad = null;
+    this.scheduleOriginPostLoad(pending.originPostId, pending.expectedPostId);
+  }
+
+  private queueOriginPostLoad(originPostId: number, expectedPostId: number): void {
+    if (this.postAuthMode === 'unknown') {
+      this.pendingOriginLoad = { originPostId, expectedPostId };
+      return;
+    }
+    this.scheduleOriginPostLoad(originPostId, expectedPostId);
+  }
+
   private async loadPost(): Promise<void> {
     if (!this.postId) return;
     this.loading = true;
     this.error = '';
     this.post = null;
     this.originPost = null;
+    this.pendingOriginLoad = null;
 
     try {
       const id = parseInt(this.postId);
@@ -86,7 +136,7 @@ export class ViewPost extends LitElement {
           && !resp.post.originPostMissing
           && resp.post.originPostId !== resp.post.id
         ) {
-          this.scheduleOriginPostLoad(resp.post.originPostId, id);
+          this.queueOriginPostLoad(resp.post.originPostId, id);
         }
         return;
       }
@@ -103,7 +153,6 @@ export class ViewPost extends LitElement {
       this.loading = false;
     }
   }
-
 
   private scheduleOriginPostLoad(originPostId: number, expectedPostId: number): void {
     if (typeof window === 'undefined') {
@@ -160,6 +209,7 @@ export class ViewPost extends LitElement {
         style="width: 100%;"
         .post=${this.post}
         .originPost=${this.originPost}
+        .authMode=${this.postAuthMode}
         .from=${this.from as PostRouteSource}
       ></post-detail-content>
     `;
