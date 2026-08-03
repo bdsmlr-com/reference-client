@@ -268,11 +268,11 @@ export class AppRoot extends LitElement {
   }
 
   render() {
-    if (!this.runtimeConfigReady || this.checkingAuth) {
+    const allowAnonymousRead = isAnonymousReadableRoute(window.location.pathname);
+
+    if (!this.runtimeConfigReady || (this.checkingAuth && !allowAnonymousRead)) {
       return html``;
     }
-
-    const allowAnonymousRead = isAnonymousReadableRoute(window.location.pathname);
 
     if (!this.authenticated && !allowAnonymousRead) {
       const env = (import.meta as any).env || {};

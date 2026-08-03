@@ -8,6 +8,7 @@ describe('app-root anonymous read gating', () => {
 
     expect(src).toContain("import { isAnonymousReadableRoute } from './services/route-access-policy.js';");
     expect(src).toContain('const allowAnonymousRead = isAnonymousReadableRoute(window.location.pathname);');
+    expect(src).toContain('if (!this.runtimeConfigReady || (this.checkingAuth && !allowAnonymousRead)) {');
     expect(src).toContain('if (!this.authenticated && !allowAnonymousRead) {');
   });
 });
