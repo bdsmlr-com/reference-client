@@ -79,7 +79,6 @@ export class PostEngagement extends LitElement {
     if (this.activeTab === tab) { this.activeTab = null; return; }
     this.activeTab = tab;
     if (!this.post) return;
-    if (this.authMode !== 'authenticated') return;
 
     this.loadingDetails = true;
     try {
