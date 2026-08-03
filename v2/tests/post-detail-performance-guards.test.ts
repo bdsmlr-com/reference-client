@@ -5,10 +5,10 @@ import { join } from 'node:path';
 const ROOT = join(process.cwd(), 'src');
 
 describe('post detail performance guards', () => {
-  it('gives batch-get-posts an explicit elevated timeout budget', () => {
+  it('gives get-post-detail an explicit elevated timeout budget', () => {
     const src = readFileSync(join(ROOT, 'services/api.ts'), 'utf8');
 
-    expect(src).toContain("'/v2/batch-get-posts': 30000");
+    expect(src).toContain("'/v2/get-post-detail': 30000");
   });
 
   it('shares micro blog identity hydration through the shared blog-meta cache service', () => {

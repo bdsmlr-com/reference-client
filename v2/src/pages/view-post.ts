@@ -69,7 +69,7 @@ export class ViewPost extends LitElement {
       if (resp.post) {
         // DEVB-2573: Temporary client workaround — treat originBlogGone (reblog origin
         // strikethrough) as unavailable on direct post hits. Proper fix likely needs API/index
-        // work so banned/deleted state is enforced consistently (e.g. 410 Gone, not
+        // work so banned/deleted state is enforced consistently (e.g. get-post-detail 410, not
         // just originBlogGone on an otherwise viewable reblog).
         if (!isAdminMode() && resp.post.originBlogGone) {
           this.error = 'This post is no longer available.';
