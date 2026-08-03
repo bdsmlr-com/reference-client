@@ -132,7 +132,7 @@ describe('post route media behavior', () => {
     expect(memoized.alternateFallbackReason).toBe('missing-or-404');
   });
 
-  it('does not treat unsigned network, auth, or decode failures as missing alternates', async () => {
+  it('does not treat unsigned network or auth failures as missing alternates', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ status: 403 });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -166,9 +166,18 @@ describe('post route media behavior', () => {
     );
     expect(signedRenderer.alternateFallbackReason).toBe('token-or-auth');
     expect(signedRenderer.alternatePlaybackFailed).toBe(false);
+  });
+
+  it('falls back to the GIF when alternate video fails with codec or format errors', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
 
     const decodeRenderer = await newRenderer();
+    decodeRenderer.src = 'https://ocdn012.bdsmlr.com/uploads/photos/decode.gif?e=1&t=1';
     decodeRenderer.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/decode.mp4?e=1&t=1';
+    decodeRenderer.fallbackSrc = decodeRenderer.src;
+    decodeRenderer.forceImage = true;
+    decodeRenderer.type = 'feed';
     decodeRenderer.handleError({
       target: {
         tagName: 'VIDEO',
@@ -176,8 +185,26 @@ describe('post route media behavior', () => {
       },
     } as unknown as Event);
 
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(decodeRenderer.alternateFallbackReason).toBe('codec-or-playback');
-    expect(decodeRenderer.alternatePlaybackFailed).toBe(false);
+    expect(decodeRenderer.alternatePlaybackFailed).toBe(true);
+
+    const formatRenderer = await newRenderer();
+    formatRenderer.src = 'https://ocdn012.bdsmlr.com/uploads/photos/format.gif?e=1&t=1';
+    formatRenderer.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/format.mp4?e=1&t=1';
+    formatRenderer.fallbackSrc = formatRenderer.src;
+    formatRenderer.forceImage = true;
+    formatRenderer.type = 'feed';
+    formatRenderer.handleError({
+      target: {
+        tagName: 'VIDEO',
+        error: { code: 4 },
+      },
+    } as unknown as Event);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(formatRenderer.alternateFallbackReason).toBe('codec-or-playback');
+    expect(formatRenderer.alternatePlaybackFailed).toBe(true);
   });
 
   it('post-detail-content emits the canonical detail media family from ordered blocks', () => {

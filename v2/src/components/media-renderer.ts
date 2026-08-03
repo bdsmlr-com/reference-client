@@ -443,12 +443,16 @@ export class MediaRenderer extends LitElement {
   };
 
   private markAlternateUnavailable(reason: ProbeFailureReason): void {
-    if (reason !== 'missing-or-404') {
+    // GIF fallback whenever the MP4 alternate won't play — confirmed miss or
+    // codec/format failure (browsers often report missing/corrupt MP4s as code 4).
+    if (reason !== 'missing-or-404' && reason !== 'codec-or-playback') {
       return;
     }
-    const cacheKey = canonicalAnimatedAlternateIdentity(this.alternateVideoSrc);
-    if (cacheKey) {
-      animatedAlternateMissCache.add(cacheKey);
+    if (reason === 'missing-or-404') {
+      const cacheKey = canonicalAnimatedAlternateIdentity(this.alternateVideoSrc);
+      if (cacheKey) {
+        animatedAlternateMissCache.add(cacheKey);
+      }
     }
     this.alternateFallbackReason = reason;
     this.alternatePlaybackFailed = true;
@@ -466,7 +470,7 @@ export class MediaRenderer extends LitElement {
     if (alternateUrl !== this.alternateVideoSrc) {
       return;
     }
-    if (finalReason === 'missing-or-404') {
+    if (finalReason === 'missing-or-404' || finalReason === 'codec-or-playback') {
       this.markAlternateUnavailable(finalReason);
       return;
     }
@@ -479,7 +483,7 @@ export class MediaRenderer extends LitElement {
       const mediaError = (el as HTMLMediaElement).error;
       const reason = classifyProbeFailure(this.alternateVideoSrc, mediaError);
       if (reason === 'codec-or-playback') {
-        this.alternateFallbackReason = reason;
+        this.markAlternateUnavailable(reason);
         return;
       }
       void this.confirmAlternateFailureReason(this.alternateVideoSrc, reason);
