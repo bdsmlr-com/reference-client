@@ -1,0 +1,30 @@
+clone:
+  git:
+    image: woodpeckerci/plugin-git
+
+steps:
+  test-focused:
+    image: node:22
+    when:
+      event:
+        - push
+        - tag
+        - manual
+    commands:
+      - cd v2
+      - npm ci
+      - npm run test:ci:focused
+
+  test-broad:
+    image: node:22
+    depends_on:
+      - test-focused
+    when:
+      event:
+        - push
+        - tag
+        - manual
+    commands:
+      - cd v2
+      - npm ci
+      - npm run test:ci:broad
