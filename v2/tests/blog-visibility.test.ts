@@ -1,14 +1,18 @@
+// @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { blogIsRestrictedForViewer, getRestrictedEmptyStateMessage } from '../src/services/blog-visibility.js';
 import * as profile from '../src/services/profile.js';
+import { clearAuthUser, setAuthUser } from '../src/state/auth-state.js';
 import type { Blog } from '../src/types/api.js';
 
 describe('blog visibility helpers', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     profile.clearProfileState();
+    clearAuthUser();
   });
+
   it('detects a restricted blog from identity decorations', () => {
     const blog: Blog = {
       id: 10352167,
@@ -23,6 +27,7 @@ describe('blog visibility helpers', () => {
 
   it('shows follower-gated detail for logged-in viewers on restricted blogs', () => {
     vi.spyOn(profile, 'getCachedUsername').mockReturnValue('demo-blog');
+    setAuthUser({ userId: 1, blogId: 2 } as any);
     const blog: Blog = {
       id: 10352167,
       name: 'AwesomeMrandMrsGrey',

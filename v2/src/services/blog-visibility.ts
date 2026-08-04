@@ -1,5 +1,6 @@
 import { getCachedUsername } from "./profile.js";
 import type { Blog } from "../types/api.js";
+import { getAuthUser } from '../state/auth-state.js';
 
 function decorationTokens(blog: Blog | null | undefined): Set<string> {
   return new Set((blog?.identityDecorations || []).map((decoration) => String(decoration?.token || '').trim()).filter(Boolean));
@@ -20,7 +21,7 @@ export function getRestrictedEmptyStateMessage(
   if (!blogIsRestrictedForViewer(blog)) {
     return '';
   }
-  if (!getCachedUsername()) {
+  if (!getAuthUser()) {
     return 'This blog is private.';
   }
   if (blogIsFollowerGatedForViewer(blog)) {

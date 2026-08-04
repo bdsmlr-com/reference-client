@@ -531,7 +531,7 @@ export class SharedNav extends LitElement {
   }
 
   private renderProfileMenu() {
-    const loggedIn = getCachedUsername();
+    const loggedIn = Boolean(getAuthUser());
 
     return html`
       <div class="profile-menu" role="menu" aria-label="Profile and settings menu" @click=${(e: Event) => e.stopPropagation()}>
@@ -624,7 +624,7 @@ export class SharedNav extends LitElement {
       this.currentPage === 'following' || this.currentPage === 'follower-feed'
         ? ''
         : (this.currentPage === 'timeline' ? 'activity' : this.currentPage);
-    const loggedIn = getCachedUsername();
+    const loggedIn = Boolean(getAuthUser());
     const profileToggleLabel = loggedIn ? '' : 'Log in';
     const profileInitial = (this.currentUsername || 'u').charAt(0).toUpperCase();
     const logoLink = this.getLogoLink();

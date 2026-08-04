@@ -33,7 +33,9 @@ describe('profile cached username helpers', () => {
     getItem.mockReset();
     removeItem.mockReset();
     vi.stubGlobal('localStorage', { setItem, getItem, removeItem });
-    vi.stubGlobal('window', new EventTarget());
+    const win = new EventTarget() as EventTarget & { location: { hostname: string; pathname: string; href: string } };
+    win.location = { hostname: 'bdsmlr.com', pathname: '/', href: 'https://bdsmlr.com/' };
+    vi.stubGlobal('window', win as unknown as Window & typeof globalThis);
     vi.stubGlobal('CustomEvent', TestCustomEvent as unknown as typeof CustomEvent);
     clearCurrentUsername();
     setAuthChecking(true);
