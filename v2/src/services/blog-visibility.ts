@@ -1,4 +1,4 @@
-import { isLoggedIn } from "./profile.js";
+import { getCachedUsername } from "./profile.js";
 import type { Blog } from "../types/api.js";
 
 function decorationTokens(blog: Blog | null | undefined): Set<string> {
@@ -20,7 +20,7 @@ export function getRestrictedEmptyStateMessage(
   if (!blogIsRestrictedForViewer(blog)) {
     return '';
   }
-  if (!isLoggedIn()) {
+  if (!getCachedUsername()) {
     return 'This blog is private.';
   }
   if (blogIsFollowerGatedForViewer(blog)) {
