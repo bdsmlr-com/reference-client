@@ -3,37 +3,16 @@
  * Maps underscore names to hyphen names for compatibility with main API.
  */
 
-import { extractMedia, type ProcessedPost } from '../types/post.js';
-import type { Post, SearchPostsByTagResponse } from '../types/api.js';
-import { applyRetrievalPostPolicies, type RetrievalPostPolicyMap } from './retrieval-presentation.js';
+import { materializeApiPosts } from './content-results.js';
+import type { RecResult, SimilarPostsResponse } from './recommendation-types.js';
 import { getAuthUser } from '../state/auth-state.js';
 import { resolveTransportBase } from './transport-base.js';
-
-export interface RecResult {
-  user_id?: string;
-  blog_id?: string;
-  content_id?: string;
-  post_id?: number;
-  post_owner?: string;
-  similarity_score: number;
-  total_likes?: number;
-}
 
 export interface RecResponse {
   count: number;
   recommendations: RecResult[];
   similar_content?: RecResult[];
   similar_posts?: RecResult[];
-  query_user_id?: string;
-  query_post_id?: number;
-}
-
-export interface SimilarPostsResponse {
-  posts?: Post[];
-  postPolicies?: RetrievalPostPolicyMap;
-  recommendations?: RecResult[];
-  similar_posts?: RecResult[];
-  count?: number;
   query_user_id?: string;
   query_post_id?: number;
 }
@@ -57,19 +36,9 @@ function normalizeName(name: string | undefined): string {
 }
 
 export function materializeRecommendedPosts(
-  response: Pick<SimilarPostsResponse, 'posts' | 'postPolicies'> | Pick<SearchPostsByTagResponse, 'posts' | 'postPolicies'>
-): ProcessedPost[] {
-  if (!Array.isArray(response.posts) || response.posts.length === 0) {
-    return [];
-  }
-
-  const posts = response.posts.map((post) => {
-    const processed = { ...post } as ProcessedPost;
-    processed._media = extractMedia(processed);
-    return processed;
-  });
-
-  return applyRetrievalPostPolicies(posts, response.postPolicies);
+  response: Pick<SimilarPostsResponse, 'posts' | 'postPolicies'>,
+) {
+  return materializeApiPosts(response.posts, response.postPolicies);
 }
 
 export const recService = {

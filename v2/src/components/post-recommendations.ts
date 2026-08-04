@@ -2,10 +2,11 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state, property } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
-import { type RecResult, type SimilarPostsResponse } from '../services/recommendation-api.js';
+import type { Post } from '../types/api.js';
+import { materializeApiPosts } from '../services/content-results.js';
+import type { RecResult, SimilarPostsResponse } from '../services/recommendation-types.js';
 import { describePrimaryMediaForSurface, extractMedia, type ProcessedPost } from '../types/post.js';
 import { shouldObscureMedia } from '../services/media-redaction.js';
-import type { Post } from '../types/api.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { isAdminMode } from '../services/blog-resolver.js';
@@ -18,32 +19,6 @@ import './load-footer.js';
 import './loading-spinner.js';
 
 const RECS_PAGE_SIZE = 20;
-
-export interface RecommendationHydrationDeps {
-  batchGetPosts: (postIds: number[]) => Promise<{ posts?: ProcessedPost[] }>;
-  getPost: (postId: number) => Promise<{ post?: ProcessedPost }>;
-}
-
-function buildCanonicalRecommendationItems(
-  posts: Post[],
-  policies: RetrievalPostPolicyMap | undefined,
-): RecResult[] {
-  const normalizedPosts = applyRetrievalPostPolicies(
-    posts.map((post) => {
-      const processed = { ...post } as ProcessedPost;
-      processed._media = extractMedia(processed);
-      return processed;
-    }),
-    policies,
-  );
-
-  return normalizedPosts.map((post) => ({
-    post_id: post.id,
-    post_owner: post.blogName,
-    similarity_score: 0,
-    _hydratedPost: post,
-  })) as RecResult[];
-}
 
 function hasRecommendationIdentity(post: Post | ProcessedPost): boolean {
   return Boolean(`${post.blogName || post.originBlogName || ''}`.trim());
@@ -117,7 +92,13 @@ export async function materializeRecommendationItems(
   deps: RecommendationHydrationDeps,
 ): Promise<RecResult[]> {
   if (Array.isArray(response.posts) && response.posts.length > 0) {
-    const canonical = buildCanonicalRecommendationItems(response.posts, response.postPolicies);
+    const canonicalPosts = materializeApiPosts(response.posts, response.postPolicies);
+    const canonical = canonicalPosts.map((post) => ({
+      post_id: post.id,
+      post_owner: post.blogName,
+      similarity_score: 0,
+      _hydratedPost: post,
+    })) as RecResult[];
     const missingIdentityIds = canonical
       .map((item) => (item as any)._hydratedPost as ProcessedPost | undefined)
       .filter((post): post is ProcessedPost => !!post)

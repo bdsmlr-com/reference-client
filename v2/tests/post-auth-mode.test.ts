@@ -1,7 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+// @vitest-environment happy-dom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { clearCurrentUsername, getCachedUsername, setCurrentUsername } from '../src/services/profile.js';
+import * as blogMeta from '../src/services/blog-meta.js';
+import '../src/components/shared-nav.js';
 import { resolvePostAuthMode } from '../src/services/post-auth-mode.js';
 import {
   clearAuthUser,
@@ -87,6 +90,11 @@ describe('shared auth state', () => {
 });
 
 describe('view-post auth bootstrap contract', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
   it('reads checkingAuth from shared auth state instead of a microtask approximation', () => {
     const src = readFileSync(join(process.cwd(), 'src/pages/view-post.ts'), 'utf8');
 
@@ -94,5 +102,43 @@ describe('view-post auth bootstrap contract', () => {
     expect(src).toContain('checkingAuth: isAuthCheckPending(),');
     expect(src).not.toContain('queueMicrotask');
     expect(src).not.toContain('authBootstrapComplete');
+  });
+
+  it('keeps shared-nav logged out when only cached username memory exists', async () => {
+    const storage = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn((key: string) => storage.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        storage.set(key, value);
+      }),
+      removeItem: vi.fn((key: string) => {
+        storage.delete(key);
+      }),
+    });
+    vi.spyOn(blogMeta, 'fetchHydratedBlogMetaByName').mockResolvedValue(null);
+    setCurrentUsername('demo-blog');
+    clearAuthUser();
+
+    const el = document.createElement('shared-nav') as any;
+    document.body.appendChild(el);
+
+    await el.updateComplete;
+    await Promise.resolve();
+    await el.updateComplete;
+
+    expect(getCachedUsername()).toBe('demo-blog');
+    expect(el.currentUsername).toBeNull();
+
+    const toggle = el.shadowRoot?.querySelector('.profile-toggle') as HTMLButtonElement | null;
+    expect(toggle?.getAttribute('aria-label')).toBe('Log in');
+    expect(toggle?.textContent?.trim()).toBe('Log in');
+
+    el.menuOpen = true;
+    el.requestUpdate();
+    await el.updateComplete;
+
+    const menuText = el.shadowRoot?.querySelector('.profile-menu')?.textContent || '';
+    expect(menuText).toContain('Log in');
+    expect(menuText).not.toContain('Log out');
   });
 });

@@ -15,7 +15,7 @@ import type { PostType, PostSortField, Order, PostVariant, BlogTagAffinity } fro
 import { parsePostTypesParam, parseVariantsParam } from '../services/post-filter-url.js';
 import { materializeSearchResultUnits, type SearchResultUnit } from '../services/search-result-units.js';
 import { applyPoliciesToResultUnits } from '../services/retrieval-presentation.js';
-import { contentGridItems, flattenContentResultPosts, prepareContentResultUnits } from '../services/content-results.js';
+import { contentGridItems, flattenContentResultPosts, materializeApiPosts, prepareContentResultUnits } from '../services/content-results.js';
 import {
   forcePaginatedContentRouteNavigation,
   readContentRouteUrlState,
@@ -49,7 +49,6 @@ import { getViewerCapabilities, viewerHasCapability } from '../services/viewer-c
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { ACTIVE_ENV } from '../config.js';
-import { materializeRecommendedPosts } from '../services/recommendation-api.js';
 import { toggleAffinityTagExpression } from '../services/tag-affinity.js';
 import '../components/control-panel.js';
 import '../components/activity-grid.js';
@@ -658,7 +657,7 @@ export class ViewSearch extends LitElement {
         perspective_blog_name: subjectBlog,
         page_size: 6,
       });
-      this.teaserPosts = materializeRecommendedPosts(response);
+      this.teaserPosts = materializeApiPosts(response.posts, response.postPolicies);
     } catch {
       this.teaserPosts = [];
     } finally {

@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const ROOT = join(process.cwd(), 'src');
 
 describe('discover policy', () => {
-  it('materializes canonical recommended posts directly and applies policy metadata', async () => {
-    const { materializeRecommendedPosts } = await import('../src/services/recommendation-api.js');
+  it('materializes canonical recommended posts through the shared api-post helper and applies policy metadata', async () => {
+    const { materializeApiPosts } = await import('../src/services/content-results.js');
 
-    const posts = materializeRecommendedPosts({
-      posts: [
+    const posts = materializeApiPosts(
+      [
         {
           id: 501,
           blogName: 'alpha',
@@ -16,8 +20,8 @@ describe('discover policy', () => {
             items: [{ kind: 'IMAGE', original: { url: '/uploads/alpha.jpg' } }],
           },
         },
-      ],
-      postPolicies: {
+      ] as any,
+      {
         '501': {
           imageVariant: 'feed-pixelated',
           linkAllowed: false,
@@ -26,7 +30,7 @@ describe('discover policy', () => {
           visibilityFraction: 0.4,
         },
       },
-    } as any);
+    );
 
     expect(posts).toHaveLength(1);
     expect(posts[0].id).toBe(501);
@@ -35,18 +39,20 @@ describe('discover policy', () => {
     expect(posts[0]._retrievalPolicy?.clickAction).toBe('open_modal');
   });
 
-  it('does not materialize legacy recommendation payloads as canonical posts', async () => {
-    const { materializeRecommendedPosts } = await import('../src/services/recommendation-api.js');
+  it('returns an empty list when canonical posts are absent', async () => {
+    const { materializeApiPosts } = await import('../src/services/content-results.js');
 
-    const posts = materializeRecommendedPosts({
-      recommendations: [
-        {
-          content_id: 'alpha',
-          similarity_score: 0.81,
-        },
-      ],
-    } as any);
+    expect(materializeApiPosts(undefined, undefined)).toEqual([]);
+  });
 
-    expect(posts).toHaveLength(0);
+  it('reuses the shared canonical post materializer in recommendation flows', () => {
+    const recommendationApiSrc = readFileSync(join(ROOT, 'services/recommendation-api.ts'), 'utf8');
+    const postRecommendationsSrc = readFileSync(join(ROOT, 'components/post-recommendations.ts'), 'utf8');
+
+    expect(recommendationApiSrc).toContain("import { materializeApiPosts } from './content-results.js';");
+    expect(recommendationApiSrc).toContain('return materializeApiPosts(response.posts, response.postPolicies);');
+    expect(postRecommendationsSrc).toContain("import { materializeApiPosts } from '../services/content-results.js';");
+    expect(postRecommendationsSrc).toContain('const canonicalPosts = materializeApiPosts(response.posts, response.postPolicies);');
+    expect(postRecommendationsSrc).not.toContain('function buildCanonicalRecommendationItems(');
   });
 });

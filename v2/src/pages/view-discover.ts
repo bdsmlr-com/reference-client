@@ -2,9 +2,9 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
-import { materializeRecommendedPosts } from '../services/recommendation-api.js';
 import { buildPageUrl, getPrimaryBlogName } from '../services/blog-resolver.js';
 import { getGalleryMode, PROFILE_EVENTS, type GalleryMode } from '../services/profile.js';
+import { materializeApiPosts } from '../services/content-results.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import type { ProcessedPost } from '../types/post.js';
 import type { Blog, FollowEdge } from '../types/api.js';
@@ -110,7 +110,7 @@ export class ViewDiscover extends LitElement {
 
       if (Array.isArray(response.posts)) {
         this.usingCanonicalPosts = true;
-        const newPosts = materializeRecommendedPosts(response);
+        const newPosts = materializeApiPosts(response.posts, response.postPolicies);
         this.recommendedPosts = reset ? newPosts : [...this.recommendedPosts, ...newPosts];
         this.nextPageToken = response.page?.nextPageToken || null;
         if (newPosts.length < ViewDiscover.PAGE_SIZE || this.recommendedPosts.length >= 96) {

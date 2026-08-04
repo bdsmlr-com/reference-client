@@ -64,6 +64,8 @@ describe('search route perspective wiring', () => {
 
     expect(src).toContain('void this.loadTeasers();');
     expect(src).toContain("apiClient.posts.forYou({");
+    expect(src).not.toContain("from '../services/recommendation-api.js'");
+    expect(src).not.toContain('materializeRecommendedPosts(');
     expect(src).toContain("perspective_blog_name: subjectBlog,");
     expect(src).toContain("page_size: 6,");
     expect(src).toContain(".title=${'For You'}");

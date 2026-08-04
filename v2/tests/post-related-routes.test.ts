@@ -48,6 +48,7 @@ describe('post related routes', () => {
 
     expect(recommendationsSrc).toContain('apiClient.posts.related({');
     expect(recommendationsSrc).not.toContain('recService.getSimilarPosts(');
+    expect(recommendationsSrc).not.toContain("from '../services/recommendation-api.js'");
     expect(apiSrc).toContain("'/v2/related-posts'");
   });
 });

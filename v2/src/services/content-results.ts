@@ -1,10 +1,30 @@
 import { extractMedia, type ProcessedPost, type ViewStats } from '../types/post.js';
+import type { Post } from '../types/api.js';
 import type { SearchResultUnit } from './search-result-units.js';
 import { toPresentationModel } from './post-presentation.js';
+import { applyRetrievalPostPolicies, type RetrievalPostPolicyMap } from './retrieval-presentation.js';
 
 export type ContentGridItem =
   | { post: ProcessedPost; type: 'post' | 'reblog' }
   | { kind: 'result_group'; post: ProcessedPost; count: number; label: string; originPostId: number };
+
+export function materializeApiPosts(
+  posts: Post[] | undefined,
+  policies: RetrievalPostPolicyMap | undefined,
+): ProcessedPost[] {
+  if (!Array.isArray(posts) || posts.length === 0) {
+    return [];
+  }
+
+  return applyRetrievalPostPolicies(
+    posts.map((post) => {
+      const processed = { ...post } as ProcessedPost;
+      processed._media = extractMedia(processed);
+      return processed;
+    }),
+    policies,
+  );
+}
 
 interface PrepareContentResultUnitsOptions {
   units: SearchResultUnit[];
