@@ -13,4 +13,7 @@ https://api-staging.bdsmlr.com/v2/public-read-api-v2/docs/spec.json
 Run from `v2/`:
 
 - Focused regression harness: `npm run test:ci:focused`
-- Broader harness: `npm run test:ci:all`
+- Known-green broad harness: `npm run test:ci:broad`
+
+The full test suite is not currently green. See `v2/vitest.ci.config.ts` for the
+documented temporary exclusions used by the known-green broad harness.

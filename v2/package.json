@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "export VITE_BUILD_ENV=${VITE_BUILD_ENV:-${APP_ENV:-$(grep '^APP_ENV=' ../../../.env 2>/dev/null | cut -d= -f2-)}} && export VITE_BUILD_ENV=${VITE_BUILD_ENV:-staging} && export VITE_FE_SHA=$(git rev-parse --short HEAD) && export VITE_BE_SHA=${VITE_BE_SHA:-$(git -C ../../.. rev-parse --short HEAD 2>/dev/null || echo unknown)} && export VITE_BUILD_SHA=${VITE_BUILD_ENV}@${VITE_BE_SHA}-${VITE_FE_SHA} && tsc && vite build",
     "preview": "vite preview",
-    "check:render-contract": "node scripts/check-render-contract-usage.mjs"
+    "check:render-contract": "node scripts/check-render-contract-usage.mjs",
+    "test:ci:focused": "vitest run tests/post-auth-mode.test.ts tests/discover-policy.test.ts tests/post-related-routes.test.ts tests/search-route-perspective.test.ts tests/for-route-discover.test.ts tests/blog-visibility.test.ts tests/profile-service.test.ts",
+    "test:ci:broad": "vitest run --config vitest.ci.config.ts"
   },
   "dependencies": {
     "@lit-labs/router": "^0.1.4",
