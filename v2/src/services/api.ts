@@ -49,6 +49,7 @@ import {
   ApiErrorCode,
   apiErrorFromStatus,
 } from './api-error.js';
+import type { ApiErrorDetails } from './api-error.js';
 import { isOffline } from './connection.js';
 import { logError } from './error-telemetry.js';
 import { trackOutageEvent } from './google-analytics.js';
@@ -58,6 +59,7 @@ import type {
   SearchPostsByTagResponse,
   ForYouPostsRequest,
   RelatedPostsRequest,
+  RelatedPostsResponse,
   ListBlogPostsRequest,
   ListBlogPostsResponse,
   ResolveIdentifierRequest,
@@ -425,11 +427,14 @@ async function getToken(): Promise<string> {
   return login();
 }
 
+interface ApiRequestOptions {
+  trustedStructuredErrors?: boolean;
+}
+
 async function apiRequest<T>(
   endpoint: string,
   body: unknown,
-  retryOnAuth = true,
-  retryAttempt = 0
+  options: ApiRequestOptions = {}
 ): Promise<T> {
   syncAdminModeFromUrl();
 
@@ -495,8 +500,9 @@ async function apiRequest<T>(
       endpoint,
       body,
       endpointUrl,
-      retryOnAuth,
-      retryAttempt
+      true,
+      0,
+      options
     );
   }
 
@@ -511,16 +517,18 @@ async function apiRequest<T>(
     endpoint,
     body,
     endpointUrl,
-    retryOnAuth,
-    retryAttempt
+    true,
+    0,
+    options
   );
 
   inflightApiRequestByKey.set(inflightKey, promise);
-  promise.finally(() => {
+  const clearInflightRequest = () => {
     if (inflightApiRequestByKey.get(inflightKey) === promise) {
       inflightApiRequestByKey.delete(inflightKey);
     }
-  });
+  };
+  void promise.then(clearInflightRequest, clearInflightRequest);
 
   return promise;
 }
@@ -531,7 +539,8 @@ async function apiRequestCore<T>(
   body: unknown,
   endpointUrl: URL,
   retryOnAuth: boolean,
-  retryAttempt: number
+  retryAttempt: number,
+  options: ApiRequestOptions
 ): Promise<T> {
   const token = await getToken();
   const requestStartedAt = now();
@@ -576,7 +585,6 @@ async function apiRequestCore<T>(
     const durationMs = now() - requestStartedAt;
     recordEndpointTiming(normalizedEndpoint, durationMs);
     recordedTiming = true;
-    clearTimeout(timeout);
     statusCode = resp.status;
 
     // Handle 304 Not Modified - return cached data (CACHE-005)
@@ -587,12 +595,22 @@ async function apiRequestCore<T>(
     }
 
     if (!resp.ok) {
+      let errorPayload: unknown;
+      if (options.trustedStructuredErrors) {
+        try {
+          errorPayload = await resp.json();
+        } catch (error) {
+          if (controller.signal.aborted) throw error;
+          errorPayload = undefined;
+        }
+      }
+
       // Handle auth errors (401) - refresh token and retry once
       if (resp.status === 401 && retryOnAuth) {
         clearToken();
         currentToken = null;
         await login();
-        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, false, 0);
+        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, false, 0, options);
       }
 
       // Handle rate limit errors (429) with longer backoff (RES-003)
@@ -616,12 +634,24 @@ async function apiRequestCore<T>(
               (retryAfterHeader ? ` [Retry-After: ${retryAfterHeader}]` : '')
           );
           await sleep(delay);
-          return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1);
+          return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1, options);
         }
       }
 
       // Create typed ApiError for non-OK responses
-      const apiError = apiErrorFromStatus(resp.status, `HTTP ${resp.status}`, endpoint);
+      const statusError = apiErrorFromStatus(resp.status, `HTTP ${resp.status}`, endpoint);
+      const envelopeError = options.trustedStructuredErrors
+        ? parseApiErrorEnvelope(errorPayload)
+        : null;
+      const apiError = envelopeError
+        ? new ApiError(statusError.code, envelopeError.message, {
+            statusCode: resp.status,
+            endpoint,
+            serverCode: envelopeError.serverCode,
+            details: envelopeError.details,
+            isRetryable: envelopeError.isRetryable ?? statusError.isRetryable,
+          })
+        : statusError;
 
       // Handle transient errors (5xx) - retry with exponential backoff
       // Skip rate limit errors here since they're handled above
@@ -631,7 +661,7 @@ async function apiRequestCore<T>(
           `Transient error (HTTP ${statusCode}), retrying in ${delay}ms (attempt ${retryAttempt + 1}/${MAX_RETRIES})`
         );
         await sleep(delay);
-        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1);
+        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1, options);
       }
 
       // Log error after all retries exhausted
@@ -646,7 +676,7 @@ async function apiRequestCore<T>(
         clearToken();
         currentToken = null;
         await login();
-        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, false, 0);
+        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, false, 0, options);
       }
       // Throw typed API error for API-level errors
       const serverError = new ApiError(ApiErrorCode.SERVER_ERROR, data.error, { endpoint });
@@ -663,7 +693,6 @@ async function apiRequestCore<T>(
 
     return data as T;
   } catch (e) {
-    clearTimeout(timeout);
     const elapsedMs = now() - requestStartedAt;
 
     // If already an ApiError, just re-throw or retry
@@ -678,7 +707,7 @@ async function apiRequestCore<T>(
           `${e.code} error, retrying in ${delay}ms (attempt ${retryAttempt + 1}/${MAX_RETRIES})`
         );
         await sleep(delay);
-        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1);
+        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1, options);
       }
       // Log error after all retries exhausted
       logError(e, { retryAttempt, maxRetries: MAX_RETRIES });
@@ -704,7 +733,7 @@ async function apiRequestCore<T>(
           `Request timeout, retrying in ${delay}ms (attempt ${retryAttempt + 1}/${MAX_RETRIES})`
         );
         await sleep(delay);
-        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1);
+        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1, options);
       }
       // Log error after all retries exhausted
       logError(timeoutError, { retryAttempt, maxRetries: MAX_RETRIES });
@@ -727,7 +756,7 @@ async function apiRequestCore<T>(
           `Network error, retrying in ${delay}ms (attempt ${retryAttempt + 1}/${MAX_RETRIES})`
         );
         await sleep(delay);
-        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1);
+        return apiRequestCore<T>(normalizedEndpoint, endpoint, body, endpointUrl, retryOnAuth, retryAttempt + 1, options);
       }
       // Log error after all retries exhausted
       logError(networkError, { retryAttempt, maxRetries: MAX_RETRIES });
@@ -741,7 +770,53 @@ async function apiRequestCore<T>(
     });
     logError(unknownError, { errorType: 'unknown', originalName: error.name });
     throw unknownError;
+  } finally {
+    clearTimeout(timeout);
   }
+}
+
+function parseApiErrorEnvelope(payload: unknown): {
+  serverCode?: string;
+  message: string;
+  isRetryable?: boolean;
+  details?: ApiErrorDetails;
+} | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const error = (payload as Record<string, unknown>).error;
+  if (!error || typeof error !== 'object') return null;
+
+  const raw = error as Record<string, unknown>;
+  if (typeof raw.message !== 'string') return null;
+
+  const nestedDetails = raw.details && typeof raw.details === 'object'
+    ? raw.details as Record<string, unknown>
+    : {};
+  const perspectiveRole = nestedDetails.perspectiveRole ?? raw.perspectiveRole;
+  const blogId = nestedDetails.blogId ?? raw.blogId;
+  const blogName = nestedDetails.blogName ?? raw.blogName;
+  const details: ApiErrorDetails = {};
+
+  if (
+    perspectiveRole === 'viewer' ||
+    perspectiveRole === 'original' ||
+    perspectiveRole === 'reblogger' ||
+    perspectiveRole === 'legacy'
+  ) {
+    details.perspectiveRole = perspectiveRole;
+  }
+  if (typeof blogId === 'number' && Number.isSafeInteger(blogId) && blogId > 0) {
+    details.blogId = blogId;
+  }
+  if (typeof blogName === 'string') {
+    details.blogName = blogName;
+  }
+
+  return {
+    serverCode: typeof raw.code === 'string' ? raw.code : undefined,
+    message: raw.message,
+    isRetryable: typeof raw.retryable === 'boolean' ? raw.retryable : undefined,
+    details: Object.keys(details).length > 0 ? details : undefined,
+  };
 }
 
 /**
@@ -1094,10 +1169,11 @@ export async function getForYouPosts(
 
 export async function getRelatedPosts(
   req: RelatedPostsRequest
-): Promise<SearchPostsByTagResponse> {
-  return apiRequest<SearchPostsByTagResponse>(
+): Promise<RelatedPostsResponse> {
+  return apiRequest<RelatedPostsResponse>(
     '/v2/related-posts',
-    req
+    req,
+    { trustedStructuredErrors: true }
   );
 }
 
@@ -2716,8 +2792,17 @@ export class PostsApi {
     return getForYouPosts(req);
   }
 
-  async related(req: RelatedPostsRequest): Promise<SearchPostsByTagResponse> {
+  async related(req: RelatedPostsRequest): Promise<RelatedPostsResponse> {
     return getRelatedPosts(req);
+  }
+
+  // Temporary bridge for callers that predate explicit perspective selection.
+  async relatedLegacy(
+    req: Omit<RelatedPostsRequest, 'perspective_role'>
+  ): Promise<RelatedPostsResponse> {
+    return apiRequest<RelatedPostsResponse>('/v2/related-posts', req, {
+      trustedStructuredErrors: true,
+    });
   }
 
   /**

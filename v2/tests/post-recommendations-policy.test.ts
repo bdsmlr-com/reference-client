@@ -1,4 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import type { PostsApi } from '../src/services/api.js';
+import type { RelatedPostsRequest, RelatedPostsResponse } from '../src/types/api.js';
+
+type Equal<Left, Right> =
+  (<Value>() => Value extends Left ? 1 : 2) extends
+  (<Value>() => Value extends Right ? 1 : 2) ? true : false;
 
 function stubBrowserState() {
   vi.stubGlobal('localStorage', {
@@ -16,6 +24,32 @@ afterEach(() => {
 });
 
 describe('post recommendations policy', () => {
+  it('keeps request roles strict while accepting legacy response metadata', () => {
+    const requestIsExact: Equal<Parameters<PostsApi['related']>[0], RelatedPostsRequest> = true;
+    const legacyRole: RelatedPostsResponse['recommendationPerspective']['role'] = 'legacy';
+
+    expect(requestIsExact).toBe(true);
+    expect(legacyRole).toBe('legacy');
+  });
+
+  it('keeps existing callers on the explicit no-role compatibility path', () => {
+    const apiSrc = readFileSync(join(process.cwd(), 'src/services/api.ts'), 'utf8');
+    const recommendationsSrc = readFileSync(
+      join(process.cwd(), 'src/components/post-recommendations.ts'),
+      'utf8',
+    );
+    const relatedPageSrc = readFileSync(
+      join(process.cwd(), 'src/pages/view-post-related.ts'),
+      'utf8',
+    );
+
+    expect(apiSrc).toContain("req: Omit<RelatedPostsRequest, 'perspective_role'>");
+    expect(recommendationsSrc).toContain('apiClient.posts.relatedLegacy({');
+    expect(recommendationsSrc).not.toContain('perspective_role:');
+    expect(recommendationsSrc).not.toContain('perspectiveRole');
+    expect(relatedPageSrc).not.toContain('.perspectiveRole=');
+  });
+
   it('uses canonical recommendation posts directly and skips batch hydration when available', async () => {
     stubBrowserState();
     const { materializeRecommendationItems } = await import('../src/components/post-recommendations.js');

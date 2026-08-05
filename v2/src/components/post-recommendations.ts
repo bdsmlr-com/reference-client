@@ -333,7 +333,7 @@ export class PostRecommendations extends LitElement {
 
     try {
       const requestOffset = this.nextOffset;
-      const recs = await apiClient.posts.related({
+      const recs = await apiClient.posts.relatedLegacy({
         seed_post_id: id,
         page_size: RECS_PAGE_SIZE,
         page_token: requestOffset > 0 ? String(requestOffset) : undefined,

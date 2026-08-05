@@ -25,6 +25,12 @@ export enum ApiErrorCode {
   UNKNOWN = 'UNKNOWN',
 }
 
+export interface ApiErrorDetails {
+  perspectiveRole?: 'viewer' | 'original' | 'reblogger' | 'legacy';
+  blogId?: number;
+  blogName?: string;
+}
+
 /**
  * Typed API error with error code for reliable detection.
  */
@@ -33,6 +39,8 @@ export class ApiError extends Error {
   readonly statusCode?: number;
   readonly endpoint?: string;
   readonly isRetryable: boolean;
+  readonly serverCode?: string;
+  readonly details?: ApiErrorDetails;
 
   readonly cause?: Error;
 
@@ -43,6 +51,9 @@ export class ApiError extends Error {
       statusCode?: number;
       endpoint?: string;
       cause?: Error;
+      serverCode?: string;
+      details?: ApiErrorDetails;
+      isRetryable?: boolean;
     }
   ) {
     super(message);
@@ -51,9 +62,10 @@ export class ApiError extends Error {
     this.statusCode = options?.statusCode;
     this.endpoint = options?.endpoint;
     this.cause = options?.cause;
+    this.serverCode = options?.serverCode;
+    this.details = options?.details;
 
-    // Determine if this error type is retryable
-    this.isRetryable = isRetryableError(code);
+    this.isRetryable = options?.isRetryable ?? isRetryableError(code);
   }
 
   /**

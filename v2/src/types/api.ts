@@ -507,9 +507,14 @@ export interface ForYouPostsRequest {
   page_token?: string;
 }
 
+export type RelatedPerspectiveRole = 'viewer' | 'original' | 'reblogger';
+export type RelatedPerspectiveResponseRole = RelatedPerspectiveRole | 'legacy';
+
 export interface RelatedPostsRequest {
   seed_post_id: number;
+  perspective_role: RelatedPerspectiveRole;
   perspective_blog_name?: string;
+  perspective_blog_id?: number;
   page_size?: number;
   page_token?: string;
 }
@@ -670,6 +675,17 @@ export interface SearchPostsByTagResponse {
   searchStatus?: 'warming' | 'ready' | 'exhausted' | 'failed' | string;
   hasMore?: boolean;
   error?: string;
+}
+
+export interface RecommendationPerspectiveMetadata {
+  role: RelatedPerspectiveResponseRole;
+  blogId: number;
+  blogName: string;
+  fallbackApplied: boolean;
+}
+
+export interface RelatedPostsResponse extends SearchPostsByTagResponse {
+  recommendationPerspective: RecommendationPerspectiveMetadata;
 }
 
 export interface SearchResultUnit {

@@ -46,7 +46,7 @@ describe('post related routes', () => {
     const recommendationsSrc = readFileSync(join(ROOT, 'components/post-recommendations.ts'), 'utf8');
     const apiSrc = readFileSync(join(ROOT, 'services/api.ts'), 'utf8');
 
-    expect(recommendationsSrc).toContain('apiClient.posts.related({');
+    expect(recommendationsSrc).toContain('apiClient.posts.relatedLegacy({');
     expect(recommendationsSrc).not.toContain('recService.getSimilarPosts(');
     expect(recommendationsSrc).not.toContain("from '../services/recommendation-api.js'");
     expect(apiSrc).toContain("'/v2/related-posts'");
