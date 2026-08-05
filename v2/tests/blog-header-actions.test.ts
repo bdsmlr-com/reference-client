@@ -14,5 +14,7 @@ describe('blog-header action menu', () => {
     expect(src).toContain('Follow');
     expect(src).toContain('Block');
     expect(src).toContain('Report blog');
+    expect(src).toContain('Send message');
+    expect(src).toContain('<i class="fa-solid fa-inbox" aria-hidden="true"></i>');
   });
 });

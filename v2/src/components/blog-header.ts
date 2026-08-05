@@ -6,7 +6,7 @@ import { buildPageUrl } from '../services/blog-resolver.js';
 import { handleAvatarImageError, normalizeAvatarUrl } from '../services/avatar-url.js';
 import { BREAKPOINTS, SPACING } from '../types/ui-constants.js';
 import type { IdentityDecoration } from '../types/api.js';
-import { getAuthUser } from '../state/auth-state.js';
+import { getAuthUser, isAuthCheckPending } from '../state/auth-state.js';
 import { followStateController } from '../services/follow-state.js';
 import { blockedStateController } from '../services/blocked-state.js';
 import { reportBlog } from '../services/api.js';
@@ -156,6 +156,12 @@ export class BlogHeader extends LitElement {
       .menu-item:disabled {
         opacity: 0.66;
         cursor: default;
+      }
+
+      .menu-item > i {
+        width: 16px;
+        margin-right: 8px;
+        text-align: center;
       }
 
       .summary-avatar,
@@ -441,8 +447,13 @@ export class BlogHeader extends LitElement {
   private unsubscribeFollowState?: () => void;
   private unsubscribeBlockedState?: () => void;
 
+  private handleAuthUserChanged = (): void => {
+    this.requestUpdate();
+  };
+
   connectedCallback(): void {
     super.connectedCallback();
+    window.addEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
     this.unsubscribeFollowState = followStateController.subscribe(() => {
       this.syncFollowStateFromCache();
     });
@@ -456,6 +467,7 @@ export class BlogHeader extends LitElement {
     this.unsubscribeFollowState = undefined;
     this.unsubscribeBlockedState?.();
     this.unsubscribeBlockedState = undefined;
+    window.removeEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
     super.disconnectedCallback();
   }
 
@@ -514,6 +526,10 @@ export class BlogHeader extends LitElement {
   private get canRenderActionMenu(): boolean {
     const actorBlogId = this.currentActorBlogId;
     return this.page === 'activity' && Boolean(actorBlogId && this.blogId > 0 && actorBlogId !== this.blogId);
+  }
+
+  private get canSendMessage(): boolean {
+    return !isAuthCheckPending() && Boolean(getAuthUser() && this.canRenderActionMenu && this.blogName.trim());
   }
 
   private syncFollowStateFromCache(): void {
@@ -629,6 +645,19 @@ export class BlogHeader extends LitElement {
     }
   };
 
+  private handleMessageClick = (event: Event): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!this.canSendMessage) return;
+    const recipient = this.blogName.trim();
+    this.closeMenu();
+    window.open(
+      `https://bdsmlr.com/messages?to=${encodeURIComponent(recipient)}`,
+      '_blank',
+      'noopener,noreferrer',
+    );
+  };
+
   private openReportModal = (event: Event): void => {
     event.preventDefault();
     event.stopPropagation();
@@ -709,6 +738,11 @@ export class BlogHeader extends LitElement {
         ${this.menuOpen ? html`
           <div class="menu-backdrop" @click=${this.closeMenu}></div>
           <div class="menu-popover" role="menu" @click=${(event: Event) => event.stopPropagation()}>
+            ${this.canSendMessage ? html`
+              <button class="menu-item" type="button" role="menuitem" @click=${this.handleMessageClick}>
+                <i class="fa-solid fa-inbox" aria-hidden="true"></i><span>Send message</span>
+              </button>
+            ` : nothing}
             <button class="menu-item" type="button" role="menuitem" ?disabled=${this.followPending || this.followLoading} @click=${this.handleFollowClick}>${followLabel}</button>
             <button class="menu-item danger" type="button" role="menuitem" ?disabled=${this.blockPending || this.blockedLoading} @click=${this.handleBlockClick}>${blockLabel}</button>
             <button class="menu-item" type="button" role="menuitem" ?disabled=${this.reportSubmitted} @click=${this.openReportModal}>${this.reportSubmitted ? 'Reported' : 'Report blog'}</button>
