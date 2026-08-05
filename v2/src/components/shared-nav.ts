@@ -11,7 +11,6 @@ import {
 } from '../services/blog-resolver.js';
 import {
   getCurrentUsername,
-  getCachedUsername,
   clearCurrentUsername,
   setCurrentUsername,
   PROFILE_EVENTS,

@@ -20,6 +20,11 @@ import './loading-spinner.js';
 
 const RECS_PAGE_SIZE = 20;
 
+export interface RecommendationHydrationDeps {
+  batchGetPosts: (postIds: number[]) => Promise<{ posts?: ProcessedPost[] }>;
+  getPost: (postId: number) => Promise<{ post?: ProcessedPost }>;
+}
+
 function hasRecommendationIdentity(post: Post | ProcessedPost): boolean {
   return Boolean(`${post.blogName || post.originBlogName || ''}`.trim());
 }

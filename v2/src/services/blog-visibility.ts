@@ -1,4 +1,3 @@
-import { getCachedUsername } from "./profile.js";
 import type { Blog } from "../types/api.js";
 import { getAuthUser } from '../state/auth-state.js';
 
