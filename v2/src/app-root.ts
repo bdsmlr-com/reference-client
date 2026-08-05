@@ -31,6 +31,7 @@ import { buildPostHref } from './services/post-route-context.js';
 import { isAnonymousReadableRoute } from './services/route-access-policy.js';
 import { initNavigationTracking } from './services/google-analytics.js';
 import { maybeDeployInterstitial } from './services/interstitial-bridge.js';
+import { BUILD_TAG } from './services/build-info.js';
 import './components/auth-gate.js';
 
 @customElement('app-root')
@@ -45,6 +46,12 @@ export class AppRoot extends LitElement {
       }
       main {
         flex: 1;
+      }
+      .build-footer {
+        padding: 8px 16px;
+        color: var(--text-muted);
+        font-size: 11px;
+        text-align: center;
       }
       .admin-banner {
         background: #ff0000;
@@ -303,6 +310,7 @@ export class AppRoot extends LitElement {
       <offline-banner></offline-banner>
       <shared-nav .currentPage=${currentPage}></shared-nav>
       <main>${this._router.outlet()}</main>
+      <footer class="build-footer" aria-label="Build identity">${BUILD_TAG}</footer>
     `;
   }
 
