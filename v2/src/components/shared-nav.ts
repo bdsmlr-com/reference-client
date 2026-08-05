@@ -23,9 +23,9 @@ import { formatLoginError, logout as legacyLogout, login as legacyLogin } from '
 import { normalizeAvatarUrl } from '../services/avatar-url.js';
 import './blog-identity.js';
 import { fetchHydratedBlogMetaByName } from '../services/blog-meta.js';
+import { BUILD_TAG } from '../services/build-info.js';
 
 type PageName = 'search' | 'blogs' | 'archive' | 'timeline' | 'following' | 'follower-feed' | 'social' | 'posts';
-const BUILD_TAG = (import.meta as any).env?.VITE_BUILD_SHA || 'staging@unknown-unknown';
 
 @customElement('shared-nav')
 export class SharedNav extends LitElement {

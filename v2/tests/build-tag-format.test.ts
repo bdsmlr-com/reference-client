@@ -14,9 +14,10 @@ describe('build tag format', () => {
     expect(build).toContain('${VITE_BUILD_ENV}@${VITE_BE_SHA}-${VITE_FE_SHA}');
   });
 
-  it('shared nav fallback uses env@unknown-unknown shape', () => {
-    const src = readFileSync(join(process.cwd(), 'src/components/shared-nav.ts'), 'utf8');
-    expect(src).toContain("|| 'staging@unknown-unknown'");
+  it('build info fallback uses env@unknown-unknown shape', () => {
+    const src = readFileSync(join(process.cwd(), 'src/services/build-info.ts'), 'utf8');
+    expect(src).toContain("UNKNOWN_BUILD_TAG = 'staging@unknown-unknown'");
+    expect(src).toContain('VITE_BUILD_SHA || UNKNOWN_BUILD_TAG');
   });
 
   it('api image dockerfile builds frontend from the shared reference-client tree', () => {
