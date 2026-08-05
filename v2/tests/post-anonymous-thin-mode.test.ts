@@ -181,11 +181,14 @@ describe('anonymous thin post mode', () => {
     }
   });
 
-  it('threads anonymous auth mode from post detail into engagement while keeping recommendations mounted', () => {
+  it('threads anonymous auth mode into engagement and seeds recommendations from the original post', () => {
     const detailSrc = readFileSync(join(COMPONENTS_ROOT, 'post-detail-content.ts'), 'utf8');
 
     expect(detailSrc).toContain("@property({ type: String }) authMode: 'unknown' | 'authenticated' | 'anonymous' = 'authenticated';");
     expect(detailSrc).toContain('<post-engagement .post=${p} .authMode=${this.authMode}');
-    expect(detailSrc).toContain('<post-recommendations .postId=${p.id}');
+    expect(detailSrc).toContain('const recommendationSeedPostId = presentation.identity.isReblog && p.originPostId');
+    expect(detailSrc).toContain('? p.originPostId');
+    expect(detailSrc).toContain(': p.id;');
+    expect(detailSrc).toContain('<post-recommendations .postId=${recommendationSeedPostId}');
   });
 });

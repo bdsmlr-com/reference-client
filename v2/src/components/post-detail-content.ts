@@ -282,6 +282,9 @@ export class PostDetailContent extends LitElement {
       page: 'post',
     });
     const recommendationsMode = this.surface === 'lightbox' ? 'list' : 'grid';
+    const recommendationSeedPostId = presentation.identity.isReblog && p.originPostId
+      ? p.originPostId
+      : p.id;
     const engagementStandalone = false;
     const reblogTags = extractRenderableTags(p);
     const originTags = this.originPost ? extractRenderableTags(this.originPost) : [];
@@ -409,7 +412,7 @@ export class PostDetailContent extends LitElement {
         <post-engagement .post=${p} .authMode=${this.authMode} .from=${this.from as PostRouteSource} ?standalone=${engagementStandalone}></post-engagement>
 
         ${presentation.layout.showRecommendations
-          ? html`<post-recommendations .postId=${p.id} .mode=${recommendationsMode} .showBrowseLink=${true} .from=${this.from as PostRouteSource}></post-recommendations>`
+          ? html`<post-recommendations .postId=${recommendationSeedPostId} .mode=${recommendationsMode} .showBrowseLink=${true} .from=${this.from as PostRouteSource}></post-recommendations>`
           : nothing}
       </section>
     `;
