@@ -64,6 +64,27 @@ describe('runtime transport base selection', () => {
 });
 
 describe('runtime transport API errors', () => {
+  it('propagates a caller abort signal through strict related requests', async () => {
+    stubApiBrowserState();
+    let requestSignal: AbortSignal | undefined;
+    let resolveFetch!: (response: Response) => void;
+    vi.stubGlobal('fetch', vi.fn((_url, init) => {
+      requestSignal = init?.signal;
+      return new Promise<Response>((resolve) => {
+        resolveFetch = resolve;
+      });
+    }));
+    const { getRelatedPosts } = await import('../src/services/api.js');
+    const controller = new AbortController();
+    const request = getRelatedPosts({ seed_post_id: 625562977, perspective_role: 'viewer' }, { signal: controller.signal });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    controller.abort();
+
+    expect(requestSignal?.aborted).toBe(true);
+    resolveFetch({ ok: true, status: 200, headers: new Headers(), json: async () => ({ posts: [] }) } as Response);
+    await request.catch(() => undefined);
+  });
+
   it('preserves safe structured fields from a 400 error envelope', async () => {
     stubApiBrowserState();
     const json = vi.fn().mockResolvedValue({

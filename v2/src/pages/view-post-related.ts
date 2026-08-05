@@ -3,6 +3,11 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles/theme.js';
 import { apiClient } from '../services/client.js';
 import type { Post } from '../types/api.js';
+import { getAuthUser } from '../state/auth-state.js';
+import {
+  resolveActiveRelatedPerspective,
+  type RelatedPerspective,
+} from '../services/related-perspective.js';
 import '../components/post-recommendations.js';
 
 @customElement('view-post-related')
@@ -73,10 +78,24 @@ export class ViewPostRelated extends LitElement {
 
   @property({ type: String }) postId = '';
   @property({ type: String }) routePerspective = 'you';
-  @property({ type: String }) perspectiveBlogName = '';
   @property({ type: String }) title = 'More like this';
   @state() private seedPost: Post | null = null;
   @state() private seedLoadToken = 0;
+  @state() private authVersion = 0;
+
+  private readonly handleAuthUserChanged = () => {
+    this.authVersion += 1;
+  };
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    window.addEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
+  }
 
   private get normalizedPostId(): number {
     return parseInt(this.postId, 10) || 0;
@@ -155,6 +174,35 @@ export class ViewPostRelated extends LitElement {
     return items;
   }
 
+  private get selectedPerspective(): RelatedPerspective | undefined {
+    if (!this.seedPost) return undefined;
+    if (this.currentPerspective === 'you') {
+      return resolveActiveRelatedPerspective(getAuthUser());
+    }
+
+    const routeName = this.currentPerspective.replace(/^@+/, '');
+    const original: RelatedPerspective = {
+      role: 'original',
+      blogId: this.seedPost.originBlogId ?? this.seedPost.blogId,
+      blogName: this.seedPost.originBlogName || this.seedPost.blogName || '',
+    };
+    const reblogger = this.seedPost.originPostId
+      ? {
+          role: 'reblogger' as const,
+          blogId: this.seedPost.blogId,
+          blogName: this.seedPost.blogName || '',
+        }
+      : undefined;
+    const candidates: Array<RelatedPerspective | undefined> = [original, reblogger];
+    const matches = candidates.filter((perspective): perspective is RelatedPerspective =>
+      perspective !== undefined
+      && Boolean(perspective.blogName)
+      && perspective.blogName.toLowerCase() === routeName,
+    );
+
+    return matches.length === 1 ? matches[0] : undefined;
+  }
+
   render() {
     const id = this.normalizedPostId;
     if (!id) {
@@ -182,7 +230,7 @@ export class ViewPostRelated extends LitElement {
       <post-recommendations
         .postId=${id}
         .mode=${'grid'}
-        .perspectiveBlogName=${this.perspectiveBlogName}
+        .perspective=${this.selectedPerspective}
         .title=${this.title}
       ></post-recommendations>
     `;

@@ -10,15 +10,24 @@ import { shouldObscureMedia } from '../services/media-redaction.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { isAdminMode } from '../services/blog-resolver.js';
+import { ApiError } from '../services/api-error.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { applyRetrievalPostPolicies, resolveRetrievalClickMode, type RetrievalPostPolicyMap } from '../services/retrieval-presentation.js';
 import { buildPostHref, type PostRouteSource } from '../services/post-route-context.js';
 import type { PostClickEvent } from '../types/events.js';
+import type { RelatedPerspective } from '../services/related-perspective.js';
 import './post-grid.js';
 import './load-footer.js';
 import './loading-spinner.js';
 
 const RECS_PAGE_SIZE = 20;
+
+type RecommendationState =
+  | { kind: 'loading' }
+  | { kind: 'success' }
+  | { kind: 'empty' }
+  | { kind: 'unavailable'; message: string }
+  | { kind: 'temporary-failure'; message: string };
 
 export interface RecommendationHydrationDeps {
   batchGetPosts: (postIds: number[]) => Promise<{ posts?: ProcessedPost[] }>;
@@ -242,18 +251,20 @@ export class PostRecommendations extends LitElement {
 
   @property({ type: Number }) postId = 0;
   @property({ type: String }) mode: 'grid' | 'list' = 'grid';
-  @property({ type: String }) perspectiveBlogName = '';
+  @property({ type: Object }) perspective?: RelatedPerspective;
   @property({ type: String }) title = 'More like this ✨';
   @property({ type: Boolean }) showBrowseLink = false;
   @property({ type: String }) from: PostRouteSource = 'direct';
 
   @state() private relatedPosts: RecResult[] = [];
-  @state() private loading = false;
+  @state() private state: RecommendationState = { kind: 'loading' };
+  @state() private loadingMore = false;
   @state() private exhausted = false;
   @state() private infiniteScroll = false;
-  @state() private error = '';
 
   private currentAbortController: AbortController | null = null;
+  private requestToken = 0;
+  private requestKey = '';
   private seenIds = new Set<number>();
   private nextOffset = 0;
 
@@ -263,6 +274,9 @@ export class PostRecommendations extends LitElement {
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    this.currentAbortController?.abort();
+    this.currentAbortController = null;
+    this.requestToken += 1;
     const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
     if (sentinel) {
       scrollObserver.unobserve(sentinel);
@@ -270,14 +284,10 @@ export class PostRecommendations extends LitElement {
   }
 
   protected firstUpdated(): void {
-    if (this.postId) {
-      this.resetAndFetch();
-    }
-    
     const sentinel = this.shadowRoot?.querySelector('#scroll-sentinel');
     if (sentinel) {
       scrollObserver.observe(sentinel, () => {
-        if (this.infiniteScroll && !this.loading && !this.exhausted) {
+        if (this.infiniteScroll && !this.loadingMore && !this.exhausted && this.state.kind === 'success') {
           this.fetchMore();
         }
       });
@@ -285,34 +295,39 @@ export class PostRecommendations extends LitElement {
   }
 
   updated(changedProperties: Map<string, any>): void {
-    if (changedProperties.has('postId')) {
+    if (changedProperties.has('postId') || changedProperties.has('perspective')) {
+      const nextKey = this.getRequestKey();
+      if (nextKey === this.requestKey) return;
+      this.requestKey = nextKey;
       this.resetAndFetch();
     }
   }
 
   private async resetAndFetch() {
     const id = this.getNormalizedPostId();
-    if (!id) {
-      this.relatedPosts = [];
-      this.seenIds.clear();
-      return;
-    }
-    
-    // Cancel any in-flight request
     if (this.currentAbortController) {
       this.currentAbortController.abort();
     }
     this.currentAbortController = new AbortController();
-    const signal = this.currentAbortController.signal;
-    
+    const token = ++this.requestToken;
+
     this.relatedPosts = [];
     this.seenIds.clear();
     this.nextOffset = 0;
     this.exhausted = false;
-    this.loading = false;
-    this.error = '';
-    
-    await this.fetchMore(signal);
+    this.loadingMore = false;
+
+    if (!id) return;
+    if (!this.perspective) {
+      this.state = {
+        kind: 'unavailable',
+        message: 'Recommendations are unavailable for the selected blog.',
+      };
+      return;
+    }
+
+    this.state = { kind: 'loading' };
+    await this.fetchMore(token, true);
   }
 
   private getNormalizedPostId(): number {
@@ -321,26 +336,49 @@ export class PostRecommendations extends LitElement {
     return 0;
   }
 
-  private async fetchMore(signal?: AbortSignal) {
+  private getRequestKey(): string {
     const id = this.getNormalizedPostId();
-    if (!id || this.loading || this.exhausted) return;
-    
-    // If we're called manually (e.g. Load More button), use the current controller's signal
-    const fetchSignal = signal || this.currentAbortController?.signal;
+    const perspective = this.perspective;
+    return perspective
+      ? `${id}:${perspective.role}:${perspective.blogId ?? ''}:${perspective.blogName.trim().toLowerCase()}`
+      : `${id}:unresolved`;
+  }
 
-    this.loading = true;
-    this.error = '';
+  private isCurrentRequest(token: number): boolean {
+    return token === this.requestToken && !this.currentAbortController?.signal.aborted;
+  }
+
+  private getFailureState(error: unknown): RecommendationState {
+    const apiError = error instanceof ApiError ? error : undefined;
+    const message = error instanceof Error && error.message
+      ? error.message
+      : 'Recommendations are unavailable right now.';
+
+    if (apiError?.serverCode === 'recommendation_perspective_unavailable' || !apiError?.isRetryable) {
+      return { kind: 'unavailable', message };
+    }
+
+    return { kind: 'temporary-failure', message };
+  }
+
+  private async fetchMore(token = this.requestToken, initial = false) {
+    const id = this.getNormalizedPostId();
+    const perspective = this.perspective;
+    if (!id || !perspective || this.loadingMore || this.exhausted || !this.isCurrentRequest(token)) return;
+
+    this.loadingMore = !initial;
 
     try {
       const requestOffset = this.nextOffset;
-      const recs = await apiClient.posts.relatedLegacy({
+      const recs = await apiClient.posts.related({
         seed_post_id: id,
+        perspective_role: perspective.role,
+        perspective_blog_name: perspective.blogName,
+        perspective_blog_id: perspective.blogId,
         page_size: RECS_PAGE_SIZE,
         page_token: requestOffset > 0 ? String(requestOffset) : undefined,
-        perspective_blog_name: this.perspectiveBlogName || undefined,
-      });
-      
-      if (fetchSignal?.aborted) return;
+      }, { signal: this.currentAbortController?.signal });
+      if (!this.isCurrentRequest(token)) return;
 
       const items = await materializeRecommendationItems(recs, {
         batchGetPosts: async (postIds) => {
@@ -353,10 +391,11 @@ export class PostRecommendations extends LitElement {
         },
       });
 
-      if (fetchSignal?.aborted) return;
+      if (!this.isCurrentRequest(token)) return;
 
       if (items.length === 0) {
         this.exhausted = true;
+        if (initial) this.state = { kind: 'empty' };
         return;
       }
       this.nextOffset += RECS_PAGE_SIZE;
@@ -366,15 +405,16 @@ export class PostRecommendations extends LitElement {
       newItems.forEach(r => { if (r.post_id) this.seenIds.add(r.post_id); });
 
       this.relatedPosts = [...this.relatedPosts, ...newItems];
+      this.state = { kind: 'success' };
       if (items.length < RECS_PAGE_SIZE || this.relatedPosts.length >= 96) {
         this.exhausted = true;
       }
     } catch (e) {
-      if ((e as Error).name === 'AbortError') return;
+      if ((e as Error).name === 'AbortError' || !this.isCurrentRequest(token)) return;
       console.error('Failed to fetch recommendations', e);
-      this.error = 'Failed to load related posts.';
+      this.state = this.getFailureState(e);
     } finally {
-      this.loading = false;
+      if (this.isCurrentRequest(token)) this.loadingMore = false;
     }
   }
 
@@ -422,23 +462,33 @@ export class PostRecommendations extends LitElement {
     if (!id) return nothing;
 
     const isAdmin = isAdminMode();
+    const isLoading = this.state.kind === 'loading';
+    const isSuccess = this.state.kind === 'success';
 
     return html`
-      ${isAdmin ? html`<div style="font-family:monospace; font-size:10px; color:#00ff00; background:#000; padding:2px 4px; border-radius:4px; margin-bottom:8px;">[REC_DEBUG: id=${id}, count=${this.relatedPosts.length}, loading=${this.loading}]</div>` : ''}
+      ${isAdmin ? html`<div style="font-family:monospace; font-size:10px; color:#00ff00; background:#000; padding:2px 4px; border-radius:4px; margin-bottom:8px;">[REC_DEBUG: id=${id}, count=${this.relatedPosts.length}, loading=${isLoading || this.loadingMore}]</div>` : ''}
       ${this.title || this.showBrowseLink
         ? html`
             <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:24px;">
               ${this.title ? html`<h3 style="margin:0;">${this.title}</h3>` : html`<span></span>`}
               ${this.showBrowseLink
-                ? html`<a href="/post/${id}/related" style="color:var(--accent); text-decoration:none; font-size:14px;">See more...</a>`
+                ? html`<a href="/post/${id}/related" style="color:var(--accent); text-decoration:none; font-size:14px;">Explore perspectives</a>`
                 : nothing}
             </div>
           `
         : nothing}
       
-      ${this.error ? html`<div class="error-text" style="color: var(--error); font-size: 13px; margin-bottom: 16px;">${this.error}</div>` : ''}
+      ${this.state.kind === 'unavailable' || this.state.kind === 'temporary-failure'
+        ? html`<div class="recommendation-status" role="status" style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">${this.state.message}${this.state.kind === 'temporary-failure' ? html` <button type="button" @click=${() => this.resetAndFetch()}>Retry</button>` : nothing}</div>`
+        : nothing}
 
-      ${this.mode === 'grid'
+      ${this.state.kind === 'empty'
+        ? html`<div class="recommendation-status" role="status" style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">No related posts found.</div>`
+        : nothing}
+
+      ${isLoading
+        ? html`<div class="gutter-grid">${Array(6).fill(0).map(() => html`<div class="gutter-skeleton"></div>`)}</div>`
+        : isSuccess && this.mode === 'grid'
         ? html`
             <div class="flat-results">
               <post-grid
@@ -451,7 +501,7 @@ export class PostRecommendations extends LitElement {
               ></post-grid>
             </div>
           `
-        : html`
+        : isSuccess ? html`
             <div class="gutter-grid">
               ${repeat(this.relatedPosts, r => r.post_id, r => {
                 const h = (r as any)._hydratedPost;
@@ -472,21 +522,20 @@ export class PostRecommendations extends LitElement {
                   </div>
                 `;
               })}
-              ${this.loading && this.relatedPosts.length === 0 ? 
-                Array(6).fill(0).map(() => html`<div class="gutter-skeleton"></div>`) : nothing}
+              ${this.loadingMore ? Array(6).fill(0).map(() => html`<div class="gutter-skeleton"></div>`) : nothing}
             </div>
-          `}
+          ` : nothing}
 
-      <load-footer
+      ${isSuccess ? html`<load-footer
         .mode=${this.mode}
-        .loading=${this.loading}
+        .loading=${this.loadingMore}
         .exhausted=${this.exhausted}
         .loadingTarget=${RECS_PAGE_SIZE}
         .infiniteScroll=${this.infiniteScroll}
         .pageName=${'post-recommendations'}
         @load-more=${() => this.fetchMore()}
         @infinite-toggle=${this.handleInfiniteToggle}
-      ></load-footer>
+      ></load-footer>` : nothing}
 
       <div id="scroll-sentinel"></div>
     `;

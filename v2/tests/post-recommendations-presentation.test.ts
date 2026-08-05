@@ -20,4 +20,14 @@ describe('post recommendations presentation', () => {
 
     expect(src).toContain("this.page === 'post'");
   });
+
+  it('uses an explicit state pane and labels the inline route action Explore perspectives', () => {
+    const src = readFileSync(FILE, 'utf8');
+
+    expect(src).toContain("kind: 'loading'");
+    expect(src).toContain("kind: 'unavailable'");
+    expect(src).toContain("kind: 'temporary-failure'");
+    expect(src).toContain('Explore perspectives');
+    expect(src).not.toContain('Count: 0');
+  });
 });

@@ -1,4 +1,5 @@
 import type { RelatedPerspectiveRole } from '../types/api.js';
+import type { AuthUser } from '../state/auth-state.js';
 
 export interface RelatedPerspective {
   role: RelatedPerspectiveRole;
@@ -16,6 +17,16 @@ export interface RelatedPerspectiveSet {
 }
 
 export type RelatedPerspectiveTab = RelatedPerspective;
+
+export function resolveActiveRelatedPerspective(authUser: AuthUser): RelatedPerspective | undefined {
+  const blogId = authUser?.activeBlogId ?? authUser?.blogId ?? undefined;
+  const selectedBlog = authUser?.blogs?.find((blog) => blog.id === blogId);
+  const blogName = selectedBlog?.name
+    ?? authUser?.activeBlogName
+    ?? (authUser && blogId === authUser.blogId ? authUser.blogName ?? undefined : undefined);
+
+  return blogName ? { role: 'viewer', blogId, blogName } : undefined;
+}
 
 function canonicalBlogName(perspective: RelatedPerspective): string {
   return perspective.blogName.trim();

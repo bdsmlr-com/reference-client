@@ -100,7 +100,6 @@ export class AppRoot extends LitElement {
               <view-post-related
                 .postId=${postId}
                 .routePerspective=${'you'}
-                .perspectiveBlogName=${this.resolveRouteBlogName('you')}
                 .title=${'More like this'}
               ></view-post-related>
             `
@@ -114,7 +113,6 @@ export class AppRoot extends LitElement {
               <view-post-related
                 .postId=${postId}
                 .routePerspective=${blogname || 'you'}
-                .perspectiveBlogName=${this.resolveRouteBlogName(blogname || '')}
                 .title=${'More like this'}
               ></view-post-related>
             `

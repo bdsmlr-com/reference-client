@@ -1,8 +1,35 @@
+// @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { PostsApi } from '../src/services/api.js';
 import type { RelatedPostsRequest, RelatedPostsResponse } from '../src/types/api.js';
+import { apiClient } from '../src/services/client.js';
+import { ApiError, ApiErrorCode } from '../src/services/api-error.js';
+import '../src/components/post-recommendations.js';
+
+async function settle(element: { updateComplete: Promise<unknown> }): Promise<void> {
+  await element.updateComplete;
+  await Promise.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await element.updateComplete;
+}
+
+function createRecommendations(perspective: { role: 'viewer' | 'original' | 'reblogger'; blogName: string; blogId?: number } | undefined) {
+  const element = document.createElement('post-recommendations') as any;
+  element.postId = 101;
+  element.perspective = perspective;
+  document.body.append(element);
+  return element;
+}
+
+function deferred<Value>() {
+  let resolve!: (value: Value) => void;
+  const promise = new Promise<Value>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
 
 type Equal<Left, Right> =
   (<Value>() => Value extends Left ? 1 : 2) extends
@@ -32,7 +59,7 @@ describe('post recommendations policy', () => {
     expect(legacyRole).toBe('legacy');
   });
 
-  it('keeps existing callers on the explicit no-role compatibility path', () => {
+  it('uses the strict related endpoint with an explicit perspective', () => {
     const apiSrc = readFileSync(join(process.cwd(), 'src/services/api.ts'), 'utf8');
     const recommendationsSrc = readFileSync(
       join(process.cwd(), 'src/components/post-recommendations.ts'),
@@ -44,10 +71,136 @@ describe('post recommendations policy', () => {
     );
 
     expect(apiSrc).toContain("req: Omit<RelatedPostsRequest, 'perspective_role'>");
-    expect(recommendationsSrc).toContain('apiClient.posts.relatedLegacy({');
-    expect(recommendationsSrc).not.toContain('perspective_role:');
-    expect(recommendationsSrc).not.toContain('perspectiveRole');
+    expect(recommendationsSrc).toContain('apiClient.posts.related({');
+    expect(recommendationsSrc).toContain('perspective_role: perspective.role');
+    expect(recommendationsSrc).not.toContain('relatedLegacy');
     expect(relatedPageSrc).not.toContain('.perspectiveRole=');
+  });
+
+  it('makes exactly one related request for a property initialization', async () => {
+    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
+
+    try {
+      await settle(element);
+      expect(related).toHaveBeenCalledTimes(1);
+      expect(related).toHaveBeenCalledWith(expect.objectContaining({
+        seed_post_id: 101,
+        perspective_role: 'original',
+        perspective_blog_name: 'origin',
+        perspective_blog_id: 11,
+      }), expect.objectContaining({ signal: expect.any(AbortSignal) }));
+      expect(element.shadowRoot?.textContent).toContain('No related posts found.');
+      expect(element.shadowRoot?.querySelector('post-grid')).toBeNull();
+      expect(element.shadowRoot?.querySelector('load-footer')).toBeNull();
+    } finally {
+      element.remove();
+      related.mockRestore();
+    }
+  });
+
+  it('does not request when the selected perspective is unresolved', async () => {
+    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    const element = createRecommendations(undefined);
+
+    try {
+      await settle(element);
+      expect(related).not.toHaveBeenCalled();
+      expect(element.shadowRoot?.textContent).toContain('Recommendations are unavailable for the selected blog.');
+      expect(element.shadowRoot?.querySelector('load-footer')).toBeNull();
+    } finally {
+      element.remove();
+      related.mockRestore();
+    }
+  });
+
+  it('shows the named unavailable pane for a non-retryable perspective error', async () => {
+    const related = vi.spyOn(apiClient.posts, 'related').mockRejectedValue(new ApiError(
+      ApiErrorCode.BAD_REQUEST,
+      'Recommendations are unavailable for @viewer because its preference profile has not been indexed yet.',
+      { serverCode: 'recommendation_perspective_unavailable', isRetryable: false },
+    ));
+    const element = createRecommendations({ role: 'viewer', blogName: 'viewer', blogId: 12 });
+
+    try {
+      await settle(element);
+      expect(element.shadowRoot?.textContent).toContain('Recommendations are unavailable for @viewer');
+      expect(element.shadowRoot?.querySelector('load-footer')).toBeNull();
+      expect(element.shadowRoot?.textContent).not.toContain('Count: 0');
+    } finally {
+      element.remove();
+      related.mockRestore();
+    }
+  });
+
+  it('retries temporary recommendation failures exactly once per click', async () => {
+    const related = vi.spyOn(apiClient.posts, 'related')
+      .mockRejectedValueOnce(new ApiError(
+        ApiErrorCode.SERVER_ERROR,
+        'Recommendations are temporarily unavailable.',
+        { serverCode: 'recommendation_service_unavailable', isRetryable: true },
+      ))
+      .mockResolvedValueOnce({ posts: [] } as any);
+    const element = createRecommendations({ role: 'viewer', blogName: 'viewer', blogId: 12 });
+
+    try {
+      await settle(element);
+      const retry = Array.from(element.shadowRoot?.querySelectorAll('button') || [])
+        .find((button) => button.textContent?.trim() === 'Retry') as HTMLButtonElement;
+      expect(retry).toBeTruthy();
+      retry.click();
+      await settle(element);
+      expect(related).toHaveBeenCalledTimes(2);
+      expect(element.shadowRoot?.querySelector('load-footer')).toBeNull();
+    } finally {
+      element.remove();
+      related.mockRestore();
+    }
+  });
+
+  it('aborts and ignores an in-flight request when the perspective changes', async () => {
+    const first = deferred<any>();
+    const related = vi.spyOn(apiClient.posts, 'related')
+      .mockImplementationOnce(() => first.promise)
+      .mockResolvedValueOnce({ posts: [] } as any);
+    const batchGetPosts = vi.spyOn(apiClient.posts, 'batchGet').mockResolvedValue({ posts: [] } as any);
+    const element = createRecommendations({ role: 'viewer', blogName: 'first-viewer', blogId: 11 });
+
+    try {
+      await settle(element);
+      const firstOptions = related.mock.calls[0][1];
+      element.perspective = { role: 'viewer', blogName: 'second-viewer', blogId: 12 };
+      await settle(element);
+      first.resolve({ recommendations: [{ post_id: 404, similarity_score: 0.9 }] });
+      await settle(element);
+
+      expect(firstOptions?.signal.aborted).toBe(true);
+      expect(related).toHaveBeenCalledTimes(2);
+      expect(batchGetPosts).not.toHaveBeenCalled();
+      expect(element.shadowRoot?.textContent).toContain('No related posts found.');
+    } finally {
+      element.remove();
+      related.mockRestore();
+      batchGetPosts.mockRestore();
+    }
+  });
+
+  it('aborts and ignores an in-flight request when disconnected', async () => {
+    const request = deferred<any>();
+    const related = vi.spyOn(apiClient.posts, 'related').mockImplementation(() => request.promise);
+    const batchGetPosts = vi.spyOn(apiClient.posts, 'batchGet').mockResolvedValue({ posts: [] } as any);
+    const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
+
+    await settle(element);
+    const options = related.mock.calls[0][1];
+    element.remove();
+    request.resolve({ recommendations: [{ post_id: 404, similarity_score: 0.9 }] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(options?.signal.aborted).toBe(true);
+    expect(batchGetPosts).not.toHaveBeenCalled();
+    related.mockRestore();
+    batchGetPosts.mockRestore();
   });
 
   it('uses canonical recommendation posts directly and skips batch hydration when available', async () => {

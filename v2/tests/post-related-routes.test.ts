@@ -1,8 +1,14 @@
-import { describe, it, expect } from 'vitest';
+// @vitest-environment happy-dom
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = join(process.cwd(), 'src');
+
+afterEach(() => {
+  document.body.replaceChildren();
+  vi.restoreAllMocks();
+});
 
 describe('post related routes', () => {
   it('app router exposes seed-scoped related routes', () => {
@@ -46,9 +52,33 @@ describe('post related routes', () => {
     const recommendationsSrc = readFileSync(join(ROOT, 'components/post-recommendations.ts'), 'utf8');
     const apiSrc = readFileSync(join(ROOT, 'services/api.ts'), 'utf8');
 
-    expect(recommendationsSrc).toContain('apiClient.posts.relatedLegacy({');
+    expect(recommendationsSrc).toContain('apiClient.posts.related({');
     expect(recommendationsSrc).not.toContain('recService.getSimilarPosts(');
     expect(recommendationsSrc).not.toContain("from '../services/recommendation-api.js'");
     expect(apiSrc).toContain("'/v2/related-posts'");
+  });
+
+  it('passes the authoritative original perspective for a matching blog-scoped route', async () => {
+    const { apiClient } = await import('../src/services/client.js');
+    await import('../src/pages/view-post-related.js');
+    vi.spyOn(apiClient.posts, 'get').mockResolvedValue({
+      post: { id: 50, blogId: 10, blogName: 'origin' },
+    } as any);
+    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    vi.spyOn(apiClient.posts, 'relatedLegacy').mockResolvedValue({ posts: [] } as any);
+    const element = document.createElement('view-post-related') as any;
+    element.postId = '50';
+    element.routePerspective = 'origin';
+    document.body.append(element);
+
+    await element.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(related).toHaveBeenCalledWith(expect.objectContaining({
+      seed_post_id: 50,
+      perspective_role: 'original',
+      perspective_blog_id: 10,
+      perspective_blog_name: 'origin',
+    }), expect.any(Object));
   });
 });

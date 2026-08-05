@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { baseStyles } from '../styles/theme.js';
 import {
@@ -19,6 +19,12 @@ import { toPresentationModel } from '../services/post-presentation.js';
 import { shouldObscureMedia } from '../services/media-redaction.js';
 import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-render.js';
 import { isAdminMode } from '../services/blog-resolver.js';
+import { getAuthUser } from '../state/auth-state.js';
+import {
+  resolveActiveRelatedPerspective,
+  selectDefaultRelatedPerspective,
+  type RelatedPerspective,
+} from '../services/related-perspective.js';
 import {
   buildContextualTagSearchHref,
   buildScopedReblogDetailTagHref,
@@ -196,6 +202,21 @@ export class PostDetailContent extends LitElement {
   @property({ type: String }) authMode: 'unknown' | 'authenticated' | 'anonymous' = 'authenticated';
   @property({ type: String }) surface: 'detail' | 'lightbox' = 'detail';
   @property({ type: String }) from = 'direct';
+  @state() private authVersion = 0;
+
+  private readonly handleAuthUserChanged = () => {
+    this.authVersion += 1;
+  };
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    window.addEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
+  }
 
   private renderMediaItem(item: MediaItem, representationKind: ProcessedPost['_media']['representationKind']) {
     const alternateVideoSrc = item.kind === 'IMAGE' && representationKind === 'ANIMATED_VIDEO'
@@ -285,6 +306,27 @@ export class PostDetailContent extends LitElement {
     const recommendationSeedPostId = presentation.identity.isReblog && p.originPostId
       ? p.originPostId
       : p.id;
+    const authUser = getAuthUser();
+    const originalPerspective: RelatedPerspective = {
+      role: 'original',
+      blogId: presentation.identity.isReblog ? p.originBlogId : p.blogId,
+      blogName: presentation.identity.isReblog ? (p.originBlogName || '') : (p.blogName || ''),
+    };
+    const rebloggerPerspective = presentation.identity.isReblog
+      ? {
+          role: 'reblogger' as const,
+          blogId: p.blogId,
+          blogName: p.blogName || '',
+        }
+      : undefined;
+    const viewerPerspective = resolveActiveRelatedPerspective(authUser);
+    const recommendationPerspective = selectDefaultRelatedPerspective({
+      authenticated: this.authMode === 'authenticated',
+      viewer: viewerPerspective,
+      original: originalPerspective,
+      reblogger: rebloggerPerspective,
+      isReblog: presentation.identity.isReblog,
+    });
     const engagementStandalone = false;
     const reblogTags = extractRenderableTags(p);
     const originTags = this.originPost ? extractRenderableTags(this.originPost) : [];
@@ -412,7 +454,7 @@ export class PostDetailContent extends LitElement {
         <post-engagement .post=${p} .authMode=${this.authMode} .from=${this.from as PostRouteSource} ?standalone=${engagementStandalone}></post-engagement>
 
         ${presentation.layout.showRecommendations
-          ? html`<post-recommendations .postId=${recommendationSeedPostId} .mode=${recommendationsMode} .showBrowseLink=${true} .from=${this.from as PostRouteSource}></post-recommendations>`
+          ? html`<post-recommendations .postId=${recommendationSeedPostId} .perspective=${recommendationPerspective} .mode=${recommendationsMode} .showBrowseLink=${true} .from=${this.from as PostRouteSource}></post-recommendations>`
           : nothing}
       </section>
     `;

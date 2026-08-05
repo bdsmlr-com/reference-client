@@ -1,16 +1,16 @@
 // @vitest-environment happy-dom
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { apiClient } from '../src/services/client.js';
+import { FEATURE_FLAGS } from '../src/config.js';
+import { setAuthUser, updateActiveBlog } from '../src/state/auth-state.js';
 import '../src/components/post-actions.js';
 import '../src/components/post-engagement.js';
-
-const COMPONENTS_ROOT = join(process.cwd(), 'src/components');
+import '../src/components/post-detail-content.js';
 
 function createPost(overrides: Record<string, unknown> = {}) {
   return {
     id: 1,
+    type: 2,
     blogId: 10,
     blogName: 'demo-blog',
     createdAtUnix: 1_700_000_000,
@@ -181,14 +181,128 @@ describe('anonymous thin post mode', () => {
     }
   });
 
-  it('threads anonymous auth mode into engagement and seeds recommendations from the original post', () => {
-    const detailSrc = readFileSync(join(COMPONENTS_ROOT, 'post-detail-content.ts'), 'utf8');
+  it('uses the reblogger perspective with the original post as the anonymous recommendation seed', async () => {
+    setAuthUser(null);
+    const originalFeatureFlag = FEATURE_FLAGS.more_like_this_on_post;
+    FEATURE_FLAGS.more_like_this_on_post = true;
+    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    const element = document.createElement('post-detail-content') as any;
+    element.authMode = 'anonymous';
+    element.post = createPost({
+      id: 22,
+      blogId: 20,
+      blogName: 'reblogger',
+      originPostId: 11,
+      originBlogId: 10,
+      originBlogName: 'origin',
+    });
+    document.body.append(element);
 
-    expect(detailSrc).toContain("@property({ type: String }) authMode: 'unknown' | 'authenticated' | 'anonymous' = 'authenticated';");
-    expect(detailSrc).toContain('<post-engagement .post=${p} .authMode=${this.authMode}');
-    expect(detailSrc).toContain('const recommendationSeedPostId = presentation.identity.isReblog && p.originPostId');
-    expect(detailSrc).toContain('? p.originPostId');
-    expect(detailSrc).toContain(': p.id;');
-    expect(detailSrc).toContain('<post-recommendations .postId=${recommendationSeedPostId}');
+    try {
+      await element.updateComplete;
+      const recommendations = element.shadowRoot?.querySelector('post-recommendations') as any;
+      expect(recommendations.postId).toBe(11);
+      expect(recommendations.perspective).toMatchObject({ role: 'reblogger', blogName: 'reblogger', blogId: 20 });
+    } finally {
+      element.remove();
+      FEATURE_FLAGS.more_like_this_on_post = originalFeatureFlag;
+      related.mockRestore();
+    }
+  });
+
+  it('uses the active viewer blog for authenticated recommendation requests', async () => {
+    setAuthUser({ userId: 1, blogId: 30, activeBlogId: 31, activeBlogName: 'active-viewer' });
+    const originalFeatureFlag = FEATURE_FLAGS.more_like_this_on_post;
+    FEATURE_FLAGS.more_like_this_on_post = true;
+    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    const element = document.createElement('post-detail-content') as any;
+    element.authMode = 'authenticated';
+    element.post = createPost({ id: 22, blogId: 20, blogName: 'author' });
+    document.body.append(element);
+
+    try {
+      await element.updateComplete;
+      const recommendations = element.shadowRoot?.querySelector('post-recommendations') as any;
+      expect(recommendations.perspective).toMatchObject({ role: 'viewer', blogName: 'active-viewer', blogId: 31 });
+    } finally {
+      element.remove();
+      setAuthUser(null);
+      FEATURE_FLAGS.more_like_this_on_post = originalFeatureFlag;
+      related.mockRestore();
+    }
+  });
+
+  it('resolves an unnamed active viewer ID through the selected blog before requesting recommendations', async () => {
+    setAuthUser({
+      userId: 1,
+      blogId: 30,
+      blogName: 'primary-blog',
+      activeBlogId: 31,
+      blogs: [
+        { id: 30, name: 'primary-blog' },
+        { id: 31, name: 'selected-blog' },
+      ],
+    });
+    const originalFeatureFlag = FEATURE_FLAGS.more_like_this_on_post;
+    FEATURE_FLAGS.more_like_this_on_post = true;
+    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    const element = document.createElement('post-detail-content') as any;
+    element.authMode = 'authenticated';
+    element.post = createPost({ id: 22, blogId: 20, blogName: 'author' });
+    document.body.append(element);
+
+    try {
+      await element.updateComplete;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(related).toHaveBeenCalledWith(expect.objectContaining({
+        perspective_role: 'viewer',
+        perspective_blog_id: 31,
+        perspective_blog_name: 'selected-blog',
+      }), expect.objectContaining({ signal: expect.any(AbortSignal) }));
+    } finally {
+      element.remove();
+      setAuthUser(null);
+      FEATURE_FLAGS.more_like_this_on_post = originalFeatureFlag;
+      related.mockRestore();
+    }
+  });
+
+  it('refreshes recommendations when the authenticated active blog changes', async () => {
+    setAuthUser({
+      userId: 1,
+      blogId: 30,
+      activeBlogId: 30,
+      blogs: [
+        { id: 30, name: 'primary-blog' },
+        { id: 31, name: 'selected-blog' },
+      ],
+    });
+    const originalFeatureFlag = FEATURE_FLAGS.more_like_this_on_post;
+    FEATURE_FLAGS.more_like_this_on_post = true;
+    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    const element = document.createElement('post-detail-content') as any;
+    element.authMode = 'authenticated';
+    element.post = createPost({ id: 22, blogId: 20, blogName: 'author' });
+    document.body.append(element);
+
+    try {
+      await element.updateComplete;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      updateActiveBlog(31, 'selected-blog');
+      await element.updateComplete;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(related).toHaveBeenCalledTimes(2);
+      expect(related).toHaveBeenLastCalledWith(expect.objectContaining({
+        perspective_role: 'viewer',
+        perspective_blog_id: 31,
+        perspective_blog_name: 'selected-blog',
+      }), expect.any(Object));
+    } finally {
+      element.remove();
+      setAuthUser(null);
+      FEATURE_FLAGS.more_like_this_on_post = originalFeatureFlag;
+      related.mockRestore();
+    }
   });
 });

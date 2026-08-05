@@ -429,6 +429,7 @@ async function getToken(): Promise<string> {
 
 interface ApiRequestOptions {
   trustedStructuredErrors?: boolean;
+  signal?: AbortSignal;
 }
 
 async function apiRequest<T>(
@@ -494,7 +495,7 @@ async function apiRequest<T>(
     );
   }
 
-  if (!API_INFLIGHT_DEDUPE_ENABLED) {
+  if (!API_INFLIGHT_DEDUPE_ENABLED || options.signal) {
     return apiRequestCore<T>(
       normalizedEndpoint,
       endpoint,
@@ -546,6 +547,12 @@ async function apiRequestCore<T>(
   const requestStartedAt = now();
 
   const controller = new AbortController();
+  const abortForCaller = () => controller.abort();
+  if (options.signal?.aborted) {
+    controller.abort();
+  } else {
+    options.signal?.addEventListener('abort', abortForCaller, { once: true });
+  }
   const endpointTimeout = getEndpointTimeout(normalizedEndpoint);
   const timeout = setTimeout(() => controller.abort(), endpointTimeout);
 
@@ -718,6 +725,9 @@ async function apiRequestCore<T>(
 
     // Convert AbortError to typed timeout ApiError
     if (error.name === 'AbortError') {
+      if (options.signal?.aborted) {
+        throw error;
+      }
       if (!recordedTiming) {
         recordEndpointTiming(endpoint, Math.max(endpointTimeout * TIMEOUT_SAMPLE_BOOST, elapsedMs));
         recordedTiming = true;
@@ -772,6 +782,7 @@ async function apiRequestCore<T>(
     throw unknownError;
   } finally {
     clearTimeout(timeout);
+    options.signal?.removeEventListener('abort', abortForCaller);
   }
 }
 
@@ -1168,12 +1179,13 @@ export async function getForYouPosts(
 }
 
 export async function getRelatedPosts(
-  req: RelatedPostsRequest
+  req: RelatedPostsRequest,
+  options: Pick<ApiRequestOptions, 'signal'> = {},
 ): Promise<RelatedPostsResponse> {
   return apiRequest<RelatedPostsResponse>(
     '/v2/related-posts',
     req,
-    { trustedStructuredErrors: true }
+    { trustedStructuredErrors: true, ...options }
   );
 }
 
@@ -2792,8 +2804,11 @@ export class PostsApi {
     return getForYouPosts(req);
   }
 
-  async related(req: RelatedPostsRequest): Promise<RelatedPostsResponse> {
-    return getRelatedPosts(req);
+  async related(
+    req: RelatedPostsRequest,
+    options?: Pick<ApiRequestOptions, 'signal'>,
+  ): Promise<RelatedPostsResponse> {
+    return getRelatedPosts(req, options);
   }
 
   // Temporary bridge for callers that predate explicit perspective selection.
