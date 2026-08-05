@@ -247,7 +247,9 @@ export class AppRoot extends LitElement {
       const msg = err instanceof Error ? err.message : '';
       const status = Number(msg.match(/auth request failed: (\d+)/)?.[1]);
       if (status === 401 || status === 403) {
-        maybeDeployInterstitial(false);
+        maybeDeployInterstitial(false, {
+          moreLikeThisOnPost: FEATURE_FLAGS.more_like_this_on_post === true,
+        });
       }
     } finally {
       this.checkingAuth = false;
@@ -275,7 +277,9 @@ export class AppRoot extends LitElement {
   }
 
   render() {
-    const allowAnonymousRead = isAnonymousReadableRoute(window.location.pathname);
+    const allowAnonymousRead = isAnonymousReadableRoute(window.location.pathname, {
+      moreLikeThisOnPost: FEATURE_FLAGS.more_like_this_on_post === true,
+    });
 
     if (!this.runtimeConfigReady || (this.checkingAuth && !allowAnonymousRead)) {
       return html``;

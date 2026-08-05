@@ -1,12 +1,18 @@
 import { callGtag } from './google-analytics.js';
-import { isAnonymousReadableRoute } from './route-access-policy.js';
+import {
+  isAnonymousReadableRoute,
+  type AnonymousRouteFeatureContext,
+} from './route-access-policy.js';
 
 function isFeedForYouLanding(pathname: string): boolean {
   const normalized = String(pathname || '').replace(/\/+$/, '') || '/';
   return normalized === '/feed/for/you';
 }
 
-export function maybeDeployInterstitial(authenticated: boolean): void {
+export function maybeDeployInterstitial(
+  authenticated: boolean,
+  features: AnonymousRouteFeatureContext = {},
+): void {
   if (authenticated) {
     return;
   }
@@ -21,7 +27,7 @@ export function maybeDeployInterstitial(authenticated: boolean): void {
 
   const pathname = window.location.pathname;
 
-  if (!isAnonymousReadableRoute(pathname)) {
+  if (!isAnonymousReadableRoute(pathname, features)) {
     const eventName = isFeedForYouLanding(pathname)
       ? 'interstitial_suppressed_login_feed_landing'
       : 'interstitial_suppressed_login';

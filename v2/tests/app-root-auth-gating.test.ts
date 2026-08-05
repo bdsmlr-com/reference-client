@@ -7,7 +7,8 @@ describe('app-root anonymous read gating', () => {
     const src = readFileSync(join(process.cwd(), 'src/app-root.ts'), 'utf8');
 
     expect(src).toContain("import { isAnonymousReadableRoute } from './services/route-access-policy.js';");
-    expect(src).toContain('const allowAnonymousRead = isAnonymousReadableRoute(window.location.pathname);');
+    expect(src).toContain("moreLikeThisOnPost: FEATURE_FLAGS.more_like_this_on_post === true");
+    expect(src).toContain('maybeDeployInterstitial(false, {');
     expect(src).toContain('if (!this.runtimeConfigReady || (this.checkingAuth && !allowAnonymousRead)) {');
     expect(src).toContain('if (!this.authenticated && !allowAnonymousRead) {');
   });
