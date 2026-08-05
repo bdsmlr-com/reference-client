@@ -15,12 +15,33 @@ import { resolveLink } from '../services/link-resolver.js';
 import { applyRetrievalPostPolicies, resolveRetrievalClickMode, type RetrievalPostPolicyMap } from '../services/retrieval-presentation.js';
 import { buildPostHref, type PostRouteSource } from '../services/post-route-context.js';
 import type { PostClickEvent } from '../types/events.js';
-import type { RelatedPerspective } from '../services/related-perspective.js';
+import {
+  relatedPerspectiveHref,
+  relatedPerspectiveLabel,
+  type RelatedPerspective,
+} from '../services/related-perspective.js';
 import './post-grid.js';
 import './load-footer.js';
 import './loading-spinner.js';
 
 const RECS_PAGE_SIZE = 20;
+
+function responsePerspective(value: unknown): RelatedPerspective | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const metadata = value as Record<string, unknown>;
+  const role = metadata.role;
+  const blogName = typeof metadata.blogName === 'string' ? metadata.blogName.trim() : '';
+  if ((role !== 'viewer' && role !== 'original' && role !== 'reblogger') || !blogName) {
+    return undefined;
+  }
+
+  return {
+    role,
+    blogName,
+    blogId: typeof metadata.blogId === 'number' && metadata.blogId > 0 ? metadata.blogId : undefined,
+    fallbackApplied: metadata.fallbackApplied === true,
+  };
+}
 
 type RecommendationState =
   | { kind: 'loading' }
@@ -250,9 +271,11 @@ export class PostRecommendations extends LitElement {
   ];
 
   @property({ type: Number }) postId = 0;
+  @property({ type: Number }) relatedRoutePostId = 0;
+  @property({ type: Number }) displayedReblogPostId = 0;
   @property({ type: String }) mode: 'grid' | 'list' = 'grid';
   @property({ type: Object }) perspective?: RelatedPerspective;
-  @property({ type: String }) title = 'More like this ✨';
+  @property({ type: String }) title = '';
   @property({ type: Boolean }) showBrowseLink = false;
   @property({ type: String }) from: PostRouteSource = 'direct';
 
@@ -261,6 +284,7 @@ export class PostRecommendations extends LitElement {
   @state() private loadingMore = false;
   @state() private exhausted = false;
   @state() private infiniteScroll = false;
+  @state() private effectivePerspective?: RelatedPerspective;
 
   private currentAbortController: AbortController | null = null;
   private requestToken = 0;
@@ -295,7 +319,7 @@ export class PostRecommendations extends LitElement {
   }
 
   updated(changedProperties: Map<string, any>): void {
-    if (changedProperties.has('postId') || changedProperties.has('perspective')) {
+    if (changedProperties.has('postId') || changedProperties.has('perspective') || changedProperties.has('displayedReblogPostId')) {
       const nextKey = this.getRequestKey();
       if (nextKey === this.requestKey) return;
       this.requestKey = nextKey;
@@ -316,6 +340,7 @@ export class PostRecommendations extends LitElement {
     this.nextOffset = 0;
     this.exhausted = false;
     this.loadingMore = false;
+    this.effectivePerspective = this.perspective;
 
     if (!id) return;
     if (!this.perspective) {
@@ -339,9 +364,33 @@ export class PostRecommendations extends LitElement {
   private getRequestKey(): string {
     const id = this.getNormalizedPostId();
     const perspective = this.perspective;
+    const displayedReblogPostId = this.getDisplayedReblogPostId();
     return perspective
-      ? `${id}:${perspective.role}:${perspective.blogId ?? ''}:${perspective.blogName.trim().toLowerCase()}`
+      ? `${id}:${perspective.role}:${perspective.blogId ?? ''}:${perspective.blogName.trim().toLowerCase()}:${displayedReblogPostId}`
       : `${id}:unresolved`;
+  }
+
+  private getDisplayedReblogPostId(): number {
+    const id = typeof this.displayedReblogPostId === 'number'
+      ? this.displayedReblogPostId
+      : parseInt(String(this.displayedReblogPostId), 10) || 0;
+    return id > 0 ? id : 0;
+  }
+
+  private get relatedRouteId(): number {
+    const routePostId = typeof this.relatedRoutePostId === 'number'
+      ? this.relatedRoutePostId
+      : parseInt(String(this.relatedRoutePostId), 10) || 0;
+    return routePostId > 0 ? routePostId : this.getNormalizedPostId();
+  }
+
+  private get visiblePerspective(): RelatedPerspective | undefined {
+    return this.effectivePerspective || this.perspective;
+  }
+
+  private get heading(): string {
+    const perspective = this.visiblePerspective;
+    return perspective ? `Related posts for ${relatedPerspectiveLabel(perspective)}` : this.title;
   }
 
   private isCurrentRequest(token: number): boolean {
@@ -370,15 +419,20 @@ export class PostRecommendations extends LitElement {
 
     try {
       const requestOffset = this.nextOffset;
+      const displayedReblogPostId = this.getDisplayedReblogPostId();
       const recs = await apiClient.posts.related({
         seed_post_id: id,
         perspective_role: perspective.role,
         perspective_blog_name: perspective.blogName,
         perspective_blog_id: perspective.blogId,
+        ...(perspective.role === 'reblogger' && displayedReblogPostId
+          ? { displayedReblogPostId }
+          : {}),
         page_size: RECS_PAGE_SIZE,
         page_token: requestOffset > 0 ? String(requestOffset) : undefined,
       }, { signal: this.currentAbortController?.signal });
       if (!this.isCurrentRequest(token)) return;
+      this.effectivePerspective = responsePerspective(recs.recommendationPerspective) || perspective;
 
       const items = await materializeRecommendationItems(recs, {
         batchGetPosts: async (postIds) => {
@@ -464,15 +518,19 @@ export class PostRecommendations extends LitElement {
     const isAdmin = isAdminMode();
     const isLoading = this.state.kind === 'loading';
     const isSuccess = this.state.kind === 'success';
+    const heading = this.heading;
+    const exploreHref = this.visiblePerspective
+      ? relatedPerspectiveHref(this.relatedRouteId, this.visiblePerspective)
+      : `/post/${this.relatedRouteId}/related`;
 
     return html`
       ${isAdmin ? html`<div style="font-family:monospace; font-size:10px; color:#00ff00; background:#000; padding:2px 4px; border-radius:4px; margin-bottom:8px;">[REC_DEBUG: id=${id}, count=${this.relatedPosts.length}, loading=${isLoading || this.loadingMore}]</div>` : ''}
-      ${this.title || this.showBrowseLink
+      ${heading || this.showBrowseLink
         ? html`
             <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:24px;">
-              ${this.title ? html`<h3 style="margin:0;">${this.title}</h3>` : html`<span></span>`}
+              ${heading ? html`<h3 style="margin:0;">${heading}</h3>` : html`<span></span>`}
               ${this.showBrowseLink
-                ? html`<a href="/post/${id}/related" style="color:var(--accent); text-decoration:none; font-size:14px;">Explore perspectives</a>`
+                ? html`<a href=${exploreHref} style="color:var(--accent); text-decoration:none; font-size:14px;">Explore perspectives</a>`
                 : nothing}
             </div>
           `

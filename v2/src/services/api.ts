@@ -1182,9 +1182,15 @@ export async function getRelatedPosts(
   req: RelatedPostsRequest,
   options: Pick<ApiRequestOptions, 'signal'> = {},
 ): Promise<RelatedPostsResponse> {
+  const { displayedReblogPostId, ...request } = req;
   return apiRequest<RelatedPostsResponse>(
     '/v2/related-posts',
-    req,
+    {
+      ...request,
+      ...(req.perspective_role === 'reblogger' && displayedReblogPostId
+        ? { displayed_reblog_post_id: displayedReblogPostId }
+        : {}),
+    },
     { trustedStructuredErrors: true, ...options }
   );
 }

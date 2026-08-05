@@ -327,6 +327,10 @@ export class PostDetailContent extends LitElement {
       reblogger: rebloggerPerspective,
       isReblog: presentation.identity.isReblog,
     });
+    const displayedReblogPostId = recommendationPerspective?.role === 'reblogger'
+      && presentation.identity.isReblog
+      ? p.id
+      : 0;
     const engagementStandalone = false;
     const reblogTags = extractRenderableTags(p);
     const originTags = this.originPost ? extractRenderableTags(this.originPost) : [];
@@ -454,7 +458,7 @@ export class PostDetailContent extends LitElement {
         <post-engagement .post=${p} .authMode=${this.authMode} .from=${this.from as PostRouteSource} ?standalone=${engagementStandalone}></post-engagement>
 
         ${presentation.layout.showRecommendations
-          ? html`<post-recommendations .postId=${recommendationSeedPostId} .perspective=${recommendationPerspective} .mode=${recommendationsMode} .showBrowseLink=${true} .from=${this.from as PostRouteSource}></post-recommendations>`
+          ? html`<post-recommendations .postId=${recommendationSeedPostId} .relatedRoutePostId=${p.id} .displayedReblogPostId=${displayedReblogPostId} .perspective=${recommendationPerspective} .mode=${recommendationsMode} .showBrowseLink=${true} .from=${this.from as PostRouteSource}></post-recommendations>`
           : nothing}
       </section>
     `;

@@ -54,9 +54,15 @@ describe('post recommendations policy', () => {
   it('keeps request roles strict while accepting legacy response metadata', () => {
     const requestIsExact: Equal<Parameters<PostsApi['related']>[0], RelatedPostsRequest> = true;
     const legacyRole: RelatedPostsResponse['recommendationPerspective']['role'] = 'legacy';
+    const reblogRequest: RelatedPostsRequest = {
+      seed_post_id: 625562977,
+      perspective_role: 'reblogger',
+      displayedReblogPostId: 625562977,
+    };
 
     expect(requestIsExact).toBe(true);
     expect(legacyRole).toBe('legacy');
+    expect(reblogRequest.displayedReblogPostId).toBe(625562977);
   });
 
   it('uses the strict related endpoint with an explicit perspective', () => {
@@ -93,6 +99,39 @@ describe('post recommendations policy', () => {
       expect(element.shadowRoot?.textContent).toContain('No related posts found.');
       expect(element.shadowRoot?.querySelector('post-grid')).toBeNull();
       expect(element.shadowRoot?.querySelector('load-footer')).toBeNull();
+    } finally {
+      element.remove();
+      related.mockRestore();
+    }
+  });
+
+  it('sends the displayed reblog id only for a reblogger perspective', async () => {
+    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    const element = createRecommendations({ role: 'reblogger', blogName: 'reblogger', blogId: 20 });
+    element.displayedReblogPostId = 202;
+
+    try {
+      await settle(element);
+      expect(related).toHaveBeenCalledWith(expect.objectContaining({
+        seed_post_id: 101,
+        perspective_role: 'reblogger',
+        displayedReblogPostId: 202,
+      }), expect.any(Object));
+    } finally {
+      element.remove();
+      related.mockRestore();
+    }
+  });
+
+  it('names the selected perspective in the inline recommendations heading', async () => {
+    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    const element = createRecommendations({ role: 'reblogger', blogName: 'reblogger', blogId: 20 });
+
+    try {
+      await settle(element);
+      expect(element.shadowRoot?.querySelector('h3')?.textContent?.trim())
+        .toBe('Related posts for Reblogger (@reblogger)');
+      expect(element.shadowRoot?.textContent).not.toContain('More like this');
     } finally {
       element.remove();
       related.mockRestore();

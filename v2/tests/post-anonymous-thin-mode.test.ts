@@ -181,7 +181,7 @@ describe('anonymous thin post mode', () => {
     }
   });
 
-  it('uses the reblogger perspective with the original post as the anonymous recommendation seed', async () => {
+  it('keeps the displayed anonymous reblog as the explore route while retaining the original recommendation seed', async () => {
     setAuthUser(null);
     const originalFeatureFlag = FEATURE_FLAGS.more_like_this_on_post;
     FEATURE_FLAGS.more_like_this_on_post = true;
@@ -202,7 +202,18 @@ describe('anonymous thin post mode', () => {
       await element.updateComplete;
       const recommendations = element.shadowRoot?.querySelector('post-recommendations') as any;
       expect(recommendations.postId).toBe(11);
+      expect(recommendations.relatedRoutePostId).toBe(22);
       expect(recommendations.perspective).toMatchObject({ role: 'reblogger', blogName: 'reblogger', blogId: 20 });
+      await recommendations.updateComplete;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await recommendations.updateComplete;
+      expect(recommendations.shadowRoot?.querySelector<HTMLAnchorElement>('a')?.getAttribute('href'))
+        .toBe('/post/22/related/for/reblogger');
+      expect(related).toHaveBeenCalledWith(expect.objectContaining({
+        seed_post_id: 11,
+        perspective_role: 'reblogger',
+        displayedReblogPostId: 22,
+      }), expect.any(Object));
     } finally {
       element.remove();
       FEATURE_FLAGS.more_like_this_on_post = originalFeatureFlag;

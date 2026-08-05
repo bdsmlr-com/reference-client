@@ -292,6 +292,7 @@ describe('runtime transport API errors', () => {
       seed_post_id: 625562977,
       perspective_role: 'reblogger',
       perspective_blog_name: 'ExampleReblogger',
+      displayedReblogPostId: 625562977,
     });
     const legacyError = await posts.relatedLegacy({
       seed_post_id: 625562977,
@@ -300,7 +301,11 @@ describe('runtime transport API errors', () => {
 
     const strictBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     const legacyBody = JSON.parse(fetchMock.mock.calls[1][1].body as string);
-    expect(strictBody).toMatchObject({ perspective_role: 'reblogger' });
+    expect(strictBody).toMatchObject({
+      perspective_role: 'reblogger',
+      displayed_reblog_post_id: 625562977,
+    });
+    expect(strictBody).not.toHaveProperty('displayedReblogPostId');
     expect(legacyBody).not.toHaveProperty('perspective_role');
     expect(legacyError).toMatchObject({
       serverCode: 'recommendation_perspective_unavailable',

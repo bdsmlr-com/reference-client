@@ -5,8 +5,13 @@ import { apiClient } from '../services/client.js';
 import type { Post } from '../types/api.js';
 import { getAuthUser } from '../state/auth-state.js';
 import {
+  buildRelatedPerspectiveTabs,
+  relatedPerspectiveHref,
+  relatedPerspectiveLabel,
   resolveActiveRelatedPerspective,
+  selectDefaultRelatedPerspective,
   type RelatedPerspective,
+  type RelatedPerspectiveSet,
 } from '../services/related-perspective.js';
 import '../components/post-recommendations.js';
 
@@ -49,36 +54,53 @@ export class ViewPostRelated extends LitElement {
       .perspective-nav {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 6px;
         flex-wrap: wrap;
-        margin: 0 0 20px;
+        margin: 0;
+      }
+
+      .perspective-tab {
+        padding: 6px 14px;
+        min-height: 30px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: var(--bg-panel);
         color: var(--text-muted);
+        text-decoration: none;
         font-size: 13px;
       }
 
-      .perspective-link {
-        color: var(--text-muted);
-        text-decoration: none;
+      .perspective-tab:hover {
+        background: var(--bg-panel-alt);
       }
 
-      .perspective-link:hover {
-        color: var(--accent);
+      .perspective-tab.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
       }
 
-      .perspective-link.active {
-        color: var(--text);
-        font-weight: 600;
+      .perspective-tab:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
       }
 
-      .perspective-separator {
-        color: var(--text-muted);
+      .perspective-pane {
+        margin-top: 6px;
+        padding: 16px;
+        border: 1px solid var(--border);
+        background: var(--bg-panel);
+      }
+
+      post-recommendations {
+        margin-top: 0;
       }
     `,
   ];
 
   @property({ type: String }) postId = '';
   @property({ type: String }) routePerspective = 'you';
-  @property({ type: String }) title = 'More like this';
+  @property({ type: String }) title = 'Related posts';
   @state() private seedPost: Post | null = null;
   @state() private seedLoadToken = 0;
   @state() private authVersion = 0;
@@ -99,6 +121,20 @@ export class ViewPostRelated extends LitElement {
 
   private get normalizedPostId(): number {
     return parseInt(this.postId, 10) || 0;
+  }
+
+  private get isReblog(): boolean {
+    const originPostId = this.seedPost?.originPostId;
+    return typeof originPostId === 'number'
+      && originPostId > 0
+      && originPostId !== this.normalizedPostId;
+  }
+
+  private get relatedSeedPostId(): number {
+    const originPostId = this.seedPost?.originPostId;
+    return this.isReblog && originPostId !== undefined
+      ? originPostId
+      : this.normalizedPostId;
   }
 
   private get currentPerspective(): string {
@@ -134,66 +170,59 @@ export class ViewPostRelated extends LitElement {
     }
   }
 
-  private relatedHref(blogName?: string): string {
-    const id = this.normalizedPostId;
-    const normalized = (blogName || '').trim();
-    if (!normalized || normalized.toLowerCase() === 'you') {
-      return `/post/${id}/related/for/you`;
-    }
-    return `/post/${id}/related/for/${encodeURIComponent(normalized)}`;
-  }
-
-  private get perspectiveNavItems(): Array<{ href: string; label: string; active: boolean }> {
-    const currentPerspective = this.currentPerspective;
-    const items: Array<{ href: string; label: string; active: boolean }> = [{
-      href: this.relatedHref('you'),
-      label: 'for you',
-      active: currentPerspective === 'you',
-    }];
-
-    const seen = new Set<string>(['you']);
-    const addPerspective = (blogName?: string | null) => {
-      const normalized = (blogName || '').trim().replace(/^@+/, '');
-      if (!normalized) return;
-      const key = normalized.toLowerCase();
-      if (seen.has(key)) return;
-      seen.add(key);
-      items.push({
-        href: this.relatedHref(normalized),
-        label: `for @${normalized}`,
-        active: currentPerspective === key,
-      });
-    };
-
-    addPerspective(this.seedPost?.originBlogName);
-    addPerspective(this.seedPost?.blogName);
-    if (currentPerspective !== 'you') {
-      addPerspective(this.routePerspective);
-    }
-
-    return items;
-  }
-
-  private get selectedPerspective(): RelatedPerspective | undefined {
+  private get perspectiveSet(): RelatedPerspectiveSet | undefined {
     if (!this.seedPost) return undefined;
-    if (this.currentPerspective === 'you') {
-      return resolveActiveRelatedPerspective(getAuthUser());
-    }
 
-    const routeName = this.currentPerspective.replace(/^@+/, '');
     const original: RelatedPerspective = {
       role: 'original',
       blogId: this.seedPost.originBlogId ?? this.seedPost.blogId,
       blogName: this.seedPost.originBlogName || this.seedPost.blogName || '',
     };
-    const reblogger = this.seedPost.originPostId
+    const reblogger = this.isReblog
       ? {
           role: 'reblogger' as const,
           blogId: this.seedPost.blogId,
           blogName: this.seedPost.blogName || '',
         }
       : undefined;
-    const candidates: Array<RelatedPerspective | undefined> = [original, reblogger];
+
+    return {
+      authenticated: Boolean(getAuthUser()),
+      viewer: resolveActiveRelatedPerspective(getAuthUser()),
+      original,
+      reblogger,
+      isReblog: this.isReblog,
+    };
+  }
+
+  private get perspectiveTabs(): RelatedPerspective[] {
+    const set = this.perspectiveSet;
+    if (!set) return [];
+
+    const tabs = buildRelatedPerspectiveTabs(set);
+    const selected = this.selectedPerspective;
+    if (!selected || tabs.some((tab) => tab.role === selected.role)) {
+      return tabs;
+    }
+
+    const duplicateIndex = tabs.findIndex((tab) =>
+      tab.blogId === selected.blogId
+      && tab.blogName.toLowerCase() === selected.blogName.toLowerCase(),
+    );
+    if (duplicateIndex < 0) return tabs;
+
+    return tabs.map((tab, index) => index === duplicateIndex ? selected : tab);
+  }
+
+  private get selectedPerspective(): RelatedPerspective | undefined {
+    const set = this.perspectiveSet;
+    if (!set) return undefined;
+    if (this.currentPerspective === 'you') {
+      return selectDefaultRelatedPerspective(set);
+    }
+
+    const routeName = this.currentPerspective.replace(/^@+/, '');
+    const candidates = [set.original, set.reblogger];
     const matches = candidates.filter((perspective): perspective is RelatedPerspective =>
       perspective !== undefined
       && Boolean(perspective.blogName)
@@ -203,36 +232,86 @@ export class ViewPostRelated extends LitElement {
     return matches.length === 1 ? matches[0] : undefined;
   }
 
+  private get originalBlogName(): string {
+    return this.perspectiveSet?.original.blogName || 'the original blog';
+  }
+
+  private isActiveTab(perspective: RelatedPerspective): boolean {
+    const selected = this.selectedPerspective;
+    return Boolean(selected
+      && selected.role === perspective.role
+      && selected.blogId === perspective.blogId
+      && selected.blogName.toLowerCase() === perspective.blogName.toLowerCase());
+  }
+
+  private handleTabKeydown(event: KeyboardEvent): void {
+    const tab = event.currentTarget as HTMLAnchorElement;
+    const tabs = Array.from(this.shadowRoot?.querySelectorAll<HTMLAnchorElement>('[role="tab"]') || []);
+    const index = tabs.indexOf(tab);
+    if (index < 0) return;
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      event.preventDefault();
+      const direction = event.key === 'ArrowRight' ? 1 : -1;
+      tabs[(index + direction + tabs.length) % tabs.length]?.focus();
+      return;
+    }
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      tab.click();
+    }
+  }
+
   render() {
     const id = this.normalizedPostId;
     if (!id) {
       return html`<div class="subtitle">Missing post id.</div>`;
     }
+    const tabs = this.perspectiveTabs;
+    const activeTabIndex = tabs.findIndex((perspective) => this.isActiveTab(perspective));
+    const displayedReblogPostId = this.isReblog && this.selectedPerspective?.role === 'reblogger' ? id : 0;
 
     return html`
       <div class="back-nav">
         <a href="/post/${id}" class="back-link">← Back to post</a>
       </div>
 
-      <div class="subtitle">Expanded related results for post ${id}</div>
+      <div class="subtitle">Perspectives for similar posts from @${this.originalBlogName}</div>
 
-      <nav class="perspective-nav" aria-label="Related perspectives">
-        ${this.perspectiveNavItems.map(
-          (item, index) => html`
-            ${index > 0 ? html`<span class="perspective-separator" aria-hidden="true">·</span>` : nothing}
-            ${item.active
-              ? html`<span class="perspective-link active" aria-current=${item.active ? 'page' : nothing}>${item.label}</span>`
-              : html`<a class="perspective-link" href=${item.href} aria-current=${item.active ? 'page' : nothing}>${item.label}</a>`}
-          `
-        )}
+      <nav class="perspective-nav" role="tablist" aria-label="Related perspectives">
+        ${tabs.map((perspective, index) => {
+          const active = this.isActiveTab(perspective);
+          const keyboardFocusable = active || (activeTabIndex < 0 && index === 0);
+          return html`
+            <a
+              id="related-perspective-tab-${perspective.role}"
+              class="perspective-tab ${active ? 'active' : ''}"
+              role="tab"
+              href=${relatedPerspectiveHref(id, perspective)}
+              aria-selected=${active ? 'true' : 'false'}
+              aria-controls="related-perspective-panel"
+              tabindex=${keyboardFocusable ? '0' : '-1'}
+              @keydown=${this.handleTabKeydown}
+            >${relatedPerspectiveLabel(perspective)}</a>
+          `;
+        })}
       </nav>
 
-      <post-recommendations
-        .postId=${id}
-        .mode=${'grid'}
-        .perspective=${this.selectedPerspective}
-        .title=${this.title}
-      ></post-recommendations>
+      <section
+        id="related-perspective-panel"
+        class="perspective-pane"
+        role="tabpanel"
+        aria-labelledby=${this.selectedPerspective ? `related-perspective-tab-${this.selectedPerspective.role}` : nothing}
+      >
+        <post-recommendations
+          .postId=${this.relatedSeedPostId}
+          .displayedReblogPostId=${displayedReblogPostId}
+          .mode=${'grid'}
+          .perspective=${this.selectedPerspective}
+          .title=${this.title}
+        ></post-recommendations>
+      </section>
     `;
   }
 }

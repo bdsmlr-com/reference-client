@@ -515,6 +515,8 @@ export interface RelatedPostsRequest {
   perspective_role: RelatedPerspectiveRole;
   perspective_blog_name?: string;
   perspective_blog_id?: number;
+  /** Maps to the related-posts wire field `displayed_reblog_post_id`. */
+  displayedReblogPostId?: number;
   page_size?: number;
   page_token?: string;
 }
