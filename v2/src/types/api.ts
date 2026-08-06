@@ -718,6 +718,24 @@ export interface RelatedMediaReference {
   durationMs?: number;
 }
 
+export interface RelatedMediaHydrationReference {
+  postId: number;
+  path: string;
+}
+
+export interface RelatedMediaHydrationRequest {
+  references: RelatedMediaHydrationReference[];
+}
+
+export interface RelatedMediaHydrationUrls {
+  original: string;
+  preview?: string;
+}
+
+export interface RelatedMediaHydrationResponse {
+  media: Record<string, RelatedMediaHydrationUrls>;
+}
+
 export interface RelatedMediaItem {
   kind?: string | number;
   original?: RelatedMediaReference;

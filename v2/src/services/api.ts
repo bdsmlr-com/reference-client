@@ -62,6 +62,9 @@ import type {
   RelatedPostsResponse,
   RelatedPostsDocumentRequest,
   RelatedPostsDocument,
+  RelatedPerspectiveRole,
+  RelatedMediaHydrationRequest,
+  RelatedMediaHydrationResponse,
   ListBlogPostsRequest,
   ListBlogPostsResponse,
   ResolveIdentifierRequest,
@@ -432,6 +435,8 @@ async function getToken(): Promise<string> {
 interface ApiRequestOptions {
   trustedStructuredErrors?: boolean;
   signal?: AbortSignal;
+  credentials?: RequestCredentials;
+  omitAuthorization?: boolean;
 }
 
 async function apiRequest<T>(
@@ -589,7 +594,7 @@ async function apiRequestCore<T>(
   retryAttempt: number,
   options: ApiRequestOptions
 ): Promise<T> {
-  const token = await getToken();
+  const token = options.omitAuthorization ? '' : await getToken();
   const requestStartedAt = now();
 
   const controller = new AbortController();
@@ -613,9 +618,11 @@ async function apiRequestCore<T>(
   // Build request headers, including conditional headers if we have cached data
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
     'ngrok-skip-browser-warning': 'true',
   };
+  if (!options.omitAuthorization) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
   if (httpCached) {
     if (httpCached.etag) {
@@ -631,7 +638,7 @@ async function apiRequestCore<T>(
       method: 'POST',
       headers,
       body: JSON.stringify(body),
-      credentials: 'include',
+      credentials: options.credentials ?? 'include',
       signal: controller.signal,
     });
 
@@ -1256,6 +1263,23 @@ export async function getRelatedPostsDocument(
   if (req.page_token) query.page_token = req.page_token;
   const credentials = req.perspective_role === 'viewer' ? 'include' : 'omit';
   return apiGetRequest<RelatedPostsDocument>('/v2/related-posts', query, credentials, options);
+}
+
+export async function hydrateRelatedMedia(
+  req: RelatedMediaHydrationRequest,
+  options: Pick<ApiRequestOptions, 'signal'> & { scope: RelatedPerspectiveRole },
+): Promise<RelatedMediaHydrationResponse> {
+  const anonymous = options.scope === 'original' || options.scope === 'reblogger';
+  return apiRequest<RelatedMediaHydrationResponse>(
+    '/v2/related-media-hydration',
+    req,
+    {
+      trustedStructuredErrors: true,
+      credentials: anonymous ? 'omit' : 'include',
+      omitAuthorization: anonymous,
+      signal: options.signal,
+    },
+  );
 }
 
 /**
