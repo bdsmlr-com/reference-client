@@ -97,6 +97,7 @@ describe('runtime transport API errors', () => {
       displayed_reblog_post_id: '700',
       page_size: '6',
       page_token: 'next',
+      rec_data_version: 'unversioned-v1',
     }));
   });
 

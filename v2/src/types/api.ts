@@ -530,6 +530,8 @@ export interface RelatedPostsDocumentRequest {
   displayed_reblog_post_id?: number;
   page_size?: number;
   page_token?: string;
+  /** Cache partition for anonymous recommendation documents. */
+  rec_data_version?: string;
 }
 
 export interface ListBlogPostsRequest {

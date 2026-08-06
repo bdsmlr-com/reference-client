@@ -1261,6 +1261,7 @@ export async function getRelatedPostsDocument(
   if (req.displayed_reblog_post_id !== undefined) query.displayed_reblog_post_id = String(req.displayed_reblog_post_id);
   if (req.page_size !== undefined) query.page_size = String(req.page_size);
   if (req.page_token) query.page_token = req.page_token;
+  query.rec_data_version = req.rec_data_version ?? 'unversioned-v1';
   const credentials = req.perspective_role === 'viewer' ? 'include' : 'omit';
   return apiGetRequest<RelatedPostsDocument>('/v2/related-posts', query, credentials, options);
 }
