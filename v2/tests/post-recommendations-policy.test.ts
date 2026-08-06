@@ -168,6 +168,24 @@ describe('post recommendations policy', () => {
     }
   });
 
+  it('uses the displayed post route as reblog context when the explicit value is absent', async () => {
+    const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
+    const element = createRecommendations({ role: 'reblogger', blogName: 'reblogger', blogId: 12 });
+    element.relatedRoutePostId = 202;
+
+    try {
+      await settle(element);
+
+      expect(relatedDocument).toHaveBeenCalledWith(expect.objectContaining({
+        perspective_role: 'reblogger',
+        displayed_reblog_post_id: 202,
+      }), expect.objectContaining({ signal: expect.any(AbortSignal) }));
+    } finally {
+      element.remove();
+      relatedDocument.mockRestore();
+    }
+  });
+
   it('uses roving accessible inline tabs without fetching on focus alone', async () => {
     const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
     const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });

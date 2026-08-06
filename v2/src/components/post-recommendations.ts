@@ -418,10 +418,14 @@ export class PostRecommendations extends LitElement {
   }
 
   private getDisplayedReblogPostId(): number {
-    const id = typeof this.displayedReblogPostId === 'number'
+    const explicitId = typeof this.displayedReblogPostId === 'number'
       ? this.displayedReblogPostId
       : parseInt(String(this.displayedReblogPostId), 10) || 0;
-    return id > 0 ? id : 0;
+    if (explicitId > 0) return explicitId;
+    const routePostId = typeof this.relatedRoutePostId === 'number'
+      ? this.relatedRoutePostId
+      : parseInt(String(this.relatedRoutePostId), 10) || 0;
+    return routePostId > 0 ? routePostId : 0;
   }
 
   private get relatedRouteId(): number {
