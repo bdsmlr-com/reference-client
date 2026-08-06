@@ -321,7 +321,7 @@ export class PostRecommendations extends LitElement {
   private requestToken = 0;
   private requestKey = '';
   private seenIds = new Set<number>();
-  private nextOffset = 0;
+  private nextPageToken: string | undefined;
   private fallbackUsed = false;
 
   connectedCallback(): void {
@@ -369,7 +369,7 @@ export class PostRecommendations extends LitElement {
 
     this.relatedPosts = [];
     this.seenIds.clear();
-    this.nextOffset = 0;
+    this.nextPageToken = undefined;
     this.exhausted = false;
     this.loadingMore = false;
     if (!fromFallback) this.fallbackUsed = false;
@@ -552,7 +552,7 @@ export class PostRecommendations extends LitElement {
     this.loadingMore = !initial;
 
     try {
-      const requestOffset = this.nextOffset;
+      const requestPageToken = this.nextPageToken;
       const displayedReblogPostId = this.getDisplayedReblogPostId();
       const recs = await apiClient.posts.relatedDocument({
         seed_post_id: id,
@@ -563,7 +563,7 @@ export class PostRecommendations extends LitElement {
           ? { displayed_reblog_post_id: displayedReblogPostId }
           : {}),
         page_size: RECS_PAGE_SIZE,
-        page_token: requestOffset > 0 ? String(requestOffset) : undefined,
+        page_token: requestPageToken,
       }, { signal: this.currentAbortController?.signal });
       if (!this.isCurrentRequest(token)) return;
       this.effectivePerspective = responsePerspective(recs.recommendationPerspective) || perspective;
@@ -589,7 +589,7 @@ export class PostRecommendations extends LitElement {
         if (initial) this.state = { kind: 'empty' };
         return;
       }
-      this.nextOffset += RECS_PAGE_SIZE;
+      this.nextPageToken = recs.page?.nextPageToken;
 
       // De-duplicate items before appending
       const newItems = items.filter(r => r.post_id && !this.seenIds.has(r.post_id));
@@ -597,7 +597,7 @@ export class PostRecommendations extends LitElement {
 
       this.relatedPosts = [...this.relatedPosts, ...newItems];
       this.state = { kind: 'success' };
-      if (items.length < RECS_PAGE_SIZE || this.relatedPosts.length >= 96) {
+      if (!this.nextPageToken || this.relatedPosts.length >= 96) {
         this.exhausted = true;
       }
     } catch (e) {
