@@ -136,7 +136,7 @@ describe('post recommendations policy', () => {
     }
   });
 
-  it('uses the opaque related-document cursor for the next page', async () => {
+  it('extends the local related-document window without a second API request', async () => {
     const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument')
       .mockResolvedValueOnce({
         posts: Array.from({ length: 20 }, (_, index) => ({ id: index + 1, blogName: 'origin', type: 2 })),
@@ -152,8 +152,9 @@ describe('post recommendations policy', () => {
       await settle(element);
       await (element as any).fetchMore();
 
-      expect(relatedDocument).toHaveBeenLastCalledWith(expect.objectContaining({
-        page_token: 'opaque-next-page',
+      expect(relatedDocument).toHaveBeenCalledTimes(1);
+      expect(relatedDocument).toHaveBeenCalledWith(expect.objectContaining({
+        page_size: 1000,
       }), expect.objectContaining({ signal: expect.any(AbortSignal) }));
     } finally {
       element.remove();

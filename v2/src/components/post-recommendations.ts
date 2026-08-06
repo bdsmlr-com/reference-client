@@ -321,7 +321,8 @@ export class PostRecommendations extends LitElement {
   private requestToken = 0;
   private requestKey = '';
   private seenIds = new Set<number>();
-  private nextPageToken: string | undefined;
+  private relatedDocument?: SimilarPostsResponse;
+  private nextDocumentIndex = 0;
   private fallbackUsed = false;
 
   connectedCallback(): void {
@@ -369,7 +370,8 @@ export class PostRecommendations extends LitElement {
 
     this.relatedPosts = [];
     this.seenIds.clear();
-    this.nextPageToken = undefined;
+    this.relatedDocument = undefined;
+    this.nextDocumentIndex = 0;
     this.exhausted = false;
     this.loadingMore = false;
     if (!fromFallback) this.fallbackUsed = false;
@@ -552,21 +554,27 @@ export class PostRecommendations extends LitElement {
     this.loadingMore = !initial;
 
     try {
-      const requestPageToken = this.nextPageToken;
       const displayedReblogPostId = this.getDisplayedReblogPostId();
-      const recs = await apiClient.posts.relatedDocument({
-        seed_post_id: id,
-        perspective_role: perspective.role,
-        perspective_blog_name: perspective.blogName,
-        perspective_blog_id: perspective.blogId,
-        ...(perspective.role === 'reblogger' && displayedReblogPostId
-          ? { displayed_reblog_post_id: displayedReblogPostId }
-          : {}),
-        page_size: RECS_PAGE_SIZE,
-        page_token: requestPageToken,
-      }, { signal: this.currentAbortController?.signal });
+      if (!this.relatedDocument) {
+        this.relatedDocument = await apiClient.posts.relatedDocument({
+          seed_post_id: id,
+          perspective_role: perspective.role,
+          perspective_blog_name: perspective.blogName,
+          perspective_blog_id: perspective.blogId,
+          ...(perspective.role === 'reblogger' && displayedReblogPostId
+            ? { displayed_reblog_post_id: displayedReblogPostId }
+            : {}),
+          page_size: 1000,
+        }, { signal: this.currentAbortController?.signal }) as SimilarPostsResponse;
+      }
+      const source = this.relatedDocument;
+      const posts = Array.isArray(source.posts) ? source.posts : [];
+      const recs = {
+        ...source,
+        posts: posts.slice(this.nextDocumentIndex, this.nextDocumentIndex + VISIBLE_RELATED_CARD_COUNT),
+      } as SimilarPostsResponse;
       if (!this.isCurrentRequest(token)) return;
-      this.effectivePerspective = responsePerspective(recs.recommendationPerspective) || perspective;
+      this.effectivePerspective = responsePerspective((source as any).recommendationPerspective) || perspective;
 
       await this.hydrateVisibleDocumentMedia(recs as SimilarPostsResponse, perspective, this.currentAbortController?.signal);
       if (!this.isCurrentRequest(token)) return;
@@ -589,7 +597,7 @@ export class PostRecommendations extends LitElement {
         if (initial) this.state = { kind: 'empty' };
         return;
       }
-      this.nextPageToken = recs.page?.nextPageToken;
+      this.nextDocumentIndex += recs.posts?.length || 0;
 
       // De-duplicate items before appending
       const newItems = items.filter(r => r.post_id && !this.seenIds.has(r.post_id));
@@ -597,7 +605,7 @@ export class PostRecommendations extends LitElement {
 
       this.relatedPosts = [...this.relatedPosts, ...newItems];
       this.state = { kind: 'success' };
-      if (!this.nextPageToken || this.relatedPosts.length >= 96) {
+      if (this.nextDocumentIndex >= posts.length || this.relatedPosts.length >= 96) {
         this.exhausted = true;
       }
     } catch (e) {
