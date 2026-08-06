@@ -8,12 +8,17 @@ import '../src/pages/view-post-related.js';
 
 const ROOT = join(process.cwd(), 'src');
 
-async function loadRoute(routePerspective: string, post: Record<string, unknown>) {
+async function loadRoute(
+  routePerspective: string,
+  post: Record<string, unknown>,
+  postId = 50,
+  relatedPosts: Record<string, unknown>[] = [],
+) {
   vi.spyOn(apiClient.posts, 'get').mockResolvedValue({ post } as any);
-  const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+  const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: relatedPosts } as any);
   vi.spyOn(apiClient.posts, 'relatedLegacy').mockResolvedValue({ posts: [] } as any);
   const element = document.createElement('view-post-related') as any;
-  element.postId = '50';
+  element.postId = String(postId);
   element.routePerspective = routePerspective;
   document.body.append(element);
   await element.updateComplete;
@@ -103,5 +108,28 @@ describe('post related routes', () => {
     }), expect.any(Object));
     expect(related.mock.calls[0]?.[0]).not.toHaveProperty('displayedReblogPostId');
     expect(document.querySelector('view-post-related')?.shadowRoot?.textContent).not.toContain('Reblogger');
+  });
+
+  it('collapses a self-reblog with a distinct origin post id to the original perspective', async () => {
+    const related = await loadRoute('self-reblog-blog', {
+      id: 869990019,
+      originPostId: 869989001,
+      originBlogId: 42,
+      originBlogName: 'self-reblog-blog',
+      blogId: 42,
+      blogName: 'self-reblog-blog',
+    }, 869990019, [{ id: 123, blogName: 'recommended-blog' }]);
+
+    expect(related).toHaveBeenCalledWith(expect.objectContaining({
+      seed_post_id: 869989001,
+      perspective_role: 'original',
+      perspective_blog_id: 42,
+      perspective_blog_name: 'self-reblog-blog',
+    }), expect.any(Object));
+    expect(related.mock.calls[0]?.[0]).not.toHaveProperty('displayedReblogPostId');
+    expect(document.querySelector('view-post-related')?.shadowRoot?.textContent)
+      .not.toContain('Recommendations are unavailable for the selected blog.');
+    const recommendations = document.querySelector('view-post-related')?.shadowRoot?.querySelector('post-recommendations');
+    expect(recommendations?.shadowRoot?.querySelector('post-grid')).not.toBeNull();
   });
 });

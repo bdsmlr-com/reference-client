@@ -123,16 +123,31 @@ export class ViewPostRelated extends LitElement {
     return parseInt(this.postId, 10) || 0;
   }
 
-  private get isReblog(): boolean {
+  private get hasDistinctOriginPost(): boolean {
     const originPostId = this.seedPost?.originPostId;
     return typeof originPostId === 'number'
       && originPostId > 0
       && originPostId !== this.normalizedPostId;
   }
 
+  private get hasSameOriginAndDisplayedBlog(): boolean {
+    if (!this.seedPost) return false;
+
+    const { originBlogId, blogId, originBlogName, blogName } = this.seedPost;
+    if (typeof originBlogId === 'number' && originBlogId > 0 && typeof blogId === 'number' && blogId > 0) {
+      return originBlogId === blogId;
+    }
+
+    return Boolean(originBlogName && blogName && originBlogName.trim().toLowerCase() === blogName.trim().toLowerCase());
+  }
+
+  private get isReblog(): boolean {
+    return this.hasDistinctOriginPost && !this.hasSameOriginAndDisplayedBlog;
+  }
+
   private get relatedSeedPostId(): number {
     const originPostId = this.seedPost?.originPostId;
-    return this.isReblog && originPostId !== undefined
+    return this.hasDistinctOriginPost && originPostId !== undefined
       ? originPostId
       : this.normalizedPostId;
   }
