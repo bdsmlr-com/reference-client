@@ -60,6 +60,8 @@ import type {
   ForYouPostsRequest,
   RelatedPostsRequest,
   RelatedPostsResponse,
+  RelatedPostsDocumentRequest,
+  RelatedPostsDocument,
   ListBlogPostsRequest,
   ListBlogPostsResponse,
   ResolveIdentifierRequest,
@@ -532,6 +534,50 @@ async function apiRequest<T>(
   void promise.then(clearInflightRequest, clearInflightRequest);
 
   return promise;
+}
+
+async function apiGetRequest<T>(
+  endpoint: string,
+  query: Record<string, string>,
+  credentials: RequestCredentials,
+  options: Pick<ApiRequestOptions, 'signal'> = {},
+): Promise<T> {
+  syncAdminModeFromUrl();
+  if (isOffline()) {
+    throw new ApiError(ApiErrorCode.OFFLINE, 'You appear to be offline. Please check your connection.', { endpoint });
+  }
+  const endpointUrl = new URL(buildTransportPath(endpoint), window.location.origin);
+  for (const [key, value] of Object.entries(query)) {
+    endpointUrl.searchParams.set(key, value);
+  }
+  const response = await fetch(endpointUrl.toString(), {
+    method: 'GET',
+    headers: {
+      'ngrok-skip-browser-warning': 'true',
+    },
+    credentials,
+    signal: options.signal,
+  });
+  if (!response.ok) {
+    let errorPayload: unknown;
+    try {
+      errorPayload = await response.json();
+    } catch {
+      errorPayload = undefined;
+    }
+    const envelopeError = parseApiErrorEnvelope(errorPayload);
+    const statusError = apiErrorFromStatus(response.status, `HTTP ${response.status}`, endpoint);
+    throw envelopeError
+      ? new ApiError(statusError.code, envelopeError.message, {
+          statusCode: response.status,
+          endpoint,
+          serverCode: envelopeError.serverCode,
+          details: envelopeError.details,
+          isRetryable: envelopeError.isRetryable ?? statusError.isRetryable,
+        })
+      : statusError;
+  }
+  return response.json() as Promise<T>;
 }
 
 async function apiRequestCore<T>(
@@ -1193,6 +1239,23 @@ export async function getRelatedPosts(
     },
     { trustedStructuredErrors: true, ...options }
   );
+}
+
+export async function getRelatedPostsDocument(
+  req: RelatedPostsDocumentRequest,
+  options: Pick<ApiRequestOptions, 'signal'> = {},
+): Promise<RelatedPostsDocument> {
+  const query: Record<string, string> = {
+    seed_post_id: String(req.seed_post_id),
+    perspective_role: req.perspective_role,
+  };
+  if (req.perspective_blog_name) query.perspective_blog_name = req.perspective_blog_name;
+  if (req.perspective_blog_id !== undefined) query.perspective_blog_id = String(req.perspective_blog_id);
+  if (req.displayed_reblog_post_id !== undefined) query.displayed_reblog_post_id = String(req.displayed_reblog_post_id);
+  if (req.page_size !== undefined) query.page_size = String(req.page_size);
+  if (req.page_token) query.page_token = req.page_token;
+  const credentials = req.perspective_role === 'viewer' ? 'include' : 'omit';
+  return apiGetRequest<RelatedPostsDocument>('/v2/related-posts', query, credentials, options);
 }
 
 /**

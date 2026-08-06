@@ -521,6 +521,17 @@ export interface RelatedPostsRequest {
   page_token?: string;
 }
 
+/** Strict query contract for the cacheable related-posts GET document. */
+export interface RelatedPostsDocumentRequest {
+  seed_post_id: number;
+  perspective_role: RelatedPerspectiveRole;
+  perspective_blog_name?: string;
+  perspective_blog_id?: number;
+  displayed_reblog_post_id?: number;
+  page_size?: number;
+  page_token?: string;
+}
+
 export interface ListBlogPostsRequest {
   blog_id: number;
   blog_name?: string;
@@ -688,6 +699,65 @@ export interface RecommendationPerspectiveMetadata {
 
 export interface RelatedPostsResponse extends SearchPostsByTagResponse {
   recommendationPerspective: RecommendationPerspectiveMetadata;
+}
+
+export interface RelatedMediaReference {
+  path?: string;
+  mimeType?: string;
+  width?: number;
+  height?: number;
+  durationMs?: number;
+}
+
+export interface RelatedMediaItem {
+  kind?: string | number;
+  original?: RelatedMediaReference;
+  alternates?: RelatedMediaReference[];
+  preview?: RelatedMediaReference;
+  poster?: RelatedMediaReference;
+}
+
+export interface RelatedMediaRepresentation {
+  kind?: string | number;
+  items?: RelatedMediaItem[];
+}
+
+export interface RelatedDocumentContent {
+  title?: string;
+  text?: string;
+  description?: string;
+  quoteText?: string;
+  quoteSource?: string;
+  files?: RelatedMediaReference[];
+  thumbnail?: RelatedMediaReference;
+}
+
+export interface RelatedDocumentPost {
+  id?: number;
+  blogId?: number;
+  originPostId?: number;
+  originBlogId?: number;
+  blogName?: string;
+  originBlogName?: string;
+  type?: PostType;
+  title?: string;
+  tags?: string[];
+  createdAtUnix?: number;
+  updatedAtUnix?: number;
+  likesCount?: number;
+  commentsCount?: number;
+  reblogsCount?: number;
+  mentionsCount?: number;
+  notesCount?: number;
+  variant?: PostVariant;
+  originPostMissing?: boolean;
+  originBlogGone?: boolean;
+  content?: RelatedDocumentContent;
+  mediaRepresentation?: RelatedMediaRepresentation;
+}
+
+export interface RelatedPostsDocument extends Omit<RelatedPostsResponse, 'posts'> {
+  posts?: RelatedDocumentPost[];
 }
 
 export interface SearchResultUnit {

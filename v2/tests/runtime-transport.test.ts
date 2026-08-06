@@ -64,6 +64,62 @@ describe('runtime transport base selection', () => {
 });
 
 describe('runtime transport API errors', () => {
+  it('omits credentials for cacheable anonymous related document reads', async () => {
+    stubApiBrowserState();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: vi.fn().mockResolvedValue({ posts: [] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { getRelatedPostsDocument } = await import('../src/services/api.js');
+    await getRelatedPostsDocument({
+      seed_post_id: 625562977,
+      perspective_role: 'reblogger',
+      perspective_blog_id: 12,
+      displayed_reblog_post_id: 700,
+      page_size: 6,
+      page_token: 'next',
+    });
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.method).toBe('GET');
+    expect(init.body).toBeUndefined();
+    expect(init.headers).not.toHaveProperty('Authorization');
+    expect(init.credentials).toBe('omit');
+    expect(new URL(url).searchParams).toEqual(new URLSearchParams({
+      seed_post_id: '625562977',
+      perspective_role: 'reblogger',
+      perspective_blog_id: '12',
+      displayed_reblog_post_id: '700',
+      page_size: '6',
+      page_token: 'next',
+    }));
+  });
+
+  it('includes credentials only for private viewer related document reads', async () => {
+    stubApiBrowserState();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: vi.fn().mockResolvedValue({ posts: [] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { getRelatedPostsDocument } = await import('../src/services/api.js');
+    await getRelatedPostsDocument({
+      seed_post_id: 625562977,
+      perspective_role: 'viewer',
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.credentials).toBe('include');
+    expect(init.headers).not.toHaveProperty('Authorization');
+  });
+
   it('propagates a caller abort signal through strict related requests', async () => {
     stubApiBrowserState();
     let requestSignal: AbortSignal | undefined;
