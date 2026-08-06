@@ -21,6 +21,7 @@ import { renderStructuredMicroBlogIdentity } from '../services/blog-identity-ren
 import { isAdminMode } from '../services/blog-resolver.js';
 import { getAuthUser } from '../state/auth-state.js';
 import {
+  buildRelatedPerspectiveTabs,
   resolveActiveRelatedPerspective,
   selectDefaultRelatedPerspective,
   type RelatedPerspective,
@@ -320,13 +321,15 @@ export class PostDetailContent extends LitElement {
         }
       : undefined;
     const viewerPerspective = resolveActiveRelatedPerspective(authUser);
-    const recommendationPerspective = selectDefaultRelatedPerspective({
+    const recommendationPerspectiveSet = {
       authenticated: this.authMode === 'authenticated',
       viewer: viewerPerspective,
       original: originalPerspective,
       reblogger: rebloggerPerspective,
       isReblog: presentation.identity.isReblog,
-    });
+    };
+    const recommendationPerspective = selectDefaultRelatedPerspective(recommendationPerspectiveSet);
+    const recommendationPerspectives = buildRelatedPerspectiveTabs(recommendationPerspectiveSet);
     const displayedReblogPostId = recommendationPerspective?.role === 'reblogger'
       && presentation.identity.isReblog
       ? p.id
@@ -458,7 +461,7 @@ export class PostDetailContent extends LitElement {
         <post-engagement .post=${p} .authMode=${this.authMode} .from=${this.from as PostRouteSource} ?standalone=${engagementStandalone}></post-engagement>
 
         ${presentation.layout.showRecommendations
-          ? html`<post-recommendations .postId=${recommendationSeedPostId} .relatedRoutePostId=${p.id} .displayedReblogPostId=${displayedReblogPostId} .perspective=${recommendationPerspective} .mode=${recommendationsMode} .showBrowseLink=${true} .from=${this.from as PostRouteSource}></post-recommendations>`
+          ? html`<post-recommendations .postId=${recommendationSeedPostId} .relatedRoutePostId=${p.id} .displayedReblogPostId=${displayedReblogPostId} .perspective=${recommendationPerspective} .perspectives=${recommendationPerspectives} .mode=${recommendationsMode} .showBrowseLink=${true} .from=${this.from as PostRouteSource}></post-recommendations>`
           : nothing}
       </section>
     `;

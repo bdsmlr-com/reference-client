@@ -2904,6 +2904,20 @@ export class PostsApi {
     return getRelatedPosts(req, options);
   }
 
+  async relatedDocument(
+    req: RelatedPostsDocumentRequest,
+    options?: Pick<ApiRequestOptions, 'signal'>,
+  ): Promise<RelatedPostsDocument> {
+    return getRelatedPostsDocument(req, options);
+  }
+
+  async hydrateRelatedMedia(
+    req: RelatedMediaHydrationRequest,
+    options: Pick<ApiRequestOptions, 'signal'> & { scope: RelatedPerspectiveRole },
+  ): Promise<RelatedMediaHydrationResponse> {
+    return hydrateRelatedMedia(req, options);
+  }
+
   // Temporary bridge for callers that predate explicit perspective selection.
   async relatedLegacy(
     req: Omit<RelatedPostsRequest, 'perspective_role'>

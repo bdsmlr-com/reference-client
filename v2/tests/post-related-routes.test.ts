@@ -15,7 +15,7 @@ async function loadRoute(
   relatedPosts: Record<string, unknown>[] = [],
 ) {
   vi.spyOn(apiClient.posts, 'get').mockResolvedValue({ post } as any);
-  const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: relatedPosts } as any);
+  const related = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: relatedPosts } as any);
   vi.spyOn(apiClient.posts, 'relatedLegacy').mockResolvedValue({ posts: [] } as any);
   const element = document.createElement('view-post-related') as any;
   element.postId = String(postId);
@@ -60,7 +60,7 @@ describe('post related routes', () => {
     const recommendationsSrc = readFileSync(join(ROOT, 'components/post-recommendations.ts'), 'utf8');
     const apiSrc = readFileSync(join(ROOT, 'services/api.ts'), 'utf8');
 
-    expect(recommendationsSrc).toContain('apiClient.posts.related({');
+    expect(recommendationsSrc).toContain('apiClient.posts.relatedDocument({');
     expect(recommendationsSrc).not.toContain('recService.getSimilarPosts(');
     expect(recommendationsSrc).not.toContain("from '../services/recommendation-api.js'");
     expect(apiSrc).toContain("'/v2/related-posts'");
@@ -74,7 +74,7 @@ describe('post related routes', () => {
     expect(related).toHaveBeenCalledWith(expect.objectContaining({
       seed_post_id: 40, perspective_role: 'viewer', perspective_blog_id: 30, perspective_blog_name: 'viewer-blog',
     }), expect.any(Object));
-    expect(related.mock.calls[0]?.[0]).not.toHaveProperty('displayedReblogPostId');
+    expect(related.mock.calls[0]?.[0]).not.toHaveProperty('displayed_reblog_post_id');
   });
 
   it('keeps an explicit original route original when a viewer is available', async () => {
@@ -85,7 +85,7 @@ describe('post related routes', () => {
     expect(related).toHaveBeenCalledWith(expect.objectContaining({
       seed_post_id: 40, perspective_role: 'original', perspective_blog_id: 10, perspective_blog_name: 'original-blog',
     }), expect.any(Object));
-    expect(related.mock.calls[0]?.[0]).not.toHaveProperty('displayedReblogPostId');
+    expect(related.mock.calls[0]?.[0]).not.toHaveProperty('displayed_reblog_post_id');
   });
 
   it('keeps an explicit reblogger route reblogger when a viewer is available', async () => {
@@ -94,7 +94,7 @@ describe('post related routes', () => {
       id: 50, originPostId: 40, originBlogId: 10, originBlogName: 'original-blog', blogId: 20, blogName: 'reblogger-blog',
     });
     expect(related).toHaveBeenCalledWith(expect.objectContaining({
-      seed_post_id: 40, perspective_role: 'reblogger', perspective_blog_id: 20, perspective_blog_name: 'reblogger-blog', displayedReblogPostId: 50,
+      seed_post_id: 40, perspective_role: 'reblogger', perspective_blog_id: 20, perspective_blog_name: 'reblogger-blog', displayed_reblog_post_id: 50,
     }), expect.any(Object));
   });
 
@@ -106,7 +106,7 @@ describe('post related routes', () => {
     expect(related).toHaveBeenCalledWith(expect.objectContaining({
       seed_post_id: 50, perspective_role: 'original', perspective_blog_id: 10, perspective_blog_name: 'original-blog',
     }), expect.any(Object));
-    expect(related.mock.calls[0]?.[0]).not.toHaveProperty('displayedReblogPostId');
+    expect(related.mock.calls[0]?.[0]).not.toHaveProperty('displayed_reblog_post_id');
     expect(document.querySelector('view-post-related')?.shadowRoot?.textContent).not.toContain('Reblogger');
   });
 
@@ -126,7 +126,7 @@ describe('post related routes', () => {
       perspective_blog_id: 42,
       perspective_blog_name: 'self-reblog-blog',
     }), expect.any(Object));
-    expect(related.mock.calls[0]?.[0]).not.toHaveProperty('displayedReblogPostId');
+    expect(related.mock.calls[0]?.[0]).not.toHaveProperty('displayed_reblog_post_id');
     expect(document.querySelector('view-post-related')?.shadowRoot?.textContent)
       .not.toContain('Recommendations are unavailable for the selected blog.');
     const recommendations = document.querySelector('view-post-related')?.shadowRoot?.querySelector('post-recommendations');

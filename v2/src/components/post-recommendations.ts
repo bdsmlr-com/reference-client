@@ -25,6 +25,15 @@ import './load-footer.js';
 import './loading-spinner.js';
 
 const RECS_PAGE_SIZE = 20;
+const VISIBLE_RELATED_CARD_COUNT = 12;
+const RELATED_MEDIA_HYDRATION_REFERENCE_LIMIT = 100;
+const NOT_INDEXED_SUPPRESSION_MS = 7 * 24 * 60 * 60 * 1000;
+const NOT_INDEXED_STORAGE_PREFIX = 'related-perspective-not-indexed:';
+
+function perspectivesMatch(left: RelatedPerspective, right: RelatedPerspective): boolean {
+  if (left.blogId && right.blogId) return left.blogId === right.blogId;
+  return left.role === right.role && left.blogName.trim().toLowerCase() === right.blogName.trim().toLowerCase();
+}
 
 function responsePerspective(value: unknown): RelatedPerspective | undefined {
   if (!value || typeof value !== 'object') return undefined;
@@ -209,6 +218,26 @@ export class PostRecommendations extends LitElement {
     css`
       :host { display: block; margin-top: 40px; }
       h3 { margin-bottom: 24px; font-size: 1.5rem; }
+      .perspective-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      .perspective-tab {
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: var(--bg-panel);
+        color: var(--text-muted);
+        cursor: pointer;
+        font: inherit;
+        font-size: 12px;
+        padding: 6px 10px;
+      }
+      .perspective-tab.active {
+        border-color: var(--accent);
+        color: var(--text);
+      }
       .gutter-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -275,6 +304,7 @@ export class PostRecommendations extends LitElement {
   @property({ type: Number }) displayedReblogPostId = 0;
   @property({ type: String }) mode: 'grid' | 'list' = 'grid';
   @property({ type: Object }) perspective?: RelatedPerspective;
+  @property({ type: Array }) perspectives: RelatedPerspective[] = [];
   @property({ type: String }) title = '';
   @property({ type: Boolean }) showBrowseLink = false;
   @property({ type: String }) from: PostRouteSource = 'direct';
@@ -285,12 +315,14 @@ export class PostRecommendations extends LitElement {
   @state() private exhausted = false;
   @state() private infiniteScroll = false;
   @state() private effectivePerspective?: RelatedPerspective;
+  @state() private focusedPerspectiveRole = '';
 
   private currentAbortController: AbortController | null = null;
   private requestToken = 0;
   private requestKey = '';
   private seenIds = new Set<number>();
   private nextOffset = 0;
+  private fallbackUsed = false;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -327,7 +359,7 @@ export class PostRecommendations extends LitElement {
     }
   }
 
-  private async resetAndFetch() {
+  private async resetAndFetch(fromFallback = false) {
     const id = this.getNormalizedPostId();
     if (this.currentAbortController) {
       this.currentAbortController.abort();
@@ -340,7 +372,7 @@ export class PostRecommendations extends LitElement {
     this.nextOffset = 0;
     this.exhausted = false;
     this.loadingMore = false;
-    this.effectivePerspective = this.perspective;
+    if (!fromFallback) this.fallbackUsed = false;
 
     if (!id) return;
     if (!this.perspective) {
@@ -351,6 +383,21 @@ export class PostRecommendations extends LitElement {
       return;
     }
 
+    if (this.isPerspectiveSuppressed(this.perspective)) {
+      const fallback = this.selectNotIndexedFallback(this.perspective);
+      if (!fallback) {
+        this.effectivePerspective = undefined;
+        this.state = {
+          kind: 'unavailable',
+          message: 'Recommendations are unavailable for the selected blog.',
+        };
+        return;
+      }
+      this.perspective = fallback;
+      this.requestKey = this.getRequestKey();
+    }
+
+    this.effectivePerspective = this.perspective;
     this.state = { kind: 'loading' };
     await this.fetchMore(token, true);
   }
@@ -410,6 +457,93 @@ export class PostRecommendations extends LitElement {
     return { kind: 'temporary-failure', message };
   }
 
+  private isPerspectiveSuppressed(perspective: RelatedPerspective): boolean {
+    if (!perspective.blogId || typeof localStorage === 'undefined') return false;
+    try {
+      const raw = localStorage.getItem(`${NOT_INDEXED_STORAGE_PREFIX}${perspective.blogId}`);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw) as { expiresAt?: unknown };
+      const expiresAt = typeof parsed.expiresAt === 'number' ? parsed.expiresAt : 0;
+      if (expiresAt > Date.now()) return true;
+      localStorage.removeItem(`${NOT_INDEXED_STORAGE_PREFIX}${perspective.blogId}`);
+    } catch {
+      // Browser storage is optional for recommendation rendering.
+    }
+    return false;
+  }
+
+  private suppressPerspective(perspective: RelatedPerspective): void {
+    if (!perspective.blogId || typeof localStorage === 'undefined') return;
+    try {
+      localStorage.setItem(
+        `${NOT_INDEXED_STORAGE_PREFIX}${perspective.blogId}`,
+        JSON.stringify({ expiresAt: Date.now() + NOT_INDEXED_SUPPRESSION_MS }),
+      );
+    } catch {
+      // Storage failure must not change the visible request result.
+    }
+  }
+
+  private selectNotIndexedFallback(failed: RelatedPerspective): RelatedPerspective | undefined {
+    const tabs = this.perspectives.filter((tab) => !this.isPerspectiveSuppressed(tab));
+    const reblogger = tabs.find((tab) => tab.role === 'reblogger' && !perspectivesMatch(tab, failed));
+    if (reblogger) return reblogger;
+    const original = tabs.find((tab) => tab.role === 'original' && !perspectivesMatch(tab, failed));
+    return original;
+  }
+
+  private async hydrateVisibleDocumentMedia(
+    document: SimilarPostsResponse,
+    perspective: RelatedPerspective,
+    signal: AbortSignal | undefined,
+  ): Promise<void> {
+    const posts = Array.isArray(document.posts) ? document.posts.slice(0, VISIBLE_RELATED_CARD_COUNT) : [];
+    const references: Array<{ postId: number; path: string }> = [];
+    const seen = new Set<string>();
+    const addReference = (postId: number | undefined, media: any) => {
+      const path = typeof media?.path === 'string' ? media.path : '';
+      if (!postId || !path || seen.has(`${postId}:${path}`) || references.length >= RELATED_MEDIA_HYDRATION_REFERENCE_LIMIT) return;
+      seen.add(`${postId}:${path}`);
+      references.push({ postId, path });
+    };
+
+    posts.forEach((post: any) => {
+      const postId = typeof post.id === 'number' ? post.id : undefined;
+      (post.mediaRepresentation?.items || []).forEach((item: any) => {
+        addReference(postId, item.original);
+        addReference(postId, item.preview);
+        addReference(postId, item.poster);
+        (item.alternates || []).forEach((alternate: any) => addReference(postId, alternate));
+      });
+      (post.content?.files || []).forEach((file: any) => addReference(postId, file));
+      addReference(postId, post.content?.thumbnail);
+    });
+
+    if (!references.length) return;
+    const hydration = await apiClient.posts.hydrateRelatedMedia(
+      { references },
+      { scope: perspective.role, signal },
+    );
+    const applyMediaUrl = (postId: number | undefined, media: any) => {
+      const path = typeof media?.path === 'string' ? media.path : '';
+      const urls = postId && path ? hydration.media[`${postId}:${path}`] : undefined;
+      if (!urls) return;
+      media.url = urls.original;
+      if (urls.preview) media.previewUrl = urls.preview;
+    };
+    posts.forEach((post: any) => {
+      const postId = typeof post.id === 'number' ? post.id : undefined;
+      (post.mediaRepresentation?.items || []).forEach((item: any) => {
+        applyMediaUrl(postId, item.original);
+        applyMediaUrl(postId, item.preview);
+        applyMediaUrl(postId, item.poster);
+        (item.alternates || []).forEach((alternate: any) => applyMediaUrl(postId, alternate));
+      });
+      (post.content?.files || []).forEach((file: any) => applyMediaUrl(postId, file));
+      applyMediaUrl(postId, post.content?.thumbnail);
+    });
+  }
+
   private async fetchMore(token = this.requestToken, initial = false) {
     const id = this.getNormalizedPostId();
     const perspective = this.perspective;
@@ -420,13 +554,13 @@ export class PostRecommendations extends LitElement {
     try {
       const requestOffset = this.nextOffset;
       const displayedReblogPostId = this.getDisplayedReblogPostId();
-      const recs = await apiClient.posts.related({
+      const recs = await apiClient.posts.relatedDocument({
         seed_post_id: id,
         perspective_role: perspective.role,
         perspective_blog_name: perspective.blogName,
         perspective_blog_id: perspective.blogId,
         ...(perspective.role === 'reblogger' && displayedReblogPostId
-          ? { displayedReblogPostId }
+          ? { displayed_reblog_post_id: displayedReblogPostId }
           : {}),
         page_size: RECS_PAGE_SIZE,
         page_token: requestOffset > 0 ? String(requestOffset) : undefined,
@@ -434,7 +568,10 @@ export class PostRecommendations extends LitElement {
       if (!this.isCurrentRequest(token)) return;
       this.effectivePerspective = responsePerspective(recs.recommendationPerspective) || perspective;
 
-      const items = await materializeRecommendationItems(recs, {
+      await this.hydrateVisibleDocumentMedia(recs as SimilarPostsResponse, perspective, this.currentAbortController?.signal);
+      if (!this.isCurrentRequest(token)) return;
+
+      const items = await materializeRecommendationItems(recs as SimilarPostsResponse, {
         batchGetPosts: async (postIds) => {
           const batchResp = await apiClient.posts.batchGet({ post_ids: postIds });
           return { posts: batchResp.posts as ProcessedPost[] | undefined };
@@ -465,6 +602,18 @@ export class PostRecommendations extends LitElement {
       }
     } catch (e) {
       if ((e as Error).name === 'AbortError' || !this.isCurrentRequest(token)) return;
+      const apiError = e instanceof ApiError ? e : undefined;
+      if (isRelatedPerspectiveNotIndexedError(apiError)) {
+        this.suppressPerspective(perspective);
+        const fallback = !this.fallbackUsed ? this.selectNotIndexedFallback(perspective) : undefined;
+        if (fallback) {
+          this.fallbackUsed = true;
+          this.perspective = fallback;
+          this.requestKey = this.getRequestKey();
+          await this.resetAndFetch(true);
+          return;
+        }
+      }
       console.error('Failed to fetch recommendations', e);
       this.state = this.getFailureState(e);
     } finally {
@@ -474,6 +623,39 @@ export class PostRecommendations extends LitElement {
 
   private handleInfiniteToggle(e: CustomEvent) {
     this.infiniteScroll = e.detail.enabled;
+  }
+
+  private selectPerspective(perspective: RelatedPerspective): void {
+    if (this.perspective && perspectivesMatch(this.perspective, perspective)) {
+      return;
+    }
+    this.perspective = perspective;
+  }
+
+  private relatedPerspectiveTabId(perspective: RelatedPerspective): string {
+    return `inline-related-perspective-tab-${this.getNormalizedPostId()}-${perspective.role}`;
+  }
+
+  private handlePerspectiveTabKeydown(event: KeyboardEvent): void {
+    const tab = event.currentTarget as HTMLButtonElement;
+    const tabs = Array.from(this.shadowRoot?.querySelectorAll<HTMLButtonElement>('[role="tab"]') || []);
+    const index = tabs.indexOf(tab);
+    if (index < 0) return;
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      event.preventDefault();
+      const direction = event.key === 'ArrowRight' ? 1 : -1;
+      const next = tabs[(index + direction + tabs.length) % tabs.length];
+      this.focusedPerspectiveRole = next?.dataset.perspectiveRole || '';
+      next?.focus();
+      return;
+    }
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      const perspective = this.perspectives.find((candidate) => candidate.role === tab.dataset.perspectiveRole);
+      if (perspective) this.selectPerspective(perspective);
+    }
   }
 
   private navigateToRelated(rec: RecResult, event?: Event) {
@@ -522,6 +704,10 @@ export class PostRecommendations extends LitElement {
     const exploreHref = this.visiblePerspective
       ? relatedPerspectiveHref(this.relatedRouteId, this.visiblePerspective)
       : `/post/${this.relatedRouteId}/related`;
+    const tabs = this.perspectives.filter((perspective) => !this.isPerspectiveSuppressed(perspective));
+    const activeTabIndex = tabs.findIndex((perspective) => Boolean(this.visiblePerspective && perspectivesMatch(perspective, this.visiblePerspective)));
+    const focusedRole = this.focusedPerspectiveRole || tabs[activeTabIndex]?.role || tabs[0]?.role || '';
+    const panelId = `inline-related-perspective-panel-${id}`;
 
     return html`
       ${isAdmin ? html`<div style="font-family:monospace; font-size:10px; color:#00ff00; background:#000; padding:2px 4px; border-radius:4px; margin-bottom:8px;">[REC_DEBUG: id=${id}, count=${this.relatedPosts.length}, loading=${isLoading || this.loadingMore}]</div>` : ''}
@@ -535,7 +721,33 @@ export class PostRecommendations extends LitElement {
             </div>
           `
         : nothing}
-      
+
+      ${tabs.length > 0
+        ? html`<div class="perspective-tabs" role="tablist" aria-label="Related perspectives">
+            ${tabs.map((perspective) => {
+              const active = Boolean(this.visiblePerspective && perspectivesMatch(perspective, this.visiblePerspective));
+              return html`
+              <button
+                id=${this.relatedPerspectiveTabId(perspective)}
+                type="button"
+                class="perspective-tab ${this.visiblePerspective?.role === perspective.role ? 'active' : ''}"
+                role="tab"
+                aria-selected=${active ? 'true' : 'false'}
+                aria-controls=${panelId}
+                tabindex=${focusedRole === perspective.role ? '0' : '-1'}
+                data-perspective-role=${perspective.role}
+                @click=${() => this.selectPerspective(perspective)}
+                @keydown=${this.handlePerspectiveTabKeydown}
+              >${relatedPerspectiveLabel(perspective)}</button>`;
+            })}
+          </div>`
+        : nothing}
+
+      <section
+        id=${tabs.length > 0 ? panelId : nothing}
+        role=${tabs.length > 0 ? 'tabpanel' : nothing}
+        aria-labelledby=${tabs.length > 0 && this.visiblePerspective ? this.relatedPerspectiveTabId(this.visiblePerspective) : nothing}
+      >
       ${this.state.kind === 'unavailable' || this.state.kind === 'temporary-failure'
         ? html`<div class="recommendation-status" role="status" style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">${this.state.message}${this.state.kind === 'temporary-failure' ? html` <button type="button" @click=${() => this.resetAndFetch()}>Retry</button>` : nothing}</div>`
         : nothing}
@@ -596,6 +808,7 @@ export class PostRecommendations extends LitElement {
       ></load-footer>` : nothing}
 
       <div id="scroll-sentinel"></div>
+      </section>
     `;
   }
 }

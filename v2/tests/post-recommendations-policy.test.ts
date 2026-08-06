@@ -47,6 +47,7 @@ function stubBrowserState() {
 }
 
 afterEach(() => {
+  localStorage?.clear?.();
   vi.unstubAllGlobals();
 });
 
@@ -65,7 +66,7 @@ describe('post recommendations policy', () => {
     expect(reblogRequest.displayedReblogPostId).toBe(625562977);
   });
 
-  it('uses the strict related endpoint with an explicit perspective', () => {
+  it('uses the stable related document endpoint with an explicit perspective', () => {
     const apiSrc = readFileSync(join(process.cwd(), 'src/services/api.ts'), 'utf8');
     const recommendationsSrc = readFileSync(
       join(process.cwd(), 'src/components/post-recommendations.ts'),
@@ -77,14 +78,15 @@ describe('post recommendations policy', () => {
     );
 
     expect(apiSrc).toContain("req: Omit<RelatedPostsRequest, 'perspective_role'>");
-    expect(recommendationsSrc).toContain('apiClient.posts.related({');
+    expect(recommendationsSrc).toContain('apiClient.posts.relatedDocument({');
     expect(recommendationsSrc).toContain('perspective_role: perspective.role');
+    expect(recommendationsSrc).toContain('displayed_reblog_post_id: displayedReblogPostId');
     expect(recommendationsSrc).not.toContain('relatedLegacy');
     expect(relatedPageSrc).not.toContain('.perspectiveRole=');
   });
 
-  it('makes exactly one related request for a property initialization', async () => {
-    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+  it('makes exactly one related document request for a property initialization', async () => {
+    const related = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
     const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
 
     try {
@@ -105,8 +107,365 @@ describe('post recommendations policy', () => {
     }
   });
 
+  it('loads only the selected inline perspective document on initialization', async () => {
+    const relatedDocument = vi.fn().mockResolvedValue({ posts: [] });
+    (apiClient.posts as any).relatedDocument = relatedDocument;
+    const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
+    element.perspectives = [
+      { role: 'original', blogName: 'origin', blogId: 11 },
+      { role: 'reblogger', blogName: 'reblogger', blogId: 12 },
+    ];
+
+    try {
+      await settle(element);
+
+      expect(relatedDocument).toHaveBeenCalledTimes(1);
+      expect(relatedDocument).toHaveBeenCalledWith(expect.objectContaining({
+        seed_post_id: 101,
+        perspective_role: 'original',
+        perspective_blog_name: 'origin',
+        perspective_blog_id: 11,
+      }), expect.objectContaining({ signal: expect.any(AbortSignal) }));
+      expect(element.shadowRoot?.textContent).toContain('Original blog (@origin)');
+      expect(relatedDocument).not.toHaveBeenCalledWith(expect.objectContaining({
+        perspective_role: 'reblogger',
+      }), expect.anything());
+    } finally {
+      element.remove();
+      delete (apiClient.posts as any).relatedDocument;
+    }
+  });
+
+  it('loads a non-default inline perspective only when its tab is selected', async () => {
+    const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
+    const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
+    element.perspectives = [
+      { role: 'original', blogName: 'origin', blogId: 11 },
+      { role: 'reblogger', blogName: 'reblogger', blogId: 12 },
+    ];
+    element.displayedReblogPostId = 202;
+
+    try {
+      await settle(element);
+      expect(relatedDocument).toHaveBeenCalledTimes(1);
+
+      const rebloggerTab = Array.from(element.shadowRoot?.querySelectorAll('button') || [])
+        .find((button) => button.textContent?.includes('Reblogger')) as HTMLButtonElement;
+      expect(rebloggerTab).toBeTruthy();
+      rebloggerTab.click();
+      await settle(element);
+
+      expect(relatedDocument).toHaveBeenCalledTimes(2);
+      expect(relatedDocument).toHaveBeenLastCalledWith(expect.objectContaining({
+        perspective_role: 'reblogger',
+        displayed_reblog_post_id: 202,
+      }), expect.objectContaining({ signal: expect.any(AbortSignal) }));
+      expect(element.shadowRoot?.querySelector('h3')?.textContent?.trim())
+        .toBe('Related posts for Reblogger (@reblogger)');
+    } finally {
+      element.remove();
+      relatedDocument.mockRestore();
+    }
+  });
+
+  it('uses roving accessible inline tabs without fetching on focus alone', async () => {
+    const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
+    const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
+    element.perspectives = [
+      { role: 'original', blogName: 'origin', blogId: 11 },
+      { role: 'reblogger', blogName: 'reblogger', blogId: 12 },
+    ];
+
+    try {
+      await settle(element);
+      const tabs = Array.from(element.shadowRoot?.querySelectorAll<HTMLButtonElement>('[role="tab"]') || []);
+      const panel = element.shadowRoot?.querySelector<HTMLElement>('[role="tabpanel"]');
+
+      expect(element.shadowRoot?.querySelector('[role="tablist"]')).not.toBeNull();
+      expect(tabs.map((tab) => tab.getAttribute('tabindex'))).toEqual(['0', '-1']);
+      expect(panel?.id).toBe(tabs[0].getAttribute('aria-controls'));
+      expect(panel?.getAttribute('aria-labelledby')).toBe(tabs[0].id);
+
+      tabs[0].focus();
+      tabs[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+      expect(element.shadowRoot?.activeElement).toBe(tabs[1]);
+      expect(relatedDocument).toHaveBeenCalledTimes(1);
+      expect(tabs[1].getAttribute('aria-selected')).toBe('false');
+
+      tabs[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await settle(element);
+      expect(relatedDocument).toHaveBeenCalledTimes(2);
+      expect(relatedDocument).toHaveBeenLastCalledWith(expect.objectContaining({ perspective_role: 'reblogger' }), expect.any(Object));
+    } finally {
+      element.remove();
+      relatedDocument.mockRestore();
+    }
+  });
+
+  it('suppresses only a not-indexed tab and makes one fallback request to a distinct reblogger', async () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: vi.fn((key: string) => values.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => values.set(key, value)),
+      removeItem: vi.fn(),
+    };
+    vi.stubGlobal('localStorage', storage);
+    const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument')
+      .mockRejectedValueOnce(new ApiError(
+        ApiErrorCode.BAD_REQUEST,
+        'Recommendations are unavailable for @origin because its preference profile has not been indexed yet.',
+        {
+          serverCode: 'recommendation_perspective_not_indexed',
+          isRetryable: false,
+          details: { perspectiveRole: 'original', blogId: 11, blogName: 'origin' },
+        },
+      ))
+      .mockResolvedValueOnce({ posts: [], recommendationPerspective: { role: 'reblogger', blogName: 'reblogger', blogId: 12 } } as any);
+    const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
+    element.perspectives = [
+      { role: 'original', blogName: 'origin', blogId: 11 },
+      { role: 'reblogger', blogName: 'reblogger', blogId: 12 },
+    ];
+
+    try {
+      await settle(element);
+
+      expect(relatedDocument).toHaveBeenCalledTimes(2);
+      expect(relatedDocument.mock.calls[1][0]).toMatchObject({ perspective_role: 'reblogger' });
+      expect(storage.setItem).toHaveBeenCalledWith(
+        'related-perspective-not-indexed:11',
+        expect.stringMatching(/"expiresAt":\d+/),
+      );
+      expect(element.shadowRoot?.textContent).not.toContain('Original blog (@origin)');
+      expect(element.shadowRoot?.querySelector('h3')?.textContent?.trim())
+        .toBe('Related posts for Reblogger (@reblogger)');
+    } finally {
+      element.remove();
+      relatedDocument.mockRestore();
+    }
+  });
+
+  it('selects an unsuppressed fallback before fetching after a reload-style reset', async () => {
+    const values = new Map<string, string>([
+      ['related-perspective-not-indexed:11', JSON.stringify({ expiresAt: Date.now() + 60_000 })],
+    ]);
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn((key: string) => values.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => values.set(key, value)),
+      removeItem: vi.fn((key: string) => values.delete(key)),
+    });
+    const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
+    const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
+    element.perspectives = [
+      { role: 'original', blogName: 'origin', blogId: 11 },
+      { role: 'reblogger', blogName: 'reblogger', blogId: 12 },
+    ];
+
+    try {
+      await settle(element);
+
+      expect(relatedDocument).toHaveBeenCalledTimes(1);
+      expect(relatedDocument).toHaveBeenCalledWith(expect.objectContaining({
+        perspective_role: 'reblogger',
+        perspective_blog_id: 12,
+      }), expect.any(Object));
+      expect(element.shadowRoot?.querySelector('h3')?.textContent?.trim())
+        .toBe('Related posts for Reblogger (@reblogger)');
+    } finally {
+      element.remove();
+      relatedDocument.mockRestore();
+    }
+  });
+
+  it('renders unavailable without a request when every persisted perspective is suppressed', async () => {
+    const values = new Map<string, string>([
+      ['related-perspective-not-indexed:11', JSON.stringify({ expiresAt: Date.now() + 60_000 })],
+      ['related-perspective-not-indexed:12', JSON.stringify({ expiresAt: Date.now() + 60_000 })],
+    ]);
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn((key: string) => values.get(key) ?? null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    });
+    const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
+    const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
+    element.perspectives = [
+      { role: 'original', blogName: 'origin', blogId: 11 },
+      { role: 'reblogger', blogName: 'reblogger', blogId: 12 },
+    ];
+
+    try {
+      await settle(element);
+
+      expect(relatedDocument).not.toHaveBeenCalled();
+      expect(element.shadowRoot?.textContent).toContain('Recommendations are unavailable for the selected blog.');
+    } finally {
+      element.remove();
+      relatedDocument.mockRestore();
+    }
+  });
+
+  it('removes expired perspective suppression before requesting the selected blog', async () => {
+    const values = new Map<string, string>([
+      ['related-perspective-not-indexed:11', JSON.stringify({ expiresAt: Date.now() - 1 })],
+    ]);
+    const removeItem = vi.fn((key: string) => values.delete(key));
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn((key: string) => values.get(key) ?? null),
+      setItem: vi.fn(),
+      removeItem,
+    });
+    const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
+    const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
+
+    try {
+      await settle(element);
+
+      expect(removeItem).toHaveBeenCalledWith('related-perspective-not-indexed:11');
+      expect(relatedDocument).toHaveBeenCalledWith(expect.objectContaining({
+        perspective_role: 'original',
+        perspective_blog_id: 11,
+      }), expect.any(Object));
+    } finally {
+      element.remove();
+      relatedDocument.mockRestore();
+    }
+  });
+
+  it('hydrates media for only the visible related document cards in one scoped batch', async () => {
+    const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({
+      posts: Array.from({ length: 16 }, (_, index) => ({
+        id: index + 1,
+        blogName: `blog-${index + 1}`,
+        type: 2,
+        mediaRepresentation: {
+          kind: 'ORIGINAL',
+          items: [{ kind: 'IMAGE', original: { path: `/uploads/${index + 1}.jpg` } }],
+        },
+      })),
+    } as any);
+    const hydrateRelatedMedia = vi.spyOn(apiClient.posts, 'hydrateRelatedMedia').mockResolvedValue({ media: {} });
+    const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
+
+    try {
+      await settle(element);
+
+      expect(hydrateRelatedMedia).toHaveBeenCalledTimes(1);
+      expect(hydrateRelatedMedia).toHaveBeenCalledWith({
+        references: Array.from({ length: 12 }, (_, index) => ({
+          postId: index + 1,
+          path: `/uploads/${index + 1}.jpg`,
+        })),
+      }, expect.objectContaining({
+        scope: 'original',
+        signal: expect.any(AbortSignal),
+      }));
+    } finally {
+      element.remove();
+      relatedDocument.mockRestore();
+      hydrateRelatedMedia.mockRestore();
+    }
+  });
+
+  it('caps deduplicated visible-card media references at the hydration limit', async () => {
+    const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({
+      posts: Array.from({ length: 12 }, (_, postIndex) => ({
+        id: postIndex + 1,
+        blogName: `blog-${postIndex + 1}`,
+        type: 2,
+        mediaRepresentation: {
+          kind: 'ORIGINAL',
+          items: [{
+            kind: 'IMAGE',
+            original: { path: `/uploads/${postIndex + 1}/original.jpg` },
+            alternates: Array.from({ length: 9 }, (_, alternateIndex) => ({
+              path: `/uploads/${postIndex + 1}/alternate-${alternateIndex + 1}.jpg`,
+            })),
+          }],
+        },
+      })),
+    } as any);
+    const hydrateRelatedMedia = vi.spyOn(apiClient.posts, 'hydrateRelatedMedia').mockResolvedValue({ media: {} });
+    const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
+
+    try {
+      await settle(element);
+
+      expect(hydrateRelatedMedia).toHaveBeenCalledTimes(1);
+      expect(hydrateRelatedMedia.mock.calls[0][0].references).toHaveLength(100);
+      expect(element.shadowRoot?.textContent).not.toContain('Recommendations are unavailable right now.');
+    } finally {
+      element.remove();
+      relatedDocument.mockRestore();
+      hydrateRelatedMedia.mockRestore();
+    }
+  });
+
+  it('aborts hydration and ignores its stale result when the perspective changes', async () => {
+    const hydration = deferred<any>();
+    const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument')
+      .mockResolvedValueOnce({
+        posts: [{
+          id: 1,
+          blogName: 'origin',
+          type: 2,
+          mediaRepresentation: { kind: 'ORIGINAL', items: [{ kind: 'IMAGE', original: { path: '/uploads/one.jpg' } }] },
+        }],
+      } as any)
+      .mockResolvedValueOnce({ posts: [] } as any);
+    const hydrateRelatedMedia = vi.spyOn(apiClient.posts, 'hydrateRelatedMedia').mockImplementation(() => hydration.promise);
+    const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
+    element.perspectives = [
+      { role: 'original', blogName: 'origin', blogId: 11 },
+      { role: 'reblogger', blogName: 'reblogger', blogId: 12 },
+    ];
+
+    try {
+      await settle(element);
+      const signal = hydrateRelatedMedia.mock.calls[0][1].signal;
+      element.perspective = { role: 'reblogger', blogName: 'reblogger', blogId: 12 };
+      await settle(element);
+      hydration.resolve({ media: { '1:/uploads/one.jpg': { original: 'https://media.example/stale.jpg' } } });
+      await settle(element);
+
+      expect(signal.aborted).toBe(true);
+      expect(element.shadowRoot?.querySelector('h3')?.textContent?.trim())
+        .toBe('Related posts for Reblogger (@reblogger)');
+      expect(element.shadowRoot?.querySelector('post-grid')).toBeNull();
+    } finally {
+      element.remove();
+      relatedDocument.mockRestore();
+      hydrateRelatedMedia.mockRestore();
+    }
+  });
+
+  it('aborts hydration and ignores its stale result when disconnected', async () => {
+    const hydration = deferred<any>();
+    const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({
+      posts: [{
+        id: 1,
+        blogName: 'origin',
+        type: 2,
+        mediaRepresentation: { kind: 'ORIGINAL', items: [{ kind: 'IMAGE', original: { path: '/uploads/one.jpg' } }] },
+      }],
+    } as any);
+    const hydrateRelatedMedia = vi.spyOn(apiClient.posts, 'hydrateRelatedMedia').mockImplementation(() => hydration.promise);
+    const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
+
+    await settle(element);
+    const signal = hydrateRelatedMedia.mock.calls[0][1].signal;
+    element.remove();
+    hydration.resolve({ media: { '1:/uploads/one.jpg': { original: 'https://media.example/stale.jpg' } } });
+    await Promise.resolve();
+
+    expect(signal.aborted).toBe(true);
+    expect(element.shadowRoot?.querySelector('post-grid')).toBeNull();
+    relatedDocument.mockRestore();
+    hydrateRelatedMedia.mockRestore();
+  });
+
   it('sends the displayed reblog id only for a reblogger perspective', async () => {
-    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    const related = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
     const element = createRecommendations({ role: 'reblogger', blogName: 'reblogger', blogId: 20 });
     element.displayedReblogPostId = 202;
 
@@ -115,7 +474,7 @@ describe('post recommendations policy', () => {
       expect(related).toHaveBeenCalledWith(expect.objectContaining({
         seed_post_id: 101,
         perspective_role: 'reblogger',
-        displayedReblogPostId: 202,
+        displayed_reblog_post_id: 202,
       }), expect.any(Object));
     } finally {
       element.remove();
@@ -124,7 +483,7 @@ describe('post recommendations policy', () => {
   });
 
   it('names the selected perspective in the inline recommendations heading', async () => {
-    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    const related = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
     const element = createRecommendations({ role: 'reblogger', blogName: 'reblogger', blogId: 20 });
 
     try {
@@ -139,7 +498,7 @@ describe('post recommendations policy', () => {
   });
 
   it('does not request when the selected perspective is unresolved', async () => {
-    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    const related = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
     const element = createRecommendations(undefined);
 
     try {
@@ -154,7 +513,7 @@ describe('post recommendations policy', () => {
   });
 
   it('shows the named unavailable pane for a non-retryable perspective error', async () => {
-    const related = vi.spyOn(apiClient.posts, 'related').mockRejectedValue(new ApiError(
+    const related = vi.spyOn(apiClient.posts, 'relatedDocument').mockRejectedValue(new ApiError(
       ApiErrorCode.BAD_REQUEST,
       'Recommendations are unavailable for @viewer because its preference profile has not been indexed yet.',
       {
@@ -182,7 +541,7 @@ describe('post recommendations policy', () => {
   });
 
   it('retries temporary recommendation failures exactly once per click', async () => {
-    const related = vi.spyOn(apiClient.posts, 'related')
+    const related = vi.spyOn(apiClient.posts, 'relatedDocument')
       .mockRejectedValueOnce(new ApiError(
         ApiErrorCode.SERVER_ERROR,
         'Recommendations are temporarily unavailable.',
@@ -208,7 +567,7 @@ describe('post recommendations policy', () => {
 
   it('aborts and ignores an in-flight request when the perspective changes', async () => {
     const first = deferred<any>();
-    const related = vi.spyOn(apiClient.posts, 'related')
+    const related = vi.spyOn(apiClient.posts, 'relatedDocument')
       .mockImplementationOnce(() => first.promise)
       .mockResolvedValueOnce({ posts: [] } as any);
     const batchGetPosts = vi.spyOn(apiClient.posts, 'batchGet').mockResolvedValue({ posts: [] } as any);
@@ -235,7 +594,7 @@ describe('post recommendations policy', () => {
 
   it('aborts and ignores an in-flight request when disconnected', async () => {
     const request = deferred<any>();
-    const related = vi.spyOn(apiClient.posts, 'related').mockImplementation(() => request.promise);
+    const related = vi.spyOn(apiClient.posts, 'relatedDocument').mockImplementation(() => request.promise);
     const batchGetPosts = vi.spyOn(apiClient.posts, 'batchGet').mockResolvedValue({ posts: [] } as any);
     const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
 

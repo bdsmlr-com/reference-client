@@ -19,7 +19,7 @@ async function flushMicrotasks(): Promise<void> {
 
 async function renderRelatedPage(input: { routePerspective: string; post: Record<string, unknown> }) {
   vi.spyOn(apiClient.posts, 'get').mockResolvedValue({ post: input.post } as any);
-  vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+  vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
   vi.spyOn(apiClient.posts, 'relatedLegacy').mockResolvedValue({ posts: [] } as any);
 
   const element = document.createElement('view-post-related') as any;
@@ -41,7 +41,7 @@ afterEach(() => {
 describe('related route perspective', () => {
   it('drops stale seed tabs when postId changes and an older seed request resolves late', async () => {
     const getSpy = vi.spyOn(apiClient.posts, 'get');
-    vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
     vi.spyOn(apiClient.posts, 'relatedLegacy').mockResolvedValue({ posts: [] } as any);
     const requests: Array<{ id: number; deferred: ReturnType<typeof createDeferred<{ post: Record<string, unknown> | null }>> }> = [];
     getSpy.mockImplementation((id: number) => {
@@ -119,7 +119,11 @@ describe('related route perspective', () => {
     expect(panel?.id).toBe(tabs[0].getAttribute('aria-controls'));
     expect(element.shadowRoot?.querySelectorAll('[role="tabpanel"]')).toHaveLength(1);
     expect(element.shadowRoot?.textContent).toContain('Perspectives for similar posts from @original-blog');
-    expect((element.shadowRoot?.querySelector('post-recommendations') as any)?.postId).toBe(40);
+    const recommendations = element.shadowRoot?.querySelector('post-recommendations') as any;
+    expect(recommendations?.postId).toBe(40);
+    await recommendations?.updateComplete;
+    expect(recommendations?.shadowRoot?.querySelector('[role="tabpanel"]')).toBeNull();
+    expect(recommendations?.shadowRoot?.querySelector('[aria-labelledby]')).toBeNull();
   });
 
   it('deduplicates same-blog perspectives and keeps the active tab as an anchor', async () => {
@@ -168,7 +172,7 @@ describe('related route perspective', () => {
 
     expect(activeTab?.textContent?.trim()).toBe('Original blog (@original-blog)');
     expect(activeTab?.getAttribute('tabindex')).toBe('0');
-    expect(apiClient.posts.related).toHaveBeenCalledWith(expect.objectContaining({
+    expect(apiClient.posts.relatedDocument).toHaveBeenCalledWith(expect.objectContaining({
       seed_post_id: 50,
       perspective_role: 'original',
       perspective_blog_id: 10,
@@ -189,18 +193,18 @@ describe('related route perspective', () => {
       },
     });
 
-    const related = vi.mocked(apiClient.posts.related);
+    const related = vi.mocked(apiClient.posts.relatedDocument);
     const tabs = Array.from(element.shadowRoot?.querySelectorAll<HTMLAnchorElement>('[role="tab"]') || []);
     const activeTab = tabs.find((tab) => tab.getAttribute('aria-selected') === 'true');
 
     expect(activeTab?.textContent?.trim()).toBe('Reblogger (@reblogger-blog)');
     expect(activeTab?.getAttribute('tabindex')).toBe('0');
-    expect(apiClient.posts.related).toHaveBeenCalledWith(expect.objectContaining({
+    expect(apiClient.posts.relatedDocument).toHaveBeenCalledWith(expect.objectContaining({
       seed_post_id: 40,
       perspective_role: 'reblogger',
       perspective_blog_id: 20,
       perspective_blog_name: 'reblogger-blog',
-      displayedReblogPostId: 50,
+      displayed_reblog_post_id: 50,
     }), expect.any(Object));
 
     related.mockClear();
@@ -225,7 +229,7 @@ describe('related route perspective', () => {
       },
     });
 
-    const related = vi.mocked(apiClient.posts.related);
+    const related = vi.mocked(apiClient.posts.relatedDocument);
     const tabs = Array.from(element.shadowRoot?.querySelectorAll<HTMLAnchorElement>('[role="tab"]') || []);
 
     expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false']);
@@ -259,7 +263,7 @@ describe('related route perspective', () => {
         blogName: 'reblogger-blog',
       },
     });
-    const related = vi.mocked(apiClient.posts.related);
+    const related = vi.mocked(apiClient.posts.relatedDocument);
     related.mockClear();
     const tabs = Array.from(element.shadowRoot?.querySelectorAll<HTMLAnchorElement>('[role="tab"]') || []);
     const activate = vi.fn((event: Event) => event.preventDefault());

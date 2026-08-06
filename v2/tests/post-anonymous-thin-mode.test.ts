@@ -185,7 +185,7 @@ describe('anonymous thin post mode', () => {
     setAuthUser(null);
     const originalFeatureFlag = FEATURE_FLAGS.more_like_this_on_post;
     FEATURE_FLAGS.more_like_this_on_post = true;
-    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    const related = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
     const element = document.createElement('post-detail-content') as any;
     element.authMode = 'anonymous';
     element.post = createPost({
@@ -212,7 +212,7 @@ describe('anonymous thin post mode', () => {
       expect(related).toHaveBeenCalledWith(expect.objectContaining({
         seed_post_id: 11,
         perspective_role: 'reblogger',
-        displayedReblogPostId: 22,
+        displayed_reblog_post_id: 22,
       }), expect.any(Object));
     } finally {
       element.remove();
@@ -225,7 +225,7 @@ describe('anonymous thin post mode', () => {
     setAuthUser({ userId: 1, blogId: 30, activeBlogId: 31, activeBlogName: 'active-viewer' });
     const originalFeatureFlag = FEATURE_FLAGS.more_like_this_on_post;
     FEATURE_FLAGS.more_like_this_on_post = true;
-    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    const related = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
     const element = document.createElement('post-detail-content') as any;
     element.authMode = 'authenticated';
     element.post = createPost({ id: 22, blogId: 20, blogName: 'author' });
@@ -256,7 +256,7 @@ describe('anonymous thin post mode', () => {
     });
     const originalFeatureFlag = FEATURE_FLAGS.more_like_this_on_post;
     FEATURE_FLAGS.more_like_this_on_post = true;
-    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    const related = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
     const element = document.createElement('post-detail-content') as any;
     element.authMode = 'authenticated';
     element.post = createPost({ id: 22, blogId: 20, blogName: 'author' });
@@ -290,7 +290,7 @@ describe('anonymous thin post mode', () => {
     });
     const originalFeatureFlag = FEATURE_FLAGS.more_like_this_on_post;
     FEATURE_FLAGS.more_like_this_on_post = true;
-    const related = vi.spyOn(apiClient.posts, 'related').mockResolvedValue({ posts: [] } as any);
+    const related = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({ posts: [] } as any);
     const element = document.createElement('post-detail-content') as any;
     element.authMode = 'authenticated';
     element.post = createPost({ id: 22, blogId: 20, blogName: 'author' });
