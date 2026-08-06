@@ -523,17 +523,23 @@ export class PostRecommendations extends LitElement {
       { references },
       { scope: perspective.role, signal },
     );
-    const applyMediaUrl = (postId: number | undefined, media: any) => {
+    const applyMediaUrl = (postId: number | undefined, item: any) => {
+      const media = item?.original;
       const path = typeof media?.path === 'string' ? media.path : '';
       const urls = postId && path ? hydration.media[`${postId}:${path}`] : undefined;
       if (!urls) return;
       media.url = urls.original;
       if (urls.preview) media.previewUrl = urls.preview;
+      if (Array.isArray(urls.alternates)) {
+        (item.alternates || []).forEach((alternate: any, index: number) => {
+          if (urls.alternates?.[index]) alternate.url = urls.alternates[index];
+        });
+      }
     };
     posts.forEach((post: any) => {
       const postId = typeof post.id === 'number' ? post.id : undefined;
       (post.mediaRepresentation?.items || []).forEach((item: any) => {
-        applyMediaUrl(postId, item.original);
+        applyMediaUrl(postId, item);
       });
     });
   }

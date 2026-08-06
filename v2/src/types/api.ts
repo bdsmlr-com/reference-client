@@ -730,6 +730,7 @@ export interface RelatedMediaHydrationRequest {
 export interface RelatedMediaHydrationUrls {
   original: string;
   preview?: string;
+  alternates?: string[];
 }
 
 export interface RelatedMediaHydrationResponse {

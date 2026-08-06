@@ -424,6 +424,43 @@ describe('post recommendations policy', () => {
     }
   });
 
+  it('applies a server-derived animated alternate to the hydrated recommendation card', async () => {
+    const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({
+      posts: [{
+        id: 42,
+        blogName: 'origin',
+        type: 2,
+        mediaRepresentation: {
+          kind: 'ANIMATED_VIDEO',
+          items: [{
+            kind: 'IMAGE',
+            original: { path: '/uploads/42.gif' },
+            alternates: [{ path: '/uploads/42.mp4', mimeType: 'video/mp4' }],
+          }],
+        },
+      }],
+    } as any);
+    const hydrateRelatedMedia = vi.spyOn(apiClient.posts, 'hydrateRelatedMedia').mockResolvedValue({
+      media: {
+        '42:/uploads/42.gif': {
+          original: 'https://media.example/42.gif',
+          alternates: ['https://media.example/42.mp4'],
+        },
+      },
+    } as any);
+    const element = createRecommendations({ role: 'original', blogName: 'origin', blogId: 11 });
+
+    try {
+      await settle(element);
+
+      expect((element as any).relatedPosts[0]._hydratedPost._media.videoUrl).toBe('https://media.example/42.mp4');
+    } finally {
+      element.remove();
+      relatedDocument.mockRestore();
+      hydrateRelatedMedia.mockRestore();
+    }
+  });
+
   it('aborts hydration and ignores its stale result when the perspective changes', async () => {
     const hydration = deferred<any>();
     const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument')
