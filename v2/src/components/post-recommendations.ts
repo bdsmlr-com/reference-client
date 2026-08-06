@@ -221,12 +221,14 @@ export class PostRecommendations extends LitElement {
       .perspective-tabs {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
-        margin-bottom: 12px;
+        gap: 0;
+        margin-bottom: 0;
+        border-bottom: 1px solid var(--border);
       }
       .perspective-tab {
-        border: 1px solid var(--border);
-        border-radius: 4px;
+        border: 1px solid transparent;
+        border-bottom: 0;
+        border-radius: 4px 4px 0 0;
         background: var(--bg-panel);
         color: var(--text-muted);
         cursor: pointer;
@@ -234,9 +236,12 @@ export class PostRecommendations extends LitElement {
         font-size: 12px;
         padding: 6px 10px;
       }
+      .perspective-tab:hover { color: var(--text); }
       .perspective-tab.active {
         border-color: var(--accent);
+        border-bottom-color: var(--bg-panel);
         color: var(--text);
+        margin-bottom: -1px;
       }
       .gutter-grid {
         display: grid;
@@ -711,7 +716,11 @@ export class PostRecommendations extends LitElement {
     const exploreHref = this.visiblePerspective
       ? relatedPerspectiveHref(this.relatedRouteId, this.visiblePerspective)
       : `/post/${this.relatedRouteId}/related`;
-    const tabs = this.perspectives.filter((perspective) => !this.isPerspectiveSuppressed(perspective));
+    const visiblePerspective = this.visiblePerspective;
+    const tabs = this.perspectives.filter((perspective) =>
+      !this.isPerspectiveSuppressed(perspective)
+      || (visiblePerspective !== undefined && perspectivesMatch(perspective, visiblePerspective)),
+    );
     const activeTabIndex = tabs.findIndex((perspective) => Boolean(this.visiblePerspective && perspectivesMatch(perspective, this.visiblePerspective)));
     const focusedRole = this.focusedPerspectiveRole || tabs[activeTabIndex]?.role || tabs[0]?.role || '';
     const panelId = `inline-related-perspective-panel-${id}`;
