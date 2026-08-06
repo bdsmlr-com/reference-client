@@ -564,7 +564,6 @@ export class PostRecommendations extends LitElement {
           ...(perspective.role === 'reblogger' && displayedReblogPostId
             ? { displayed_reblog_post_id: displayedReblogPostId }
             : {}),
-          page_size: 1000,
         }, { signal: this.currentAbortController?.signal }) as SimilarPostsResponse;
       }
       const source = this.relatedDocument;

@@ -153,8 +153,8 @@ describe('post recommendations policy', () => {
       await (element as any).fetchMore();
 
       expect(relatedDocument).toHaveBeenCalledTimes(1);
-      expect(relatedDocument).toHaveBeenCalledWith(expect.objectContaining({
-        page_size: 1000,
+      expect(relatedDocument).toHaveBeenCalledWith(expect.not.objectContaining({
+        page_size: expect.anything(),
       }), expect.objectContaining({ signal: expect.any(AbortSignal) }));
     } finally {
       element.remove();
