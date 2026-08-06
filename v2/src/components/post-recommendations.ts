@@ -515,12 +515,7 @@ export class PostRecommendations extends LitElement {
       const postId = typeof post.id === 'number' ? post.id : undefined;
       (post.mediaRepresentation?.items || []).forEach((item: any) => {
         addReference(postId, item.original);
-        addReference(postId, item.preview);
-        addReference(postId, item.poster);
-        (item.alternates || []).forEach((alternate: any) => addReference(postId, alternate));
       });
-      (post.content?.files || []).forEach((file: any) => addReference(postId, file));
-      addReference(postId, post.content?.thumbnail);
     });
 
     if (!references.length) return;
@@ -539,12 +534,7 @@ export class PostRecommendations extends LitElement {
       const postId = typeof post.id === 'number' ? post.id : undefined;
       (post.mediaRepresentation?.items || []).forEach((item: any) => {
         applyMediaUrl(postId, item.original);
-        applyMediaUrl(postId, item.preview);
-        applyMediaUrl(postId, item.poster);
-        (item.alternates || []).forEach((alternate: any) => applyMediaUrl(postId, alternate));
       });
-      (post.content?.files || []).forEach((file: any) => applyMediaUrl(postId, file));
-      applyMediaUrl(postId, post.content?.thumbnail);
     });
   }
 

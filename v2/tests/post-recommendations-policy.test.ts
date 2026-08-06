@@ -385,7 +385,7 @@ describe('post recommendations policy', () => {
     }
   });
 
-  it('caps deduplicated visible-card media references at the hydration limit', async () => {
+  it('hydrates only canonical originals when related documents include unresolvable alternates', async () => {
     const relatedDocument = vi.spyOn(apiClient.posts, 'relatedDocument').mockResolvedValue({
       posts: Array.from({ length: 12 }, (_, postIndex) => ({
         id: postIndex + 1,
@@ -410,7 +410,12 @@ describe('post recommendations policy', () => {
       await settle(element);
 
       expect(hydrateRelatedMedia).toHaveBeenCalledTimes(1);
-      expect(hydrateRelatedMedia.mock.calls[0][0].references).toHaveLength(100);
+      expect(hydrateRelatedMedia.mock.calls[0][0].references).toEqual(
+        Array.from({ length: 12 }, (_, postIndex) => ({
+          postId: postIndex + 1,
+          path: `/uploads/${postIndex + 1}/original.jpg`,
+        })),
+      );
       expect(element.shadowRoot?.textContent).not.toContain('Recommendations are unavailable right now.');
     } finally {
       element.remove();
