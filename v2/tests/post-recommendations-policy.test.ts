@@ -157,7 +157,11 @@ describe('post recommendations policy', () => {
     const related = vi.spyOn(apiClient.posts, 'related').mockRejectedValue(new ApiError(
       ApiErrorCode.BAD_REQUEST,
       'Recommendations are unavailable for @viewer because its preference profile has not been indexed yet.',
-      { serverCode: 'recommendation_perspective_unavailable', isRetryable: false },
+      {
+        serverCode: 'recommendation_perspective_not_indexed',
+        isRetryable: false,
+        details: { perspectiveRole: 'viewer', blogId: 12, blogName: 'viewer' },
+      },
     ));
     const element = createRecommendations({ role: 'viewer', blogName: 'viewer', blogId: 12 });
 
@@ -166,6 +170,11 @@ describe('post recommendations policy', () => {
       expect(element.shadowRoot?.textContent).toContain('Recommendations are unavailable for @viewer');
       expect(element.shadowRoot?.querySelector('load-footer')).toBeNull();
       expect(element.shadowRoot?.textContent).not.toContain('Count: 0');
+      const recommendationsSrc = readFileSync(
+        join(process.cwd(), 'src/components/post-recommendations.ts'),
+        'utf8',
+      );
+      expect(recommendationsSrc).toContain('isRelatedPerspectiveNotIndexedError(apiError)');
     } finally {
       element.remove();
       related.mockRestore();

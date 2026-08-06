@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError } from '../src/services/api-error.js';
+import { ApiError, isRelatedPerspectiveNotIndexedError } from '../src/services/api-error.js';
 import { resolveTransportBase } from '../src/services/transport-base.js';
+import type { RelatedPerspectiveNotIndexedError } from '../src/types/api.js';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -143,16 +144,17 @@ describe('runtime transport API errors', () => {
 
   it('preserves safe structured fields from a 400 error envelope', async () => {
     stubApiBrowserState();
+    const notIndexedError = {
+      code: 'recommendation_perspective_not_indexed',
+      message: 'Recommendations are unavailable for @bdsmlrstaff because its preference profile has not been indexed yet.',
+      retryable: false,
+      perspectiveRole: 'viewer',
+      blogId: 10372546,
+      blogName: 'bdsmlrstaff',
+    } satisfies RelatedPerspectiveNotIndexedError;
     const json = vi.fn().mockResolvedValue({
       ok: false,
-      error: {
-        code: 'recommendation_perspective_unavailable',
-        message: 'Recommendations are unavailable for @bdsmlrstaff because its preference profile has not been indexed yet.',
-        retryable: false,
-        perspectiveRole: 'viewer',
-        blogId: 10372546,
-        blogName: 'bdsmlrstaff',
-      },
+      error: notIndexedError,
     });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
@@ -168,7 +170,7 @@ describe('runtime transport API errors', () => {
     }).catch((reason: unknown) => reason as ApiError);
 
     expect(error).toMatchObject({
-      serverCode: 'recommendation_perspective_unavailable',
+      serverCode: 'recommendation_perspective_not_indexed',
       message: 'Recommendations are unavailable for @bdsmlrstaff because its preference profile has not been indexed yet.',
       isRetryable: false,
       details: {
@@ -177,6 +179,7 @@ describe('runtime transport API errors', () => {
         blogName: 'bdsmlrstaff',
       },
     } satisfies Partial<ApiError>);
+    expect(isRelatedPerspectiveNotIndexedError(error)).toBe(true);
     expect(json).toHaveBeenCalledTimes(1);
   });
 

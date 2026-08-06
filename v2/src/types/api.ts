@@ -697,6 +697,15 @@ export interface RecommendationPerspectiveMetadata {
   fallbackApplied: boolean;
 }
 
+export interface RelatedPerspectiveNotIndexedError {
+  code: 'recommendation_perspective_not_indexed';
+  message: string;
+  retryable: false;
+  perspectiveRole: RelatedPerspectiveResponseRole;
+  blogId: number;
+  blogName: string;
+}
+
 export interface RelatedPostsResponse extends SearchPostsByTagResponse {
   recommendationPerspective: RecommendationPerspectiveMetadata;
 }

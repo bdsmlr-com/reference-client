@@ -1,3 +1,5 @@
+import type { RelatedPerspectiveNotIndexedError } from '../types/api.js';
+
 /**
  * Typed API error codes for reliable error detection.
  * Resolves ERR-001 (string-based error detection) and ERR-002 (no typed error codes).
@@ -30,6 +32,15 @@ export interface ApiErrorDetails {
   blogId?: number;
   blogName?: string;
 }
+
+export type RelatedPerspectiveNotIndexedApiError = ApiError & {
+  readonly serverCode: RelatedPerspectiveNotIndexedError['code'];
+  readonly details: Pick<
+    RelatedPerspectiveNotIndexedError,
+    'perspectiveRole' | 'blogId' | 'blogName'
+  >;
+  readonly isRetryable: false;
+};
 
 /**
  * Typed API error with error code for reliable detection.
@@ -190,6 +201,22 @@ function isRetryableError(code: ApiErrorCode): boolean {
  */
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
+}
+
+export function isRelatedPerspectiveNotIndexedError(
+  error: unknown,
+): error is RelatedPerspectiveNotIndexedApiError {
+  return isApiError(error)
+    && error.serverCode === 'recommendation_perspective_not_indexed'
+    && error.isRetryable === false
+    && typeof error.details?.blogId === 'number'
+    && Number.isSafeInteger(error.details.blogId)
+    && error.details.blogId > 0
+    && typeof error.details.blogName === 'string'
+    && (error.details.perspectiveRole === 'viewer'
+      || error.details.perspectiveRole === 'original'
+      || error.details.perspectiveRole === 'reblogger'
+      || error.details.perspectiveRole === 'legacy');
 }
 
 /**

@@ -10,7 +10,7 @@ import { shouldObscureMedia } from '../services/media-redaction.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { scrollObserver } from '../services/scroll-observer.js';
 import { isAdminMode } from '../services/blog-resolver.js';
-import { ApiError } from '../services/api-error.js';
+import { ApiError, isRelatedPerspectiveNotIndexedError } from '../services/api-error.js';
 import { resolveLink } from '../services/link-resolver.js';
 import { applyRetrievalPostPolicies, resolveRetrievalClickMode, type RetrievalPostPolicyMap } from '../services/retrieval-presentation.js';
 import { buildPostHref, type PostRouteSource } from '../services/post-route-context.js';
@@ -403,7 +403,7 @@ export class PostRecommendations extends LitElement {
       ? error.message
       : 'Recommendations are unavailable right now.';
 
-    if (apiError?.serverCode === 'recommendation_perspective_unavailable' || !apiError?.isRetryable) {
+    if (isRelatedPerspectiveNotIndexedError(apiError) || !apiError?.isRetryable) {
       return { kind: 'unavailable', message };
     }
 
