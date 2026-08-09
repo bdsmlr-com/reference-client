@@ -331,6 +331,11 @@ function populateInterstitialWithRevive () {
 				reviveAsync["727bec5e09208690b050ccfc6a45d384"].refresh();
 			});
 		}
+		screl.onerror = function () {
+			document.dispatchEvent(new CustomEvent('revive-sdk-load-failed', {
+				detail: { script_src: screl.src || '//servedby.revive-adserver.net/asyncjs.php' }
+			}));
+		}
 		document.head.appendChild(screl)
 	}
 }

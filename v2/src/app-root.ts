@@ -30,6 +30,7 @@ import { getStoredActiveBlog, setStoredActiveBlog } from './utils/storage.js';
 import { buildPostHref } from './services/post-route-context.js';
 import { isAnonymousReadableRoute } from './services/route-access-policy.js';
 import { initNavigationTracking } from './services/google-analytics.js';
+import { initReviveAnalytics } from './services/revive-analytics.js';
 import { maybeDeployInterstitial } from './services/interstitial-bridge.js';
 import { BUILD_TAG } from './services/build-info.js';
 import './components/auth-gate.js';
@@ -169,6 +170,7 @@ export class AppRoot extends LitElement {
       return;
     }
     initNavigationTracking();
+    initReviveAnalytics();
     super.connectedCallback();
     syncAdminModeFromUrl();
     this.addEventListener('post-click', this.handlePostClick as any);

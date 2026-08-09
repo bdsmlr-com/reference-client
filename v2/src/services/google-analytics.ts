@@ -57,6 +57,19 @@ export function trackOutageEvent(
   return trackEvent(eventName, params);
 }
 
+function buildEventPayload(
+  params?: Record<string, unknown>
+): Record<string, unknown> {
+  const location = typeof window !== 'undefined' ? window.location : undefined;
+  const safeParams =
+    params && typeof params === 'object' && !Array.isArray(params) ? params : undefined;
+  return {
+    page_path: location?.pathname,
+    page_location: location?.href,
+    ...safeParams,
+  };
+}
+
 /**
  * Fire a GA4 event with standard page context.
  * Fire-and-forget: never throws (bad params, missing gtag, or gtag errors).
@@ -66,16 +79,27 @@ export function trackEvent(
   params?: Record<string, unknown>
 ): boolean {
   try {
-    const location = typeof window !== 'undefined' ? window.location : undefined;
-    const safeParams =
-      params && typeof params === 'object' && !Array.isArray(params) ? params : undefined;
-    return callGtag('event', String(eventName || 'unknown_event'), {
-      page_path: location?.pathname,
-      page_location: location?.href,
-      ...safeParams,
-    });
+    return callGtag('event', String(eventName || 'unknown_event'), buildEventPayload(params));
   } catch (error) {
     console.warn('[google-analytics] trackEvent failed', eventName, error);
+    return false;
+  }
+}
+
+/**
+ * Same call signature as trackEvent, but console-only (no gtag).
+ * Use while validating event wiring; search-replace testTrackEvent → trackEvent to go live.
+ */
+export function testTrackEvent(
+  eventName: string,
+  params?: Record<string, unknown>
+): boolean {
+  try {
+    const name = String(eventName || 'unknown_event');
+    console.log('[google-analytics:test]', name, buildEventPayload(params));
+    return true;
+  } catch (error) {
+    console.warn('[google-analytics] testTrackEvent failed', eventName, error);
     return false;
   }
 }

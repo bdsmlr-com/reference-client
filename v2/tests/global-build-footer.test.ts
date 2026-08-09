@@ -29,6 +29,12 @@ vi.mock('../src/services/render-contract-validator.js', () => ({
 
 vi.mock('../src/services/google-analytics.js', () => ({
   initNavigationTracking: vi.fn(),
+  testTrackEvent: vi.fn(() => true),
+  trackEvent: vi.fn(() => true),
+}));
+
+vi.mock('../src/services/revive-analytics.js', () => ({
+  initReviveAnalytics: vi.fn(),
 }));
 
 beforeEach(() => {
