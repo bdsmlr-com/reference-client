@@ -18,6 +18,9 @@ describe('native card link behavior', () => {
 
     expect(helperSrc).toContain('renderCardOverlayLink');
     expect(helperSrc).toContain('shouldLetBrowserHandleCardLink');
+    expect(helperSrc).toContain('lockNavigation');
+    expect(helperSrc).toContain('@contextmenu=${lockNavigation ? onClick : nothing}');
+    expect(helperSrc).toContain('@auxclick=${lockNavigation ? onClick : nothing}');
     for (const src of [postCardSrc, feedItemSrc, groupCardSrc, activityGridSrc]) {
       expect(src).toContain("from '../services/card-overlay.js'");
       expect(src).toContain('renderCardOverlayLink(');
@@ -28,16 +31,14 @@ describe('native card link behavior', () => {
   it('keeps SPA routing only for plain left-clicks', () => {
     const postCardSrc = read('post-card.ts');
     const feedItemSrc = read('post-feed-item.ts');
-    const groupCardSrc = read('search-group-card.ts');
 
     expect(postCardSrc).toContain('shouldLetBrowserHandleCardLink(event)');
     expect(postCardSrc).toContain('this.handleClick();');
     expect(feedItemSrc).toContain('shouldLetBrowserHandleCardLink(event)');
     expect(feedItemSrc).toContain('this.handlePostClick();');
-    expect(groupCardSrc).toContain('shouldLetBrowserHandleCardLink(event)');
-    expect(groupCardSrc).toContain('this.handleClick();');
-    expect(read('activity-grid.ts')).toContain('shouldLetBrowserHandleCardLink(event)');
-    expect(read('activity-grid.ts')).toContain('this.handleClick();');
+    expect(read('activity-grid.ts')).toContain('shouldLetBrowserHandleCardLink(event, { lockNavigation: isEntitlementRoadblock(this.post) })');
+    expect(read('search-group-card.ts')).toContain('shouldLetBrowserHandleCardLink(event, { lockNavigation: isEntitlementRoadblock(this.post) })');
+    expect(read('search-group-card.ts')).toContain('this.handleClick();');
   });
 
   it('uses surface-driven click zones so large timeline cards only bind the media area', () => {
