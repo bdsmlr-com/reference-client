@@ -223,4 +223,13 @@ describe('toPresentationModel', () => {
 
     expect(model.media.redacted).toBe(true);
   });
+
+  it('marks search teasers with stripped ids for client-side redaction', () => {
+    const model = toPresentationModel(
+      makePost({ id: null }),
+      { surface: 'card', page: 'search' },
+    );
+
+    expect(model.media.redacted).toBe(true);
+  });
 });
