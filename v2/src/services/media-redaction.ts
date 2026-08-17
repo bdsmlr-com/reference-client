@@ -1,4 +1,5 @@
 import type { ProcessedPost } from '../types/post.js';
+import type { IdentityDecoration } from '../types/api.js';
 
 export function isEntitlementRoadblock(post: ProcessedPost | null | undefined): boolean {
   if (!post) return false;
@@ -8,6 +9,10 @@ export function isEntitlementRoadblock(post: ProcessedPost | null | undefined): 
   return post.id == null;
 }
 
+function decorationHasRestrictedToken(decorations: IdentityDecoration[] | null | undefined): boolean {
+  return (decorations || []).some((decoration) => String(decoration?.token || '').trim() === 'restricted');
+}
+
 export function shouldObscureMedia(post: ProcessedPost | null | undefined): boolean {
   if (!post) return false;
 
@@ -15,6 +20,12 @@ export function shouldObscureMedia(post: ProcessedPost | null | undefined): bool
     return true;
   }
   if (post.authorization?.media === 'obscured') {
+    return true;
+  }
+  if (
+    decorationHasRestrictedToken(post.blogIdentityDecorations)
+    || decorationHasRestrictedToken(post.originBlogIdentityDecorations)
+  ) {
     return true;
   }
   const policy = post._retrievalPolicy;

@@ -31,4 +31,23 @@ describe('media redaction helpers', () => {
     expect(isEntitlementRoadblock(teaser)).toBe(true);
     expect(shouldObscureMedia(teaser)).toBe(true);
   });
+
+  it('redacts follower-gated posts from the restricted identity decoration already shown on /post', () => {
+    const gated = {
+      id: 99,
+      blogIdentityDecorations: [{ token: 'restricted', label: 'Only approved followers can view' }],
+    } as ProcessedPost;
+    const originGated = {
+      id: 100,
+      originBlogIdentityDecorations: [{ token: 'restricted', icon: '🔒' }],
+    } as ProcessedPost;
+    const approved = {
+      id: 101,
+      blogIdentityDecorations: [{ token: 'restricted-allowed', icon: '🔐' }],
+    } as ProcessedPost;
+
+    expect(shouldObscureMedia(gated)).toBe(true);
+    expect(shouldObscureMedia(originGated)).toBe(true);
+    expect(shouldObscureMedia(approved)).toBe(false);
+  });
 });
