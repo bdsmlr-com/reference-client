@@ -529,8 +529,13 @@ export class MediaRenderer extends LitElement {
     baseImageSrc: string,
     resolvedImageUrl: string,
   ): string {
+    // Safari will play an mp4 inside <img>; never use a video file as a poster still.
+    if (isNativeVideo(posterSrc)) {
+      return '';
+    }
     if (posterSrc && !isAnimation(posterSrc)) {
-      return resolveMediaUrl(posterSrc, 'poster');
+      const resolved = resolveMediaUrl(posterSrc, 'poster');
+      return isNativeVideo(resolved) ? '' : resolved;
     }
 
     if (!useGifPosters()) {
@@ -538,8 +543,12 @@ export class MediaRenderer extends LitElement {
     }
 
     const posterSource = posterSrc || baseImageSrc;
+    if (isNativeVideo(posterSource)) {
+      return '';
+    }
     const posterUrl = resolveMediaUrl(posterSource, 'poster');
-    return posterUrl || resolvedImageUrl;
+    const candidate = posterUrl || resolvedImageUrl;
+    return isNativeVideo(candidate) ? '' : candidate;
   }
 
   private isFullSurfaceRedaction(): boolean {

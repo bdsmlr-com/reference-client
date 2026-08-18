@@ -70,6 +70,7 @@ describe('post route media behavior', () => {
     expect(src).toContain("const detailFitStyle = 'object-fit: contain; max-width: min(100%, calc(100vw - 40px)); max-height: calc(min(78vh, 920px) - 20px); width: auto; height: auto; margin: 0 auto;';");
     expect(src).toContain("const isDetailSurface = this.type === 'detail' || this.type === 'post-detail';");
     expect(src).toContain('const isAnim = isAnimation(baseImageSrc);');
+    expect(src).toContain('if (isNativeVideo(posterSrc))');
     expect(src).toContain("const alternateMissMemoized = this.getCachedAlternateFailure() === 'missing-or-404';");
     expect(src).toContain('&& !alternateMissMemoized');
     expect(src).toContain('&& !this.alternatePlaybackFailed');
@@ -232,6 +233,21 @@ describe('post route media behavior', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/media-renderer.ts'), 'utf8');
     expect(src).not.toContain('poster-overlay');
     expect(src).not.toContain('video-wrap');
+  });
+
+  it('does not mount a poster img when posterSrc is a video file', async () => {
+    const renderer = await newRenderer();
+    const videoUrl = 'https://ocdn012.bdsmlr.com/uploads/videos/demo.mp4?e=1&t=1';
+    renderer.src = videoUrl;
+    renderer.posterSrc = videoUrl;
+    renderer.type = 'detail';
+    renderer.primed = true;
+    document.body.appendChild(renderer);
+    await flushAsyncWork();
+    await renderer.updateComplete;
+
+    expect(renderer.shadowRoot?.querySelector('video')).toBeTruthy();
+    expect(renderer.shadowRoot?.querySelector('img.poster-frame')).toBeNull();
   });
 
   it('lightbox forwards contract-derived media descriptors to media-renderer', () => {

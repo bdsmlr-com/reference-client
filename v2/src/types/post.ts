@@ -151,10 +151,18 @@ function normalizeMediaItems(post: PostWithContract): MediaItem[] {
     .filter(Boolean) as MediaItem[];
 }
 
+function displayMediaItems(post: Post, items: MediaItem[]): MediaItem[] {
+  // Video uploads are represented as multiple files but should be displayed as a
+  // single one instead of as a gallery.
+  if (post.type === 3 /* VIDEO */ && items.length > 1) {
+    return items.slice(0, 1);
+  }
+  return items;
+}
 
 export function getOrderedContentBlocks(post: Post): NormalizedContentBlock[] {
   const contractPost = post as PostWithContract;
-  const items = normalizeMediaItems(contractPost);
+  const items = displayMediaItems(post, normalizeMediaItems(contractPost));
   const rawBlocks = Array.isArray(contractPost.contentBlocks) ? contractPost.contentBlocks : [];
   const content = post.content || {};
 
@@ -303,7 +311,8 @@ export function extractMedia(post: Post): MediaInfo {
   const contractPost = post as PostWithContract;
   const content = post.content || {};
   const postType: PostType = post.type;
-  const items = normalizeMediaItems(contractPost);
+  const allItems = normalizeMediaItems(contractPost);
+  const items = displayMediaItems(post, allItems);
   const representationKind = normalizeMediaRepresentationKind(contractPost.mediaRepresentation?.kind);
   const contentBlocks = getOrderedContentBlocks(post);
   const html = content.html || '';
@@ -346,7 +355,7 @@ export function extractMedia(post: Post): MediaInfo {
     }
 
     if (firstItem.kind === 'VIDEO') {
-      const companionImage = items.find((item, index) => index > 0 && item.kind === 'IMAGE' && item.original?.url);
+      const companionImage = allItems.find((item, index) => index > 0 && item.kind === 'IMAGE' && item.original?.url);
       return {
         ...baseInfo,
         type: 'video',

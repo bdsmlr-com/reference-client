@@ -210,6 +210,29 @@ describe('post media rendering contract', () => {
     ]);
   });
 
+  it('renders only the first attachment for native video posts', async () => {
+    const el = document.createElement('post-detail-content') as any;
+    el.post = makePost({
+      type: 3,
+      contentBlocks: [{ mediaBlock: {} }],
+      mediaRepresentation: {
+        kind: 'ORIGINAL',
+        items: [
+          { kind: 'VIDEO', original: { url: 'https://cdn.example.com/movie.mp4' } },
+          { kind: 'IMAGE', original: { url: 'https://cdn.example.com/movie.jpg' } },
+        ],
+      },
+    });
+    document.body.appendChild(el);
+
+    await flush();
+    await el.updateComplete;
+
+    const sources = Array.from(el.shadowRoot?.querySelectorAll('media-renderer') || []).map((node: any) => node.src);
+    expect(sources).toEqual(['https://cdn.example.com/movie.mp4']);
+    expect(el.shadowRoot?.querySelector('.media-gallery')).toBeNull();
+  });
+
   it('uses the preferred animated-video alternate when alternateVideoSrc is set', async () => {
     const el = document.createElement('post-feed-item') as any;
     el.post = makePost({
