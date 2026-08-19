@@ -233,7 +233,7 @@ describe('toPresentationModel', () => {
     expect(model.media.redacted).toBe(true);
   });
 
-  it('marks follower-gated posts with restricted identity decorations for client-side redaction', () => {
+  it('does not mark follower-gated posts for client-side redaction while that overlay is off', () => {
     const model = toPresentationModel(
       makePost({
         blogIdentityDecorations: [{ token: 'restricted', label: 'Only approved followers can view' }],
@@ -241,7 +241,7 @@ describe('toPresentationModel', () => {
       { surface: 'detail', page: 'post' },
     );
 
-    expect(model.media.redacted).toBe(true);
+    expect(model.media.redacted).toBe(false);
     expect(model.identity.legacyPostPermalink?.href).toBe('https://NonNudeCuties.bdsmlr.com/post/686683457');
   });
 });

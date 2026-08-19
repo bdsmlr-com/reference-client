@@ -1,6 +1,14 @@
 import type { ProcessedPost } from '../types/post.js';
 import type { IdentityDecoration } from '../types/api.js';
 
+/**
+ * Client overlay for follower-gated / "pseudo-private" posts (🔒 restricted,
+ * access_obscured retrieval policy, etc). Search-depth teasers are unaffected.
+ *
+ * Flip to true to restore that overlay without touching teaser/modal redaction.
+ */
+export const REDACT_PRIVATE_POSTS = false;
+
 export function isEntitlementRoadblock(post: ProcessedPost | null | undefined): boolean {
   if (!post) return false;
   if (post.authorization?.navigation === 'denied') {
@@ -13,12 +21,7 @@ function decorationHasRestrictedToken(decorations: IdentityDecoration[] | null |
   return (decorations || []).some((decoration) => String(decoration?.token || '').trim() === 'restricted');
 }
 
-export function shouldObscureMedia(post: ProcessedPost | null | undefined): boolean {
-  if (!post) return false;
-
-  if (isEntitlementRoadblock(post)) {
-    return true;
-  }
+function hasPrivatePostRedactionSignal(post: ProcessedPost): boolean {
   if (post.authorization?.media === 'obscured') {
     return true;
   }
@@ -37,4 +40,16 @@ export function shouldObscureMedia(post: ProcessedPost | null | undefined): bool
     return true;
   }
   return false;
+}
+
+export function shouldObscureMedia(post: ProcessedPost | null | undefined): boolean {
+  if (!post) return false;
+
+  if (isEntitlementRoadblock(post)) {
+    return true;
+  }
+  if (!REDACT_PRIVATE_POSTS) {
+    return false;
+  }
+  return hasPrivatePostRedactionSignal(post);
 }

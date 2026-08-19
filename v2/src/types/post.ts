@@ -412,6 +412,7 @@ export interface ProcessedPost extends Post {
     redactionMode?: string;
     overrideReason?: string;
     visibilityFraction?: number;
+    treatment?: string;
   };
 }
 

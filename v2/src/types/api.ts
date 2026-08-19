@@ -21,6 +21,7 @@ export interface PostPresentationPolicy {
   imageVariant?: string;
   visibilityFraction?: number;
   overrideReason?: string;
+  treatment?: string;
 }
 
 export interface PostAuthorization {
