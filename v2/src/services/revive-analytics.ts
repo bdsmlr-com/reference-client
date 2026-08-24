@@ -78,7 +78,6 @@ function slotParams(slotId: string, data?: ReviveCreativeData): Record<string, u
   const el = typeof document !== 'undefined' ? document.getElementById(slotId) : null;
   return {
     revive_id: REVIVE_ACCOUNT_ID,
-    slot_id: slotId,
     zone_id: el?.getAttribute('data-revive-zoneid') ?? undefined,
     width: data?.width,
     height: data?.height,
@@ -195,32 +194,36 @@ function scheduleSdkAbsenceWatch(): void {
 function onSend(event: Event): void {
   const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
   const zones = detail.zones;
-  const zoneCount =
+  const zoneIds =
     typeof zones === 'string'
-      ? zones.split('|').filter(Boolean).length
+      ? zones.split('|').filter(Boolean)
       : Array.isArray(zones)
-        ? zones.filter(Boolean).length
-        : 0;
+        ? zones.map(String).filter(Boolean)
+        : [];
 
   // Optional: enable if we want request volume. Usually implied by impressions /
   // empty_inventory / load_failed downstream.
   // trackEvent('ad_request', {
   //   revive_id: REVIVE_ACCOUNT_ID,
-  //   zone_count: zoneCount,
-  //   zones: typeof zones === 'string' ? zones : undefined,
+  //   zone_count: zoneIds.length,
+  //   zones: zoneIds.join('|') || undefined,
   // });
 
   clearPendingSpc();
   pendingSpc = {
-    zoneCount,
+    zoneCount: zoneIds.length,
     timer: setTimeout(() => {
       pendingSpc = null;
-      trackEvent('ad_load_failed', {
-        reason: 'spc_timeout',
-        revive_id: REVIVE_ACCOUNT_ID,
-        zone_count: zoneCount,
-        timeout_ms: SPC_TIMEOUT_MS,
-      });
+      // One event per zone so GA counts stay 1:1 with slots (and future
+      // per-zone failure reasons can share this shape).
+      for (const zoneId of zoneIds) {
+        trackEvent('ad_load_failed', {
+          reason: 'spc_timeout',
+          revive_id: REVIVE_ACCOUNT_ID,
+          zone_id: zoneId,
+          timeout_ms: SPC_TIMEOUT_MS,
+        });
+      }
     }, SPC_TIMEOUT_MS),
   };
 }
