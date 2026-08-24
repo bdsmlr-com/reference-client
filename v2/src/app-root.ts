@@ -22,7 +22,7 @@ import { initTheme, injectGlobalStyles, baseStyles } from './styles/theme.js';
 import { buildPageUrl, getPrimaryBlogName, getViewedBlogName, isAdminMode, syncAdminModeFromUrl } from './services/blog-resolver.js';
 import { loadRenderContract } from './services/render-contract.js';
 import { validateRenderContract } from './services/render-contract-validator.js';
-import { getStatus } from './services/auth-service.js';
+import { getStatus, peekAuthStatusCache, clearAuthStatusCache, type AuthStatus } from './services/auth-service.js';
 import { setAuthChecking, setAuthUser, clearAuthUser } from './state/auth-state.js';
 import { setCurrentUsername } from './services/profile.js';
 import { setStoredBlogName } from './services/blog-resolver.js';
@@ -197,49 +197,67 @@ export class AppRoot extends LitElement {
     return true;
   }
 
-  private async checkAuth() {
-    this.checkingAuth = true;
-    setAuthChecking(true);
+  private applyAuthStatus(status: AuthStatus): string | null {
+    const blogs = status.blogs || [];
+    const storedActive = getStoredActiveBlog(status.user_id);
+    const primaryId = status.primary_blog_id || (blogs[0]?.id ?? status.blog_id ?? null);
+    const activeBlogId = blogs.find((b) => b.id === storedActive)?.id || primaryId || status.blog_id || null;
+    const activeBlogName =
+      blogs.find((b) => b.id === activeBlogId)?.name ||
+      status.blog_name ||
+      blogs[0]?.name ||
+      null;
+
+    if (activeBlogId && status.user_id) {
+      setStoredActiveBlog(status.user_id, activeBlogId);
+    }
+    if (activeBlogName) {
+      setStoredBlogName(activeBlogName);
+      setCurrentUsername(activeBlogName);
+    } else if (status.username) {
+      setCurrentUsername(status.username);
+    }
+
+    setAuthUser({
+      userId: status.user_id,
+      blogId: activeBlogId,
+      blogName: activeBlogName,
+      username: status.username || null,
+      blogs,
+      primaryBlogId: primaryId,
+      activeBlogId,
+      activeBlogName,
+      capabilities: status.capabilities || [],
+    });
+    this.authenticated = true;
     this.authError = null;
+    return activeBlogName;
+  }
+
+  private async checkAuth() {
+    this.authError = null;
+
+    // Optimistic hydrate from last successful /status so we can barge forward.
+    const cached = peekAuthStatusCache();
+    if (cached) {
+      this.applyAuthStatus(cached);
+      this.checkingAuth = false;
+      setAuthChecking(false);
+    } else {
+      this.checkingAuth = true;
+      setAuthChecking(true);
+    }
+
     try {
-      const status = await getStatus();
-      const blogs = status.blogs || [];
-      const storedActive = getStoredActiveBlog(status.user_id);
-      const primaryId = status.primary_blog_id || (blogs[0]?.id ?? status.blog_id ?? null);
-      const activeBlogId = blogs.find((b) => b.id === storedActive)?.id || primaryId || status.blog_id || null;
-      const activeBlogName =
-        blogs.find((b) => b.id === activeBlogId)?.name ||
-        status.blog_name ||
-        blogs[0]?.name ||
-        null;
-
-      if (activeBlogId && status.user_id) {
-        setStoredActiveBlog(status.user_id, activeBlogId);
-      }
-      if (activeBlogName) {
-        setStoredBlogName(activeBlogName);
-        setCurrentUsername(activeBlogName);
-      } else if (status.username) {
-        setCurrentUsername(status.username);
-      }
-
-      setAuthUser({
-        userId: status.user_id,
-        blogId: activeBlogId,
-        blogName: activeBlogName,
-        username: status.username || null,
-        blogs,
-        primaryBlogId: primaryId,
-        activeBlogId,
-        activeBlogName,
-        capabilities: status.capabilities || [],
-      });
-      this.authenticated = true;
+      // Always revalidate on boot/retry; secondary callers can use non-forced getStatus().
+      const status = await getStatus({ force: true });
+      const activeBlogName = this.applyAuthStatus(status);
 
       if (window.location.pathname === '/' && activeBlogName) {
         window.location.replace(buildPageUrl('activity', activeBlogName));
       }
     } catch (err: unknown) {
+      clearAuthStatusCache();
       this.authError = 'Login required';
       clearAuthUser();
       this.authenticated = false;
@@ -253,6 +271,7 @@ export class AppRoot extends LitElement {
       }
     } finally {
       this.checkingAuth = false;
+      setAuthChecking(false);
     }
   }
 

@@ -39,6 +39,7 @@ import {
 } from './storage.js';
 import { isAdminMode, syncAdminModeFromUrl } from './blog-resolver.js';
 import { resolveTransportBase } from './transport-base.js';
+import { clearAuthStatusCache } from './auth-status-cache.js';
 import {
   getCachedPosts,
   setCachedPosts,
@@ -667,6 +668,8 @@ async function apiRequestCore<T>(
 
       // Handle auth errors (401) - refresh token and retry once
       if (resp.status === 401 && retryOnAuth) {
+        // Drop optimistic /status snapshot so the next boot doesn't assume a dead session.
+        clearAuthStatusCache();
         clearToken();
         currentToken = null;
         await login();
@@ -733,6 +736,7 @@ async function apiRequestCore<T>(
 
     if (data.error) {
       if (data.error.includes('token') && retryOnAuth) {
+        clearAuthStatusCache();
         clearToken();
         currentToken = null;
         await login();

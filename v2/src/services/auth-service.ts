@@ -1,4 +1,9 @@
 import { getAuthUser } from '../state/auth-state.js';
+import {
+  clearAuthStatusCache,
+  peekAuthStatusCache,
+  writeAuthStatusCache,
+} from './auth-status-cache.js';
 import { trackOutageEvent } from './google-analytics.js';
 import { isApexRuntime, resolveTransportBase, type TransportScope } from './transport-base.js';
 
@@ -136,11 +141,55 @@ const hasSettingsBlog = (data: unknown): boolean => {
   return typeof blog?.id === 'number';
 };
 
-export const getStatus = () => {
+export type GetStatusOptions = {
+  /** When true, always hit the network (boot revalidate). */
+  force?: boolean;
+};
+
+let statusInFlight: Promise<AuthStatus> | null = null;
+
+const fetchStatusNetwork = (): Promise<AuthStatus> => {
   const env = (import.meta as any).env || {};
   const timeoutMs = Number(env.VITE_AUTH_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
-  return fetchJson<AuthStatus>('/status', { method: 'GET' }, timeoutMs, hasUserId);
+  return fetchJson<AuthStatus>('/status', { method: 'GET' }, timeoutMs, hasUserId)
+    .then((status) => {
+      writeAuthStatusCache(status);
+      return status;
+    })
+    .catch((err: unknown) => {
+      if (err instanceof AuthRequestError && (err.status === 401 || err.status === 403)) {
+        clearAuthStatusCache();
+      }
+      throw err;
+    });
 };
+
+/**
+ * Read /auth/status.
+ * - Default: return a fresh local snapshot when present; otherwise network.
+ * - `{ force: true }`: always network (still dedupes concurrent callers).
+ * Successful network reads write the snapshot; 401/403 clear it.
+ */
+export const getStatus = (options: GetStatusOptions = {}): Promise<AuthStatus> => {
+  const force = options.force === true;
+  if (!force) {
+    const cached = peekAuthStatusCache();
+    if (cached) {
+      return Promise.resolve(cached);
+    }
+  }
+
+  if (statusInFlight) {
+    return statusInFlight;
+  }
+
+  statusInFlight = fetchStatusNetwork().finally(() => {
+    statusInFlight = null;
+  });
+  return statusInFlight;
+};
+
+export { clearAuthStatusCache, peekAuthStatusCache } from './auth-status-cache.js';
 
 export const getMe = () => {
   const env = (import.meta as any).env || {};
@@ -150,15 +199,16 @@ export const getMe = () => {
 };
 
 export const logout = () => {
+  clearAuthStatusCache();
   const env = (import.meta as any).env || {};
   const timeoutMs = Number(env.VITE_AUTH_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
   return fetchJson<void>('/logout', { method: 'POST' }, timeoutMs).catch(() => {});
 };
 
-export const login = (login: string, password: string, remember = false) => {
+export const login = (loginName: string, password: string, remember = false) => {
   const env = (import.meta as any).env || {};
   const timeoutMs = Number(env.VITE_AUTH_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
-  const body = JSON.stringify({ login, password, remember });
+  const body = JSON.stringify({ login: loginName, password, remember });
   return fetchJson<AuthLoginResponse>(
     '/login',
     {
@@ -168,7 +218,10 @@ export const login = (login: string, password: string, remember = false) => {
     },
     timeoutMs,
     hasUserId
-  );
+  ).then((status) => {
+    writeAuthStatusCache(status);
+    return status;
+  });
 };
 
 export const getUserSettings = (username: string) => {
