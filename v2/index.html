@@ -8,8 +8,17 @@
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
+    // Early logged_in for the first automatic page_view.
+    // TS reads globalThis.GA_LOGGED_IN_STORAGE_KEY when present (see ga-logged-in-hint.ts).
+    globalThis.GA_LOGGED_IN_STORAGE_KEY = 'site_ga_logged_in';
+    var loggedIn = 'false';
+    try {
+      var stored = localStorage.getItem(globalThis.GA_LOGGED_IN_STORAGE_KEY);
+      if (stored === 'true' || stored === 'false') loggedIn = stored;
+    } catch (e) {}
+    dataLayer.push({ logged_in: loggedIn });
     gtag('js', new Date());
-    gtag('config', 'G-9VSP3HR9NF');
+    gtag('config', 'G-9VSP3HR9NF', { logged_in: loggedIn });
   </script>
   <!-- Inline theme initialization to prevent FOUC (Flash of Unstyled Content) -->
   <script>

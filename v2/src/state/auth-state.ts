@@ -1,3 +1,5 @@
+import { writeGaLoggedInHint } from '../services/ga-logged-in-hint.js';
+
 export type AuthBlog = { id: number; name: string };
 export type AuthUser = {
   userId: number;
@@ -38,6 +40,8 @@ export const setAuthUser = (user: AuthUser) => {
     checkingAuth: false,
     authUser: user,
   };
+  // Keep GA early-boot hint in sync. See ga-logged-in-hint.ts + v2/index.html inline reader.
+  writeGaLoggedInHint(Boolean(user));
   emitAuthUserChanged();
 };
 
@@ -46,6 +50,8 @@ export const clearAuthUser = () => {
     checkingAuth: false,
     authUser: null,
   };
+  // Keep GA early-boot hint in sync. See ga-logged-in-hint.ts + v2/index.html inline reader.
+  writeGaLoggedInHint(false);
   emitAuthUserChanged();
 };
 

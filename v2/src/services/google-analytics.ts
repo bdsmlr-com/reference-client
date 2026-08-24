@@ -1,3 +1,5 @@
+import { readGaLoggedInHint } from './ga-logged-in-hint.js';
+
 type GtagFn = (...args: unknown[]) => void;
 
 function getGtag(): GtagFn | undefined {
@@ -24,14 +26,35 @@ export function callGtag(...args: unknown[]): boolean {
   }
 }
 
+function buildEventPayload(
+  params?: Record<string, unknown>
+): Record<string, unknown> {
+  const location = typeof window !== 'undefined' ? window.location : undefined;
+  const safeParams =
+    params && typeof params === 'object' && !Array.isArray(params) ? params : undefined;
+  const override = safeParams?.logged_in;
+  const loggedIn =
+    override === 'true' || override === 'false' ? override : readGaLoggedInHint();
+  return {
+    page_path: location?.pathname,
+    page_location: location?.href,
+    ...safeParams,
+    logged_in: loggedIn,
+  };
+}
+
 export function trackPageView(pagePath?: string): void {
   try {
     const path = pagePath ?? `${window.location.pathname}${window.location.search}`;
 
-    callGtag('event', 'page_view', {
-      page_path: path,
-      page_location: window.location.href,
-    });
+    callGtag(
+      'event',
+      'page_view',
+      buildEventPayload({
+        page_path: path,
+        page_location: window.location.href,
+      })
+    );
   } catch (error) {
     console.warn('[google-analytics] trackPageView failed', error);
   }
@@ -55,19 +78,6 @@ export function trackOutageEvent(
   params?: OutageEventParams
 ): boolean {
   return trackEvent(eventName, params);
-}
-
-function buildEventPayload(
-  params?: Record<string, unknown>
-): Record<string, unknown> {
-  const location = typeof window !== 'undefined' ? window.location : undefined;
-  const safeParams =
-    params && typeof params === 'object' && !Array.isArray(params) ? params : undefined;
-  return {
-    page_path: location?.pathname,
-    page_location: location?.href,
-    ...safeParams,
-  };
 }
 
 /**

@@ -1,4 +1,5 @@
 import { getAuthUser } from '../state/auth-state.js';
+import { writeGaLoggedInHint } from './ga-logged-in-hint.js';
 import { trackOutageEvent } from './google-analytics.js';
 import { isApexRuntime, resolveTransportBase, type TransportScope } from './transport-base.js';
 
@@ -150,6 +151,9 @@ export const getMe = () => {
 };
 
 export const logout = () => {
+  // Sync before navigation: shared-nav redirects without always calling clearAuthUser.
+  // See ga-logged-in-hint.ts + v2/index.html inline reader.
+  writeGaLoggedInHint(false);
   const env = (import.meta as any).env || {};
   const timeoutMs = Number(env.VITE_AUTH_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
   return fetchJson<void>('/logout', { method: 'POST' }, timeoutMs).catch(() => {});
