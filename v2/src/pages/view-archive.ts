@@ -42,7 +42,7 @@ import {
   getArchiveSortPreference,
   setArchiveSortPreference,
 } from '../services/profile.js';
-import { getViewerCapabilities, viewerHasCapability } from '../services/viewer-capabilities.js';
+import { ensureViewerCapabilities, getViewerCapabilities, viewerHasCapability } from '../services/viewer-capabilities.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
 import { generatePaginationCursorKey } from '../services/storage.js';
@@ -254,6 +254,7 @@ export class ViewArchive extends LitElement {
   @state() private archiveAffinityLoading = false;
   @state() private archiveAffinityError = '';
   @state() private viewerCapabilities: string[] = getViewerCapabilities();
+  @state() private viewerContextReady = false;
   @state() private archiveRoadblock: { kind: 'sort' | 'variant' | 'gallery' } | null = null;
   @state() private autoRetryAttempt = 0;
   @state() private isRetryableError = false;
@@ -265,6 +266,7 @@ export class ViewArchive extends LitElement {
   private paginationKey = '';
   private replaceArchiveUrlOnPageBoundary = false;
   private activeArchiveLoadId = 0;
+  private loadedArchiveBlog: string | null = null;
 
   private scheduleArchiveTagCloudLoad(): void {
     const run = () => {
@@ -286,8 +288,13 @@ export class ViewArchive extends LitElement {
   }
 
   protected updated(changedProperties: PropertyValues): void {
-    if (changedProperties.has('blog')) {
-      this.loadFromUrl();
+    if (
+      changedProperties.has('blog')
+      && this.viewerContextReady
+      && this.blog
+      && this.blog !== this.loadedArchiveBlog
+    ) {
+      void this.loadFromUrl();
     }
   }
 
@@ -296,6 +303,7 @@ export class ViewArchive extends LitElement {
     window.addEventListener('beforeunload', this.savePaginationState);
     window.addEventListener(PROFILE_EVENTS.galleryModeChanged, this.handleGalleryModeChanged as EventListener);
     window.addEventListener('auth-user-changed', this.handleAuthUserChanged as EventListener);
+    void this.prepareViewerContext();
   }
 
   disconnectedCallback(): void {
@@ -315,7 +323,21 @@ export class ViewArchive extends LitElement {
     this.galleryMode = normalizeGalleryModeForCapabilities(getGalleryMode('archive'), getViewerCapabilities());
   };
 
+  private async prepareViewerContext(): Promise<void> {
+    await ensureViewerCapabilities();
+    this.viewerCapabilities = getViewerCapabilities();
+    this.galleryMode = normalizeGalleryModeForCapabilities(getGalleryMode('archive'), this.viewerCapabilities);
+    const alreadyReady = this.viewerContextReady;
+    this.viewerContextReady = true;
+    if (this.blog && this.blog !== this.loadedArchiveBlog && !alreadyReady) {
+      await this.loadFromUrl();
+    }
+  }
+
   private handleAuthUserChanged = (): void => {
+    if (!this.viewerContextReady) {
+      return;
+    }
     const previousSort = this.sortValue;
     const previousVariants = [...this.selectedVariants];
     this.viewerCapabilities = getViewerCapabilities();
@@ -590,6 +612,7 @@ export class ViewArchive extends LitElement {
       return;
     }
 
+    this.loadedArchiveBlog = this.blog;
     this.initialLoading = true;
     this.errorMessage = '';
     this.archiveTagsError = '';
@@ -917,7 +940,7 @@ export class ViewArchive extends LitElement {
           .identityDecorations=${this.blogData?.identityDecorations || []}
         ></blog-header>
 
-        ${this.initialLoading && !this.blogId ? html`<loading-spinner message="Loading archive..."></loading-spinner>` : ''}
+        ${!this.viewerContextReady || (this.initialLoading && !this.blogId) ? html`<loading-spinner message="Loading archive..."></loading-spinner>` : ''}
 
         ${this.blogId ? html`
           <route-shell-card wide compact>

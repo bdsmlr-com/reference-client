@@ -10,6 +10,7 @@ import { toPresentationModel } from '../services/post-presentation.js';
 import './media-renderer.js';
 import './blog-identity.js';
 import { renderCardOverlayLink, shouldLetBrowserHandleCardLink } from '../services/card-overlay.js';
+import { isEntitlementRoadblock } from '../services/media-redaction.js';
 
 @customElement('search-group-card')
 export class SearchGroupCard extends LitElement {
@@ -167,6 +168,14 @@ export class SearchGroupCard extends LitElement {
   }
 
   private handleClick() {
+    if (isEntitlementRoadblock(this.post)) {
+      this.dispatchEvent(new CustomEvent('activity-click', {
+        detail: { post: this.post },
+        bubbles: true,
+        composed: true,
+      }));
+      return;
+    }
     this.dispatchEvent(new CustomEvent('post-click', {
       detail: { post: this.post, from: this.page },
       bubbles: true,
@@ -175,10 +184,11 @@ export class SearchGroupCard extends LitElement {
   }
 
   private handleOverlayClick(event: MouseEvent): void {
-    if (shouldLetBrowserHandleCardLink(event)) {
+    if (shouldLetBrowserHandleCardLink(event, { lockNavigation: isEntitlementRoadblock(this.post) })) {
       return;
     }
     event.preventDefault();
+    event.stopPropagation();
     this.handleClick();
   }
 
@@ -212,7 +222,7 @@ export class SearchGroupCard extends LitElement {
     return html`
       <div class="stack">
         <article class="card">
-          ${renderCardOverlayLink(presentation.identity.permalink, `Open post ${this.post.id}`, (event: MouseEvent) => this.handleOverlayClick(event), this.mediaFailed)}
+          ${renderCardOverlayLink(presentation.identity.permalink, `Open post ${this.post.id}`, (event: MouseEvent) => this.handleOverlayClick(event), this.mediaFailed, { lockNavigation: isEntitlementRoadblock(this.post) })}
           <div class="media">
             <media-renderer
               .src=${rawUrl}

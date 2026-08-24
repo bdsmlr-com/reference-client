@@ -223,4 +223,25 @@ describe('toPresentationModel', () => {
 
     expect(model.media.redacted).toBe(true);
   });
+
+  it('marks search teasers with stripped ids for client-side redaction', () => {
+    const model = toPresentationModel(
+      makePost({ id: null }),
+      { surface: 'card', page: 'search' },
+    );
+
+    expect(model.media.redacted).toBe(true);
+  });
+
+  it('does not mark follower-gated posts for client-side redaction while that overlay is off', () => {
+    const model = toPresentationModel(
+      makePost({
+        blogIdentityDecorations: [{ token: 'restricted', label: 'Only approved followers can view' }],
+      }),
+      { surface: 'detail', page: 'post' },
+    );
+
+    expect(model.media.redacted).toBe(false);
+    expect(model.identity.legacyPostPermalink?.href).toBe('https://NonNudeCuties.bdsmlr.com/post/686683457');
+  });
 });

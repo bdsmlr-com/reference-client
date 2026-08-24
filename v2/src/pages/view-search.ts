@@ -45,6 +45,7 @@ import {
   getSearchSortPreference,
   setSearchSortPreference,
 } from '../services/profile.js';
+import { isEntitlementRoadblock } from '../services/media-redaction.js';
 import { getViewerCapabilities, viewerHasCapability } from '../services/viewer-capabilities.js';
 import { getPageSlotConfig } from '../services/render-page.js';
 import type { RenderSlotConfig } from '../config.js';
@@ -1015,7 +1016,7 @@ export class ViewSearch extends LitElement {
   private handlePostClick(e: CustomEvent): void {
     e.stopPropagation();
     const post = e.detail.post as ProcessedPost;
-    if (this.isEntitlementRoadblock(post)) {
+    if (isEntitlementRoadblock(post)) {
       this.roadblockPost = post;
       return;
     }
@@ -1028,14 +1029,6 @@ export class ViewSearch extends LitElement {
       bubbles: true,
       composed: true
     }));
-  }
-
-  private isEntitlementRoadblock(post: ProcessedPost | null | undefined): boolean {
-    if (!post) return false;
-    if (post.authorization?.navigation === 'denied') {
-      return true;
-    }
-    return post.id == null;
   }
 
   private closeRoadblockModal = (): void => {

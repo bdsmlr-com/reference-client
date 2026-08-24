@@ -101,6 +101,8 @@ describe('search group card', () => {
 
     expect(src).toContain("new CustomEvent('post-click'");
     expect(src).toContain('detail: { post: this.post, from: this.page }');
+    expect(src).toContain("new CustomEvent('activity-click'");
+    expect(src).toContain('isEntitlementRoadblock(this.post)');
     expect(src).not.toContain("window.location.href = `/post/${this.originPostId}`;");
     expect(src).not.toContain('search-group-click');
   });

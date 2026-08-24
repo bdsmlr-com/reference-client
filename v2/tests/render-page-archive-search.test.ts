@@ -55,7 +55,7 @@ describe('archive/search render contract usage', () => {
     expect(archiveSrc).toContain("@state() private archiveTagsError = '';");
     expect(archiveSrc).toContain('void this.loadArchiveTagCloud();');
     expect(archiveSrc).toContain('await this.loadPosts({ preserveNavigationState: true });');
-    expect(archiveSrc).toContain("this.initialLoading && !this.blogId ? html`<loading-spinner message=\"Loading archive...\"></loading-spinner>` : ''");
+    expect(archiveSrc).toContain("!this.viewerContextReady || (this.initialLoading && !this.blogId) ? html`<loading-spinner message=\"Loading archive...\"></loading-spinner>` : ''");
     expect(archiveSrc).toContain("this.errorMessage = '';");
   });
 
@@ -70,10 +70,24 @@ describe('archive/search render contract usage', () => {
     expect(archiveSrc).toContain('blog_id: this.blogId');
   });
 
+  it('archive waits for /me capabilities before loading gated sort and variant state', () => {
+    const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
+    const capabilitiesSrc = readFileSync(join(process.cwd(), 'src/services/viewer-capabilities.ts'), 'utf8');
+    const authSrc = readFileSync(join(process.cwd(), 'src/services/auth-service.ts'), 'utf8');
+
+    expect(authSrc).toContain("return fetchJson<AuthMe>('/me', { method: 'GET' }, timeoutMs, hasUserId, 'api');");
+    expect(capabilitiesSrc).toContain('export async function ensureViewerCapabilities()');
+    expect(archiveSrc).toContain('await ensureViewerCapabilities();');
+    expect(archiveSrc).toContain('void this.prepareViewerContext();');
+    expect(archiveSrc).toContain("changedProperties.has('blog')");
+    expect(archiveSrc).toContain('this.blog !== this.loadedArchiveBlog');
+    expect(archiveSrc).toContain('if (!this.viewerContextReady) {');
+  });
+
   it('archive gates non-newest sort and variant filters behind supporter capabilities', () => {
     const archiveSrc = readFileSync(join(process.cwd(), 'src/pages/view-archive.ts'), 'utf8');
 
-    expect(archiveSrc).toContain("import { getViewerCapabilities, viewerHasCapability } from '../services/viewer-capabilities.js';");
+    expect(archiveSrc).toContain("import { ensureViewerCapabilities, getViewerCapabilities, viewerHasCapability } from '../services/viewer-capabilities.js';");
     expect(archiveSrc).toContain(".lockedSortValues=${this.lockedArchiveSortValues()}");
     expect(archiveSrc).toContain(".lockedVariantSelections=${this.lockedArchiveVariantSelections()}");
     expect(archiveSrc).toContain('@sort-option-locked=${this.handleSortOptionLocked}');

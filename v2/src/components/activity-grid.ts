@@ -7,6 +7,7 @@ import { formatDate } from '../services/date-formatter.js';
 import { isAdminMode } from '../services/blog-resolver.js';
 import { toPresentationModel } from '../services/post-presentation.js';
 import { renderCardOverlayLink, shouldLetBrowserHandleCardLink } from '../services/card-overlay.js';
+import { isEntitlementRoadblock } from '../services/media-redaction.js';
 import './media-renderer.js';
 import './search-group-card.js';
 import './blog-identity.js';
@@ -209,10 +210,11 @@ export class ActivityItem extends LitElement {
   }
 
   private handleOverlayClick(event: MouseEvent): void {
-    if (shouldLetBrowserHandleCardLink(event)) {
+    if (shouldLetBrowserHandleCardLink(event, { lockNavigation: isEntitlementRoadblock(this.post) })) {
       return;
     }
     event.preventDefault();
+    event.stopPropagation();
     this.handleClick();
   }
 
@@ -276,7 +278,7 @@ export class ActivityItem extends LitElement {
 
     return html`
       <article class="card">
-        ${renderCardOverlayLink(presentation.identity.permalink, `Open post ${p.id}`, (event: MouseEvent) => this.handleOverlayClick(event), this.mediaFailed)}
+        ${renderCardOverlayLink(presentation.identity.permalink, `Open post ${p.id}`, (event: MouseEvent) => this.handleOverlayClick(event), this.mediaFailed, { lockNavigation: isEntitlementRoadblock(p) })}
         ${rawUrl ? html`
           <div class="media-container">
             <media-renderer

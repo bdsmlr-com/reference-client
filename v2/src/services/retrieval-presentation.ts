@@ -8,6 +8,7 @@ export type RetrievalPostPolicy = {
   redactionMode?: string;
   overrideReason?: string;
   visibilityFraction?: number;
+  treatment?: string;
 };
 
 export type RetrievalPostPolicyMap = Record<string, RetrievalPostPolicy | undefined>;

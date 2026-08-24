@@ -1,6 +1,6 @@
 import { getAuthUser } from '../state/auth-state.js';
 import { trackOutageEvent } from './google-analytics.js';
-import { isApexRuntime, resolveTransportBase } from './transport-base.js';
+import { isApexRuntime, resolveTransportBase, type TransportScope } from './transport-base.js';
 
 const DEFAULT_TIMEOUT_MS = 16000;
 
@@ -25,10 +25,10 @@ export const formatLoginError = (err: unknown): string => {
   return 'Login failed';
 };
 
-const resolveBase = () => {
+const resolveBase = (scope: TransportScope = 'auth') => {
   const env = (import.meta as any).env || {};
   const hostname = typeof window === 'undefined' ? 'localhost' : window.location.hostname;
-  return resolveTransportBase('auth', {
+  return resolveTransportBase(scope, {
     hostname,
     hasAuthUser: Boolean(getAuthUser()),
     env,
@@ -39,7 +39,8 @@ const fetchJson = async <T>(
   path: string,
   init: RequestInit,
   timeoutMs: number,
-  validate?: (data: unknown) => boolean
+  validate?: (data: unknown) => boolean,
+  scope: TransportScope = 'auth',
 ): Promise<T> => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -47,7 +48,7 @@ const fetchJson = async <T>(
   const env = (import.meta as any).env || {};
   const hostname = typeof window === 'undefined' ? 'localhost' : window.location.hostname;
   try {
-    resp = await fetch(`${resolveBase()}${path}`, {
+    resp = await fetch(`${resolveBase(scope)}${path}`, {
       credentials: 'include',
       cache: 'no-store',
       mode: isApexRuntime({
@@ -95,6 +96,10 @@ export type AuthStatus = {
   primary_blog_id?: number | null;
   capabilities?: string[];
 };
+export type AuthMe = {
+  user_id: number;
+  capabilities?: string[];
+};
 export type AuthLoginResponse = AuthStatus;
 export type SettingsUser = { id: number; username?: string | null };
 export type SettingsBlog = {
@@ -135,6 +140,13 @@ export const getStatus = () => {
   const env = (import.meta as any).env || {};
   const timeoutMs = Number(env.VITE_AUTH_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
   return fetchJson<AuthStatus>('/status', { method: 'GET' }, timeoutMs, hasUserId);
+};
+
+export const getMe = () => {
+  const env = (import.meta as any).env || {};
+  const timeoutMs = Number(env.VITE_AUTH_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
+  // `/me` is mounted at `/v2/api/me`, not under the `/auth` prefix used by `/status`.
+  return fetchJson<AuthMe>('/me', { method: 'GET' }, timeoutMs, hasUserId, 'api');
 };
 
 export const logout = () => {

@@ -8,11 +8,10 @@ describe('search entitlement roadblock', () => {
   it('intercepts blocked search results and opens the local roadblock modal instead of bubbling navigation', () => {
     const src = readFileSync(FILE, 'utf8');
 
-    expect(src).toContain('if (this.isEntitlementRoadblock(post)) {');
+    expect(src).toContain('if (isEntitlementRoadblock(post)) {');
     expect(src).toContain('this.roadblockPost = post;');
     expect(src).toContain('return;');
-    expect(src).toContain("post.authorization?.navigation === 'denied'");
-    expect(src).toContain('return post.id == null;');
+    expect(src).toContain("from '../services/media-redaction.js'");
   });
 
   it('renders feed-specific roadblock copy for deeper search dithering', () => {

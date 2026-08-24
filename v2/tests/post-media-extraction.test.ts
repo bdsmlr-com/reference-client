@@ -246,6 +246,22 @@ describe('post media extraction', () => {
     expect(media.videoUrl).toBe('https://ocdn012.bdsmlr.com/uploads/videos/demo.mp4');
     expect(media.url).toBe('https://ocdn012.bdsmlr.com/uploads/videos/demo.jpg');
     expect(media.representationKind).toBe('ORIGINAL');
+    expect(mediaUrls(media)).toEqual(['https://ocdn012.bdsmlr.com/uploads/videos/demo.mp4']);
+    expect(getOrderedContentBlocks({
+      id: 870855951,
+      type: 3,
+      contentBlocks: [{ mediaBlock: {} }],
+      mediaRepresentation: {
+        kind: 2,
+        items: [
+          { kind: 2, original: { url: 'https://ocdn012.bdsmlr.com/uploads/videos/demo.mp4' } },
+          { kind: 1, original: { url: 'https://ocdn012.bdsmlr.com/uploads/videos/demo.jpg' } },
+        ],
+      },
+    } as any).filter((block) => block.kind === 'media')[0]).toMatchObject({
+      kind: 'media',
+      items: [{ kind: 'VIDEO', original: { url: 'https://ocdn012.bdsmlr.com/uploads/videos/demo.mp4' } }],
+    });
   });
 
   it('recognizes numeric animated-video enums and uses the first mp4 alternate', () => {
