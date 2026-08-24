@@ -1,4 +1,4 @@
-import { callGtag } from './google-analytics.js';
+import { trackEvent } from './google-analytics.js';
 import {
   isAnonymousReadableRoute,
   type AnonymousRouteFeatureContext,
@@ -31,14 +31,9 @@ export function maybeDeployInterstitial(
     const eventName = isFeedForYouLanding(pathname)
       ? 'interstitial_suppressed_login_feed_landing'
       : 'interstitial_suppressed_login';
-    // TODO (optional, GA admin): register page_path / page_location as event-scoped
-    // custom dimensions in GA4 if ad-ops want to filter or break down by route in
-    // Explorations; event names alone appear in standard Events reports without this.
-    console.log('GGA',eventName);
-    callGtag('event', eventName, {
-      page_path: pathname,
-      page_location: window.location.href,
-    });
+    // Only reached when authenticated === false (logged-out user on a
+    // login-required route). trackEvent adds page_path / page_location.
+    trackEvent(eventName);
     return;
   }
 
@@ -57,9 +52,6 @@ export function maybeDeployInterstitial(
     console.warn('[interstitial] globalThis.deployInterstitial is not defined');
     return;
   }
-  callGtag('event', 'interstitial_displayed', {
-    page_path: pathname,
-    page_location: window.location.href,
-  });
+  trackEvent('interstitial_displayed');
   deploy();
 }
