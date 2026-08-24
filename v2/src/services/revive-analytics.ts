@@ -1,4 +1,4 @@
-import { testTrackEvent } from './google-analytics.js';
+import { trackEvent } from './google-analytics.js';
 
 /** Hosted Revive account id used by interstitial (and any other async tags on the page). */
 export const REVIVE_ACCOUNT_ID = '727bec5e09208690b050ccfc6a45d384';
@@ -22,7 +22,7 @@ type PendingSpc = {
 
 let initialized = false;
 let sdkLoadedTracked = false;
-let blockedTracked = false;
+let sdkFailedTracked = false;
 let pendingSpc: PendingSpc | null = null;
 let sdkWatchTimer: ReturnType<typeof setTimeout> | null = null;
 let scriptObserver: MutationObserver | null = null;
@@ -33,32 +33,45 @@ function clearPendingSpc(): void {
   pendingSpc = null;
 }
 
-function trackSdkLoaded(reason: string): void {
-  if (sdkLoadedTracked) return;
+function markSdkLoaded(): void {
+  if (sdkLoadedTracked || sdkFailedTracked) return;
   sdkLoadedTracked = true;
   if (sdkWatchTimer) {
     clearTimeout(sdkWatchTimer);
     sdkWatchTimer = null;
   }
-  testTrackEvent('ad_sdk_loaded', { reason, revive_id: REVIVE_ACCOUNT_ID });
+  // Optional: enable if we want an explicit success signal. Usually implied by
+  // absence of ad_sdk_blocked / ad_load_failed.
+  // trackEvent('ad_sdk_loaded', { revive_id: REVIVE_ACCOUNT_ID });
 }
 
 /**
- * Heuristic: zone responded but served nothing billable / visible.
- * Refine once ad-ops confirm the empty DOM signature.
+ * SDK failed to load (script error / never present) — treat as ad blocker.
+ * One shot; overlapping detectors share this. Does not emit ad_load_failed
+ * (that is reserved for zone/SPC request failures after the SDK is up).
  */
-function isEmptyCreative(data: ReviveCreativeData | undefined): boolean {
-  if (!data) return true;
-  const html = String(data.html ?? '').trim();
-  if (!html) return true;
-  if (/^\s*(<!--[\s\S]*?-->\s*)*$/.test(html)) return true;
+function trackSdkBlocked(reason: string, extra?: Record<string, unknown>): void {
+  if (sdkFailedTracked || sdkLoadedTracked) return;
+  sdkFailedTracked = true;
+  if (sdkWatchTimer) {
+    clearTimeout(sdkWatchTimer);
+    sdkWatchTimer = null;
+  }
+  trackEvent('ad_sdk_blocked', {
+    reason,
+    revive_id: REVIVE_ACCOUNT_ID,
+    ...extra,
+  });
+}
 
-  const width = Number(data.width) || 0;
-  const height = Number(data.height) || 0;
-  // Revive often returns 0×0 with negligible markup for no-fill.
-  if (width === 0 && height === 0 && html.length < 80) return true;
-
-  return false;
+/**
+ * Field signature for "zone OK, no inventory assigned":
+ * a single hidden beacon div with a 0×0 lg.php img (bannerid=0).
+ * Scoped to the slot so we don't match unrelated banners.
+ */
+function isEmptyInventorySlot(el: Element | null): boolean {
+  if (!el || el.getAttribute('data-revive-loaded') !== '1') return false;
+  return Boolean(el.querySelector(':scope > div:only-child > img:only-child'));
 }
 
 function slotParams(slotId: string, data?: ReviveCreativeData): Record<string, unknown> {
@@ -72,16 +85,6 @@ function slotParams(slotId: string, data?: ReviveCreativeData): Record<string, u
     iframe_friendly: data?.iframeFriendly,
     html_length: String(data?.html ?? '').length,
   };
-}
-
-function trackBlocked(reason: string, extra?: Record<string, unknown>): void {
-  if (blockedTracked) return;
-  blockedTracked = true;
-  testTrackEvent('ad_blocked_detected', {
-    reason,
-    revive_id: REVIVE_ACCOUNT_ID,
-    ...extra,
-  });
 }
 
 function isSlotCosmeticallyHidden(el: Element | null): boolean {
@@ -111,7 +114,7 @@ function bindAsyncjsScript(script: HTMLScriptElement): void {
   script.addEventListener(
     'load',
     () => {
-      trackSdkLoaded('script_load');
+      markSdkLoaded();
     },
     { once: true }
   );
@@ -119,12 +122,7 @@ function bindAsyncjsScript(script: HTMLScriptElement): void {
   script.addEventListener(
     'error',
     () => {
-      testTrackEvent('ad_load_failed', {
-        reason: 'sdk_script_error',
-        revive_id: REVIVE_ACCOUNT_ID,
-        script_src: script.src || undefined,
-      });
-      trackBlocked('sdk_script_error', { script_src: script.src || undefined });
+      trackSdkBlocked('sdk_script_error', { script_src: script.src || undefined });
     },
     { once: true }
   );
@@ -186,16 +184,11 @@ function scheduleSdkAbsenceWatch(): void {
 
     const reviveAsync = (globalThis as { reviveAsync?: Record<string, unknown> }).reviveAsync;
     if (reviveAsync?.[REVIVE_ACCOUNT_ID]) {
-      trackSdkLoaded('late_detect');
+      markSdkLoaded();
       return;
     }
 
-    testTrackEvent('ad_load_failed', {
-      reason: 'sdk_never_loaded',
-      revive_id: REVIVE_ACCOUNT_ID,
-      slot_count: slots.length,
-    });
-    trackBlocked('sdk_never_loaded', { slot_count: slots.length });
+    trackSdkBlocked('sdk_never_loaded', { slot_count: slots.length });
   }, SDK_ABSENCE_MS);
 }
 
@@ -209,18 +202,20 @@ function onSend(event: Event): void {
         ? zones.filter(Boolean).length
         : 0;
 
-  testTrackEvent('ad_request', {
-    revive_id: REVIVE_ACCOUNT_ID,
-    zone_count: zoneCount,
-    zones: typeof zones === 'string' ? zones : undefined,
-  });
+  // Optional: enable if we want request volume. Usually implied by impressions /
+  // empty_inventory / load_failed downstream.
+  // trackEvent('ad_request', {
+  //   revive_id: REVIVE_ACCOUNT_ID,
+  //   zone_count: zoneCount,
+  //   zones: typeof zones === 'string' ? zones : undefined,
+  // });
 
   clearPendingSpc();
   pendingSpc = {
     zoneCount,
     timer: setTimeout(() => {
       pendingSpc = null;
-      testTrackEvent('ad_load_failed', {
+      trackEvent('ad_load_failed', {
         reason: 'spc_timeout',
         revive_id: REVIVE_ACCOUNT_ID,
         zone_count: zoneCount,
@@ -238,31 +233,31 @@ function onLoaded(event: Event): void {
   const detail = (event as CustomEvent<{ id?: string; data?: ReviveCreativeData }>).detail || {};
   const slotId = String(detail.id || '');
   const data = detail.data;
+  const el = slotId ? document.getElementById(slotId) : null;
   const params = slotParams(slotId, data);
 
-  if (isEmptyCreative(data)) {
-    testTrackEvent('ad_empty_impression', params);
+  if (isEmptyInventorySlot(el)) {
+    trackEvent('ad_empty_inventory', params);
     return;
   }
 
-  testTrackEvent('ad_impression', params);
+  trackEvent('ad_impression', params);
 
   // Cosmetic blockers sometimes leave markup but collapse/hide the slot.
   queueMicrotask(() => {
-    const el = slotId ? document.getElementById(slotId) : null;
     if (!el || isIntentionallySuppressedBanner(el)) return;
     if (isSlotCosmeticallyHidden(el)) {
-      trackBlocked('slot_hidden_after_fill', {
-        slot_id: slotId,
-        zone_id: params.zone_id,
+      trackEvent('ad_zone_blocked', {
+        reason: 'slot_hidden_after_fill',
+        ...params,
       });
     }
   });
 }
 
 /**
- * Subscribe to Revive asyncjs CustomEvents and emit test GA events.
- * Safe to call more than once. Does not send to GA until testTrackEvent → trackEvent swap.
+ * Subscribe to Revive asyncjs CustomEvents and emit GA4 ad events.
+ * Safe to call more than once.
  */
 export function initReviveAnalytics(): void {
   if (initialized || typeof window === 'undefined' || typeof document === 'undefined') {
@@ -271,7 +266,7 @@ export function initReviveAnalytics(): void {
   initialized = true;
 
   document.addEventListener(`${EVENT_PREFIX}init`, () => {
-    trackSdkLoaded('init_event');
+    markSdkLoaded();
   });
   document.addEventListener(`${EVENT_PREFIX}send`, onSend);
   document.addEventListener(`${EVENT_PREFIX}receive`, onReceive);
@@ -280,19 +275,14 @@ export function initReviveAnalytics(): void {
   // Interstitial (classic script) can dispatch this if script.onerror fires first.
   document.addEventListener('revive-sdk-load-failed', ((event: Event) => {
     const detail = (event as CustomEvent<{ script_src?: string }>).detail || {};
-    testTrackEvent('ad_load_failed', {
-      reason: 'sdk_script_error',
-      revive_id: REVIVE_ACCOUNT_ID,
-      script_src: detail.script_src,
-    });
-    trackBlocked('sdk_script_error', { script_src: detail.script_src });
+    trackSdkBlocked('sdk_script_error', { script_src: detail.script_src });
   }) as EventListener);
 
   observeAsyncjsScripts();
 
   const reviveAsync = (globalThis as { reviveAsync?: Record<string, unknown> }).reviveAsync;
   if (reviveAsync?.[REVIVE_ACCOUNT_ID]) {
-    trackSdkLoaded('already_present');
+    markSdkLoaded();
   } else {
     scheduleSdkAbsenceWatch();
   }
