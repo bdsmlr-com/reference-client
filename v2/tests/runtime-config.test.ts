@@ -8,8 +8,7 @@ describe('runtime config', () => {
     vi.restoreAllMocks();
   });
 
-  it('keeps baseline feature flags intact when runtime config omits dead media overrides', () => {
-    expect(FEATURE_FLAGS.more_like_this_on_post).toBe(false);
+  it('overlays runtime feature flags onto defaults', () => {
     expect(FEATURE_FLAGS.use_gif_posters).toBe(false);
     applyRuntimeConfig({
       features: {
