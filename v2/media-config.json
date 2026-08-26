@@ -447,7 +447,7 @@
     "by_env": {}
   },
   "features": {
-    "more_like_this_on_post": false,
+    "more_like_this_on_post": true,
     "use_gif_posters": false
   },
   "render": {
