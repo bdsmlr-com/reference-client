@@ -8,8 +8,23 @@
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
-    // Early logged_in for the first automatic page_view.
-    // TS reads globalThis.GA_LOGGED_IN_STORAGE_KEY when present (see ga-logged-in-hint.ts).
+    // --- A/B arm (ix1) before first page_view. Bridge reads globalThis.SITE_AB_IX ---
+    // Sticky bucket in localStorage (tracking). Once-per-session suppress lives in the bridge.
+    var abIx = 'a';
+    try {
+      var abStored = localStorage.getItem('site_ab_ix');
+      if (abStored === 'a' || abStored === 'b') {
+        abIx = abStored;
+      } else {
+        abIx = Math.random() < 0.5 ? 'a' : 'b';
+        localStorage.setItem('site_ab_ix', abIx);
+      }
+    } catch (e) {
+      abIx = Math.random() < 0.5 ? 'a' : 'b';
+    }
+    globalThis.SITE_AB_IX = abIx;
+    gtag('set', 'user_properties', { ab_ix: abIx });
+    // --- logged_in hint for first page_view (see ga-logged-in-hint.ts) ---
     globalThis.GA_LOGGED_IN_STORAGE_KEY = 'site_ga_logged_in';
     var loggedIn = 'false';
     try {

@@ -4,9 +4,34 @@ import {
   type AnonymousRouteFeatureContext,
 } from './route-access-policy.js';
 
+/** sessionStorage: interstitial already shown this tab session (feature, not A/B). */
+const INTERSTITIAL_SHOWN_KEY = 'interstitial_shown';
+
 function isFeedForYouLanding(pathname: string): boolean {
   const normalized = String(pathname || '').replace(/\/+$/, '') || '/';
   return normalized === '/feed/for/you';
+}
+
+/** Arm assigned in v2/index.html (`globalThis.SITE_AB_IX`). Defaults to control. */
+function getAbIxArm(): 'a' | 'b' {
+  const arm = (globalThis as { SITE_AB_IX?: unknown }).SITE_AB_IX;
+  return arm === 'b' ? 'b' : 'a';
+}
+
+function hasInterstitialShownThisSession(): boolean {
+  try {
+    return sessionStorage.getItem(INTERSTITIAL_SHOWN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markInterstitialShownThisSession(): void {
+  try {
+    sessionStorage.setItem(INTERSTITIAL_SHOWN_KEY, '1');
+  } catch {
+    // ignore
+  }
 }
 
 export function maybeDeployInterstitial(
@@ -26,6 +51,7 @@ export function maybeDeployInterstitial(
   }
 
   const pathname = window.location.pathname;
+  const abIx = getAbIxArm();
 
   if (!isAnonymousReadableRoute(pathname, features)) {
     const eventName = isFeedForYouLanding(pathname)
@@ -46,6 +72,12 @@ export function maybeDeployInterstitial(
   // }
   */
 
+  // Arm b: at most one interstitial per tab session.
+  if (abIx === 'b' && hasInterstitialShownThisSession()) {
+    trackEvent('interstitial_suppressed_ab');
+    return;
+  }
+
   // Overengineered typescript amounting to: deployInterstitial()
   const deploy = (globalThis as { deployInterstitial?: () => void }).deployInterstitial;
   if (typeof deploy !== 'function') {
@@ -53,5 +85,6 @@ export function maybeDeployInterstitial(
     return;
   }
   trackEvent('interstitial_displayed');
+  markInterstitialShownThisSession();
   deploy();
 }
