@@ -34,6 +34,18 @@
     dataLayer.push({ logged_in: loggedIn });
     gtag('js', new Date());
     gtag('config', 'G-9VSP3HR9NF', { logged_in: loggedIn });
+    // Rough boot watchdog: fire if the main app module hasn't loaded yet.
+    // 5s is coarse on purpose — slower than in-app outage_slow_request (3s),
+    // tight enough that a hung/missing bundle still shows up.
+    var SLOW_LOADING_APP_MS = 5000;
+    globalThis.__slowLoadingAppTimer = setTimeout(function () {
+      gtag('event', 'slow_loading_app', {
+        timeout_ms: SLOW_LOADING_APP_MS,
+        logged_in: loggedIn,
+        page_path: location.pathname,
+        page_location: location.href
+      });
+    }, SLOW_LOADING_APP_MS);
   </script>
   <!-- Inline theme initialization to prevent FOUC (Flash of Unstyled Content) -->
   <script>
@@ -67,6 +79,6 @@
 <body>
   <script src="/v2/assets/interstitial-tabunder.js?v5"></script>
   <app-root></app-root>
-  <script type="module" src="/src/app-root.ts"></script>
+  <script type="module" src="/src/app-root.ts" onload="clearTimeout(globalThis.__slowLoadingAppTimer)"></script>
 </body>
 </html>
