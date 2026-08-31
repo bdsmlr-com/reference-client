@@ -89,7 +89,12 @@ export function trackEvent(
   params?: Record<string, unknown>
 ): boolean {
   try {
-    return callGtag('event', String(eventName || 'unknown_event'), buildEventPayload(params));
+    const name = String(eventName || 'unknown_event');
+    const payload = buildEventPayload(params);
+    if (import.meta.env.DEV) {
+      console.log('GA4 trackEvent called:', name, payload);
+    }
+    return callGtag('event', name, payload);
   } catch (error) {
     console.warn('[google-analytics] trackEvent failed', eventName, error);
     return false;
