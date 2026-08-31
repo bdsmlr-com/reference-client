@@ -267,4 +267,109 @@ describe('post route media behavior', () => {
     expect(src).toContain("if (media.type === 'text' && mediaSources.length === 0) {");
     expect(src).toContain('return nothing;');
   });
+
+  it('tracks media_load_failed when a still image fails to load', async () => {
+    const gtag = vi.fn();
+    vi.stubGlobal('gtag', gtag);
+
+    const renderer = await newRenderer();
+    renderer.src = 'https://cdn.example.com/broken.jpg';
+    renderer.type = 'feed';
+    renderer.primed = true;
+    document.body.appendChild(renderer);
+    await renderer.updateComplete;
+
+    const img = renderer.shadowRoot?.querySelector('img');
+    expect(img).toBeTruthy();
+    img?.dispatchEvent(new Event('error'));
+    await renderer.updateComplete;
+
+    expect(gtag).toHaveBeenCalledWith(
+      'event',
+      'media_load_failed',
+      expect.objectContaining({ surface: 'feed', media_kind: 'image' }),
+    );
+    expect(renderer.shadowRoot?.querySelector('.error-placeholder')).toBeTruthy();
+  });
+
+  it('tracks media_load_failed when a native video fails to load', async () => {
+    const gtag = vi.fn();
+    vi.stubGlobal('gtag', gtag);
+
+    const renderer = await newRenderer();
+    renderer.src = 'https://cdn.example.com/broken.mp4';
+    renderer.type = 'card';
+    renderer.primed = true;
+    document.body.appendChild(renderer);
+    await renderer.updateComplete;
+
+    const video = renderer.shadowRoot?.querySelector('video');
+    expect(video).toBeTruthy();
+    video?.dispatchEvent(new Event('error'));
+    await renderer.updateComplete;
+
+    expect(gtag).toHaveBeenCalledWith(
+      'event',
+      'media_load_failed',
+      expect.objectContaining({ surface: 'card', media_kind: 'video' }),
+    );
+    expect(renderer.shadowRoot?.querySelector('.error-placeholder')).toBeTruthy();
+  });
+
+  it('does not track media_load_failed when alternate video failure is a GIF waterfall step', async () => {
+    const gtag = vi.fn();
+    vi.stubGlobal('gtag', gtag);
+
+    const renderer = await newRenderer();
+    renderer.src = 'https://ocdn012.bdsmlr.com/uploads/photos/decode.gif?e=1&t=1';
+    renderer.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/decode.mp4?e=1&t=1';
+    renderer.fallbackSrc = renderer.src;
+    renderer.forceImage = true;
+    renderer.type = 'feed';
+    renderer.handleError({
+      target: {
+        tagName: 'VIDEO',
+        error: { code: 3 },
+      },
+    } as unknown as Event);
+
+    expect(renderer.alternatePlaybackFailed).toBe(true);
+    expect(gtag).not.toHaveBeenCalled();
+  });
+
+  it('tracks media_load_failed if the GIF fallback also fails after alternate video miss', async () => {
+    const gtag = vi.fn();
+    vi.stubGlobal('gtag', gtag);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 404 }));
+
+    const renderer = await newRenderer();
+    renderer.src = 'https://ocdn012.bdsmlr.com/uploads/photos/miss-track.gif?e=1&t=1';
+    renderer.alternateVideoSrc = 'https://ocdn012.bdsmlr.com/uploads/photos/miss-track.mp4?e=1&t=1';
+    renderer.fallbackSrc = renderer.src;
+    renderer.forceImage = true;
+    renderer.type = 'feed';
+    renderer.primed = true;
+    document.body.appendChild(renderer);
+    await renderer.updateComplete;
+
+    const video = renderer.shadowRoot?.querySelector('video');
+    expect(video).toBeTruthy();
+    video?.dispatchEvent(new Event('error'));
+    await flushAsyncWork();
+    await renderer.updateComplete;
+
+    expect(gtag).not.toHaveBeenCalled();
+    expect(renderer.alternatePlaybackFailed).toBe(true);
+
+    const img = renderer.shadowRoot?.querySelector('img:not(.poster-frame)');
+    expect(img).toBeTruthy();
+    img?.dispatchEvent(new Event('error'));
+    await renderer.updateComplete;
+
+    expect(gtag).toHaveBeenCalledWith(
+      'event',
+      'media_load_failed',
+      expect.objectContaining({ surface: 'feed', media_kind: 'image' }),
+    );
+  });
 });

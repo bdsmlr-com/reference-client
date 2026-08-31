@@ -12,6 +12,7 @@ import {
   MEDIA_VIEWPORT_PRIME_DEBUG,
   mediaViewportPrime,
 } from '../services/media-viewport-prime.js';
+import { trackEvent } from '../services/google-analytics.js';
 
 type ProbeFailureReason = 'missing-or-404' | 'timeout' | 'token-or-auth' | 'codec-or-playback' | 'other-load-error';
 
@@ -492,6 +493,10 @@ export class MediaRenderer extends LitElement {
 
     this.showPlaceholder = true;
     this.dispatchMediaStateChange(true);
+    trackEvent('media_load_failed', {
+      surface: this.type,
+      media_kind: el.tagName === 'VIDEO' ? 'video' : 'image',
+    });
   }
 
   private handleRetry = (): void => {
