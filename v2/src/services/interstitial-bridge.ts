@@ -13,9 +13,9 @@ function isFeedForYouLanding(pathname: string): boolean {
 }
 
 /** Arm assigned in v2/index.html (`globalThis.SITE_AB_IX`). Defaults to control. */
-function getAbIxArm(): 'a' | 'b' {
+function getAbIxArm(): 'A' | 'B' {
   const arm = (globalThis as { SITE_AB_IX?: unknown }).SITE_AB_IX;
-  return arm === 'b' ? 'b' : 'a';
+  return arm === 'B' ? 'B' : 'A';
 }
 
 function hasInterstitialShownThisSession(): boolean {
@@ -73,7 +73,7 @@ export function maybeDeployInterstitial(
   */
 
   // Arm b: at most one interstitial per tab session.
-  if (abIx === 'b' && hasInterstitialShownThisSession()) {
+  if (abIx === 'B' && hasInterstitialShownThisSession()) {
     trackEvent('interstitial_suppressed_ab');
     return;
   }

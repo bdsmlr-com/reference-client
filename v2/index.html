@@ -4,24 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BDSMLR - Developer Reference Client</title>
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-9VSP3HR9NF"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     // --- A/B arm (ix1) before first page_view. Bridge reads globalThis.SITE_AB_IX ---
     // Sticky bucket in localStorage (tracking). Once-per-session suppress lives in the bridge.
-    var abIx = 'a';
+    var abIx = Math.random() < 0.5 ? 'A' : 'B';
     try {
       var abStored = localStorage.getItem('site_ab_ix');
-      if (abStored === 'a' || abStored === 'b') {
+      if (/^[AB]$/.test(abStored)) {
         abIx = abStored;
       } else {
-        abIx = Math.random() < 0.5 ? 'a' : 'b';
         localStorage.setItem('site_ab_ix', abIx);
       }
-    } catch (e) {
-      abIx = Math.random() < 0.5 ? 'a' : 'b';
-    }
+    } catch (ee) { /* no localStorage */}
     globalThis.SITE_AB_IX = abIx;
     gtag('set', 'user_properties', { ab_ix: abIx });
     // --- logged_in hint for first page_view (see ga-logged-in-hint.ts) ---
@@ -47,6 +43,7 @@
       });
     }, SLOW_LOADING_APP_MS);
   </script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-9VSP3HR9NF"></script>
   <!-- Inline theme initialization to prevent FOUC (Flash of Unstyled Content) -->
   <script>
     (function() {
